@@ -212,6 +212,41 @@ class StoreExpenseRequest extends FormRequest
                 }
             }
 
+            // Validate treasury accounts balance (non-wallet)
+            $allowNegative = (bool) AccountingSetting::get('banking.allow_negative_balance', false);
+            if (!$allowNegative) {
+                $totalRequiredByBank = [];
+                foreach ($bankAccounts as $index => $acc) {
+                    $fundAccountId = $acc['bank_id'] ?? null;
+                    if (!$fundAccountId) continue;
+                    $reqAmt = (float)($acc['amount'] ?? 0) + (float)($acc['fee'] ?? 0);
+                    $totalRequiredByBank[$fundAccountId] = ($totalRequiredByBank[$fundAccountId] ?? 0) + $reqAmt;
+                }
+
+                foreach ($chequesData as $chq) {
+                    $cFee = (float)($chq['fee'] ?? 0);
+                    if ($cFee > 0) {
+                        $feeBankId = $chq['fee_bank_id'] ?? null;
+                        if (!$feeBankId && !empty($bankAccounts)) {
+                            $feeBankId = $bankAccounts[0]['bank_id'] ?? null;
+                        }
+                        if ($feeBankId) {
+                            $totalRequiredByBank[$feeBankId] = ($totalRequiredByBank[$feeBankId] ?? 0) + $cFee;
+                        }
+                    }
+                }
+
+                foreach ($totalRequiredByBank as $bId => $reqTotal) {
+                    $fundAccount = FundAccount::find($bId);
+                    if ($fundAccount && !$fundAccount->isWalletAccount()) {
+                        $currentBal = (float)$fundAccount->current_balance;
+                        if ($currentBal < $reqTotal) {
+                            $validator->errors()->add("bank_accounts", "موجودی حساب خزانه‌داری «{$fundAccount->name}» (" . number_format($currentBal) . " ریال) کمتر از مجموع مبالغ و کارمزدهای تخصیص‌یافته (" . number_format($reqTotal) . " ریال) می‌باشد.");
+                        }
+                    }
+                }
+            }
+
             // Validate wallet accounts balance
             foreach ($bankAccounts as $index => $acc) {
                 $fundAccountId = $acc['bank_id'] ?? null;

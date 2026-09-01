@@ -60,10 +60,10 @@
             'petty_cash' => 'تنخواه',
         ];
         $typeBadges = [
-            'bank' => 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 border-blue-200 dark:border-blue-800/50',
-            'cash' => 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/50',
-            'gateway' => 'bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 border-purple-200 dark:border-purple-800/50',
-            'petty_cash' => 'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300 border-amber-200 dark:border-amber-800/50',
+            'bank' => 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-500/10 dark:text-blue-400 dark:border-blue-500/20',
+            'cash' => 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20',
+            'gateway' => 'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-500/10 dark:text-purple-400 dark:border-purple-500/20',
+            'petty_cash' => 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20',
         ];
         return [
             'id' => (string) $fa->id,
@@ -485,25 +485,25 @@
              x-transition:enter="transition ease-out duration-300"
              x-transition:enter-start="opacity-0 transform -translate-y-2"
              x-transition:enter-end="opacity-100 transform translate-y-0"
-             class="bg-white dark:bg-gray-800/60 rounded-3xl border border-indigo-100 dark:border-indigo-900/40 shadow-sm overflow-hidden backdrop-blur-xl relative z-20">
+             class="bg-white dark:bg-gray-800/60 rounded-3xl border border-gray-100 dark:border-gray-700/50 shadow-sm overflow-hidden backdrop-blur-xl relative z-20">
 
             <div
-                class="p-5 border-b border-indigo-50 dark:border-indigo-900/30 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gradient-to-r from-blue-50/60 via-indigo-50/40 to-transparent dark:from-blue-950/30 dark:via-indigo-950/20 dark:to-transparent">
+                class="px-6 py-4 border-b border-gray-100 dark:border-gray-700/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gray-50/50 dark:bg-gray-900/30">
                 <div class="flex items-center gap-3">
                     <span
-                        class="flex items-center justify-center w-10 h-10 rounded-2xl bg-indigo-600 text-white shadow-md shadow-indigo-500/20">
-                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        class="flex items-center justify-center w-8 h-8 rounded-xl bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                             <path stroke-linecap="round" stroke-linejoin="round"
                                   d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/>
                         </svg>
                     </span>
                     <div>
-                        <h2 class="text-base font-black text-gray-900 dark:text-white flex items-center gap-2">
+                        <h3 class="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
                             <span>موجودی لحظه‌ای حساب‌های خزانه‌داری انتخابی</span>
                             <span
-                                class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300"
+                                class="px-2 py-0.5 rounded-md text-xs font-bold bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-500/20"
                                 x-text="`${formatNumber(selectedFundAccountsSummary.length)} حساب خزانه`"></span>
-                        </h2>
+                        </h3>
                         <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">نمایش زنده موجودی فعلی، واریز/برداشت
                             این سند و موجودی نهایی بانک‌ها و صندوق‌ها</p>
                     </div>
@@ -514,16 +514,16 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     <template x-for="fund in selectedFundAccountsSummary" :key="fund.id">
                         <div
-                            class="rounded-2xl border border-gray-200/80 dark:border-gray-700/70 bg-gradient-to-b from-gray-50/60 to-white dark:from-gray-800/40 dark:to-gray-800/80 p-4 space-y-3.5 shadow-sm hover:shadow-md transition-all">
+                            class="p-4 rounded-2xl bg-white dark:bg-gray-800 border border-gray-200/80 dark:border-gray-700/60 space-y-3 shadow-sm">
 
                             {{-- Fund Account Header --}}
                             <div
-                                class="flex items-start justify-between gap-2 border-b border-gray-100 dark:border-gray-700/60 pb-3">
-                                <div class="space-y-1 truncate">
-                                    <div class="flex items-center gap-1.5">
+                                class="flex items-center justify-between pb-2.5 border-b border-gray-100 dark:border-gray-700/50">
+                                <div class="space-y-0.5 truncate">
+                                    <div class="flex items-center gap-2 truncate">
                                         <span class="w-2 h-2 rounded-full bg-indigo-500"></span>
-                                        <h3 class="text-sm font-bold text-gray-900 dark:text-white truncate"
-                                            x-text="fund.name"></h3>
+                                        <h4 class="text-xs font-bold text-gray-900 dark:text-white truncate"
+                                            x-text="fund.name"></h4>
                                     </div>
                                 </div>
                                 <span class="px-2 py-0.5 text-[10px] font-bold rounded-lg border shrink-0"
@@ -535,55 +535,52 @@
                             <div class="space-y-2 text-xs">
                                 {{-- Previous Balance --}}
                                 <div
-                                    class="flex items-center justify-between bg-white dark:bg-gray-900/40 p-2.5 rounded-xl border border-gray-100 dark:border-gray-700/40">
-                                    <span class="text-gray-500 dark:text-gray-400 font-medium">موجودی فعلی خزانه:</span>
-                                    <div class="flex items-center gap-1.5">
-                                        <span class="font-bold text-gray-800 dark:text-gray-200"
-                                              x-text="formatNumber(fund.initialBalance)"></span>
-                                        <span class="text-[10px] text-gray-400">{{ $currencySuffix }}</span>
+                                    class="flex items-center justify-between p-2.5 rounded-xl bg-gray-50/80 dark:bg-gray-900/40 border border-gray-100 dark:border-gray-700/50">
+                                    <span class="text-gray-500 dark:text-gray-400">موجودی فعلی خزانه:</span>
+                                    <div
+                                        class="flex items-center gap-1 font-bold text-gray-800 dark:text-gray-200 tabular-nums">
+                                        <span x-text="formatNumber(fund.initialBalance)"></span>
+                                        <span class="text-[10px] text-gray-400 font-normal">{{ $currencySuffix }}</span>
                                     </div>
                                 </div>
 
                                 {{-- This Voucher Changes --}}
-                                <div class="grid grid-cols-2 gap-2 text-[11px]">
+                                <div class="grid grid-cols-2 gap-2 text-xs">
                                     <div
-                                        class="bg-emerald-50/60 dark:bg-emerald-900/20 p-2 rounded-xl border border-emerald-100 dark:border-emerald-900/30">
-                                        <div class="text-emerald-600 dark:text-emerald-400 font-medium">واریز در این
-                                            سند:
+                                        class="p-2 rounded-xl bg-emerald-50/60 dark:bg-emerald-500/10 border border-emerald-100 dark:border-emerald-500/20">
+                                        <div class="text-[11px] text-emerald-700 dark:text-emerald-400 font-medium">
+                                            واریز:
                                         </div>
-                                        <div class="font-bold text-emerald-700 dark:text-emerald-300 mt-0.5"
-                                             x-text="fund.docDebit > 0 ? '+' + formatNumber(fund.docDebit) : '۰'"></div>
+                                        <div
+                                            class="font-bold text-emerald-700 dark:text-emerald-400 tabular-nums mt-0.5"
+                                            x-text="fund.docDebit > 0 ? '+' + formatNumber(fund.docDebit) : '۰'"></div>
                                     </div>
                                     <div
-                                        class="bg-rose-50/60 dark:bg-rose-900/20 p-2 rounded-xl border border-rose-100 dark:border-rose-900/30">
-                                        <div class="text-rose-600 dark:text-rose-400 font-medium">برداشت در این سند:
+                                        class="p-2 rounded-xl bg-rose-50/60 dark:bg-rose-500/10 border border-rose-100 dark:border-rose-500/20">
+                                        <div class="text-[11px] text-rose-700 dark:text-rose-400 font-medium">برداشت:
                                         </div>
-                                        <div class="font-bold text-rose-700 dark:text-rose-300 mt-0.5"
+                                        <div class="font-bold text-rose-700 dark:text-rose-400 tabular-nums mt-0.5"
                                              x-text="fund.docCredit > 0 ? '-' + formatNumber(fund.docCredit) : '۰'"></div>
                                     </div>
                                 </div>
 
                                 {{-- Projected New Balance --}}
-                                <div class="flex items-center justify-between p-2.5 rounded-xl border"
+                                <div class="flex items-center justify-between p-2.5 rounded-xl border font-bold"
                                      :class="{
-                                         'bg-emerald-50/80 border-emerald-200 dark:bg-emerald-950/30 dark:border-emerald-800/50': !fund.isNegative,
-                                         'bg-rose-50/80 border-rose-200 dark:bg-rose-950/30 dark:border-rose-800/50': fund.isNegative
+                                         'bg-emerald-50/60 border-emerald-200/80 dark:bg-emerald-500/10 dark:border-emerald-500/20 text-emerald-700 dark:text-emerald-400': !fund.isNegative,
+                                         'bg-rose-50/60 border-rose-200/80 dark:bg-rose-500/10 dark:border-rose-500/20 text-rose-700 dark:text-rose-400': fund.isNegative
                                      }">
-                                    <span class="font-bold text-gray-700 dark:text-gray-200">موجودی پس از ثبت:</span>
-                                    <div class="flex items-center gap-1.5">
-                                        <span class="font-black text-sm"
-                                              :class="{
-                                                  'text-emerald-700 dark:text-emerald-300': !fund.isNegative,
-                                                  'text-rose-700 dark:text-rose-300': fund.isNegative
-                                              }"
+                                    <span>موجودی پس از ثبت:</span>
+                                    <div class="flex items-center gap-1 tabular-nums">
+                                        <span class="text-sm font-black"
                                               x-text="formatSignedNumber(fund.newBalance)"></span>
-                                        <span class="text-[10px] text-gray-500 font-normal">{{ $currencySuffix }}</span>
-                                        <span class="px-2 py-0.5 text-[10px] font-black rounded-md shadow-sm"
+                                        <span class="text-[10px] font-normal opacity-75">{{ $currencySuffix }}</span>
+                                        <span class="px-2 py-0.5 text-[10px] font-bold rounded-md"
                                               :class="{
-                                                  'bg-emerald-600 text-white': !fund.isNegative,
-                                                  'bg-rose-600 text-white': fund.isNegative
+                                                  'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-300': !fund.isNegative,
+                                                  'bg-rose-100 dark:bg-rose-500/20 text-rose-800 dark:text-rose-300': fund.isNegative
                                               }"
-                                              x-text="fund.isNegative ? 'کسری موجودی' : 'موجودی معتبر'"></span>
+                                              x-text="fund.isNegative ? 'کسری' : 'معتبر'"></span>
                                     </div>
                                 </div>
                             </div>

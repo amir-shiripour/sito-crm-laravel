@@ -966,19 +966,21 @@
                                 </td>
                                 <td class="px-4 py-3 align-top">
                                     <div class="flex items-center gap-1.5 w-full">
-                                        <div class="relative w-full">
-                                            <input type="text" :value="formatPriceInput(item.unit_price)"
-                                                   @input="if(item.mode !== 'debt' && !item._isDebt) item.unit_price = parsePriceInput($event.target.value)"
+                                        <div class="relative w-full" x-ref="priceCell_{{$index ?? 'i'}}">
+                                            <input type="text"
+                                                   x-effect="if(document.activeElement !== $el) $el.value = formatPriceInput(item.unit_price)"
+                                                   @input="if(item.mode !== 'debt' && !item._isDebt) { let val = parsePriceInput($event.target.value); item.unit_price = val; $event.target.value = val ? formatPriceInput(val) : ''; }"
+                                                   @blur="$el.value = formatPriceInput(item.unit_price)"
                                                    :name="'items[' + index + '][unit_price]'" required
-                                                   :readonly="(((item.mode === 'service' && !!item.service_id) || (item.mode === 'product' && !!item.product_id) || (item.mode === 'manual' && item._packageGroupId)) && !item._priceUnlocked) || item.mode === 'debt' || item._isDebt"
-                                                   :class="((((item.mode === 'service' && item.service_id) || (item.mode === 'product' && item.product_id) || (item.mode === 'manual' && item._packageGroupId)) && !item._priceUnlocked) || item.mode === 'debt' || item._isDebt) ? 'bg-gray-100/70 dark:bg-gray-800/60 cursor-not-allowed text-gray-500 dark:text-gray-400 select-none' : ''"
+                                                   :readonly="(item.mode === 'debt' || item._isDebt) || (item.mode !== 'manual' && (item.service_id || item.product_id) && !item._priceUnlocked)"
+                                                   :class="((item.mode === 'debt' || item._isDebt) || (item.mode !== 'manual' && (item.service_id || item.product_id) && !item._priceUnlocked)) ? 'bg-gray-100/70 dark:bg-gray-800/60 cursor-not-allowed text-gray-500 dark:text-gray-400' : ''"
                                                    class="{{ $inputClass }} py-2.5 text-sm font-black text-center tabular-nums w-full pe-12"
-                                                   dir="ltr" placeholder="۰">
+                                                   dir="ltr" placeholder="۰" x-ref="unitPriceInput">
                                             <span
                                                 class="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-gray-400 pointer-events-none">{{ $currencyLabel }}</span>
                                         </div>
-                                        <button type="button" x-show="item.mode !== 'debt' && !item._isDebt"
-                                                @click="item._priceUnlocked = !item._priceUnlocked"
+                                        <button type="button" x-show="item.mode !== 'debt' && !item._isDebt && item.mode !== 'manual' && (item.service_id || item.product_id)"
+                                                @click="item._priceUnlocked = !item._priceUnlocked; if(item._priceUnlocked) { $nextTick(() => { const inp = $el.closest('div.flex').querySelector('input[type=text]'); if(inp) { inp.removeAttribute('readonly'); inp.focus(); inp.select(); } }); }"
                                                 class="shrink-0 p-2.5 rounded-lg border transition-colors"
                                                 :class="item._priceUnlocked ? 'border-indigo-400 bg-indigo-50 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-400' : 'border-gray-200 text-gray-400 hover:text-indigo-500 hover:border-indigo-300 dark:border-gray-700'"
                                                 title="ویرایش مبلغ واحد">
@@ -999,7 +1001,7 @@
                                 <td class="px-4 py-3 align-top">
                                     <div class="relative w-full">
                                         <input type="text" :value="formatPriceInput(item.discount)"
-                                               @input="item.discount = parsePriceInput($event.target.value)"
+                                               @input="let val = parsePriceInput($event.target.value); item.discount = val; $event.target.value = val ? formatPriceInput(val) : '';"
                                                :name="'items[' + index + '][discount]'"
                                                class="{{ $inputClass }} py-2.5 text-xs text-center tabular-nums font-medium w-full pe-10"
                                                dir="ltr" placeholder="۰">
@@ -1972,17 +1974,15 @@
 
             function formatPriceInput(v) {
                 if (v === '' || v === null || v === undefined) return '';
-                let n = Number(v);
-                if (isNaN(n) || n === 0) return '';
-                let f = n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-                return toPersianNum(f);
+                let n = toEnglishNum(v.toString()).replace(/,/g, '').replace(/[^\d]/g, '');
+                if (!n || Number(n) === 0) return '';
+                return toPersianNum(Number(n).toLocaleString('en-US'));
             }
 
             function parsePriceInput(v) {
-                if (!v) return 0;
-                let c = toEnglishNum(v).toString().replace(/,/g, '').replace(/[^\d.]/g, '');
-                let n = parseFloat(c);
-                return isNaN(n) ? 0 : n;
+                if (v === '' || v === null || v === undefined) return 0;
+                let n = toEnglishNum(v.toString()).replace(/,/g, '').replace(/[^\d.]/g, '');
+                return n ? Number(n) : 0;
             }
 
             function calculateTotals() {
@@ -2451,7 +2451,7 @@
                             unit_price: 0,
                             discount: 0,
                             billing_period: '',
-                            _priceUnlocked: false,
+                            _priceUnlocked: m === 'manual',
                             service_custom_fields: [],
                             custom_field_values: {},
                             _showCustomFields: false,
@@ -3528,7 +3528,12 @@
                         }
                         const nF = f.querySelectorAll('input[name*="[quantity]"], input[name*="[custom_fields_quantities]"], input[name*="[unit_price]"], input[name*="[discount]"], input[name*="[custom_fields_prices]"], input[name*="[custom_fields_discounts]"], input[name*="[tax_percent]"], input[name*="[custom_fields_taxes]"], input[name="tax_percent"]');
                         nF.forEach(i => {
-                            i.value = this.toEnglishNum(i.value).replace(/[^\d.]/g, '');
+                            let v = toEnglishNum(i.value).replace(/,/g, '').replace(/[^\d.]/g, '');
+                            if (i.name.includes('[unit_price]') || i.name.includes('[discount]')) {
+                                i.value = v === '' ? '0' : v;
+                            } else {
+                                i.value = v;
+                            }
                         });
                     },
                     hasRecurringItems() {

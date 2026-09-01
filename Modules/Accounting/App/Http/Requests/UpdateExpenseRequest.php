@@ -215,8 +215,54 @@ class UpdateExpenseRequest extends FormRequest
                 }
             }
 
+            // Validate treasury accounts balance (non-wallet)
+            $allowNegative = (bool) AccountingSetting::get('banking.allow_negative_balance', false);
+            if (!$allowNegative) {
+                $expenseDocument = $this->route('expense');
+                $existingDocCreditsByBank = collect();
+                if ($expenseDocument) {
+                    $expenseDocument->load('transactions');
+                    $existingDocCreditsByBank = $expenseDocument->transactions
+                        ->whereNotNull('fund_account_id')
+                        ->where('credit', '>', 0)
+                        ->groupBy('fund_account_id')
+                        ->map(fn($txs) => $txs->sum('credit'));
+                }
+
+                $totalRequiredByBank = [];
+                foreach ($bankAccounts as $index => $acc) {
+                    $fundAccountId = $acc['bank_id'] ?? null;
+                    if (!$fundAccountId) continue;
+                    $reqAmt = (float)($acc['amount'] ?? 0) + (float)($acc['fee'] ?? 0);
+                    $totalRequiredByBank[$fundAccountId] = ($totalRequiredByBank[$fundAccountId] ?? 0) + $reqAmt;
+                }
+
+                foreach ($chequesData as $chq) {
+                    $cFee = (float)($chq['fee'] ?? 0);
+                    if ($cFee > 0) {
+                        $feeBankId = $chq['fee_bank_id'] ?? null;
+                        if (!$feeBankId && !empty($bankAccounts)) {
+                            $feeBankId = $bankAccounts[0]['bank_id'] ?? null;
+                        }
+                        if ($feeBankId) {
+                            $totalRequiredByBank[$feeBankId] = ($totalRequiredByBank[$feeBankId] ?? 0) + $cFee;
+                        }
+                    }
+                }
+
+                foreach ($totalRequiredByBank as $bId => $reqTotal) {
+                    $fundAccount = FundAccount::find($bId);
+                    if ($fundAccount && !$fundAccount->isWalletAccount()) {
+                        $restored = (float)($existingDocCreditsByBank->get($fundAccount->id, 0));
+                        $currentBal = (float)$fundAccount->current_balance + $restored;
+                        if ($currentBal < $reqTotal) {
+                            $validator->errors()->add("bank_accounts", "موجودی حساب خزانه‌داری «{$fundAccount->name}» (" . number_format($currentBal) . " ریال) کمتر از مجموع مبالغ و کارمزدهای تخصیص‌یافته (" . number_format($reqTotal) . " ریال) می‌باشد.");
+                        }
+                    }
+                }
+            }
+
             // Validate wallet accounts balance
-            $expenseDocument = $this->route('expense');
             foreach ($bankAccounts as $index => $acc) {
                 $fundAccountId = $acc['bank_id'] ?? null;
                 if (!$fundAccountId) continue;

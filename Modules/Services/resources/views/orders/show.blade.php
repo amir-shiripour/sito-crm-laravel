@@ -625,6 +625,11 @@
                         @endif
                     </div>
                 </div>
+
+                {{-- DirectAdmin Hosting Service Provisioning Widget (Decoupled with Module Check) --}}
+                @if(\Nwidart\Modules\Facades\Module::has('DirectAdmin') && \Nwidart\Modules\Facades\Module::isEnabled('DirectAdmin'))
+                    @include('directadmin::partials.order-hosting-card', ['order' => $order])
+                @endif
             </div>
             <div class="space-y-8">
                 @if($order->billing_cycle)

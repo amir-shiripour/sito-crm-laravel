@@ -122,6 +122,12 @@ class ServiceCategoryController extends Controller
     {
         $this->authorize('services.delete');
 
+        if ($category->is_locked) {
+            return redirect()
+                ->route('services.categories.index')
+                ->with('error', "امکان حذف دسته‌بندی سیستمی و قفل‌شده «{$category->name}» وجود ندارد.");
+        }
+
         $name = $category->name;
 
         if ($category->icon) {

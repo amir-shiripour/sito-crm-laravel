@@ -65,7 +65,17 @@
                                         @endif
                                     </span>
                                     <div>
-                                        <div class="font-bold text-gray-900 dark:text-white text-sm">{{ $category->name }}</div>
+                                        <div class="font-bold text-gray-900 dark:text-white text-sm flex items-center gap-2">
+                                            <span>{{ $category->name }}</span>
+                                            @if($category->is_locked)
+                                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-black bg-indigo-50 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-400 border border-indigo-200/60 dark:border-indigo-500/20" title="دسته‌بندی سیستمی و قفل‌شده">
+                                                    <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zM10 7a2 2 0 114 0v4h-4V7z"/>
+                                                    </svg>
+                                                    سیستمی
+                                                </span>
+                                            @endif
+                                        </div>
                                         <div class="text-xs font-mono text-gray-400 mt-0.5">{{ $category->slug }}</div>
                                     </div>
                                 </div>
@@ -109,16 +119,24 @@
                                         </a>
                                     @endcan
                                     @can('services.delete')
-                                        <form method="POST" action="{{ route('services.categories.destroy', $category) }}"
-                                              onsubmit="return confirm('دسته‌بندی «{{ $category->name }}» حذف شود؟ در صورت داشتن سرویس، حذف امکان‌پذیر نیست.')">
-                                            @csrf @method('DELETE')
-                                            <button type="submit"
-                                                    class="p-2 rounded-xl text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10 transition-all hover:scale-110" title="حذف">
+                                        @if($category->is_locked)
+                                            <span class="p-2 rounded-xl text-gray-300 dark:text-gray-600 cursor-not-allowed" title="دسته‌بندی‌های سیستمی قابل حذف نیستند">
                                                 <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zM10 7a2 2 0 114 0v4h-4V7z"/>
                                                 </svg>
-                                            </button>
-                                        </form>
+                                            </span>
+                                        @else
+                                            <form method="POST" action="{{ route('services.categories.destroy', $category) }}"
+                                                  onsubmit="return confirm('دسته‌بندی «{{ $category->name }}» حذف شود؟ در صورت داشتن سرویس، حذف امکان‌پذیر نیست.')">
+                                                @csrf @method('DELETE')
+                                                <button type="submit"
+                                                        class="p-2 rounded-xl text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10 transition-all hover:scale-110" title="حذف">
+                                                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                                    </svg>
+                                                </button>
+                                            </form>
+                                        @endif
                                     @endcan
                                 </div>
                             </td>

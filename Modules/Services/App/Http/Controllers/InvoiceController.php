@@ -796,9 +796,10 @@ class InvoiceController extends Controller
                         $hasExpenseDocuments = $cheque->expenseDocuments()->exists();
 
                         $hasServicePayment = false;
-                        if (Module::has('Services') && Module::isEnabled('Services')) {
+                        if (Module::has('Services') && Module::isEnabled('Services') && $cheque->created_at) {
                             $hasServicePayment = Payment::where('method', 'cheque-' . $cheque->id)
                                 ->where('status', '!=', 'canceled')
+                                ->where('created_at', '>=', $cheque->created_at->subMinutes(5))
                                 ->exists();
                         }
 

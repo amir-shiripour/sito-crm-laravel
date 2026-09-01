@@ -31,6 +31,8 @@ class ServicesServiceProvider extends ServiceProvider
         $this->commands([
             SeedServiceWorkflows::class,
         ]);
+
+        \Modules\Services\App\Http\Models\Order::observe(\Modules\Services\App\Observers\OrderObserver::class);
     }
 
     public function register(): void

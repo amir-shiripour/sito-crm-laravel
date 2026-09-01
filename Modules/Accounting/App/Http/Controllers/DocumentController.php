@@ -10,6 +10,8 @@ use Illuminate\Support\Facades\Log;
 use Modules\Accounting\App\Models\Document;
 use Modules\Accounting\App\Models\Category;
 use Modules\Accounting\App\Models\FundAccount;
+use Modules\Accounting\App\Models\AccountingSetting;
+use Modules\Accounting\App\Models\Transaction;
 use Modules\Accounting\App\Services\CurrencyService;
 use Modules\Accounting\App\Services\AccountingEngine;
 use Exception;
@@ -227,6 +229,28 @@ class DocumentController extends Controller
                     'document_date' => $request->document_date,
                     'description' => $request->document_description ?? '',
                 ]);
+
+                $allowNegative = (bool) AccountingSetting::get('banking.allow_negative_balance', false);
+                if (!$allowNegative) {
+                    $creditsByFund = [];
+                    foreach ($rows as $row) {
+                        if (!empty($row['fund_account_id']) && ($row['credit'] ?? 0) > 0) {
+                            $fId = $row['fund_account_id'];
+                            $creditsByFund[$fId] = ($creditsByFund[$fId] ?? 0) + (float)$row['credit'];
+                        }
+                    }
+
+                    foreach ($creditsByFund as $fId => $reqCredit) {
+                        $fundAccount = FundAccount::find($fId);
+                        if ($fundAccount && !$fundAccount->isWalletAccount()) {
+                            $currentBal = (float) Transaction::where('fund_account_id', $fId)
+                                ->sum(DB::raw('debit - credit'));
+                            if (($currentBal - $reqCredit) < 0) {
+                                throw new Exception("موجودی حساب «{$fundAccount->name}» (" . number_format($currentBal) . " ریال) کافی نیست. ویرایش سند باعث منفی شدن موجودی می‌شود.");
+                            }
+                        }
+                    }
+                }
 
                 foreach ($rows as $row) {
                     $document->transactions()->create([
