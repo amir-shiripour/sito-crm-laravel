@@ -41,6 +41,59 @@ class StoreInvoiceRequest extends FormRequest
                 $this->merge(['proforma_invoice_number' => Invoice::generateProformaNumber()]);
             }
         }
+
+        $mergeData = [];
+
+        if ($this->has('items') && is_array($this->items)) {
+            $items = $this->items;
+            foreach ($items as $k => $item) {
+                if (is_array($item)) {
+                    $items[$k]['unit_price'] = $this->cleanPrice($item['unit_price'] ?? 0);
+                    $items[$k]['quantity'] = $this->cleanNumber($item['quantity'] ?? 1);
+                    $items[$k]['discount'] = $this->cleanPrice($item['discount'] ?? 0);
+                    if (isset($item['tax_percent'])) {
+                        $items[$k]['tax_percent'] = $this->cleanNumber($item['tax_percent']);
+                    }
+                }
+            }
+            $mergeData['items'] = $items;
+        }
+
+        if ($this->has('extra_discount_value')) {
+            $mergeData['extra_discount_value'] = $this->cleanNumber($this->extra_discount_value);
+        }
+
+        if ($this->has('tax_percent')) {
+            $mergeData['tax_percent'] = $this->cleanNumber($this->tax_percent);
+        }
+
+        if ($this->has('installment_down_payment')) {
+            $mergeData['installment_down_payment'] = $this->cleanPrice($this->installment_down_payment);
+        }
+
+        if (!empty($mergeData)) {
+            $this->merge($mergeData);
+        }
+    }
+
+    private function cleanPrice($value): int
+    {
+        if ($value === null || $value === '') return 0;
+        $persian = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹', '٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
+        $english = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
+        $clean = str_replace($persian, $english, (string)$value);
+        $clean = preg_replace('/[^\d]/', '', $clean);
+        return $clean === '' ? 0 : (int)$clean;
+    }
+
+    private function cleanNumber($value): float
+    {
+        if ($value === null || $value === '') return 0.0;
+        $persian = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹', '٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
+        $english = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
+        $clean = str_replace($persian, $english, (string)$value);
+        $clean = preg_replace('/[^\d.]/', '', $clean);
+        return $clean === '' ? 0.0 : (float)$clean;
     }
 
     public function rules(): array

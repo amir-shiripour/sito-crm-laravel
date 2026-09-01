@@ -234,7 +234,7 @@
             'unit_price'  => (float) $item->unit_price,
             'discount'    => (float) $item->discount,
             'billing_period' => $meta['billing_period'] ?? null,
-            '_priceUnlocked' => false,
+            '_priceUnlocked' => ($mode === 'manual'),
             'service_custom_fields' => $customFieldsArray,
             'custom_field_values' => (function() use ($customFieldsArray, $meta) {
                 $vals = $meta['custom_fields'] ?? [];
@@ -1102,18 +1102,20 @@
                                 <td class="px-4 py-3 align-top">
                                     <div class="flex items-center gap-1.5 w-full">
                                         <div class="relative w-full">
-                                            <input type="text" :value="formatPriceInput(item.unit_price)"
-                                                   @input="if(item.mode !== 'debt' && !item._isDebt) item.unit_price = parsePriceInput($event.target.value)"
+                                            <input type="text"
+                                                   x-effect="if(document.activeElement !== $el) $el.value = formatPriceInput(item.unit_price)"
+                                                   @input="if(item.mode !== 'debt' && !item._isDebt) { let val = parsePriceInput($event.target.value); item.unit_price = val; $event.target.value = val ? formatPriceInput(val) : ''; }"
+                                                   @blur="$el.value = formatPriceInput(item.unit_price)"
                                                    :name="'items[' + index + '][unit_price]'" required
-                                                   :readonly="(((item.mode === 'service' && !!item.service_id) || (item.mode === 'product' && !!item.product_id) || (item.mode === 'manual' && item._packageGroupId)) && !item._priceUnlocked) || item.mode === 'debt' || item._isDebt"
-                                                   :class="((((item.mode === 'service' && item.service_id) || (item.mode === 'product' && item.product_id) || (item.mode === 'manual' && item._packageGroupId)) && !item._priceUnlocked) || item.mode === 'debt' || item._isDebt) ? 'bg-gray-100/70 dark:bg-gray-800/60 cursor-not-allowed text-gray-500 dark:text-gray-400 select-none' : ''"
+                                                   :readonly="(item.mode === 'debt' || item._isDebt) || (item.mode !== 'manual' && (item.service_id || item.product_id) && !item._priceUnlocked)"
+                                                   :class="((item.mode === 'debt' || item._isDebt) || (item.mode !== 'manual' && (item.service_id || item.product_id) && !item._priceUnlocked)) ? 'bg-gray-100/70 dark:bg-gray-800/60 cursor-not-allowed text-gray-500 dark:text-gray-400' : ''"
                                                    class="{{ $inputClass }} py-2.5 text-sm font-black text-center tabular-nums w-full pe-12"
                                                    dir="ltr" placeholder="۰">
                                             <span
                                                 class="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-gray-400 pointer-events-none">{{ $currencyLabel }}</span>
                                         </div>
-                                        <button type="button" x-show="item.mode !== 'debt' && !item._isDebt"
-                                                @click="item._priceUnlocked = !item._priceUnlocked"
+                                        <button type="button" x-show="item.mode !== 'debt' && !item._isDebt && item.mode !== 'manual' && (item.service_id || item.product_id)"
+                                                @click="item._priceUnlocked = !item._priceUnlocked; if(item._priceUnlocked) { $nextTick(() => { const inp = $el.closest('div.flex').querySelector('input[type=text]'); if(inp) { inp.removeAttribute('readonly'); inp.focus(); inp.select(); } }); }"
                                                 class="shrink-0 p-2.5 rounded-lg border transition-colors"
                                                 :class="item._priceUnlocked ? 'border-indigo-400 bg-indigo-50 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-400' : 'border-gray-200 text-gray-400 hover:text-indigo-500 hover:border-indigo-300 dark:border-gray-700'"
                                                 title="ویرایش مبلغ واحد">
@@ -1134,7 +1136,7 @@
                                 <td class="px-4 py-3 align-top">
                                     <div class="relative w-full">
                                         <input type="text" :value="formatPriceInput(item.discount)"
-                                               @input="item.discount = parsePriceInput($event.target.value)"
+                                               @input="let val = parsePriceInput($event.target.value); item.discount = val; $event.target.value = val ? formatPriceInput(val) : '';"
                                                :name="'items[' + index + '][discount]'"
                                                class="{{ $inputClass }} py-2.5 text-xs text-center tabular-nums font-medium w-full pe-10"
                                                dir="ltr" placeholder="۰">
@@ -2134,6 +2136,48 @@
 
     @push('scripts')
         <script>
+            function toEnglishNum(v) {
+                if (v === '' || v === null || v === undefined) return '';
+                const p = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
+                const a = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
+                return v.toString().replace(/[۰-۹]/g, d => p.indexOf(d)).replace(/[٠-٩]/g, d => a.indexOf(d));
+            }
+
+            function toPersianNum(v) {
+                if (v === '' || v === null || v === undefined) return '';
+                const p = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
+                return v.toString().replace(/\d/g, d => p[d]);
+            }
+
+            function formatMoney(v) {
+                if (v === '' || v === null || v === undefined || isNaN(v)) return '۰';
+                let n = Math.round(Number(v)).toString();
+                let f = n.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+                return toPersianNum(f);
+            }
+
+            function formatPriceInput(v) {
+                if (v === '' || v === null || v === undefined) return '';
+                let n = toEnglishNum(v.toString()).replace(/,/g, '').replace(/[^\d]/g, '');
+                if (!n || Number(n) === 0) return '';
+                return toPersianNum(Number(n).toLocaleString('en-US'));
+            }
+
+            function parsePriceInput(v) {
+                if (v === '' || v === null || v === undefined) return 0;
+                let n = toEnglishNum(v.toString()).replace(/,/g, '').replace(/[^\d.]/g, '');
+                return n ? Number(n) : 0;
+            }
+
+            function calculateTotals() {
+                if (window.Alpine && document.querySelector('[x-data]')) {
+                    const el = document.querySelector('[x-data]');
+                    if (el && el._x_dataStack && el._x_dataStack[0] && typeof el._x_dataStack[0].calculateTotals === 'function') {
+                        return el._x_dataStack[0].calculateTotals();
+                    }
+                }
+            }
+
             function invoiceCreator() {
                 return {
                     issueDate: @json($issueDateValue),
@@ -2612,7 +2656,7 @@
                             unit_price: 0,
                             discount: 0,
                             billing_period: '',
-                            _priceUnlocked: false,
+                            _priceUnlocked: m === 'manual',
                             service_custom_fields: [],
                             custom_field_values: {},
                             _showCustomFields: false,
@@ -3644,12 +3688,13 @@
                     },
                     formatPriceInput(v) {
                         if (v === '' || v === null || v === undefined) return '';
-                        let n = this.toEnglishNum(v.toString()).replace(/[^\d]/g, '');
-                        if (!n) return '';
+                        let n = this.toEnglishNum(v.toString()).replace(/,/g, '').replace(/[^\d]/g, '');
+                        if (!n || Number(n) === 0) return '';
                         return this.toPersianNum(Number(n).toLocaleString('en-US'));
                     },
                     parsePriceInput(v) {
-                        let n = this.toEnglishNum(v.toString()).replace(/[^\d]/g, '');
+                        if (v === '' || v === null || v === undefined) return 0;
+                        let n = this.toEnglishNum(v.toString()).replace(/,/g, '').replace(/[^\d.]/g, '');
                         return n ? Number(n) : 0;
                     },
                     toPersianNum(v) {
@@ -3695,7 +3740,12 @@
                         }
                         const nF = f.querySelectorAll('input[name*="[quantity]"], input[name*="[custom_fields_quantities]"], input[name*="[unit_price]"], input[name*="[discount]"], input[name*="[custom_fields_prices]"], input[name*="[custom_fields_discounts]"], input[name*="[tax_percent]"], input[name*="[custom_fields_taxes]"], input[name="tax_percent"]');
                         nF.forEach(i => {
-                            i.value = this.toEnglishNum(i.value).replace(/[^\d.]/g, '');
+                            let v = toEnglishNum(i.value).replace(/,/g, '').replace(/[^\d.]/g, '');
+                            if (i.name.includes('[unit_price]') || i.name.includes('[discount]')) {
+                                i.value = v === '' ? '0' : v;
+                            } else {
+                                i.value = v;
+                            }
                         });
                     },
                 };

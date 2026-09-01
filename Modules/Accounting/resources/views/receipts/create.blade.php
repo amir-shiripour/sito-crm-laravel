@@ -55,10 +55,10 @@
             'petty_cash' => 'تنخواه',
         ];
         $typeBadges = [
-            'bank' => 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 border-blue-200 dark:border-blue-800/50',
-            'cash' => 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/50',
-            'gateway' => 'bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 border-purple-200 dark:border-purple-800/50',
-            'petty_cash' => 'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300 border-amber-200 dark:border-amber-800/50',
+            'bank' => 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-500/10 dark:text-blue-400 dark:border-blue-500/20',
+            'cash' => 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20',
+            'gateway' => 'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-500/10 dark:text-purple-400 dark:border-purple-500/20',
+            'petty_cash' => 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20',
         ];
         return [
             'id' => (string) $fa->id,
@@ -68,7 +68,8 @@
             'type' => $fa->type,
             'type_label' => $types[$fa->type] ?? ($fa->type ?: 'خزانه'),
             'type_badge' => $typeBadges[$fa->type] ?? 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300',
-            'current_balance' => (float) ($fa->current_balance ?? 0),
+            'current_balance' => (float) ($fa->balance_val ?? $fa->current_balance ?? 0),
+            'balance_val' => (float) ($fa->balance_val ?? $fa->current_balance ?? 0),
         ];
     })->values()->all();
 @endphp
@@ -110,6 +111,12 @@
                         <span x-show="!isForInvoice">ثبت رسید دستی</span>
                         <span x-show="isForInvoice">ثبت پرداختی برای فاکتور #{{ $invoice->display_number ?? '' }}</span>
                     </h1>
+                </div>
+                <div class="flex items-center gap-3">
+                    <a href="{{ $isForInvoice ? route('admin.accounting.invoices.show', $invoice->id) : route('admin.accounting.documents.index') }}"
+                       class="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 text-sm font-bold transition-all active:scale-95">
+                        بازگشت به لیست
+                    </a>
                 </div>
             </div>
 
@@ -156,6 +163,7 @@
                                 <label for="amount" class="{{ $labelClass }}">مبلغ پرداختی ({{ $currencySuffix }}) <span
                                         class="text-red-500">*</span></label>
                                 <input type="text" name="amount" id="amount" x-model="amount"
+                                       @input="formatAmountInput($el)"
                                        class="{{ $inputClass }} text-xl font-black text-left dir-ltr text-indigo-700 dark:text-indigo-400 placeholder:text-gray-300"
                                        :required="paymentMethod === 'cash'" :disabled="paymentMethod !== 'cash'">
                             </div>
@@ -444,7 +452,7 @@
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-96 overflow-y-auto p-1">
                                     @foreach($receivableCheques as $ch)
                                         <div
-                                            @click="selectedChequeId = '{{ $ch->id }}'; amount = '{{ number_format($ch->amount) }}'"
+                                            @click="selectedChequeId = '{{ $ch->id }}'; amount = formatRawNumber('{{ $ch->amount }}')"
                                             :class="selectedChequeId == '{{ $ch->id }}'
                                                 ? 'border-indigo-600 bg-indigo-50/80 dark:bg-indigo-900/30 shadow-md ring-2 ring-indigo-500/20 scale-[1.01] cursor-pointer'
                                                 : 'border-gray-200 dark:border-gray-700 hover:border-indigo-300 dark:hover:border-indigo-800 bg-white dark:bg-gray-800 cursor-pointer'"
@@ -582,6 +590,130 @@
                         </div>
                     </div>
 
+                    {{-- Live Treasury & Payment Sources Balance Card --}}
+                    <div x-show="selectedFundAccountsSummary.length > 0"
+                         x-transition:enter="transition ease-out duration-300"
+                         x-transition:enter-start="opacity-0 transform -translate-y-2"
+                         x-transition:enter-end="opacity-100 transform translate-y-0"
+                         class="bg-white dark:bg-gray-800/60 rounded-3xl border border-gray-100 dark:border-gray-700/50 shadow-sm overflow-hidden backdrop-blur-xl relative z-20">
+                        <div
+                            class="px-6 py-4 border-b border-gray-100 dark:border-gray-700/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gray-50/50 dark:bg-gray-900/30">
+                            <div class="flex items-center gap-3">
+                                <span
+                                    class="flex items-center justify-center w-8 h-8 rounded-xl bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
+                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                         stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                              d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/>
+                                    </svg>
+                                </span>
+                                <div>
+                                    <h3 class="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                                        <span>موجودی لحظه‌ای حساب‌های خزانه‌داری / پرداخت انتخابی</span>
+                                        <span
+                                            class="px-2 py-0.5 rounded-md text-xs font-bold bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-500/20"
+                                            x-text="`${formatNumber(selectedFundAccountsSummary.length)} منبع ${paymentMethod === 'cheque' ? 'چک' : 'خزانه'}`"></span>
+                                    </h3>
+                                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">نمایش زنده موجودی فعلی،
+                                        تفکیک مبالغ واریز در این سند و موجودی نهایی</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="p-6">
+                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                <template x-for="item in selectedFundAccountsSummary" :key="item.id">
+                                    <div
+                                        class="p-4 rounded-2xl bg-white dark:bg-gray-800 border border-gray-200/80 dark:border-gray-700/60 space-y-3 shadow-sm">
+                                        <div
+                                            class="flex items-center justify-between pb-2.5 border-b border-gray-100 dark:border-gray-700/50">
+                                            <div class="space-y-0.5 truncate">
+                                                <div class="flex items-center gap-2 truncate">
+                                                    <span class="w-2 h-2 rounded-full"
+                                                          :class="item.is_cheque ? 'bg-amber-500' : 'bg-indigo-500'"></span>
+                                                    <h4 class="text-xs font-bold text-gray-900 dark:text-white truncate"
+                                                        x-text="item.name"></h4>
+                                                </div>
+                                                <template x-if="item.sub_title">
+                                                    <p class="text-[11px] text-gray-400 truncate"
+                                                       x-text="item.sub_title"></p>
+                                                </template>
+                                            </div>
+                                            <span class="px-2 py-0.5 text-[10px] font-bold rounded-lg border shrink-0"
+                                                  :class="item.type_badge" x-text="item.type_label"></span>
+                                        </div>
+
+                                        <div class="space-y-2 text-xs">
+                                            <div
+                                                class="flex items-center justify-between p-2.5 rounded-xl bg-gray-50/80 dark:bg-gray-900/40 border border-gray-100 dark:border-gray-700/50">
+                                                <span class="text-gray-500 dark:text-gray-400">
+                                                    <template
+                                                        x-if="item.is_cheque"><span>مبلغ صیادی چک:</span></template>
+                                                    <template
+                                                        x-if="!item.is_cheque"><span>موجودی فعلی حساب:</span></template>
+                                                </span>
+                                                <div
+                                                    class="flex items-center gap-1 font-bold text-gray-800 dark:text-gray-200 tabular-nums">
+                                                    <span x-text="formatNumber(item.initialBalance)"></span>
+                                                    <span
+                                                        class="text-[10px] text-gray-400 font-normal">{{ $currencySuffix }}</span>
+                                                </div>
+                                            </div>
+
+                                            <template x-if="!item.is_cheque">
+                                                <div
+                                                    class="flex items-center justify-between p-2.5 rounded-xl bg-emerald-50/60 dark:bg-emerald-500/10 border border-emerald-100 dark:border-emerald-500/20">
+                                                    <span class="text-emerald-700 dark:text-emerald-400 font-medium">مبلغ واریز در این سند:</span>
+                                                    <span
+                                                        class="font-bold text-emerald-700 dark:text-emerald-400 tabular-nums"
+                                                        x-text="item.docDebit > 0 ? '+' + formatNumber(item.docDebit) + ' {{ $currencySuffix }}' : '۰'"></span>
+                                                </div>
+                                            </template>
+
+                                            <template x-if="item.is_cheque">
+                                                <div
+                                                    class="flex items-center justify-between p-2.5 rounded-xl bg-indigo-50/60 dark:bg-indigo-500/10 border border-indigo-100 dark:border-indigo-500/20">
+                                                    <span class="text-indigo-700 dark:text-indigo-400 font-medium">مبلغ رسید چک صیادی:</span>
+                                                    <span
+                                                        class="font-bold text-indigo-700 dark:text-indigo-400 tabular-nums"
+                                                        x-text="formatNumber(item.initialBalance) + ' {{ $currencySuffix }}'"></span>
+                                                </div>
+                                            </template>
+
+                                            <template x-if="!item.is_cheque">
+                                                <div
+                                                    class="flex items-center justify-between p-2.5 rounded-xl border font-bold"
+                                                    :class="item.newBalance < 0
+                                                            ? 'bg-rose-50/60 dark:bg-rose-500/10 border-rose-200/80 dark:border-rose-500/20 text-rose-700 dark:text-rose-400'
+                                                            : 'bg-emerald-50/60 dark:bg-emerald-500/10 border-emerald-200/80 dark:border-emerald-500/20 text-emerald-700 dark:text-emerald-400'">
+                                                    <span>موجودی پس از واریز:</span>
+                                                    <div class="flex items-center gap-1 tabular-nums">
+                                                        <span class="text-sm font-black"
+                                                              x-text="formatSignedNumber(item.newBalance)"></span>
+                                                        <span
+                                                            class="text-[10px] font-normal opacity-75">{{ $currencySuffix }}</span>
+                                                    </div>
+                                                </div>
+                                            </template>
+
+                                            <template x-if="item.is_cheque">
+                                                <div
+                                                    class="flex items-center justify-between p-2.5 rounded-xl border font-bold bg-amber-50/60 dark:bg-amber-500/10 border-amber-200/80 dark:border-amber-500/20 text-amber-700 dark:text-amber-400">
+                                                    <span>وضعیت چک صیادی:</span>
+                                                    <span
+                                                        class="px-2 py-0.5 text-[10px] font-bold rounded-lg border shadow-sm"
+                                                        :class="item.cheque_status_badge"
+                                                        x-text="item.cheque_status_label">
+                                                    </span>
+                                                </div>
+                                            </template>
+                                        </div>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                    </div>
+
                     {{-- Description --}}
                     <div>
                         <label for="description" class="{{ $labelClass }}">شرح سند <span
@@ -596,12 +728,12 @@
             <div class="sticky bottom-4 z-40 max-w-screen-2xl mx-auto">
                 <div
                     class="flex justify-between items-center bg-white/80 dark:bg-gray-800/80 backdrop-blur-md p-4 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-xl">
-                    <a href="{{ url()->previous() }}"
+                    <a href="{{ $isForInvoice ? route('admin.accounting.invoices.show', $invoice->id) : route('admin.accounting.documents.index') }}"
                        class="px-6 py-3 rounded-xl text-sm font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 transition-colors">
                         بازگشت
                     </a>
                     <button type="submit"
-                            class="px-8 py-3 rounded-xl text-white font-bold shadow-lg transition-all flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 shadow-emerald-500/30">
+                            class="px-8 py-3.5 rounded-xl text-white font-bold text-sm shadow-lg shadow-indigo-500/30 hover:bg-indigo-700 active:scale-95 transition-all flex items-center gap-2 bg-indigo-600 cursor-pointer">
                         <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
                         </svg>
@@ -623,12 +755,102 @@
                 categoryId: '{{ old('category_id', '') }}',
                 documentDate: '{{ old('document_date', jdate()->format('Y/m/d')) }}',
                 selectedChequeId: '{{ old('cheque_id', session('cheque_id', request('cheque_id', ''))) }}',
+                currencySuffix: '{{ $currencySuffix }}',
+                fundAccounts: @json($fundAccountsList),
+                receivableCheques: @json($receivableCheques),
+
+                cleanNumber(val) {
+                    if (val === null || val === undefined) return 0;
+                    let clean = String(val).replace(/[^0-9]/g, '');
+                    return clean ? parseInt(clean, 10) : 0;
+                },
+
+                get cleanAmount() {
+                    return this.cleanNumber(this.amount);
+                },
+
+                formatFa(str) {
+                    if (!str && str !== 0) return '';
+                    const farsi = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
+                    return String(str).replace(/[0-9]/g, w => farsi[+w]);
+                },
+
+                formatNumber(num) {
+                    if (num === null || num === undefined || num === '') return '۰';
+                    const n = Math.abs(parseInt(num, 10) || 0);
+                    const formatted = n.toLocaleString('en-US');
+                    return this.formatFa(formatted);
+                },
+
+                formatSignedNumber(num) {
+                    if (num === null || num === undefined || num === '') return '۰';
+                    const val = parseInt(num, 10) || 0;
+                    const absFormatted = Math.abs(val).toLocaleString('en-US');
+                    const faNum = this.formatFa(absFormatted);
+                    return val < 0 ? '-' + faNum : faNum;
+                },
+
+                formatRawNumber(num) {
+                    if (num === null || num === undefined || num === '') return '';
+                    let clean = this.cleanNumber(num);
+                    return clean > 0 ? clean.toLocaleString('en-US') : '';
+                },
+
+                formatAmountInput(el) {
+                    let val = el.value.replace(/[^0-9]/g, '');
+                    this.amount = val ? parseInt(val, 10).toLocaleString('en-US') : '';
+                    el.value = this.amount;
+                },
+
+                get selectedFundAccountsSummary() {
+                    const list = [];
+
+                    if (this.paymentMethod === 'cash' && this.fundAccountId) {
+                        const fundInfo = this.fundAccounts.find(f => String(f.id) === String(this.fundAccountId));
+                        if (fundInfo) {
+                            const initialBal = parseFloat(fundInfo.balance_val ?? fundInfo.current_balance ?? 0);
+                            const debit = this.cleanAmount;
+                            const newBal = initialBal + debit;
+
+                            list.push({
+                                id: 'fund-' + fundInfo.id,
+                                name: fundInfo.name + (fundInfo.bank_name ? ' (' + fundInfo.bank_name + ')' : ''),
+                                sub_title: fundInfo.account_number ? 'شماره حساب: ' + this.formatFa(fundInfo.account_number) : '',
+                                type_label: fundInfo.type_label,
+                                type_badge: fundInfo.type_badge,
+                                initialBalance: initialBal,
+                                docDebit: debit,
+                                newBalance: newBal,
+                                isNegative: newBal < 0,
+                                is_cheque: false,
+                            });
+                        }
+                    } else if (this.paymentMethod === 'cheque' && this.selectedChequeId) {
+                        const cheque = this.receivableCheques.find(c => String(c.id) === String(this.selectedChequeId));
+                        if (cheque) {
+                            const chAmount = parseFloat(cheque.amount) || 0;
+                            list.push({
+                                id: 'cheque-' + cheque.id,
+                                name: `چک صیادی شماره ${cheque.cheque_number ? this.formatFa(cheque.cheque_number) : '—'}`,
+                                sub_title: (cheque.bank_name ? cheque.bank_name + ' | ' : '') + `سررسید: ${cheque.due_date_jalali || '—'}` + (cheque.payee_name || cheque.drawer_name ? ` | ${cheque.drawer_name ? 'صادرکننده: ' + cheque.drawer_name : 'گیرنده: ' + cheque.payee_name}` : ''),
+                                type_label: cheque.type_label || 'چک دریافتی',
+                                type_badge: cheque.type_badge || 'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300 border-amber-200',
+                                initialBalance: chAmount,
+                                docDebit: chAmount,
+                                newBalance: chAmount,
+                                isNegative: false,
+                                is_cheque: true,
+                                cheque_status_label: cheque.status_label || 'در جریان',
+                                cheque_status_badge: cheque.status_badge || 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300 border border-amber-200 dark:border-amber-700/60',
+                            });
+                        }
+                    }
+
+                    return list;
+                },
+
                 init() {
-                    this.amount = this.formatNumber(config.amount);
-                    this.$watch('amount', (value) => {
-                        this.amount = this.formatNumber(value);
-                    });
-                    // Re-initialize jalali datepicker after Alpine has mounted the DOM
+                    this.amount = this.formatRawNumber(config.amount);
                     this.$nextTick(() => {
                         if (window.jalaliDatepicker) {
                             jalaliDatepicker.startWatch({
@@ -640,17 +862,8 @@
                         }
                     });
                 },
-                toEnglishDigits(value) {
-                    if (value === null || typeof value === 'undefined') return '';
-                    return String(value).replace(/[۰-۹]/g, d => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d)).replace(/[^0-9]/g, '');
-                },
-                formatNumber(value) {
-                    const cleanValue = this.toEnglishDigits(value);
-                    if (!cleanValue) return '';
-                    return parseInt(cleanValue, 10).toLocaleString('en-US');
-                }
             }));
         });
     </script>
-    @endpush
+@endpush
 @endsection

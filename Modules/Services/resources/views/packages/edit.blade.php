@@ -327,18 +327,20 @@
                             <td class="px-4 py-3 align-top max-w-[200px]">
                                 <div class="flex items-center gap-1.5 w-full">
                                     <div class="relative w-full">
-                                        <input type="text" :value="formatPriceInput(item.unit_price)"
-                                               @input="item.unit_price = parsePriceInput($event.target.value)"
+                                        <input type="text"
+                                               x-effect="if(document.activeElement !== $el) $el.value = formatPriceInput(item.unit_price)"
+                                               @input="let val = parsePriceInput($event.target.value); item.unit_price = val; $event.target.value = val ? formatPriceInput(val) : '';"
+                                               @blur="$el.value = formatPriceInput(item.unit_price)"
                                                :name="'items[' + index + '][unit_price]'" required
-                                               :readonly="(item.service_id || item.product_id) && !item._priceUnlocked"
-                                               :class="((item.service_id || item.product_id) && !item._priceUnlocked) ? 'bg-gray-100 dark:bg-gray-900 cursor-not-allowed text-gray-500 dark:text-gray-400' : ''"
+                                               :readonly="(item.mode !== 'manual' && (item.service_id || item.product_id)) && !item._priceUnlocked"
+                                               :class="((item.mode !== 'manual' && (item.service_id || item.product_id)) && !item._priceUnlocked) ? 'bg-gray-100 dark:bg-gray-900 cursor-not-allowed text-gray-500 dark:text-gray-400' : ''"
                                                class="{{ $inputClass }} py-2.5 text-sm font-black text-center tabular-nums w-full pe-12"
                                                dir="ltr" placeholder="۰">
                                         <span
                                             class="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-gray-400 pointer-events-none">{{ $currencyLabel }}</span>
                                     </div>
-                                    <button type="button" x-show="item.service_id || item.product_id"
-                                            @click="item._priceUnlocked = !item._priceUnlocked"
+                                    <button type="button" x-show="item.mode !== 'manual' && (item.service_id || item.product_id)"
+                                            @click="item._priceUnlocked = !item._priceUnlocked; if(item._priceUnlocked) { $nextTick(() => { const inp = $el.closest('div.flex').querySelector('input[type=text]'); if(inp) { inp.removeAttribute('readonly'); inp.focus(); inp.select(); } }); }"
                                             class="shrink-0 p-2.5 rounded-lg border transition-colors"
                                             :class="item._priceUnlocked ? 'border-amber-400 bg-amber-50 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400' : 'border-gray-200 text-gray-400 hover:text-amber-500 hover:border-amber-300 dark:border-gray-700'"
                                             title="ویرایش مبلغ واحد">
@@ -1116,14 +1118,14 @@
 
         function formatPriceInput(v) {
             if (v === '' || v === null || v === undefined) return '';
-            let n = toEnglishNum(v.toString()).replace(/\D/g, '');
-            if (!n) return '';
+            let n = toEnglishNum(v.toString()).replace(/,/g, '').replace(/[^\d]/g, '');
+            if (!n || Number(n) === 0) return '';
             return toPersianNum(Number(n).toLocaleString('en-US'));
         }
 
         function parsePriceInput(v) {
             if (v === '' || v === null || v === undefined) return 0;
-            let n = toEnglishNum(v.toString()).replace(/\D/g, '');
+            let n = toEnglishNum(v.toString()).replace(/,/g, '').replace(/[^\d.]/g, '');
             return n ? Number(n) : 0;
         }
 
@@ -1339,7 +1341,7 @@
                         _showProductDropdown: false,
                         _hasOpenSelectDropdown: false,
                         _showCustomFields: sFields.length > 0,
-                        _priceUnlocked: false,
+                        _priceUnlocked: mode === 'manual',
                     };
                 }),
                 discountType: @json($package->discount_type ?? 'amount'),
@@ -1850,13 +1852,13 @@
                 },
                 parsePriceInput(val) {
                     if (val === '' || val === null || val === undefined) return 0;
-                    let n = this.toEnglishNum(val.toString()).replace(/[^\d]/g, '');
+                    let n = this.toEnglishNum(val.toString()).replace(/,/g, '').replace(/[^\d.]/g, '');
                     return n ? Number(n) : 0;
                 },
                 formatPriceInput(val) {
                     if (val === '' || val === null || val === undefined) return '';
-                    let n = this.toEnglishNum(val.toString()).replace(/[^\d]/g, '');
-                    if (!n) return '';
+                    let n = this.toEnglishNum(val.toString()).replace(/,/g, '').replace(/[^\d]/g, '');
+                    if (!n || Number(n) === 0) return '';
                     return this.toPersianNum(Number(n).toLocaleString('en-US'));
                 },
                 formatMoney(val) {

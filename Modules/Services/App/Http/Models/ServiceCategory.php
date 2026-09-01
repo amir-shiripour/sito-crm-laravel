@@ -21,6 +21,7 @@ class ServiceCategory extends Model
         'icon',
         'description',
         'status',
+        'is_locked',
         'sort_order',
     ];
 

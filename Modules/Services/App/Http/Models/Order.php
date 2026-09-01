@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Modules\Clients\Entities\Client;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Modules\DirectAdmin\Entities\DaAccount;
 
 class Order extends Model
 {
@@ -76,5 +77,10 @@ class Order extends Model
                   ->orWhereJsonContains('meta->merged_from_invoice_ids', $this->invoice_id)
                   ->orWhere('meta->was_merged_into', $this->invoice_id);
         })->latest();
+    }
+
+    public function hostingAccount()
+    {
+        return $this->hasOne(DaAccount::class, 'order_id');
     }
 }

@@ -68,10 +68,10 @@
             'petty_cash' => 'تنخواه',
         ];
         $typeBadges = [
-            'bank' => 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 border-blue-200 dark:border-blue-800/50',
-            'cash' => 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/50',
-            'gateway' => 'bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 border-purple-200 dark:border-purple-800/50',
-            'petty_cash' => 'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300 border-amber-200 dark:border-amber-800/50',
+            'bank' => 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-500/10 dark:text-blue-400 dark:border-blue-500/20',
+            'cash' => 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20',
+            'gateway' => 'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-500/10 dark:text-purple-400 dark:border-purple-500/20',
+            'petty_cash' => 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20',
         ];
         return [
             'id' => (string) $b->id,
@@ -80,7 +80,7 @@
             'account_number' => $b->account_number ?? '',
             'type' => $b->type,
             'type_label' => $b->isWalletAccount() ? 'کیف پول' : ($types[$b->type] ?? ($b->type ?: 'خزانه')),
-            'type_badge' => $b->isWalletAccount() ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800/50' : ($typeBadges[$b->type] ?? 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'),
+            'type_badge' => $b->isWalletAccount() ? 'bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-500/10 dark:text-indigo-400 dark:border-indigo-500/20' : ($typeBadges[$b->type] ?? 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'),
             'balance_val' => (float) ($b->balance_val ?? 0),
             'is_wallet' => $b->isWalletAccount(),
         ];
@@ -117,7 +117,7 @@
 @section('content')
 @includeIf('partials.jalali-date-picker')
 
-<form action="{{ route('admin.accounting.expenses.store') }}" method="POST" enctype="multipart/form-data" x-data="formHandlers()" @submit="if (!isTotalAllocatedBalanced) { $event.preventDefault(); return false; }">
+<form action="{{ route('admin.accounting.expenses.store') }}" method="POST" enctype="multipart/form-data" x-data="formHandlers()" @submit="if (!isTotalAllocatedBalanced || hasInsufficientBankBalance) { $event.preventDefault(); return false; }">
     @csrf
     <div class="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 pb-24">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -650,19 +650,37 @@
                                                         </div>
 
                                                         <template x-for="opt in filteredOptions" :key="opt.id">
-                                                            <div @click="select(opt)"
+                                                            <div @click="if (!isBankOptionDisabled(opt, null, cheque.id)) select(opt)"
                                                                  class="px-3 py-2 text-xs rounded-lg transition-colors flex items-center justify-between gap-2"
                                                                  :class="{
                                                                      'bg-amber-50/70 dark:bg-amber-900/40 text-amber-600 dark:text-amber-300 font-bold': String(getChequeFeeBankId(cheque.id)) === String(opt.id),
-                                                                     'hover:bg-amber-50 dark:hover:bg-amber-900/30 hover:text-amber-600 dark:hover:text-amber-300 cursor-pointer text-gray-700 dark:text-gray-200': true
+                                                                     'hover:bg-amber-50 dark:hover:bg-amber-900/30 hover:text-amber-600 dark:hover:text-amber-300 cursor-pointer text-gray-700 dark:text-gray-200': !isBankOptionDisabled(opt, null, cheque.id) && String(getChequeFeeBankId(cheque.id)) !== String(opt.id),
+                                                                     'opacity-50 cursor-not-allowed bg-gray-100/60 dark:bg-gray-800/60 text-gray-400 dark:text-gray-500 select-none': isBankOptionDisabled(opt, null, cheque.id)
                                                                  }">
                                                                 <div class="flex flex-col gap-0.5 truncate">
-                                                                    <div
-                                                                        class="flex items-center gap-1.5 truncate font-medium">
+                                                                    <div class="flex items-center gap-1.5 truncate font-medium">
                                                                         <span x-text="opt.name"></span>
                                                                         <span x-show="opt.bank_name"
                                                                               class="text-[10px] text-gray-400"
                                                                               x-text="'(' + opt.bank_name + ')'"></span>
+                                                                        <template x-if="isBankOptionDisabled(opt, null, cheque.id)">
+                                                                            <span class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-rose-100 dark:bg-rose-900/50 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-800">
+                                                                                عدم موجودی
+                                                                            </span>
+                                                                        </template>
+                                                                    </div>
+                                                                    <div class="flex items-center gap-2 text-[10px]">
+                                                                        <template x-if="!opt.is_wallet">
+                                                                            <span
+                                                                                :class="isBankOptionDisabled(opt, null, cheque.id) ? 'text-rose-500 font-bold' : 'text-emerald-600 dark:text-emerald-400 font-medium'"
+                                                                                x-text="getEffectiveBankBalance(opt.id, null, cheque.id) <= 0 
+                                                                                    ? 'موجودی: ۰ ' + currencySuffix + ' [عدم موجودی]' 
+                                                                                    : (getEffectiveBankBalance(opt.id, null, cheque.id) < getRequiredAmount(null, cheque.id)
+                                                                                        ? 'موجودی: ' + formatNumber(getEffectiveBankBalance(opt.id, null, cheque.id)) + ' ' + currencySuffix + ' [عدم موجودی کافی]' 
+                                                                                        : (getEffectiveBankBalance(opt.id, null, cheque.id) < opt.balance_val 
+                                                                                            ? 'موجودی باقیمانده: ' + formatNumber(getEffectiveBankBalance(opt.id, null, cheque.id)) + ' ' + currencySuffix + ' (کل: ' + formatNumber(opt.balance_val) + ')' 
+                                                                                            : 'موجودی: ' + formatNumber(getEffectiveBankBalance(opt.id, null, cheque.id)) + ' ' + currencySuffix))"></span>
+                                                                        </template>
                                                                     </div>
                                                                 </div>
                                                                 <span
@@ -774,7 +792,9 @@
                                                 isInsufficient(opt) {
                                                     if (opt.is_wallet) return false;
                                                     const req = cleanNumber(acc.amount) + cleanNumber(acc.fee);
-                                                    return req > opt.balance_val;
+                                                    const effBal = getEffectiveBankBalance(opt.id, acc);
+                                                    const required = getRequiredAmount(acc);
+                                                    return req > effBal || effBal < required;
                                                 }
                                             }" class="relative" :class="{ 'z-50': open }">
                                                 <button type="button" @click="open = !open"
@@ -797,19 +817,24 @@
                                                     </div>
 
                                                     <template x-for="opt in filteredOptions" :key="opt.id">
-                                                        <div @click="select(opt)"
+                                                        <div @click="if (!isBankOptionDisabled(opt, acc)) select(opt)"
                                                              class="px-3 py-2 text-xs rounded-lg transition-colors flex items-center justify-between gap-2"
                                                              :class="{
                                                                  'bg-rose-50/70 dark:bg-rose-900/40 text-rose-600 dark:text-rose-300 font-bold': String(acc.bank_id) === String(opt.id),
-                                                                 'hover:bg-rose-50 dark:hover:bg-rose-900/30 hover:text-rose-600 dark:hover:text-rose-300 cursor-pointer text-gray-700 dark:text-gray-200': true
+                                                                 'hover:bg-rose-50 dark:hover:bg-rose-900/30 hover:text-rose-600 dark:hover:text-rose-300 cursor-pointer text-gray-700 dark:text-gray-200': !isBankOptionDisabled(opt, acc) && String(acc.bank_id) !== String(opt.id),
+                                                                 'opacity-50 cursor-not-allowed bg-gray-100/60 dark:bg-gray-800/60 text-gray-400 dark:text-gray-500 select-none': isBankOptionDisabled(opt, acc)
                                                              }">
                                                             <div class="flex flex-col gap-0.5 truncate">
-                                                                <div
-                                                                    class="flex items-center gap-1.5 truncate font-medium">
+                                                                <div class="flex items-center gap-1.5 truncate font-medium">
                                                                     <span x-text="opt.name"></span>
                                                                     <span x-show="opt.bank_name"
                                                                           class="text-[10px] text-gray-400"
                                                                           x-text="'(' + opt.bank_name + ')'"></span>
+                                                                    <template x-if="isBankOptionDisabled(opt, acc)">
+                                                                        <span class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-rose-100 dark:bg-rose-900/50 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-800">
+                                                                            عدم موجودی
+                                                                        </span>
+                                                                    </template>
                                                                 </div>
                                                                 <div class="flex items-center gap-2 text-[10px]">
                                                                     <span x-show="opt.account_number"
@@ -817,8 +842,14 @@
                                                                           x-text="'ش‌ح: ' + formatFa(opt.account_number)"></span>
                                                                     <template x-if="!opt.is_wallet">
                                                                         <span
-                                                                            :class="opt.balance_val <= 0 ? 'text-rose-500 font-bold' : (isInsufficient(opt) ? 'text-amber-600 font-bold' : 'text-emerald-600 dark:text-emerald-400 font-medium')"
-                                                                            x-text="'موجودی: ' + formatNumber(opt.balance_val) + ' ' + currencySuffix + (opt.balance_val <= 0 ? ' [عدم موجودی]' : '')"></span>
+                                                                            :class="isBankOptionDisabled(opt, acc) ? 'text-rose-500 font-bold' : 'text-emerald-600 dark:text-emerald-400 font-medium'"
+                                                                            x-text="getEffectiveBankBalance(opt.id, acc) <= 0 
+                                                                                ? 'موجودی: ۰ ' + currencySuffix + ' [عدم موجودی]' 
+                                                                                : (getEffectiveBankBalance(opt.id, acc) < getRequiredAmount(acc)
+                                                                                    ? 'موجودی: ' + formatNumber(getEffectiveBankBalance(opt.id, acc)) + ' ' + currencySuffix + ' [عدم موجودی کافی — نیاز: ' + formatNumber(getRequiredAmount(acc)) + ']'
+                                                                                    : (getEffectiveBankBalance(opt.id, acc) < opt.balance_val 
+                                                                                        ? 'موجودی باقیمانده: ' + formatNumber(getEffectiveBankBalance(opt.id, acc)) + ' ' + currencySuffix + ' (کل: ' + formatNumber(opt.balance_val) + ')' 
+                                                                                        : 'موجودی: ' + formatNumber(getEffectiveBankBalance(opt.id, acc)) + ' ' + currencySuffix))"></span>
                                                                     </template>
                                                                 </div>
                                                             </div>
@@ -854,6 +885,13 @@
                                                     {{ $currencySuffix }}
                                                 </div>
                                             </div>
+                                            <template x-if="acc.bank_id && !isWalletAccount(acc.bank_id)">
+                                                <div x-show="!allowNegativeBalance && cleanNumber(acc.amount) + cleanNumber(acc.fee) > getEffectiveBankBalance(acc.bank_id, acc)"
+                                                     class="text-[11px] text-rose-500 font-bold mt-1 flex items-center gap-1">
+                                                    <svg class="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                                                    <span>مبلغ پرداختی بیشتر از موجودی حساب (<span x-text="formatNumber(getEffectiveBankBalance(acc.bank_id, acc)) + ' ' + currencySuffix"></span>) است.</span>
+                                                </div>
+                                            </template>
                                         </div>
 
                                         {{-- 3. Fee Input (md:col-span-3) --}}
@@ -987,30 +1025,30 @@
                         </div>
                     </div>
 
-                    {{-- Live Treasury & Payment Sources Balance Card (دقیقاً زیر مبالغ پرداختی و وضعیت تراز) --}}
+                    {{-- Live Treasury & Payment Sources Balance Card--}}
                     <div x-show="selectedFundAccountsSummary.length > 0"
                          x-transition:enter="transition ease-out duration-300"
                          x-transition:enter-start="opacity-0 transform -translate-y-2"
                          x-transition:enter-end="opacity-100 transform translate-y-0"
-                         class="bg-white dark:bg-gray-800/60 rounded-3xl border border-indigo-100 dark:border-indigo-900/40 shadow-sm overflow-hidden backdrop-blur-xl relative z-20">
+                         class="bg-white dark:bg-gray-800/60 rounded-3xl border border-gray-100 dark:border-gray-700/50 shadow-sm overflow-hidden backdrop-blur-xl relative z-20">
                         <div
-                            class="p-5 border-b border-indigo-50 dark:border-indigo-900/30 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gradient-to-r from-blue-50/60 via-indigo-50/40 to-transparent dark:from-blue-950/30 dark:via-indigo-950/20 dark:to-transparent">
+                            class="px-6 py-4 border-b border-gray-100 dark:border-gray-700/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gray-50/50 dark:bg-gray-900/30">
                             <div class="flex items-center gap-3">
                                 <span
-                                    class="flex items-center justify-center w-10 h-10 rounded-2xl bg-indigo-600 text-white shadow-md shadow-indigo-500/20 shrink-0">
-                                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                    class="flex items-center justify-center w-8 h-8 rounded-xl bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
+                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"
                                          stroke-width="2">
                                         <path stroke-linecap="round" stroke-linejoin="round"
                                               d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/>
                                     </svg>
                                 </span>
                                 <div>
-                                    <h2 class="text-base font-black text-gray-900 dark:text-white flex items-center gap-2">
+                                    <h3 class="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
                                         <span>موجودی لحظه‌ای حساب‌های خزانه‌داری / پرداخت انتخابی</span>
                                         <span
-                                            class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300"
+                                            class="px-2 py-0.5 rounded-md text-xs font-bold bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-500/20"
                                             x-text="`${formatNumber(selectedFundAccountsSummary.length)} منبع پرداخت`"></span>
-                                    </h2>
+                                    </h3>
                                     <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">نمایش زنده موجودی فعلی،
                                         تفکیک مبالغ کسر در این سند و موجودی نهایی پس از ثبت هزینه</p>
                                 </div>
@@ -1021,15 +1059,15 @@
                             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                 <template x-for="item in selectedFundAccountsSummary" :key="item.id">
                                     <div
-                                        class="rounded-2xl border border-gray-200/80 dark:border-gray-700/70 bg-gradient-to-b from-gray-50/60 to-white dark:from-gray-800/40 dark:to-gray-800/80 p-4 space-y-3.5 shadow-sm hover:shadow-md transition-all">
+                                        class="p-4 rounded-2xl bg-white dark:bg-gray-800 border border-gray-200/80 dark:border-gray-700/60 space-y-3 shadow-sm">
                                         <div
-                                            class="flex items-start justify-between gap-2 border-b border-gray-100 dark:border-gray-700/60 pb-3">
-                                            <div class="space-y-1 truncate">
-                                                <div class="flex items-center gap-1.5 truncate">
+                                            class="flex items-center justify-between pb-2.5 border-b border-gray-100 dark:border-gray-700/50">
+                                            <div class="space-y-0.5 truncate">
+                                                <div class="flex items-center gap-2 truncate">
                                                     <span class="w-2 h-2 rounded-full"
                                                           :class="item.is_cheque ? 'bg-amber-500' : (item.is_customer_wallet ? 'bg-purple-500' : 'bg-indigo-500')"></span>
-                                                    <h3 class="text-sm font-bold text-gray-900 dark:text-white truncate"
-                                                        x-text="item.name"></h3>
+                                                    <h4 class="text-xs font-bold text-gray-900 dark:text-white truncate"
+                                                        x-text="item.name"></h4>
                                                 </div>
                                                 <template x-if="item.sub_title">
                                                     <p class="text-[11px] text-gray-400 truncate"
@@ -1042,39 +1080,39 @@
 
                                         <div class="space-y-2 text-xs">
                                             <div
-                                                class="flex items-center justify-between bg-white dark:bg-gray-900/40 p-2.5 rounded-xl border border-gray-100 dark:border-gray-700/40">
-                                                <span class="text-gray-500 dark:text-gray-400 font-medium">
+                                                class="flex items-center justify-between p-2.5 rounded-xl bg-gray-50/80 dark:bg-gray-900/40 border border-gray-100 dark:border-gray-700/50">
+                                                <span class="text-gray-500 dark:text-gray-400">
                                                     <template
                                                         x-if="item.is_cheque"><span>مبلغ صیادی چک:</span></template>
                                                     <template
                                                         x-if="!item.is_cheque"><span>موجودی فعلی حساب:</span></template>
                                                 </span>
-                                                <div class="flex items-center gap-1.5">
+                                                <div
+                                                    class="flex items-center gap-1 font-bold text-gray-800 dark:text-gray-200 tabular-nums">
+                                                    <span x-text="formatNumber(item.initialBalance)"></span>
                                                     <span
-                                                        class="font-bold text-gray-800 dark:text-gray-200 tabular-nums"
-                                                        x-text="formatNumber(item.initialBalance)"></span>
-                                                    <span class="text-[10px] text-gray-400">{{ $currencySuffix }}</span>
+                                                        class="text-[10px] text-gray-400 font-normal">{{ $currencySuffix }}</span>
                                                 </div>
                                             </div>
 
                                             <div
-                                                class="bg-rose-50/60 dark:bg-rose-900/20 p-2.5 rounded-xl border border-rose-100 dark:border-rose-900/30 space-y-1.5">
-                                                <div class="flex items-center justify-between text-[11px]">
-                                                    <span class="text-rose-700 dark:text-rose-300 font-bold">
+                                                class="p-2.5 rounded-xl bg-rose-50/60 dark:bg-rose-500/10 border border-rose-100 dark:border-rose-500/20 text-xs space-y-1.5">
+                                                <div class="flex items-center justify-between">
+                                                    <span class="text-rose-700 dark:text-rose-400 font-medium">
                                                         <template
                                                             x-if="item.is_cheque"><span>پوشش هزینه با این چک:</span></template>
                                                         <template
                                                             x-if="!item.is_cheque"><span>مبلغ کسر در این سند:</span></template>
                                                     </span>
                                                     <span
-                                                        class="font-black text-rose-700 dark:text-rose-300 tabular-nums"
+                                                        class="font-bold text-rose-700 dark:text-rose-400 tabular-nums"
                                                         x-text="item.docCredit > 0 ? '-' + formatNumber(item.docCredit) + ' {{ $currencySuffix }}' : '۰'"></span>
                                                 </div>
                                                 <template x-if="item.fee_portion > 0">
                                                     <div
-                                                        class="pt-1.5 border-t border-rose-200/60 dark:border-rose-800/40 flex items-center justify-between text-[10px] text-gray-600 dark:text-gray-300">
+                                                        class="pt-1.5 border-t border-rose-200/50 dark:border-rose-500/20 flex items-center justify-between text-[11px] text-gray-500 dark:text-gray-400">
                                                         <span>
-                                                            <span>کارمزد بانکی / انتقال:</span>
+                                                            <span>کارمزد بانکی:</span>
                                                             <template x-if="item.fee_bank_name">
                                                                 <span class="text-gray-400 ms-1"
                                                                       x-text="'(از ' + item.fee_bank_name + ')'"></span>
@@ -1091,23 +1129,23 @@
                                                 <div
                                                     class="flex items-center justify-between p-2.5 rounded-xl border font-bold"
                                                     :class="item.newBalance < 0
-                                                            ? 'bg-rose-50/80 dark:bg-rose-900/30 border-rose-200 dark:border-rose-800/50 text-rose-700 dark:text-rose-300'
-                                                            : 'bg-emerald-50/60 dark:bg-emerald-950/20 border-emerald-100 dark:border-emerald-900/30 text-emerald-800 dark:text-emerald-300'">
+                                                            ? 'bg-rose-50/60 dark:bg-rose-500/10 border-rose-200/80 dark:border-rose-500/20 text-rose-700 dark:text-rose-400'
+                                                            : 'bg-emerald-50/60 dark:bg-emerald-500/10 border-emerald-200/80 dark:border-emerald-500/20 text-emerald-700 dark:text-emerald-400'">
                                                     <span>موجودی پس از کسر:</span>
-                                                    <div class="flex items-center gap-1.5">
-                                                        <span class="text-sm font-black tabular-nums"
+                                                    <div class="flex items-center gap-1 tabular-nums">
+                                                        <span class="text-sm font-black"
                                                               x-text="formatSignedNumber(item.newBalance)"></span>
                                                         <span
-                                                            class="text-[10px] opacity-75">{{ $currencySuffix }}</span>
+                                                            class="text-[10px] font-normal opacity-75">{{ $currencySuffix }}</span>
                                                     </div>
                                                 </div>
                                             </template>
                                             <template x-if="item.is_cheque">
                                                 <div
-                                                    class="flex items-center justify-between p-2.5 rounded-xl border font-bold bg-amber-50/60 dark:bg-amber-950/20 border-amber-100 dark:border-amber-900/30 text-amber-800 dark:text-amber-300">
+                                                    class="flex items-center justify-between p-2.5 rounded-xl border font-bold bg-amber-50/60 dark:bg-amber-500/10 border-amber-200/80 dark:border-amber-500/20 text-amber-700 dark:text-amber-400">
                                                     <span>وضعیت چک صیادی:</span>
                                                     <span
-                                                        class="px-2.5 py-0.5 text-[11px] font-bold rounded-lg border shadow-sm"
+                                                        class="px-2 py-0.5 text-[10px] font-bold rounded-lg border shadow-sm"
                                                         :class="item.cheque_status_badge"
                                                         x-text="item.cheque_status_label">
                                                     </span>
@@ -1228,6 +1266,7 @@
                 customers: @json($customersList),
                 walletBankIds: @json($walletBankIds),
                 receivableCheques: @json($receivableCheques),
+                allowNegativeBalance: @json((bool) ($allowNegativeBalance ?? false)),
 
                 cleanNumber(val) {
                     if (val === null || val === undefined) return 0;
@@ -1281,8 +1320,30 @@
                     return this.cleanAmount + this.totalCombinedFees;
                 },
 
+                get hasInsufficientBankBalance() {
+                    if (this.allowNegativeBalance) return false;
+                    for (let acc of this.bankAccounts) {
+                        if (!acc.bank_id || this.isWalletAccount(acc.bank_id)) continue;
+                        let effBal = this.getEffectiveBankBalance(acc.bank_id, acc);
+                        let req = this.cleanNumber(acc.amount) + this.cleanNumber(acc.fee);
+                        if (req > effBal) return true;
+                    }
+                    for (let cId of this.selectedChequeIds) {
+                        let feeBankId = this.getChequeFeeBankId(cId);
+                        let feeAmt = this.cleanNumber(this.getChequeFee(cId));
+                        if (feeBankId && feeAmt > 0) {
+                            let bank = this.banks.find(b => String(b.id) === String(feeBankId));
+                            if (bank && !bank.is_wallet) {
+                                let effBal = this.getEffectiveBankBalance(feeBankId, null, cId);
+                                if (feeAmt > effBal) return true;
+                            }
+                        }
+                    }
+                    return false;
+                },
+
                 get isTotalAllocatedBalanced() {
-                    return this.cleanAmount > 0 && this.totalPaid === this.cleanAmount;
+                    return this.cleanAmount > 0 && this.totalPaid === this.cleanAmount && !this.hasInsufficientBankBalance;
                 },
 
                 get allocationDiff() {
@@ -1293,6 +1354,9 @@
                     if (this.cleanAmount === 0) {
                         return 'لطفاً ابتدا مبلغ کل هزینه را وارد فرمایید.';
                     }
+                    if (this.hasInsufficientBankBalance) {
+                        return 'موجودی برخی از حساب‌های خزانه‌داری انتخاب‌شده برای مبالغ واردشده کافی نمی‌باشد.';
+                    }
                     if (this.isTotalAllocatedBalanced) {
                         return 'مبالغ پرداختی (چک‌ها + حساب‌ها) دقیقاً با مبلغ هزینه تراز است.';
                     }
@@ -1300,6 +1364,83 @@
                         return `مانده تخصیص‌نیافته: ${this.formatNumber(this.allocationDiff)} ${this.currencySuffix} (لطفاً مبالغ حساب‌ها یا چک‌ها را تکمیل فرمایید)`;
                     }
                     return `مجموع مبالغ پرداختی ${this.formatNumber(Math.abs(this.allocationDiff))} ${this.currencySuffix} بیشتر از مبلغ هزینه است!`;
+                },
+
+                getEffectiveBankBalance(bankId, currentAcc = null, currentChequeId = null) {
+                    if (!bankId) return 0;
+                    const bank = this.banks.find(b => String(b.id) === String(bankId));
+                    if (!bank) return 0;
+
+                    let baseBalance = parseFloat(bank.balance_val) || 0;
+
+                    // 1. Deduct usage from other bank account rows in the repeater
+                    let otherRowsUsed = 0;
+                    this.bankAccounts.forEach(item => {
+                        if (currentAcc && item === currentAcc) return;
+                        if (String(item.bank_id) === String(bankId)) {
+                            otherRowsUsed += this.cleanNumber(item.amount) + this.cleanNumber(item.fee);
+                        }
+                    });
+
+                    // 2. Deduct usage from cheque fees
+                    let chequeFeesUsed = 0;
+                    this.selectedChequeIds.forEach(cId => {
+                        if (currentChequeId && String(cId) === String(currentChequeId)) return;
+                        let feeBankId = this.getChequeFeeBankId(cId);
+                        let feeAmt = this.cleanNumber(this.getChequeFee(cId));
+                        if (feeAmt <= 0) return;
+
+                        if (String(feeBankId) === String(bankId)) {
+                            chequeFeesUsed += feeAmt;
+                        } else if (!feeBankId) {
+                            // Default fee bank is the first bank in bankAccounts (if not currentAcc)
+                            let firstAcc = this.bankAccounts[0];
+                            if (firstAcc && String(firstAcc.bank_id) === String(bankId) && firstAcc !== currentAcc) {
+                                chequeFeesUsed += feeAmt;
+                            }
+                        }
+                    });
+
+                    return baseBalance - otherRowsUsed - chequeFeesUsed;
+                },
+
+                getRequiredAmount(currentAcc = null, currentChequeId = null) {
+                    if (currentChequeId) {
+                        let fee = this.cleanNumber(this.getChequeFee(currentChequeId));
+                        return fee > 0 ? fee : 1;
+                    }
+
+                    let rowAmount = currentAcc ? this.cleanNumber(currentAcc.amount) : 0;
+                    let rowFee = currentAcc ? this.cleanNumber(currentAcc.fee) : 0;
+                    if (rowAmount > 0) {
+                        return rowAmount + rowFee;
+                    }
+
+                    let otherRowsAllocated = 0;
+                    this.bankAccounts.forEach(item => {
+                        if (currentAcc && item === currentAcc) return;
+                        otherRowsAllocated += this.cleanNumber(item.amount);
+                    });
+
+                    let unallocated = Math.max(0, this.cleanAmount - this.totalChequesAmount - otherRowsAllocated);
+                    if (this.cleanAmount > 0 && unallocated > 0) {
+                        return unallocated + rowFee;
+                    }
+
+                    return 1;
+                },
+
+                isBankOptionDisabled(opt, currentAcc = null, currentChequeId = null) {
+                    if (!opt) return true;
+                    if (opt.is_wallet || this.allowNegativeBalance) {
+                        return false;
+                    }
+                    const effectiveBal = this.getEffectiveBankBalance(opt.id, currentAcc, currentChequeId);
+                    if (effectiveBal <= 0) {
+                        return true;
+                    }
+                    const required = this.getRequiredAmount(currentAcc, currentChequeId);
+                    return effectiveBal < required;
                 },
 
                 isWalletAccount(bankId) {
@@ -1329,8 +1470,8 @@
                     let feeBankId = typeof current === 'object' && current !== null ? current.fee_bank_id : null;
 
                     let nextMap = Object.assign({}, this.chequesFeesMap);
-                    nextMap[chequeId] = { fee: strVal, fee_bank_id: feeBankId };
-                    nextMap[String(chequeId)] = { fee: strVal, fee_bank_id: feeBankId };
+                    nextMap[chequeId] = {fee: strVal, fee_bank_id: feeBankId};
+                    nextMap[String(chequeId)] = {fee: strVal, fee_bank_id: feeBankId};
                     this.chequesFeesMap = nextMap;
                 },
 
@@ -1339,8 +1480,8 @@
                     let feeVal = typeof current === 'object' && current !== null ? current.fee : '';
 
                     let nextMap = Object.assign({}, this.chequesFeesMap);
-                    nextMap[chequeId] = { fee: feeVal, fee_bank_id: bankId ? String(bankId) : null };
-                    nextMap[String(chequeId)] = { fee: feeVal, fee_bank_id: bankId ? String(bankId) : null };
+                    nextMap[chequeId] = {fee: feeVal, fee_bank_id: bankId ? String(bankId) : null};
+                    nextMap[String(chequeId)] = {fee: feeVal, fee_bank_id: bankId ? String(bankId) : null};
                     this.chequesFeesMap = nextMap;
                 },
 
@@ -1377,8 +1518,18 @@
                 autoBalance(target) {
                     let idx = typeof target === 'number' ? target : this.bankAccounts.indexOf(target);
                     if (idx === -1 || this.allocationDiff <= 0) return;
-                    let current = this.cleanNumber(this.bankAccounts[idx].amount);
-                    let newAmt = current + this.allocationDiff;
+                    let acc = this.bankAccounts[idx];
+                    let current = this.cleanNumber(acc.amount);
+                    let needed = this.allocationDiff;
+                    if (acc.bank_id) {
+                        let bank = this.banks.find(b => String(b.id) === String(acc.bank_id));
+                        if (bank && !bank.is_wallet) {
+                            let maxAvailable = Math.max(0, this.getEffectiveBankBalance(acc.bank_id, acc) - this.cleanNumber(acc.fee));
+                            let canAdd = Math.max(0, maxAvailable - current);
+                            needed = Math.min(this.allocationDiff, canAdd);
+                        }
+                    }
+                    let newAmt = current + needed;
                     this.bankAccounts[idx].amount = newAmt > 0 ? newAmt.toLocaleString('en-US') : '';
                 },
 

@@ -27,8 +27,9 @@ class CalendarController extends Controller
         $user = auth()->user();
         $sources = $this->eventService->getAvailableSources();
         $todayJalali = Jalalian::now();
+        $allowEventCreation = $this->eventService->isEventCreationAllowed();
 
-        return view('widgets.calendar.full-calendar', compact('sources', 'todayJalali'));
+        return view('widgets.calendar.full-calendar', compact('sources', 'todayJalali', 'allowEventCreation'));
     }
 
     /**
@@ -253,5 +254,209 @@ class CalendarController extends Controller
             'success' => true,
             'events'  => $events,
         ]);
+    }
+
+    /**
+     * ثبت رویداد جدید در تقویم
+     */
+    public function storeEvent(Request $request): JsonResponse
+    {
+        if (!$this->eventService->isEventCreationAllowed()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'امکان ثبت رویداد جدید در تنظیمات سیستم غیرفعال شده است.',
+            ], 403);
+        }
+
+        $validated = $request->validate([
+            'title'       => 'required|string|max:255',
+            'date_fa'     => 'nullable|string',
+            'date_en'     => 'nullable|date',
+            'start_time'  => 'nullable|string',
+            'end_time'    => 'nullable|string',
+            'is_all_day'  => 'nullable|boolean',
+            'color'       => 'nullable|string|max:30',
+            'description' => 'nullable|string|max:2000',
+            'location'    => 'nullable|string|max:255',
+        ], [
+            'title.required' => 'عنوان رویداد الزامی است.',
+            'title.max'      => 'عنوان رویداد حداکثر ۲۵۵ کاراکتر است.',
+        ]);
+
+        $user = auth()->user();
+        [$startDateTime, $endDateTime, $isAllDay] = $this->parseEventDateTimes($request);
+
+        $color = $request->input('color', '#4f46e5');
+        if (!preg_match('/^#[a-fA-F0-9]{3,8}$/', $color)) {
+            $color = '#4f46e5';
+        }
+
+        $event = \App\Models\CalendarEvent::create([
+            'user_id'     => $user->id,
+            'created_by'  => $user->id,
+            'title'       => $validated['title'],
+            'description' => $validated['description'] ?? null,
+            'location'    => $validated['location'] ?? null,
+            'color'       => $color,
+            'start_time'  => $startDateTime,
+            'end_time'    => $endDateTime,
+            'is_all_day'  => $isAllDay,
+            'status'      => 'active',
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'رویداد با موفقیت در تقویم ثبت شد.',
+            'event'   => [
+                'id'       => 'custom_ev_' . $event->id,
+                'raw_id'   => $event->id,
+                'title'    => $event->title,
+                'color'    => $event->color,
+                'date_fa'  => $event->jalali_date,
+                'time'     => $event->formatted_time,
+            ],
+        ]);
+    }
+
+    /**
+     * ویرایش رویداد تقویم
+     */
+    public function updateEvent(Request $request, $id): JsonResponse
+    {
+        $user = auth()->user();
+        $event = \App\Models\CalendarEvent::findOrFail($id);
+
+        $canEdit = ($event->created_by === $user->id || $event->user_id === $user->id || (method_exists($user, 'hasRole') && $user->hasRole('super-admin')));
+        if (!$canEdit) {
+            return response()->json([
+                'success' => false,
+                'message' => 'شما دسترسی لازم برای ویرایش این رویداد را ندارید.',
+            ], 403);
+        }
+
+        $validated = $request->validate([
+            'title'       => 'required|string|max:255',
+            'date_fa'     => 'nullable|string',
+            'date_en'     => 'nullable|date',
+            'start_time'  => 'nullable|string',
+            'end_time'    => 'nullable|string',
+            'is_all_day'  => 'nullable|boolean',
+            'color'       => 'nullable|string|max:30',
+            'description' => 'nullable|string|max:2000',
+            'location'    => 'nullable|string|max:255',
+        ]);
+
+        [$startDateTime, $endDateTime, $isAllDay] = $this->parseEventDateTimes($request);
+
+        $color = $request->input('color', $event->color ?: '#4f46e5');
+        if (!preg_match('/^#[a-fA-F0-9]{3,8}$/', $color)) {
+            $color = $event->color ?: '#4f46e5';
+        }
+
+        $event->update([
+            'title'       => $validated['title'],
+            'description' => $validated['description'] ?? null,
+            'location'    => $validated['location'] ?? null,
+            'color'       => $color,
+            'start_time'  => $startDateTime,
+            'end_time'    => $endDateTime,
+            'is_all_day'  => $isAllDay,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'رویداد با موفقیت ویرایش شد.',
+            'event'   => [
+                'id'       => 'custom_ev_' . $event->id,
+                'raw_id'   => $event->id,
+                'title'    => $event->title,
+                'color'    => $event->color,
+                'date_fa'  => $event->jalali_date,
+                'time'     => $event->formatted_time,
+            ],
+        ]);
+    }
+
+    /**
+     * حذف رویداد تقویم
+     */
+    public function deleteEvent(Request $request, $id): JsonResponse
+    {
+        $user = auth()->user();
+        $event = \App\Models\CalendarEvent::findOrFail($id);
+
+        $canDelete = ($event->created_by === $user->id || $event->user_id === $user->id || (method_exists($user, 'hasRole') && $user->hasRole('super-admin')));
+        if (!$canDelete) {
+            return response()->json([
+                'success' => false,
+                'message' => 'شما دسترسی لازم برای حذف این رویداد را ندارید.',
+            ], 403);
+        }
+
+        $event->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'رویداد با موفقیت از تقویم حذف شد.',
+        ]);
+    }
+
+    /**
+     * تبدیل ورودی‌های فرم به Carbon DateTimes
+     */
+    protected function parseEventDateTimes(Request $request): array
+    {
+        $isAllDay = $request->boolean('is_all_day');
+        $dateCarbon = null;
+
+        if ($request->filled('date_en')) {
+            try {
+                $dateCarbon = Carbon::parse($request->input('date_en'));
+            } catch (\Throwable $e) {}
+        }
+
+        if (!$dateCarbon && $request->filled('date_fa')) {
+            try {
+                $raw = trim($request->input('date_fa'));
+                $parts = explode('/', str_replace('-', '/', $raw));
+                if (count($parts) === 3) {
+                    $jYear = (int)$parts[0];
+                    $jMonth = (int)$parts[1];
+                    $jDay = (int)$parts[2];
+                    $dateCarbon = (new Jalalian($jYear, $jMonth, $jDay))->toCarbon();
+                }
+            } catch (\Throwable $e) {}
+        }
+
+        if (!$dateCarbon) {
+            $dateCarbon = Carbon::today();
+        }
+
+        if ($isAllDay) {
+            $startDateTime = $dateCarbon->copy()->startOfDay();
+            $endDateTime   = $dateCarbon->copy()->endOfDay();
+        } else {
+            $startTime = $request->input('start_time', '09:00');
+            $endTime   = $request->input('end_time', '10:00');
+
+            $startParts = explode(':', $startTime);
+            $startH = (int)($startParts[0] ?? 9);
+            $startM = (int)($startParts[1] ?? 0);
+            $startDateTime = $dateCarbon->copy()->setTime($startH, $startM, 0);
+
+            if (!empty($endTime)) {
+                $endParts = explode(':', $endTime);
+                $endH = (int)($endParts[0] ?? ($startH + 1));
+                $endM = (int)($endParts[1] ?? 0);
+                $endDateTime = $dateCarbon->copy()->setTime($endH, $endM, 0);
+                if ($endDateTime->lessThanOrEqualTo($startDateTime)) {
+                    $endDateTime = $startDateTime->copy()->addHour();
+                }
+            } else {
+                $endDateTime = $startDateTime->copy()->addHour();
+            }
+        }
+
+        return [$startDateTime, $endDateTime, $isAllDay];
     }
 }

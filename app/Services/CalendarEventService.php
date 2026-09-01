@@ -133,6 +133,11 @@ class CalendarEventService
             }
         }
 
+        // 6. رویدادهای مستقل تقویم (Calendar Events)
+        if ($shouldInclude('custom_events')) {
+            $events = $events->concat($this->getCustomCalendarEvents($from, $to, $user));
+        }
+
         // مرتب‌سازی رویدادها بر اساس زمان شروع
         return $events->sortBy('datetime')->values();
     }
@@ -187,6 +192,15 @@ class CalendarEventService
                     'color' => 'teal',
                 ];
             }
+        }
+
+        // منبع رویدادهای مستقل تقویم
+        if ($this->isSourceEnabled('custom_events') && Schema::hasTable('calendar_events')) {
+            $sources[] = [
+                'key'   => 'custom_events',
+                'label' => 'رویدادهای تقویم',
+                'color' => 'indigo',
+            ];
         }
 
         return $sources;
@@ -446,6 +460,11 @@ class CalendarEventService
                 $serviceColor = $app->service->color ?? null;
                 $providerName = $app->provider->name ?? '-';
 
+                $clientPhone = '';
+                if ($client) {
+                    $clientPhone = trim($client->phone ?? $client->mobile ?? '');
+                }
+
                 $startMinute = $startLocal ? ($startLocal->hour * 60 + $startLocal->minute) : 0;
                 $endMinute   = $endLocal ? ($endLocal->hour * 60 + $endLocal->minute) : ($startMinute + 60);
                 if ($endMinute <= $startMinute) {
@@ -460,12 +479,13 @@ class CalendarEventService
                 return [
                     'id'               => 'booking_' . $app->id,
                     'raw_id'           => $app->id,
-                    'title'            => "نوبت: {$serviceName} - {$clientName}",
+                    'title'            => "{$clientName} - {$serviceName}",
                     'service_name'     => $serviceName,
                     'service_color'    => $serviceColor,
                     'client_name'      => $clientName,
+                    'client_phone'     => $clientPhone,
                     'provider_name'    => $providerName,
-                    'description'      => "{$clientLabel}: {$clientName} | ارائه دهنده: {$providerName}",
+                    'description'      => "{$clientLabel}: {$clientName}" . ($clientPhone ? " ({$clientPhone})" : '') . " | ارائه دهنده: {$providerName}",
                     'datetime'         => $startLocal ? $startLocal->toIso8601String() : null,
                     'time'             => $timeStr,
                     'start_time'       => $startTimeStr,
@@ -648,6 +668,97 @@ class CalendarEventService
             });
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::error('CalendarEventService reminders fetch error: ' . $e->getMessage());
+            return collect();
+        }
+    }
+
+    /**
+     * بررسی فعال بودن قابلیت ثبت مستقیم رویداد از تقویم در تنظیمات سیستم
+     */
+    public function isEventCreationAllowed(): bool
+    {
+        if (class_exists(\Modules\Settings\Entities\Setting::class) && Schema::hasTable('settings')) {
+            $val = \Modules\Settings\Entities\Setting::where('key', 'widget_calendar_allow_event_creation')->value('value');
+            if ($val !== null) {
+                return (bool)(int)$val;
+            }
+        }
+        return true; // به صورت پیش‌فرض فعال است
+    }
+
+    /**
+     * دریافت رویدادهای مستقل ثبت‌شده از طریق تقویم
+     */
+    public function getCustomCalendarEvents(Carbon $from, Carbon $to, User $user): Collection
+    {
+        if (!Schema::hasTable('calendar_events')) {
+            return collect();
+        }
+
+        try {
+            $events = \App\Models\CalendarEvent::query()
+                ->where(function ($q) use ($user) {
+                    $q->where('user_id', $user->id)
+                      ->orWhere('created_by', $user->id);
+                })
+                ->where('status', 'active')
+                ->where('start_time', '<=', $to)
+                ->where(function ($q) use ($from) {
+                    $q->where('end_time', '>=', $from)
+                      ->orWhereNull('end_time')
+                      ->orWhere('start_time', '>=', $from);
+                })
+                ->orderBy('start_time')
+                ->get();
+
+            return $events->map(function ($ev) use ($user) {
+                $startDt    = $ev->start_time;
+                $endDt      = $ev->end_time;
+                $jalaliDate = $startDt ? Jalalian::fromCarbon($startDt) : null;
+                $isAllDay   = (bool)$ev->is_all_day;
+
+                $startMinute = ($startDt && !$isAllDay) ? ($startDt->hour * 60 + $startDt->minute) : 0;
+                $endMinute   = ($endDt && !$isAllDay) ? ($endDt->hour * 60 + $endDt->minute) : ($startMinute + 60);
+                if ($endMinute <= $startMinute) {
+                    $endMinute = $startMinute + 60;
+                }
+                $duration = $isAllDay ? 1440 : max(15, $endMinute - $startMinute);
+
+                $startTimeStr = ($startDt && !$isAllDay) ? $startDt->format('H:i') : '';
+                $endTimeStr   = ($endDt && !$isAllDay) ? $endDt->format('H:i') : '';
+                $timeStr      = $isAllDay ? 'تمام روز' : ($startTimeStr . ($endTimeStr ? ' - ' . $endTimeStr : ''));
+
+                $canEdit = ($ev->created_by === $user->id || $ev->user_id === $user->id || (method_exists($user, 'hasRole') && $user->hasRole('super-admin')));
+
+                return [
+                    'id'               => 'custom_ev_' . $ev->id,
+                    'raw_id'           => $ev->id,
+                    'title'            => $ev->title,
+                    'description'      => $ev->description ?? '',
+                    'location'         => $ev->location ?? '',
+                    'color'            => $ev->color ?: '#4f46e5',
+                    'service_color'    => $ev->color ?: '#4f46e5',
+                    'datetime'         => $startDt ? $startDt->toIso8601String() : null,
+                    'time'             => $timeStr,
+                    'start_time'       => $startTimeStr,
+                    'end_time'         => $endTimeStr,
+                    'start_minute'     => $startMinute,
+                    'end_minute'       => $endMinute,
+                    'duration_minutes' => $duration,
+                    'is_all_day'       => $isAllDay,
+                    'date_fa'          => $jalaliDate ? $jalaliDate->format('Y/m/d') : '',
+                    'date_en'          => $startDt ? $startDt->format('Y-m-d') : '',
+                    'day'              => $jalaliDate ? $jalaliDate->getDay() : null,
+                    'month'            => $jalaliDate ? $jalaliDate->getMonth() : null,
+                    'year'             => $jalaliDate ? $jalaliDate->getYear() : null,
+                    'source'           => 'custom_events',
+                    'source_label'     => 'رویداد تقویم',
+                    'can_edit'         => $canEdit,
+                    'can_delete'       => $canEdit,
+                ];
+            });
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('CalendarEventService custom_events fetch error: ' . $e->getMessage());
             return collect();
         }
     }

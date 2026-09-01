@@ -199,11 +199,69 @@
                             <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 leading-relaxed">رویدادهای همگام‌شده یا ایمپورت‌شده گوگل.</p>
                         </div>
                     </label>
+
+                    {{-- ۶. رویدادهای تقویم (Custom Events) --}}
+                    <label class="flex items-start gap-3 p-4 rounded-2xl border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50 hover:bg-white dark:hover:bg-gray-800 cursor-pointer transition-all">
+                        <input type="checkbox" name="widget_calendar_enabled_sources[]" value="custom_events" {{ in_array('custom_events', $enabledSources) ? 'checked' : '' }} class="mt-1 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 h-4 w-4">
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <span class="w-2.5 h-2.5 rounded-full bg-indigo-500"></span>
+                                <span class="text-sm font-bold text-gray-900 dark:text-white">رویدادهای تقویم</span>
+                            </div>
+                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 leading-relaxed">رویدادهای مستقل ثبت‌شده توسط کاربران.</p>
+                        </div>
+                    </label>
                 </div>
             </div>
         </div>
 
-        {{-- بخش ۳: ادغام و اتصال Google Calendar (تب‌بندی شده در ۲ روش آنلاین و آفلاین) --}}
+        {{-- بخش ۳: امکان ایجاد و ثبت مستقیم رویداد از تقویم --}}
+        <div class="{{ $cardClass }}">
+            <div class="{{ $headerClass }}">
+                <div class="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                </div>
+                <div>
+                    <h2 class="text-base font-bold text-gray-900 dark:text-white">امکان ایجاد رویداد از تقویم (/user/calendar)</h2>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">تعیین فعال یا غیرفعال بودن قابلیت ثبت سریع رویداد به سبک Google Calendar توسط کاربران</p>
+                </div>
+            </div>
+
+            @php
+                $allowEventCreation = isset($settings['widget_calendar_allow_event_creation']) ? (bool)(int)$settings['widget_calendar_allow_event_creation'] : true;
+            @endphp
+
+            <div class="p-6 space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {{-- فعال --}}
+                    <label class="relative flex items-start gap-3 p-4 rounded-2xl border-2 cursor-pointer transition-all duration-200 hover:shadow-md
+                        {{ $allowEventCreation ? 'border-emerald-500 bg-emerald-50/20 dark:bg-emerald-900/10 dark:border-emerald-500' : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800' }}">
+                        <input type="radio" name="widget_calendar_allow_event_creation" value="1" {{ $allowEventCreation ? 'checked' : '' }} class="mt-1 text-emerald-600 focus:ring-emerald-500 h-4 w-4">
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <span class="text-sm font-black text-gray-900 dark:text-white">فعال (امکان ثبت رویداد)</span>
+                                <span class="px-2 py-0.5 text-[10px] font-bold rounded bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300">پیش‌فرض</span>
+                            </div>
+                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 leading-relaxed">کاربران می‌توانند با کلیک روی ساعات خالی جدول زمانی یا دکمه «+ رویداد جدید»، رویدادهای مدنظر خود را مستقیماً ایجاد و ذخیره کنند.</p>
+                        </div>
+                    </label>
+
+                    {{-- غیرفعال --}}
+                    <label class="relative flex items-start gap-3 p-4 rounded-2xl border-2 cursor-pointer transition-all duration-200 hover:shadow-md
+                        {{ !$allowEventCreation ? 'border-rose-500 bg-rose-50/20 dark:bg-rose-900/10 dark:border-rose-500' : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800' }}">
+                        <input type="radio" name="widget_calendar_allow_event_creation" value="0" {{ !$allowEventCreation ? 'checked' : '' }} class="mt-1 text-rose-600 focus:ring-rose-500 h-4 w-4">
+                        <div>
+                            <span class="text-sm font-black text-gray-900 dark:text-white">غیرفعال (فقط مشاهده)</span>
+                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 leading-relaxed">دکمه ایجاد رویداد و قابلیت کلیک روی خانه‌های تقویم مخفی شده و تقویم در حالت فقط خواندنی قرار می‌گیرد.</p>
+                        </div>
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        {{-- بخش ۴: ادغام و اتصال Google Calendar (تب‌بندی شده در ۲ روش آنلاین و آفلاین) --}}
         <div class="{{ $cardClass }}">
             {{-- هدر بخش گوگل کلندر --}}
             <div class="{{ $headerClass }} justify-between flex-wrap gap-4">

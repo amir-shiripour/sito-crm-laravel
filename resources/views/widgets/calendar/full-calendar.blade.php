@@ -61,6 +61,21 @@
         {{-- سوییچر نماها و کنترل‌های ناوبری --}}
         <div class="flex items-center gap-2 flex-wrap self-end lg:self-auto">
             
+            {{-- دکمه ثبت رویداد جدید (به سبک Google Calendar) --}}
+            @if($allowEventCreation ?? true)
+            <button 
+                type="button" 
+                @click="openCreateEventModal()" 
+                class="px-3.5 py-2 rounded-xl bg-gradient-to-r from-rose-500 to-indigo-600 hover:from-rose-600 hover:to-indigo-700 text-white text-xs font-bold shadow-sm hover:shadow-md transition-all flex items-center gap-1.5 active:scale-95"
+                title="ثبت رویداد جدید در تقویم"
+            >
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4" />
+                </svg>
+                <span>رویداد جدید</span>
+            </button>
+            @endif
+
             {{-- دکمه حالت تمرکز (تمام‌صفحه بدون تغییر صفحه) --}}
             <button 
                 type="button" 
@@ -297,10 +312,9 @@
                             <template x-for="ev in (cell.events || []).slice(0, 3)" :key="ev.id">
                                 <div 
                                     @click.stop="showEventDetail(ev)"
-                                    :style="ev.source === 'booking' && ev.service_color ? { borderRightColor: ev.service_color, borderRightWidth: '3px' } : {}"
+                                    :style="getMonthEventStyle(ev)"
                                     :class="{
                                         'bg-blue-50 dark:bg-blue-950/70 text-blue-700 dark:text-blue-200 border-blue-200 dark:border-blue-800/80': ev.source === 'booking' && !ev.service_color,
-                                        'bg-slate-50 dark:bg-slate-800/90 text-gray-900 dark:text-gray-100 border-gray-200 dark:border-gray-700': ev.source === 'booking' && ev.service_color,
                                         'bg-amber-50 dark:bg-amber-950/70 text-amber-800 dark:text-amber-200 border-amber-200 dark:border-amber-800/80': ev.source === 'tasks',
                                         'bg-purple-50 dark:bg-purple-950/70 text-purple-700 dark:text-purple-200 border-purple-200 dark:border-purple-800/80': ev.source === 'reminders',
                                         'bg-rose-50 dark:bg-rose-950/70 text-rose-700 dark:text-rose-200 border-rose-200 dark:border-rose-800/80 font-extrabold': ev.source === 'jalali_holidays' && ev.is_holiday,
@@ -376,10 +390,9 @@
                                 <template x-for="ev in (wday.events || [])" :key="ev.id">
                                     <div 
                                         @click="showEventDetail(ev)"
-                                        :style="ev.source === 'booking' && ev.service_color ? { borderRightColor: ev.service_color, borderRightWidth: '4px' } : {}"
+                                        :style="getWeekLevel1CardStyle(ev)"
                                         :class="{
                                             'bg-blue-50 dark:bg-blue-950/70 text-blue-800 dark:text-blue-200 border-blue-200 dark:border-blue-800/80 hover:border-blue-400': ev.source === 'booking' && !ev.service_color,
-                                            'bg-slate-50 dark:bg-slate-800/90 text-gray-900 dark:text-gray-100 border-gray-200 dark:border-gray-700': ev.source === 'booking' && ev.service_color,
                                             'bg-amber-50 dark:bg-amber-950/70 text-amber-800 dark:text-amber-200 border-amber-200 dark:border-amber-800/80 hover:border-amber-400': ev.source === 'tasks',
                                             'bg-purple-50 dark:bg-purple-950/70 text-purple-800 dark:text-purple-200 border-purple-200 dark:border-purple-800/80 hover:border-purple-400': ev.source === 'reminders',
                                             'bg-rose-50 dark:bg-rose-950/70 text-rose-800 dark:text-rose-200 border-rose-200 dark:border-rose-800/80 hover:border-rose-400 font-extrabold': ev.source === 'jalali_holidays' && ev.is_holiday,
@@ -391,9 +404,10 @@
                                         <div class="flex items-center justify-between gap-1">
                                             <span class="text-[10px] opacity-80" x-text="ev.time || 'تمام روز'"></span>
                                             <span 
-                                                :style="ev.source === 'booking' && ev.service_color ? { backgroundColor: ev.service_color } : {}"
+                                                :style="(ev.source === 'booking' && ev.service_color) || (ev.source === 'custom_events' && ev.color) ? { backgroundColor: ev.service_color || ev.color } : {}"
                                                 :class="{
                                                     'bg-blue-500': ev.source === 'booking' && !ev.service_color,
+                                                    'bg-indigo-500': ev.source === 'custom_events' && !ev.color,
                                                     'bg-amber-500': ev.source === 'tasks',
                                                     'bg-purple-500': ev.source === 'reminders',
                                                     'bg-rose-500': ev.source === 'jalali_holidays' && ev.is_holiday,
@@ -467,6 +481,7 @@
                                 <template x-for="ev in getDayAllDayEvents(wday)" :key="'ad_' + ev.id">
                                     <div 
                                         @click="showEventDetail(ev)"
+                                        :style="getAllDayEventStyle(ev)"
                                         :class="{
                                             'bg-rose-100 dark:bg-rose-900/80 text-rose-800 dark:text-rose-200 border-rose-300 dark:border-rose-700 font-extrabold': ev.source === 'jalali_holidays' && ev.is_holiday,
                                             'bg-emerald-100 dark:bg-emerald-900/80 text-emerald-800 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700': ev.source === 'jalali_holidays' && !ev.is_holiday,
@@ -525,8 +540,10 @@
                             {{-- محتوای هر روز هفته --}}
                             <template x-for="wday in weekDays" :key="'tcol_' + wday.key">
                                 <div 
+                                    @click="handleWeekGridClick($event, wday)"
                                     :class="{
                                         'bg-rose-50/25 dark:bg-rose-950/20': wday.is_today,
+                                        'cursor-pointer': allowEventCreation
                                     }"
                                     class="relative h-[1728px] min-h-[1728px] flex-1 min-w-0 border-l border-gray-200 dark:border-gray-700 last:border-l-0"
                                 >
@@ -544,7 +561,7 @@
                                     {{-- رویدادهای زمان‌دار این روز (موقعیت‌دهی دقیق و نمایش رویدادهای هم‌پوشان) --}}
                                     <template x-for="ev in getDayTimedEvents(wday)" :key="'gcal_ev_' + ev.id">
                                         <div 
-                                            @click="showEventDetail(ev)"
+                                            @click.stop="showEventDetail(ev)"
                                             :style="getEventCardStyle(ev)"
                                             class="absolute z-10 rounded-lg p-2 transition-all cursor-pointer hover:z-30 hover:shadow-lg flex flex-col justify-between overflow-hidden group select-none border text-right"
                                         >
@@ -552,14 +569,6 @@
                                             <div class="min-w-0 space-y-0.5 pointer-events-auto">
                                                 <div class="flex items-center justify-between gap-1">
                                                     <span class="text-[10px] sm:text-[11px] font-bold truncate opacity-95" x-text="ev.time"></span>
-                                                    
-                                                    <template x-if="ev.source === 'booking' && ev.service_name">
-                                                        <span 
-                                                            class="text-[9px] px-1.5 py-0.5 rounded font-bold truncate max-w-[90px]" 
-                                                            :style="{ backgroundColor: (ev.service_color || '#0284c7') + '25', color: ev.service_color || '#0284c7' }" 
-                                                            x-text="ev.service_name"
-                                                        ></span>
-                                                    </template>
                                                 </div>
 
                                                 <h4 class="text-xs sm:text-[13px] font-bold leading-snug line-clamp-2" x-text="ev.title"></h4>
@@ -635,14 +644,15 @@
                     <template x-for="ev in selectedDayEvents" :key="ev.id">
                         <div 
                             @click="showEventDetail(ev)"
-                            :style="ev.source === 'booking' && ev.service_color ? { borderRightColor: ev.service_color, borderRightWidth: '4px' } : {}"
+                            :style="getDayLevel1CardStyle(ev)"
                             class="p-4 rounded-2xl border bg-gray-50/70 dark:bg-gray-900/40 border-gray-200 dark:border-gray-700/80 hover:bg-white dark:hover:bg-gray-700/40 hover:shadow-md transition-all flex items-center justify-between cursor-pointer"
                         >
                             <div class="flex items-center gap-3">
                                 <span 
-                                    :style="ev.source === 'booking' && ev.service_color ? { backgroundColor: ev.service_color } : {}"
+                                    :style="(ev.source === 'booking' && ev.service_color) || (ev.source === 'custom_events' && ev.color) ? { backgroundColor: ev.service_color || ev.color } : {}"
                                     :class="{
                                         'bg-blue-500': ev.source === 'booking' && !ev.service_color,
+                                        'bg-indigo-500': ev.source === 'custom_events' && !ev.color,
                                         'bg-amber-500': ev.source === 'tasks',
                                         'bg-purple-500': ev.source === 'reminders',
                                         'bg-rose-500': ev.source === 'jalali_holidays' && ev.is_holiday,
@@ -659,9 +669,10 @@
                             <div class="flex items-center gap-3">
                                 <span class="text-xs font-bold text-gray-600 dark:text-gray-300" x-text="ev.time"></span>
                                 <span 
-                                    :style="ev.source === 'booking' && ev.service_color ? { backgroundColor: ev.service_color + '20', color: ev.service_color, borderColor: ev.service_color + '50' } : {}"
+                                    :style="(ev.source === 'booking' && ev.service_color) || (ev.source === 'custom_events' && ev.color) ? { backgroundColor: (ev.service_color || ev.color) + '20', color: ev.service_color || ev.color, borderColor: (ev.service_color || ev.color) + '50' } : {}"
                                     :class="{
                                         'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/60 dark:text-blue-300 dark:border-blue-800/80': ev.source === 'booking' && !ev.service_color,
+                                        'bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/60 dark:text-indigo-300 dark:border-indigo-800/80': ev.source === 'custom_events' && !ev.color,
                                         'bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800/80': ev.source === 'tasks',
                                         'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/60 dark:text-purple-300 dark:border-purple-800/80': ev.source === 'reminders',
                                         'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-800/80': ev.source === 'jalali_holidays' && ev.is_holiday,
@@ -690,6 +701,7 @@
                             <template x-for="ev in getDayAllDayEventsForSelectedDay()" :key="'dad_' + ev.id">
                                 <div 
                                     @click="showEventDetail(ev)"
+                                    :style="getAllDayEventStyle(ev)"
                                     :class="{
                                         'bg-rose-100 dark:bg-rose-900/80 text-rose-800 dark:text-rose-200 border-rose-300 dark:border-rose-700 font-extrabold': ev.source === 'jalali_holidays' && ev.is_holiday,
                                         'bg-emerald-100 dark:bg-emerald-900/80 text-emerald-800 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700': ev.source === 'jalali_holidays' && !ev.is_holiday,
@@ -745,7 +757,13 @@
                             </div>
 
                             {{-- محتوای روز --}}
-                            <div class="relative h-[1728px] min-h-[1728px] w-full">
+                            <div 
+                                @click="handleDayGridClick($event)"
+                                :class="{
+                                    'cursor-pointer': allowEventCreation
+                                }"
+                                class="relative h-[1728px] min-h-[1728px] w-full"
+                            >
                                 
                                 {{-- خط نشانگر ساعت زنده جاری (در صورتی که روز جاری باشد) --}}
                                 <template x-if="selectedDayIsToday">
@@ -761,22 +779,14 @@
                                 {{-- رویدادهای زمان‌دار این روز با چیدمان موازی گوگل کلندر --}}
                                 <template x-for="ev in getDayTimedEventsForSelectedDay()" :key="'gcal_dev_' + ev.id">
                                     <div 
-                                        @click="showEventDetail(ev)"
+                                        @click.stop="showEventDetail(ev)"
                                         :style="getEventCardStyle(ev)"
                                         class="absolute z-10 rounded-xl p-2.5 sm:p-3 transition-all cursor-pointer hover:z-30 hover:shadow-lg flex flex-col justify-between overflow-hidden group select-none border text-right"
                                     >
-                                        {{-- بخش عنوان، برچسب سرویس و ساعت --}}
+                                        {{-- بخش عنوان و ساعت --}}
                                         <div class="min-w-0 space-y-1 pointer-events-auto">
                                             <div class="flex items-center justify-between gap-2">
                                                 <span class="text-xs sm:text-sm font-bold truncate opacity-95" x-text="ev.time"></span>
-                                                
-                                                <template x-if="ev.source === 'booking' && ev.service_name">
-                                                    <span 
-                                                        class="text-[10px] sm:text-xs px-2 py-0.5 rounded-md font-bold truncate" 
-                                                        :style="{ backgroundColor: (ev.service_color || '#0284c7') + '25', color: ev.service_color || '#0284c7' }" 
-                                                        x-text="ev.service_name"
-                                                    ></span>
-                                                </template>
                                             </div>
 
                                             <h4 class="text-xs sm:text-sm font-black leading-snug line-clamp-2" x-text="ev.title"></h4>
@@ -811,9 +821,10 @@
             <div class="flex items-center justify-between pb-3 border-b border-gray-200 dark:border-gray-700">
                 <div class="flex items-center gap-2">
                     <span 
-                        :style="activeEvent?.source === 'booking' && activeEvent?.service_color ? { backgroundColor: activeEvent.service_color } : {}"
+                        :style="(activeEvent?.source === 'booking' && activeEvent?.service_color) || (activeEvent?.source === 'custom_events' && activeEvent?.color) ? { backgroundColor: activeEvent.service_color || activeEvent.color } : {}"
                         :class="{
                             'bg-blue-500': activeEvent?.source === 'booking' && !activeEvent?.service_color,
+                            'bg-indigo-500': activeEvent?.source === 'custom_events' && !activeEvent?.color,
                             'bg-amber-500': activeEvent?.source === 'tasks',
                             'bg-purple-500': activeEvent?.source === 'reminders',
                             'bg-rose-500': activeEvent?.source === 'jalali_holidays' && activeEvent?.is_holiday,
@@ -837,6 +848,29 @@
             <div>
                 <h3 class="text-base font-bold text-gray-900 dark:text-gray-100" x-text="activeEvent?.title"></h3>
                 <p class="text-xs sm:text-sm text-gray-600 dark:text-gray-300 mt-2 leading-relaxed whitespace-pre-line" x-text="activeEvent?.description"></p>
+                
+                {{-- شماره تماس مشتری (برای رویدادهای نوبت‌دهی) --}}
+                <template x-if="activeEvent?.client_phone">
+                    <div class="mt-2.5 text-xs font-medium text-gray-700 dark:text-gray-200 flex items-center justify-between bg-blue-50/70 dark:bg-blue-950/40 p-2.5 rounded-xl border border-blue-100 dark:border-blue-800/50">
+                        <div class="flex items-center gap-1.5 text-blue-700 dark:text-blue-300 font-bold">
+                            <svg class="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                            </svg>
+                            <span>شماره تماس مشتری:</span>
+                        </div>
+                        <a :href="'tel:' + activeEvent.client_phone" class="font-bold text-blue-600 dark:text-blue-400 hover:underline dir-ltr text-right" x-text="activeEvent.client_phone"></a>
+                    </div>
+                </template>
+
+                <template x-if="activeEvent?.location">
+                    <div class="mt-2 text-xs font-medium text-gray-500 dark:text-gray-400 flex items-center gap-1.5 bg-gray-50 dark:bg-gray-900/50 p-2 rounded-xl border border-gray-100 dark:border-gray-700">
+                        <svg class="w-4 h-4 text-indigo-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                        <span x-text="'مکان: ' + activeEvent.location"></span>
+                    </div>
+                </template>
             </div>
 
             <div class="pt-3 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between text-xs font-bold text-gray-600 dark:text-gray-400 flex-wrap gap-2">
@@ -844,11 +878,202 @@
                 <span x-text="'زمان: ' + (activeEvent?.time || '')"></span>
             </div>
 
-            <div class="pt-2 flex justify-end">
-                <button @click="activeEvent = null" class="px-5 py-2 rounded-xl bg-gray-100 dark:bg-gray-700/80 hover:bg-gray-200 dark:hover:bg-gray-600 text-xs sm:text-sm font-bold text-gray-700 dark:text-gray-200 transition-colors">
-                    بستن
+            <div class="pt-2 flex items-center justify-between flex-wrap gap-2 border-t border-gray-100 dark:border-gray-700/60">
+                <div>
+                    <template x-if="activeEvent?.can_delete">
+                        <button 
+                            type="button" 
+                            @click="deleteCurrentEvent()" 
+                            :disabled="isSavingEvent" 
+                            class="px-3.5 py-2 rounded-xl bg-red-50 hover:bg-red-100 dark:bg-red-950/50 dark:hover:bg-red-900/60 text-red-600 dark:text-red-400 text-xs font-bold transition-colors flex items-center gap-1.5"
+                        >
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                            <span>حذف رویداد</span>
+                        </button>
+                    </template>
+                </div>
+
+                <div class="flex items-center gap-2">
+                    <template x-if="activeEvent?.can_edit">
+                        <button 
+                            type="button" 
+                            @click="openEditEventModal(activeEvent)" 
+                            class="px-4 py-2 rounded-xl bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/50 dark:hover:bg-indigo-900/60 text-indigo-600 dark:text-indigo-300 text-xs font-bold transition-colors flex items-center gap-1.5"
+                        >
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                            <span>ویرایش</span>
+                        </button>
+                    </template>
+
+                    <button @click="activeEvent = null" class="px-5 py-2 rounded-xl bg-gray-100 dark:bg-gray-700/80 hover:bg-gray-200 dark:hover:bg-gray-600 text-xs sm:text-sm font-bold text-gray-700 dark:text-gray-200 transition-colors">
+                        بستن
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {{-- مدال ایجاد / ویرایش سریع رویداد به سبک Google Calendar --}}
+    <div x-show="isEventModalOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm" x-cloak>
+        <div @click.away="closeEventModal()" class="bg-white dark:bg-gray-800 rounded-3xl max-w-lg w-full p-6 border border-gray-200 dark:border-gray-700 shadow-2xl space-y-5 transition-all animate-in fade-in zoom-in-95">
+            
+            {{-- هدر مدال --}}
+            <div class="flex items-center justify-between pb-3 border-b border-gray-100 dark:border-gray-700">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-8 h-8 rounded-xl bg-indigo-50 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                    </div>
+                    <h3 class="text-base font-black text-gray-900 dark:text-white" x-text="isEditingEvent ? 'ویرایش رویداد' : 'افزودن رویداد جدید'"></h3>
+                </div>
+                <button @click="closeEventModal()" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors">
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
                 </button>
             </div>
+
+            {{-- پیام خطا در صورت وجود --}}
+            <template x-if="eventFormError">
+                <div class="p-3 rounded-xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800/60 text-xs font-bold text-red-600 dark:text-red-400 flex items-center gap-2">
+                    <svg class="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span x-text="eventFormError"></span>
+                </div>
+            </template>
+
+            {{-- فرم رویداد --}}
+            <form @submit.prevent="saveEvent()" class="space-y-4">
+                
+                {{-- ۱. عنوان رویداد (ورودی برجسته) --}}
+                <div>
+                    <input 
+                        type="text" 
+                        x-ref="eventTitleInput"
+                        x-model="eventForm.title" 
+                        placeholder="افزودن عنوان رویداد..." 
+                        class="w-full px-4 py-3 rounded-2xl border border-gray-200 dark:border-gray-700 bg-gray-50/70 dark:bg-gray-900/60 text-sm sm:text-base font-bold text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:bg-white dark:focus:bg-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all"
+                        required
+                    >
+                </div>
+
+                {{-- ۲. تاریخ و ساعت --}}
+                <div class="p-4 rounded-2xl bg-gray-50/60 dark:bg-gray-900/40 border border-gray-100 dark:border-gray-700/60 space-y-3">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">تاریخ (شمسی)</label>
+                            <input 
+                                type="text" 
+                                x-model="eventForm.date_fa" 
+                                placeholder="مثلاً: 1405/06/10" 
+                                class="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs font-bold text-gray-900 dark:text-white dir-ltr text-center focus:ring-2 focus:ring-indigo-500/20"
+                                required
+                            >
+                        </div>
+
+                        <div class="flex items-center justify-between pt-6">
+                            <label class="inline-flex items-center gap-2 cursor-pointer select-none">
+                                <input type="checkbox" x-model="eventForm.is_all_day" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 h-4 w-4">
+                                <span class="text-xs font-bold text-gray-700 dark:text-gray-300">تمام‌روز (All day)</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    {{-- زمان شروع و پایان (در صورت تمام‌روز نبودن) --}}
+                    <div x-show="!eventForm.is_all_day" class="grid grid-cols-2 gap-3 pt-1">
+                        <div>
+                            <label class="block text-xs font-bold text-gray-600 dark:text-gray-400 mb-1">ساعت شروع</label>
+                            <input 
+                                type="time" 
+                                x-model="eventForm.start_time" 
+                                class="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs font-bold text-gray-900 dark:text-white dir-ltr text-center"
+                            >
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-600 dark:text-gray-400 mb-1">ساعت پایان</label>
+                            <input 
+                                type="time" 
+                                x-model="eventForm.end_time" 
+                                class="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs font-bold text-gray-900 dark:text-white dir-ltr text-center"
+                            >
+                        </div>
+                    </div>
+                </div>
+
+                {{-- ۳. انتخاب رنگ رویداد (پالت رنگی Google Calendar) --}}
+                <div>
+                    <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2">رنگ رویداد</label>
+                    <div class="flex items-center gap-2.5 flex-wrap">
+                        <template x-for="c in colorPalette" :key="c.hex">
+                            <button 
+                                type="button" 
+                                @click="eventForm.color = c.hex" 
+                                :style="{ backgroundColor: c.hex }"
+                                :class="eventForm.color === c.hex ? 'ring-2 ring-offset-2 ring-indigo-500 scale-110 shadow-md' : 'hover:scale-105 opacity-85 hover:opacity-100'"
+                                class="w-6 h-6 sm:w-7 sm:h-7 rounded-full transition-all flex items-center justify-center text-white"
+                                :title="c.label"
+                            >
+                                <svg x-show="eventForm.color === c.hex" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" />
+                                </svg>
+                            </button>
+                        </template>
+                    </div>
+                </div>
+
+                {{-- ۴. مکان / لینک جلسه --}}
+                <div>
+                    <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">مکان یا لینک جلسه آنلاین (اختیاری)</label>
+                    <input 
+                        type="text" 
+                        x-model="eventForm.location" 
+                        placeholder="اتاق جلسه، آدرس یا لینک Google Meet / Zoom..." 
+                        class="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/60 dark:bg-gray-900/40 text-xs font-medium text-gray-900 dark:text-white placeholder-gray-400 focus:bg-white dark:focus:bg-gray-900"
+                    >
+                </div>
+
+                {{-- ۵. توضیحات و یادداشت --}}
+                <div>
+                    <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">توضیحات و جزئیات رویداد (اختیاری)</label>
+                    <textarea 
+                        x-model="eventForm.description" 
+                        rows="2" 
+                        placeholder="یادداشت‌ها یا دستور جلسه..." 
+                        class="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/60 dark:bg-gray-900/40 text-xs font-medium text-gray-900 dark:text-white placeholder-gray-400 focus:bg-white dark:focus:bg-gray-900"
+                    ></textarea>
+                </div>
+
+                {{-- دکمه‌های اقدام --}}
+                <div class="pt-3 border-t border-gray-100 dark:border-gray-700 flex items-center justify-end gap-2">
+                    <button 
+                        type="button" 
+                        @click="closeEventModal()" 
+                        class="px-4 py-2 rounded-xl bg-gray-100 dark:bg-gray-700/80 hover:bg-gray-200 dark:hover:bg-gray-600 text-xs font-bold text-gray-700 dark:text-gray-300 transition-colors"
+                    >
+                        انصراف
+                    </button>
+                    <button 
+                        type="submit" 
+                        :disabled="isSavingEvent" 
+                        class="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-md shadow-indigo-600/30 hover:shadow-lg transition-all flex items-center gap-1.5 disabled:opacity-50"
+                    >
+                        <template x-if="isSavingEvent">
+                            <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                        </template>
+                        <span x-text="isSavingEvent ? 'در حال ذخیره...' : (isEditingEvent ? 'ویرایش رویداد' : 'ذخیره رویداد')"></span>
+                    </button>
+                </div>
+
+            </form>
         </div>
     </div>
 
@@ -896,6 +1121,7 @@ function fullCalendarManager() {
     return {
         isLoading: false,
         isFocusMode: false,
+        allowEventCreation: {{ ($allowEventCreation ?? true) ? 'true' : 'false' }},
         viewMode: getInitialViewMode(),
         calendarLevel: getInitialCalendarLevel(),
         previousViewMode: 'month',
@@ -916,6 +1142,35 @@ function fullCalendarManager() {
         selectedDayGregorian: '',
         selectedDayIsToday: false,
         activeEvent: null,
+
+        // متغیرهای حالت مدال ایجاد / ویرایش رویداد
+        isEventModalOpen: false,
+        isSavingEvent: false,
+        isEditingEvent: false,
+        editEventId: null,
+        eventFormError: null,
+        colorPalette: [
+            { hex: '#4f46e5', label: 'نیلی' },
+            { hex: '#0284c7', label: 'آبی' },
+            { hex: '#10b981', label: 'زمردی' },
+            { hex: '#ea580c', label: 'نارنجی' },
+            { hex: '#e11d48', label: 'یاقوتی' },
+            { hex: '#9333ea', label: 'بنفش' },
+            { hex: '#0d9488', label: 'فیروزه‌ای' },
+            { hex: '#d97706', label: 'کهربایی' },
+            { hex: '#475569', label: 'دودی' }
+        ],
+        eventForm: {
+            title: '',
+            date_fa: '',
+            date_en: '',
+            start_time: '09:00',
+            end_time: '10:00',
+            is_all_day: false,
+            color: '#4f46e5',
+            location: '',
+            description: ''
+        },
 
         get activeDisplayTitle() {
             if (this.viewMode === 'week') {
@@ -1110,6 +1365,198 @@ function fullCalendarManager() {
             this.activeEvent = ev;
         },
 
+        // متدهای ایجاد و مدیریت رویداد تقویم
+        openCreateEventModal(defaults = {}) {
+            if (!this.allowEventCreation) return;
+            this.isEditingEvent = false;
+            this.editEventId = null;
+            this.eventFormError = null;
+
+            const now = new Date();
+            const currentHour = now.getHours();
+            const startH = (currentHour + 1) % 24;
+            const endH = (startH + 1) % 24;
+
+            const defaultDateFa = `${this.jYear}/${this.jMonth.toString().padStart(2, '0')}/${(this.selectedDayNumber || {{ $todayJalali->getDay() }}).toString().padStart(2, '0')}`;
+
+            this.eventForm = {
+                title: defaults.title || '',
+                date_fa: defaults.date_fa || defaultDateFa,
+                date_en: defaults.date_en || '',
+                start_time: defaults.start_time || `${startH.toString().padStart(2, '0')}:00`,
+                end_time: defaults.end_time || `${endH.toString().padStart(2, '0')}:00`,
+                is_all_day: !!defaults.is_all_day,
+                color: defaults.color || '#4f46e5',
+                location: defaults.location || '',
+                description: defaults.description || ''
+            };
+
+            this.isEventModalOpen = true;
+            this.$nextTick(() => {
+                this.$refs.eventTitleInput?.focus();
+            });
+        },
+
+        openEditEventModal(ev) {
+            if (!ev || !ev.can_edit) return;
+            this.isEditingEvent = true;
+            this.editEventId = ev.raw_id;
+            this.eventFormError = null;
+
+            this.eventForm = {
+                title: ev.title || '',
+                date_fa: ev.date_fa || '',
+                date_en: ev.date_en || '',
+                start_time: ev.start_time || '09:00',
+                end_time: ev.end_time || '10:00',
+                is_all_day: !!ev.is_all_day,
+                color: ev.color || '#4f46e5',
+                location: ev.location || '',
+                description: ev.description || ''
+            };
+
+            this.isEventModalOpen = true;
+            this.$nextTick(() => {
+                this.$refs.eventTitleInput?.focus();
+            });
+        },
+
+        closeEventModal() {
+            this.isEventModalOpen = false;
+            this.isEditingEvent = false;
+            this.editEventId = null;
+            this.eventFormError = null;
+        },
+
+        async saveEvent() {
+            if (!this.eventForm.title.trim()) {
+                this.eventFormError = 'لطفاً عنوان رویداد را وارد نمایید.';
+                return;
+            }
+
+            this.isSavingEvent = true;
+            this.eventFormError = null;
+
+            const url = this.isEditingEvent 
+                ? `{{ url('/user/calendar/events') }}/${this.editEventId}` 
+                : `{{ route('user.calendar.events.store') }}`;
+
+            const method = this.isEditingEvent ? 'PUT' : 'POST';
+
+            try {
+                const response = await fetch(url, {
+                    method: method,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '{{ csrf_token() }}'
+                    },
+                    body: JSON.stringify(this.eventForm)
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    this.closeEventModal();
+                    if (this.activeEvent && this.isEditingEvent) {
+                        this.activeEvent = null;
+                    }
+                    await this.fetchEvents();
+                } else {
+                    this.eventFormError = data.message || (data.errors ? Object.values(data.errors).flat().join(' - ') : 'خطایی در ثبت اطلاعات رخ داد.');
+                }
+            } catch (err) {
+                console.error('Error saving calendar event:', err);
+                this.eventFormError = 'خطای ارتباط با سرور. لطفاً دوباره تلاش کنید.';
+            } finally {
+                this.isSavingEvent = false;
+            }
+        },
+
+        async deleteCurrentEvent() {
+            if (!this.activeEvent || !this.activeEvent.raw_id) return;
+
+            if (!confirm('آیا از حذف این رویداد از تقویم اطمینان دارید؟')) {
+                return;
+            }
+
+            this.isSavingEvent = true;
+            const url = `{{ url('/user/calendar/events') }}/${this.activeEvent.raw_id}`;
+
+            try {
+                const response = await fetch(url, {
+                    method: 'DELETE',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '{{ csrf_token() }}'
+                    }
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    this.activeEvent = null;
+                    await this.fetchEvents();
+                } else {
+                    alert(data.message || 'خطا در حذف رویداد.');
+                }
+            } catch (err) {
+                console.error('Error deleting calendar event:', err);
+                alert('خطای ارتباط با سرور.');
+            } finally {
+                this.isSavingEvent = false;
+            }
+        },
+
+        handleWeekGridClick(event, wday) {
+            if (!this.allowEventCreation) return;
+            const rect = event.currentTarget.getBoundingClientRect();
+            const offsetY = event.clientY - rect.top;
+            const totalMinutes = Math.floor((offsetY / 72) * 60);
+            const roundedMinutes = Math.floor(totalMinutes / 15) * 15;
+            const startH = Math.max(0, Math.min(23, Math.floor(roundedMinutes / 60)));
+            const startM = roundedMinutes % 60;
+            const endH = Math.min(23, startH + 1);
+            const endM = startM;
+
+            const startTime = `${startH.toString().padStart(2, '0')}:${startM.toString().padStart(2, '0')}`;
+            const endTime = `${endH.toString().padStart(2, '0')}:${endM.toString().padStart(2, '0')}`;
+
+            const dateFa = `${wday.year || this.jYear}/${(wday.month || this.jMonth).toString().padStart(2, '0')}/${(wday.day).toString().padStart(2, '0')}`;
+
+            this.openCreateEventModal({
+                date_fa: dateFa,
+                date_en: wday.date_en || '',
+                start_time: startTime,
+                end_time: endTime
+            });
+        },
+
+        handleDayGridClick(event) {
+            if (!this.allowEventCreation) return;
+            const rect = event.currentTarget.getBoundingClientRect();
+            const offsetY = event.clientY - rect.top;
+            const totalMinutes = Math.floor((offsetY / 72) * 60);
+            const roundedMinutes = Math.floor(totalMinutes / 15) * 15;
+            const startH = Math.max(0, Math.min(23, Math.floor(roundedMinutes / 60)));
+            const startM = roundedMinutes % 60;
+            const endH = Math.min(23, startH + 1);
+            const endM = startM;
+
+            const startTime = `${startH.toString().padStart(2, '0')}:${startM.toString().padStart(2, '0')}`;
+            const endTime = `${endH.toString().padStart(2, '0')}:${endM.toString().padStart(2, '0')}`;
+
+            const dateFa = `${this.jYear}/${this.jMonth.toString().padStart(2, '0')}/${(this.selectedDayNumber || {{ $todayJalali->getDay() }}).toString().padStart(2, '0')}`;
+
+            this.openCreateEventModal({
+                date_fa: dateFa,
+                start_time: startTime,
+                end_time: endTime
+            });
+        },
+
         formatHour(hour) {
             const h = hour.toString().padStart(2, '0');
             return `${h}:00`;
@@ -1195,10 +1642,8 @@ function fullCalendarManager() {
             const timed = (wday.events || []).filter(e => !e.is_all_day && typeof e.start_minute === 'number');
             if (!timed.length) return [];
 
-            // مرتب‌سازی بر اساس دقیقه شروع و سپس مدت زمان
             const sorted = [...timed].sort((a, b) => a.start_minute - b.start_minute || b.duration_minutes - a.duration_minutes);
 
-            // دسته‌بندی خوشه‌ای رویدادهای دارای هم‌پوشانی زمانی
             const clusters = [];
             let currentCluster = [];
             let clusterEnd = -1;
@@ -1216,7 +1661,7 @@ function fullCalendarManager() {
             }
             if (currentCluster.length) clusters.push(currentCluster);
 
-            const HOUR_HEIGHT = 72; // ارتفاع هر ساعت معادل ۷۲ پیکسل برای فضای دید وسیع‌تر و خوانایی بهتر
+            const HOUR_HEIGHT = 72;
 
             const result = [];
             for (const cluster of clusters) {
@@ -1287,7 +1732,21 @@ function fullCalendarManager() {
                 };
             }
 
-            // ۲. رویدادهای گوگل کلندر
+            // ۲. رویدادهای مستقل تقویم (Custom Events)
+            if (ev.source === 'custom_events') {
+                const color = ev.color || '#4f46e5';
+                const hex = color.startsWith('#') ? color : '#' + color;
+                return {
+                    ...base,
+                    backgroundColor: hex + (isDark ? '35' : '1e'),
+                    borderColor: hex + (isDark ? '70' : '50'),
+                    borderRightWidth: '4px',
+                    borderRightColor: hex,
+                    color: textColor,
+                };
+            }
+
+            // ۳. رویدادهای گوگل کلندر
             if (ev.source === 'google_calendar') {
                 return {
                     ...base,
@@ -1299,7 +1758,7 @@ function fullCalendarManager() {
                 };
             }
 
-            // ۳. وظایف
+            // ۴. وظایف
             if (ev.source === 'tasks') {
                 return {
                     ...base,
@@ -1311,7 +1770,7 @@ function fullCalendarManager() {
                 };
             }
 
-            // ۴. یادآوری‌ها
+            // ۵. یادآوری‌ها
             if (ev.source === 'reminders') {
                 return {
                     ...base,
@@ -1324,6 +1783,108 @@ function fullCalendarManager() {
             }
 
             return base;
+        },
+
+        getAllDayEventStyle(ev) {
+            if (ev.source === 'custom_events') {
+                const color = ev.color || '#4f46e5';
+                const hex = color.startsWith('#') ? color : '#' + color;
+                return {
+                    backgroundColor: hex,
+                    color: '#ffffff',
+                    borderColor: hex,
+                };
+            }
+            if (ev.source === 'booking' && ev.service_color) {
+                return {
+                    backgroundColor: ev.service_color,
+                    color: '#ffffff',
+                    borderColor: ev.service_color,
+                };
+            }
+            return {};
+        },
+
+        getMonthEventStyle(ev) {
+            const isDark = document.documentElement.classList.contains('dark');
+            if (ev.source === 'custom_events') {
+                const color = ev.color || '#4f46e5';
+                const hex = color.startsWith('#') ? color : '#' + color;
+                if (ev.is_all_day) {
+                    return {
+                        backgroundColor: hex,
+                        color: '#ffffff',
+                        borderColor: hex,
+                    };
+                }
+                return {
+                    backgroundColor: hex + (isDark ? '30' : '18'),
+                    borderColor: hex + (isDark ? '60' : '40'),
+                    borderRightColor: hex,
+                    borderRightWidth: '3px',
+                    color: isDark ? '#f8fafc' : '#0f172a',
+                };
+            }
+            if (ev.source === 'booking' && ev.service_color) {
+                if (ev.is_all_day) {
+                    return {
+                        backgroundColor: ev.service_color,
+                        color: '#ffffff',
+                        borderColor: ev.service_color,
+                    };
+                }
+                return {
+                    backgroundColor: ev.service_color + (isDark ? '30' : '18'),
+                    borderColor: ev.service_color + (isDark ? '60' : '40'),
+                    borderRightColor: ev.service_color,
+                    borderRightWidth: '3px',
+                    color: isDark ? '#f8fafc' : '#0f172a',
+                };
+            }
+            return {};
+        },
+
+        getWeekLevel1CardStyle(ev) {
+            const isDark = document.documentElement.classList.contains('dark');
+            if (ev.source === 'custom_events') {
+                const color = ev.color || '#4f46e5';
+                const hex = color.startsWith('#') ? color : '#' + color;
+                return {
+                    backgroundColor: hex + (isDark ? '25' : '15'),
+                    borderColor: hex + (isDark ? '60' : '40'),
+                    borderRightColor: hex,
+                    borderRightWidth: '4px',
+                    color: isDark ? '#f8fafc' : '#0f172a',
+                };
+            }
+            if (ev.source === 'booking' && ev.service_color) {
+                return {
+                    backgroundColor: ev.service_color + (isDark ? '25' : '15'),
+                    borderColor: ev.service_color + (isDark ? '60' : '40'),
+                    borderRightColor: ev.service_color,
+                    borderRightWidth: '4px',
+                    color: isDark ? '#f8fafc' : '#0f172a',
+                };
+            }
+            return {};
+        },
+
+        getDayLevel1CardStyle(ev) {
+            if (ev.source === 'custom_events') {
+                const color = ev.color || '#4f46e5';
+                const hex = color.startsWith('#') ? color : '#' + color;
+                return {
+                    borderRightColor: hex,
+                    borderRightWidth: '4px',
+                };
+            }
+            if (ev.source === 'booking' && ev.service_color) {
+                return {
+                    borderRightColor: ev.service_color,
+                    borderRightWidth: '4px',
+                };
+            }
+            return {};
         },
 
         getCurrentTimeIndicatorTop() {

@@ -190,10 +190,11 @@ class ExpenseController extends Controller
         }
 
         $currencySuffix = CurrencyService::getBaseCurrency();
+        $allowNegativeBalance = (bool) AccountingSetting::get('banking.allow_negative_balance', false);
 
         $receivableCheques = $this->getAvailableReceivableCheques();
 
-        return view('accounting::expenses.create', compact('categories', 'banks', 'customers', 'currencySuffix', 'receivableCheques'));
+        return view('accounting::expenses.create', compact('categories', 'banks', 'customers', 'currencySuffix', 'receivableCheques', 'allowNegativeBalance'));
     }
 
     public function store(StoreExpenseRequest $request)
@@ -251,14 +252,23 @@ class ExpenseController extends Controller
     public function edit(Document $expense)
     {
         $categories = Category::where('type', 'expense')->where('status', 1)->get();
-        $banks = FundAccount::with('transactions')->where('status', 1)->get()->map(function ($bank) {
-            $bank->balance_val = $bank->isWalletAccount()
+        $expense->load(['transactions.category', 'transactions.fundAccount', 'documentable', 'cheque', 'cheques']);
+
+        $existingDocCreditsByBank = $expense->transactions
+            ->whereNotNull('fund_account_id')
+            ->where('credit', '>', 0)
+            ->groupBy('fund_account_id')
+            ->map(fn($txs) => $txs->sum('credit'));
+
+        $banks = FundAccount::with('transactions')->where('status', 1)->get()->map(function ($bank) use ($existingDocCreditsByBank) {
+            $currentBal = $bank->isWalletAccount()
                 ? (float)($bank->current_balance > 0 ? $bank->current_balance : 999999999999)
                 : (float)($bank->transactions->sum('debit') - $bank->transactions->sum('credit'));
+
+            $restoredAmount = (float)($existingDocCreditsByBank->get($bank->id, 0));
+            $bank->balance_val = $currentBal + $restoredAmount;
             return $bank;
         });
-
-        $expense->load(['transactions.category', 'transactions.fundAccount', 'documentable', 'cheque', 'cheques']);
 
         $feeCatId = AccountingSetting::get('defaults.bank_fee_category_id');
         $debitTxs = $expense->transactions->where('debit', '>', 0);
@@ -380,11 +390,12 @@ class ExpenseController extends Controller
         }
 
         $receivableCheques = $this->getAvailableReceivableCheques($expenseChequeIds);
+        $allowNegativeBalance = (bool) AccountingSetting::get('banking.allow_negative_balance', false);
 
         return view('accounting::expenses.edit', compact(
             'expense', 'banks', 'categories', 'customers', 'currencySuffix',
             'expenseCategoryId', 'expenseFundAccountId', 'expenseAmount', 'expenseFee', 'expenseClientId', 'expenseClientIdKey',
-            'receivableCheques', 'expenseChequeIds', 'existingBankAccounts', 'existingCheques'
+            'receivableCheques', 'expenseChequeIds', 'existingBankAccounts', 'existingCheques', 'allowNegativeBalance'
         ));
     }
 
@@ -467,6 +478,7 @@ class ExpenseController extends Controller
                     }
                 }
 
+                $totalRefunded = 0;
                 foreach ($bankCreditTxs as $bTx) {
                     $fundAccount = $bTx->fundAccount;
                     $refundAmount = (float)$bTx->credit;
@@ -480,6 +492,7 @@ class ExpenseController extends Controller
                             'description' => "برگشت وجه به خزانه‌داری ({$fundAccount->name}) بابت لغو سند هزینه #{$expense->document_number}",
                             'transaction_date' => now()->toDateString(),
                         ]);
+                        $totalRefunded += $refundAmount;
                     }
                 }
 
@@ -513,6 +526,8 @@ class ExpenseController extends Controller
                     }
                 }
 
+                $totalExpenseDebit = (float)$debitTxs->sum('debit');
+
                 ActivityLogger::log(
                     'expense_cancelled',
                     "سند هزینه به شماره '{$expense->document_number}' و مبلغ " . number_format($totalExpenseDebit) . " ریال لغو گردید.",
@@ -524,17 +539,21 @@ class ExpenseController extends Controller
                     ]
                 );
 
-                $fundAccountName = $fundAccount?->name ?? ($expense->cheque ? "چک صیادی شماره {$expense->cheque->cheque_number}" : 'خزانه‌داری');
-                ActivityLogger::log(
-                    'treasury_refund',
-                    "مبلغ " . number_format($expenseAmount) . " ریال بابت لغو سند هزینه '{$expense->document_number}' به خزانه‌داری ({$fundAccountName}) بازگردانده شد.",
-                    $fundAccount ?? $expense,
-                    [
-                        'document_number' => $expense->document_number,
-                        'fund_account_name' => $fundAccountName,
-                        'amount' => $expenseAmount,
-                    ]
-                );
+                $firstFundAccount = $bankCreditTxs->first()?->fundAccount;
+                $fundAccountName = $firstFundAccount?->name ?? ($expense->cheque ? "چک صیادی شماره {$expense->cheque->cheque_number}" : ($expense->cheques->count() > 0 ? "چک‌های صیادی" : 'خزانه‌داری'));
+
+                if ($totalRefunded > 0) {
+                    ActivityLogger::log(
+                        'treasury_refund',
+                        "مبلغ " . number_format($totalRefunded) . " ریال بابت لغو سند هزینه '{$expense->document_number}' به خزانه‌داری ({$fundAccountName}) بازگردانده شد.",
+                        $firstFundAccount ?? $expense,
+                        [
+                            'document_number' => $expense->document_number,
+                            'fund_account_name' => $fundAccountName,
+                            'amount' => $totalRefunded,
+                        ]
+                    );
+                }
             });
 
             return redirect()->route('admin.accounting.expenses.index')
