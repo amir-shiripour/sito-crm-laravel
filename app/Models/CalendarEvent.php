@@ -24,6 +24,7 @@ class CalendarEvent extends Model
         'start_time',
         'end_time',
         'is_all_day',
+        'is_public',
         'status',
     ];
 
@@ -31,6 +32,7 @@ class CalendarEvent extends Model
         'start_time' => 'datetime',
         'end_time'   => 'datetime',
         'is_all_day' => 'boolean',
+        'is_public'  => 'boolean',
     ];
 
     public function user(): BelongsTo

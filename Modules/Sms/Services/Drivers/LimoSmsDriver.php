@@ -203,7 +203,7 @@ class LimoSmsDriver implements DriverInterface
     }
 
     /**
-     * دریافت اعتبار (اگر در آینده endpoint رسمی پیدا کردیم، اینجا تکمیل می‌کنیم)
+     * دریافت اعتبار و اطلاعات پروفایل از وب‌سرویس لیمو اس‌ام‌اس
      */
     public function fetchBalance(): ?array
     {
@@ -211,11 +211,80 @@ class LimoSmsDriver implements DriverInterface
             return null;
         }
 
-        // فعلاً فقط یک ساختار خام برمی‌گردونیم تا صفحه تنظیمات نخوابد
-        return [
-            'driver'  => 'limosms',
-            'balance' => null,
-            'meta'    => [],
-        ];
+        try {
+            $url = $this->baseUrl . '/getcurrentcredit';
+
+            $response = Http::withHeaders([
+                'ApiKey'       => $this->apiKey,
+                'Content-Type' => 'application/json',
+            ])->timeout(8)->post($url, []);
+
+            if (! $response->successful()) {
+                Log::warning('[LimoSms] fetchBalance failed with HTTP status: ' . $response->status(), [
+                    'body' => $response->body(),
+                ]);
+                return null;
+            }
+
+            $data = $response->json();
+
+            if (! is_array($data)) {
+                return null;
+            }
+
+            $isSuccess = !empty($data['success']) || !empty($data['Success']);
+            if (! $isSuccess) {
+                Log::warning('[LimoSms] fetchBalance returned unsuccessful response', [
+                    'response' => $data,
+                ]);
+                return null;
+            }
+
+            $result = $data['result'] ?? $data['Result'] ?? [];
+            if (! is_array($result)) {
+                $result = [];
+            }
+
+            // استخراج شناسه کاربر در لیمو (مستقیم یا داخل userSmsPrice)
+            $userId = $result['userSmsPrice']['userId']
+                ?? $result['userSmsPrice']['UserId']
+                ?? $result['UserId']
+                ?? $result['userId']
+                ?? $result['Id']
+                ?? $result['id']
+                ?? null;
+
+            if ($userId !== null) {
+                $userId = (string) $userId;
+            }
+
+            // استخراج موجودی
+            $credit = $result['credit']
+                ?? $result['Credit']
+                ?? $result['balance']
+                ?? $result['Balance']
+                ?? null;
+
+            if ($credit !== null) {
+                $credit = (float) $credit;
+            }
+
+            return [
+                'driver'     => 'limosms',
+                'balance'    => $credit,
+                'user_id'    => $userId,
+                'currency'   => 'ریال',
+                'charge_url' => $userId ? "https://sms.vardi.ir/Payment/PayWithBank?UserId={$userId}" : null,
+                'login_url'  => $userId ? "https://sms.vardi.ir/DirectLogin/{$userId}" : null,
+                'meta'       => $result,
+            ];
+
+        } catch (\Throwable $e) {
+            Log::error('[LimoSms] fetchBalance exception: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return null;
+        }
     }
 }

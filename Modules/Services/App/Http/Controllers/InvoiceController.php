@@ -1602,8 +1602,16 @@ class InvoiceController extends Controller
 
                     if ($field->type === 'multiselect') {
                         if (!is_array($val) || empty($val)) {
+                            unset($customFieldsQuantities[$field->id], $customFieldsPrices[$field->id]);
                             continue;
                         }
+                        // filter out empty values in multiselect
+                        $val = array_values(array_filter($val, fn($x) => $x !== null && trim((string)$x) !== ''));
+                        if (empty($val)) {
+                            unset($customFieldsQuantities[$field->id], $customFieldsPrices[$field->id]);
+                            continue;
+                        }
+                        $customFieldsValues[$field->id] = $val;
 
                         foreach ($val as $selectedOpt) {
                             $optQty = 1;
@@ -1650,11 +1658,12 @@ class InvoiceController extends Controller
                     } else {
                         $isSelected = match ($field->type) {
                             'checkbox' => in_array($val, [true, '1', 1], true),
-                            'number' => $this->parseNumber($val) > 0 || (isset($customFieldsQuantities[$field->id]) && $this->parseNumber($customFieldsQuantities[$field->id]) > 0),
+                            'number' => $val !== null && $val !== '' && $this->parseNumber($val) > 0,
                             default => ($val !== null && $val !== ''),
                         };
 
                         if (!$isSelected) {
+                            unset($customFieldsQuantities[$field->id], $customFieldsPrices[$field->id]);
                             continue;
                         }
 

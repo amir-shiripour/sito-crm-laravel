@@ -275,6 +275,7 @@ class CalendarController extends Controller
             'start_time'  => 'nullable|string',
             'end_time'    => 'nullable|string',
             'is_all_day'  => 'nullable|boolean',
+            'is_public'   => 'nullable|boolean',
             'color'       => 'nullable|string|max:30',
             'description' => 'nullable|string|max:2000',
             'location'    => 'nullable|string|max:255',
@@ -285,6 +286,7 @@ class CalendarController extends Controller
 
         $user = auth()->user();
         [$startDateTime, $endDateTime, $isAllDay] = $this->parseEventDateTimes($request);
+        $isPublic = $request->has('is_public') ? $request->boolean('is_public') : true;
 
         $color = $request->input('color', '#4f46e5');
         if (!preg_match('/^#[a-fA-F0-9]{3,8}$/', $color)) {
@@ -301,6 +303,7 @@ class CalendarController extends Controller
             'start_time'  => $startDateTime,
             'end_time'    => $endDateTime,
             'is_all_day'  => $isAllDay,
+            'is_public'   => $isPublic,
             'status'      => 'active',
         ]);
 
@@ -308,12 +311,13 @@ class CalendarController extends Controller
             'success' => true,
             'message' => 'رویداد با موفقیت در تقویم ثبت شد.',
             'event'   => [
-                'id'       => 'custom_ev_' . $event->id,
-                'raw_id'   => $event->id,
-                'title'    => $event->title,
-                'color'    => $event->color,
-                'date_fa'  => $event->jalali_date,
-                'time'     => $event->formatted_time,
+                'id'        => 'custom_ev_' . $event->id,
+                'raw_id'    => $event->id,
+                'title'     => $event->title,
+                'color'     => $event->color,
+                'is_public' => (bool)$event->is_public,
+                'date_fa'   => $event->jalali_date,
+                'time'      => $event->formatted_time,
             ],
         ]);
     }
@@ -341,12 +345,14 @@ class CalendarController extends Controller
             'start_time'  => 'nullable|string',
             'end_time'    => 'nullable|string',
             'is_all_day'  => 'nullable|boolean',
+            'is_public'   => 'nullable|boolean',
             'color'       => 'nullable|string|max:30',
             'description' => 'nullable|string|max:2000',
             'location'    => 'nullable|string|max:255',
         ]);
 
         [$startDateTime, $endDateTime, $isAllDay] = $this->parseEventDateTimes($request);
+        $isPublic = $request->has('is_public') ? $request->boolean('is_public') : $event->is_public;
 
         $color = $request->input('color', $event->color ?: '#4f46e5');
         if (!preg_match('/^#[a-fA-F0-9]{3,8}$/', $color)) {
@@ -361,18 +367,20 @@ class CalendarController extends Controller
             'start_time'  => $startDateTime,
             'end_time'    => $endDateTime,
             'is_all_day'  => $isAllDay,
+            'is_public'   => $isPublic,
         ]);
 
         return response()->json([
             'success' => true,
             'message' => 'رویداد با موفقیت ویرایش شد.',
             'event'   => [
-                'id'       => 'custom_ev_' . $event->id,
-                'raw_id'   => $event->id,
-                'title'    => $event->title,
-                'color'    => $event->color,
-                'date_fa'  => $event->jalali_date,
-                'time'     => $event->formatted_time,
+                'id'        => 'custom_ev_' . $event->id,
+                'raw_id'    => $event->id,
+                'title'     => $event->title,
+                'color'     => $event->color,
+                'is_public' => (bool)$event->is_public,
+                'date_fa'   => $event->jalali_date,
+                'time'      => $event->formatted_time,
             ],
         ]);
     }

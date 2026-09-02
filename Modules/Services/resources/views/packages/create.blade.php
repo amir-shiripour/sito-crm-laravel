@@ -503,6 +503,7 @@
                                                                item.custom_field_values[field.id] = parsePriceInput($event.target.value);
                                                            }
                                                        "
+                                                       :disabled="!isFieldSelected(field, item.custom_field_values[field.id])"
                                                        :name="'items[' + index + '][custom_fields_quantities][' + field.id + ']'"
                                                        class="{{ $inputClass }} py-1.5 text-xs text-center tabular-nums font-bold border-indigo-200 dark:border-indigo-800/60 shadow-none w-32 mx-auto"
                                                        dir="ltr" placeholder="۱">
@@ -513,6 +514,7 @@
                                                         <input type="text"
                                                                :value="formatPriceInput(getCustomFieldPrice(item, field))"
                                                                @input="setCustomFieldPrice(item, field, null, $event.target.value)"
+                                                               :disabled="!isFieldSelected(field, item.custom_field_values[field.id])"
                                                                :name="'items[' + index + '][custom_fields_prices][' + field.id + ']'"
                                                                :readonly="!isCustomPriceUnlocked(item, field)"
                                                                :class="!isCustomPriceUnlocked(item, field) ? 'bg-gray-100 dark:bg-gray-900/50 cursor-not-allowed text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-800' : 'bg-white dark:bg-gray-900 border-indigo-300'"
