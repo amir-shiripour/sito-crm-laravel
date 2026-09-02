@@ -8,7 +8,7 @@ use Modules\Sms\Entities\SmsMessage;
 
 class SmsLogController extends Controller
 {
-    public function index(Request $request)
+    public function index(Request $request, \Modules\Sms\Services\SmsManager $sms)
     {
         $query = SmsMessage::query()->latest();
 
@@ -31,8 +31,11 @@ class SmsLogController extends Controller
 
         $messages = $query->paginate()->withQueryString();
 
+        $accountInfo = $sms->getAccountInfo();
+
         return view('sms::user.logs.index', [
-            'messages' => $messages,
+            'messages'    => $messages,
+            'accountInfo' => $accountInfo,
         ]);
     }
 

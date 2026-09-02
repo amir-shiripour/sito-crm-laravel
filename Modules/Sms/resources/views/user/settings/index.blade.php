@@ -165,11 +165,40 @@
             {{-- دکمه ذخیره --}}
             <div class="sticky bottom-4 z-40 flex justify-between items-center bg-white/80 dark:bg-gray-800/80 backdrop-blur-md p-4 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-xl">
 
-                @if($balance)
-                    <div class="flex items-center gap-2 text-sm">
-                        <span class="text-gray-500 dark:text-gray-400">اعتبار پنل:</span>
-                        <span class="font-bold text-emerald-600 dark:text-emerald-400 dir-ltr">{{ number_format((float)($balance['balance'] ?? 0)) }}</span>
-                        <span class="text-xs text-gray-400">{{ $balance['currency'] ?? 'ریال' }}</span>
+                @if($balance && isset($balance['balance']))
+                    <div class="flex flex-wrap items-center gap-4 text-xs">
+                        <div class="flex items-center gap-1.5">
+                            <span class="text-gray-500 dark:text-gray-400">اعتبار پنل:</span>
+                            <span class="font-bold text-emerald-600 dark:text-emerald-400 dir-ltr text-sm">{{ number_format((float)($balance['balance'] ?? 0)) }}</span>
+                            <span class="text-gray-400">{{ $balance['currency'] ?? 'ریال' }}</span>
+                        </div>
+
+                        @if(!empty($balance['user_id']))
+                            <div class="hidden sm:flex items-center gap-1 text-gray-500 dark:text-gray-400">
+                                <span>شناسه در سامانه:</span>
+                                <span class="font-bold text-gray-800 dark:text-gray-200 dir-ltr inline-block">{{ $balance['user_id'] }}</span>
+                            </div>
+                        @endif
+
+                        @if(!empty($balance['charge_url']))
+                            <a href="{{ $balance['charge_url'] }}"
+                               target="_blank"
+                               rel="noopener noreferrer"
+                               class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold transition-colors">
+                                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" /></svg>
+                                <span>شارژ حساب</span>
+                            </a>
+                        @endif
+
+                        @if(!empty($balance['login_url']))
+                            <a href="{{ $balance['login_url'] }}"
+                               target="_blank"
+                               rel="noopener noreferrer"
+                               class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 font-medium transition-colors">
+                                <svg class="w-3.5 h-3.5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                                <span>ورود مستقیم به پنل پیامک</span>
+                            </a>
+                        @endif
                     </div>
                 @else
                     <div></div>

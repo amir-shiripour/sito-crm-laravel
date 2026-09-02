@@ -11,6 +11,8 @@
         $roles            = $roles ?? collect();
         $clients          = $clients ?? collect();
         $clientStatuses   = $clientStatuses ?? collect();
+        $templates        = $templates ?? collect();
+        $accountInfo      = $accountInfo ?? null;
         $canTargetUsers   = $canTargetUsers ?? true;
         $canTargetClients = $canTargetClients ?? false;
         $sampleUserData   = $sampleUserData ?? [
@@ -116,6 +118,30 @@
                 activeGuideTab: 'preview',
                 feedbackMessage: '',
 
+                // الگوها و پیش‌نویس‌ها
+                templates: config.templates || [],
+                saveTemplateModalOpen: false,
+                manageTemplatesModalOpen: false,
+                templateTitle: '',
+                isSavingTemplate: false,
+                isRefreshingBalance: false,
+
+                // اطلاعات حساب و موجودی
+                accountInfo: config.accountInfo || null,
+
+                currentTime: '',
+
+                init() {
+                    this.updateCurrentTime();
+                },
+
+                updateCurrentTime() {
+                    const now = new Date();
+                    const hours = String(now.getHours()).padStart(2, '0');
+                    const minutes = String(now.getMinutes()).padStart(2, '0');
+                    this.currentTime = hours + ':' + minutes;
+                },
+
                 get currentSample() {
                     return this.targetType === 'users' ? this.sampleUserData : this.sampleClientData;
                 },
@@ -170,6 +196,100 @@
                     });
 
                     this.showFeedback('متغیر ' + tag + ' به متن اضافه شد');
+                },
+
+                applyTemplate(tmpl) {
+                    if (!tmpl) return;
+                    this.body = tmpl.body || '';
+                    if (tmpl.provider_pattern) {
+                        this.pattern = tmpl.provider_pattern;
+                    }
+                    this.showFeedback('الگوی «' + tmpl.title + '» بارگذاری شد');
+                },
+
+                async saveNewTemplate() {
+                    if (!this.templateTitle.trim()) {
+                        alert('لطفاً عنوان الگو را وارد نمایید.');
+                        return;
+                    }
+                    if (!this.body.trim()) {
+                        alert('متن پیامک خالی است.');
+                        return;
+                    }
+
+                    this.isSavingTemplate = true;
+                    try {
+                        const response = await fetch('{{ route("user.sms.templates.store") }}', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Accept': 'application/json',
+                                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                            },
+                            body: JSON.stringify({
+                                title: this.templateTitle,
+                                body: this.body,
+                                provider_pattern: this.pattern
+                            })
+                        });
+
+                        const result = await response.json();
+                        if (response.ok && result.data) {
+                            this.templates.unshift(result.data);
+                            this.saveTemplateModalOpen = false;
+                            this.templateTitle = '';
+                            this.showFeedback('الگو با موفقیت ذخیره گردید');
+                        } else {
+                            alert(result.message || 'خطا در ذخیره الگو');
+                        }
+                    } catch (e) {
+                        alert('خطا در برقراری ارتباط با سرور.');
+                    } finally {
+                        this.isSavingTemplate = false;
+                    }
+                },
+
+                async deleteTemplate(templateId) {
+                    if (!confirm('آیا از حذف این الگو اطمینان دارید؟')) return;
+
+                    try {
+                        const response = await fetch('{{ url("user/sms/templates") }}/' + templateId, {
+                            method: 'DELETE',
+                            headers: {
+                                'Accept': 'application/json',
+                                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                            }
+                        });
+
+                        if (response.ok) {
+                            this.templates = this.templates.filter(t => t.id !== templateId);
+                            this.showFeedback('الگو حذف شد');
+                        }
+                    } catch (e) {
+                        alert('خطا در حذف الگو.');
+                    }
+                },
+
+                async refreshBalance() {
+                    this.isRefreshingBalance = true;
+                    try {
+                        const response = await fetch('{{ route("user.sms.balance.refresh") }}', {
+                            method: 'POST',
+                            headers: {
+                                'Accept': 'application/json',
+                                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                            }
+                        });
+                        const res = await response.json();
+                        if (res.status === 'success' && res.data) {
+                            this.accountInfo = res.data;
+                            this.showFeedback('موجودی بروزرسانی شد');
+                        }
+                    } catch (e) {
+                        this.showFeedback('خطا در دریافت موجودی');
+                    } finally {
+                        this.isRefreshingBalance = false;
+                    }
                 },
 
                 showFeedback(msg) {
@@ -282,11 +402,13 @@
             oldPattern: {{ Js::from($oldPattern) }},
             oldBody: {{ Js::from($oldBody) }},
             sampleUserData: {{ Js::from($sampleUserData) }},
-            sampleClientData: {{ Js::from($sampleClientData) }}
+            sampleClientData: {{ Js::from($sampleClientData) }},
+            templates: {{ Js::from($templates) }},
+            accountInfo: {{ Js::from($accountInfo) }}
          })">
 
-        {{-- هدر صفحه --}}
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        {{-- هدر صفحه و کارت موجودی --}}
+        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
             <div>
                 <h1 class="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
                     <span class="flex items-center justify-center w-8 h-8 rounded-lg bg-indigo-100 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-300">
@@ -294,12 +416,92 @@
                     </span>
                     ارسال پیامک جدید
                 </h1>
-                <p class="text-sm text-gray-500 dark:text-gray-400 mt-1 mr-10">تنظیمات ارسال پیامک متنی عادی و خدماتی (پترن) با پشتیبانی از متغیرهای داینامیک</p>
+                <p class="text-sm text-gray-500 dark:text-gray-400 mt-1 mr-10">ارسال پیامک‌های متنی، خدماتی و الگوها با شخصی‌سازی متغیرها</p>
             </div>
 
-            <a href="{{ route('user.sms.logs.index') }}" class="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 text-sm font-medium transition-colors dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-700">
-                تاریخچه پیامک‌ها
-            </a>
+            {{-- بخش وضعیت موجودی و دکمه‌های پنل --}}
+            <div class="flex flex-wrap items-center gap-3">
+                {{-- ویجت موجودی پنل --}}
+                @if(!empty($accountInfo) && isset($accountInfo['balance']) && $accountInfo['balance'] !== null)
+                    <div class="flex items-center gap-2.5 px-3.5 py-2 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-xs">
+                        <div class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></div>
+                        <div class="text-xs text-gray-600 dark:text-gray-300">
+                            <span>موجودی پنل:</span>
+                            <span class="font-bold text-gray-900 dark:text-white dir-ltr inline-block mx-1"
+                                  x-text="accountInfo && accountInfo.balance !== null ? Number(accountInfo.balance).toLocaleString('fa-IR') : '{{ number_format((float)$accountInfo['balance']) }}'">
+                                {{ number_format((float)$accountInfo['balance']) }}
+                            </span>
+                            <span class="text-[11px] text-gray-400" x-text="(accountInfo && accountInfo.currency) ? accountInfo.currency : '{{ $accountInfo['currency'] ?? 'ریال' }}'">
+                                {{ $accountInfo['currency'] ?? 'ریال' }}
+                            </span>
+                        </div>
+
+                        {{-- دکمه رفرش موجودی --}}
+                        <button type="button"
+                                @click="refreshBalance()"
+                                :disabled="isRefreshingBalance"
+                                class="text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors p-1"
+                                title="بروزرسانی موجودی">
+                            <svg class="w-3.5 h-3.5" :class="isRefreshingBalance ? 'animate-spin text-indigo-600' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                            </svg>
+                        </button>
+                    </div>
+                @else
+                    <div x-show="accountInfo && accountInfo.balance !== null"
+                         style="display: none;"
+                         class="flex items-center gap-2.5 px-3.5 py-2 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-xs">
+                        <div class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></div>
+                        <div class="text-xs text-gray-600 dark:text-gray-300">
+                            <span>موجودی پنل:</span>
+                            <span class="font-bold text-gray-900 dark:text-white dir-ltr inline-block mx-1" x-text="Number(accountInfo?.balance || 0).toLocaleString('fa-IR')"></span>
+                            <span class="text-[11px] text-gray-400" x-text="accountInfo?.currency || 'ریال'"></span>
+                        </div>
+                    </div>
+                @endif
+
+                {{-- دکمه شارژ حساب --}}
+                @if(!empty($accountInfo['charge_url']))
+                    <a href="{{ $accountInfo['charge_url'] }}"
+                       target="_blank"
+                       rel="noopener noreferrer"
+                       class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all shadow-sm hover:shadow-md active:scale-95">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" /></svg>
+                        <span>شارژ حساب</span>
+                    </a>
+                @elseif(!empty($accountInfo['user_id']))
+                    <a href="https://sms.vardi.ir/Payment/PayWithBank?UserId={{ $accountInfo['user_id'] }}"
+                       target="_blank"
+                       rel="noopener noreferrer"
+                       class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all shadow-sm hover:shadow-md active:scale-95">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" /></svg>
+                        <span>شارژ حساب</span>
+                    </a>
+                @endif
+
+                {{-- دکمه ورود به پنل پیامک --}}
+                @if(!empty($accountInfo['login_url']))
+                    <a href="{{ $accountInfo['login_url'] }}"
+                       target="_blank"
+                       rel="noopener noreferrer"
+                       class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 text-xs font-medium transition-colors">
+                        <svg class="w-4 h-4 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                        <span>ورود به پنل پیامک</span>
+                    </a>
+                @elseif(!empty($accountInfo['user_id']))
+                    <a href="https://sms.vardi.ir/DirectLogin/{{ $accountInfo['user_id'] }}"
+                       target="_blank"
+                       rel="noopener noreferrer"
+                       class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 text-xs font-medium transition-colors">
+                        <svg class="w-4 h-4 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                        <span>ورود به پنل پیامک</span>
+                    </a>
+                @endif
+
+                <a href="{{ route('user.sms.logs.index') }}" class="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 text-xs font-medium transition-colors dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-700">
+                    تاریخچه پیامک‌ها
+                </a>
+            </div>
         </div>
 
         {{-- اعلان فیدبک کپی/درج سریع --}}
@@ -510,7 +712,7 @@
                 </div>
             </section>
 
-            {{-- بخش ۳: محتوای پیام، راهنما و پیش‌نمایش زنده --}}
+            {{-- بخش ۳: محتوای پیام، الگوها، راهنما و پیش‌نمایش زنده راست‌چین --}}
             <section class="{{ $cardClass }} p-6 relative z-10">
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-gray-100 dark:border-gray-700 mb-6">
                     <h2 class="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
@@ -546,7 +748,7 @@
                             </p>
                         </div>
 
-                        {{-- متن پیامک و ابزارهای متغیر --}}
+                        {{-- متن پیامک و ابزارهای الگو و متغیرها --}}
                         <div class="space-y-3">
                             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                                 <label class="{{ $labelClass }} mb-0">
@@ -554,14 +756,46 @@
                                     <span class="text-xs font-normal text-gray-500 dark:text-gray-400 mr-1">(پشتیبانی از متغیرهای داینامیک)</span>
                                 </label>
 
-                                <span class="text-[11px] text-indigo-600 dark:text-indigo-400 font-medium flex items-center gap-1">
-                                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122" /></svg>
-                                    برای درج متغیر روی دکمه‌های زیر کلیک کنید:
-                                </span>
+                                {{-- نوار ابزار پیش‌نویس‌ها و الگوها --}}
+                                <div class="flex items-center gap-2">
+                                    {{-- دکمه ذخیره به عنوان الگو --}}
+                                    <button type="button"
+                                            @click="saveTemplateModalOpen = true"
+                                            :disabled="!body.trim()"
+                                            :class="!body.trim() ? 'opacity-40 cursor-not-allowed' : 'hover:bg-indigo-50 dark:hover:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'"
+                                            class="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-lg border border-indigo-200 dark:border-indigo-800/80 transition-colors">
+                                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" /></svg>
+                                        <span>ذخیره به عنوان الگو</span>
+                                    </button>
+
+                                    {{-- دکمه مدیریت الگوها --}}
+                                    <button type="button"
+                                            @click="manageTemplatesModalOpen = true"
+                                            class="text-xs text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 p-1"
+                                            title="مدیریت الگوها">
+                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                                    </button>
+                                </div>
+                            </div>
+
+                            {{-- دراپ‌داون انتخاب سریع از الگوها --}}
+                            <div x-show="templates.length > 0" class="flex items-center gap-2">
+                                <label class="text-xs text-gray-500 dark:text-gray-400 shrink-0">بارگذاری سریع الگو:</label>
+                                <select @change="if($event.target.value) { const tmpl = templates.find(t => t.id == $event.target.value); if(tmpl) applyTemplate(tmpl); $event.target.value = ''; }"
+                                        class="flex-1 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-xs text-gray-800 dark:text-gray-200 px-3 py-1.5 focus:border-indigo-500">
+                                    <option value="">-- انتخاب از الگوهای ذخیره شده --</option>
+                                    <template x-for="tmpl in templates" :key="tmpl.id">
+                                        <option :value="tmpl.id" x-text="tmpl.title + (tmpl.provider_pattern ? ' (پترن: #' + tmpl.provider_pattern + ')' : '')"></option>
+                                    </template>
+                                </select>
                             </div>
 
                             {{-- چیپ‌های درج سریع متغیرها --}}
                             <div class="flex flex-wrap gap-1.5 p-2.5 rounded-xl bg-indigo-50/60 dark:bg-indigo-950/30 border border-indigo-100 dark:border-indigo-900/50">
+                                <div class="w-full flex items-center justify-between text-[11px] text-indigo-700 dark:text-indigo-300 font-medium mb-1">
+                                    <span>درج سریع متغیرها در متن پیام:</span>
+                                    <span class="text-[10px] text-gray-400">با کلیک روی هر متغیر در محل نشانگر درج می‌شود</span>
+                                </div>
                                 <template x-for="item in availableVariables" :key="item.tag">
                                     <button type="button"
                                             @click="insertVariable(item.tag)"
@@ -612,7 +846,7 @@
                         </div>
                     </div>
 
-                    {{-- ستون پیش‌نمایش زنده و راهنمای متغیرها (5 ستون در دسکتاپ بزرگ) --}}
+                    {{-- ستون پیش‌نمایش زنده راست‌چین و راهنمای متغیرها (5 ستون در دسکتاپ بزرگ) --}}
                     <div class="xl:col-span-5 space-y-4">
                         {{-- تب‌های سایدبار پیش‌نمایش / راهنما --}}
                         <div class="flex items-center p-1 bg-gray-100 dark:bg-gray-900 rounded-xl">
@@ -621,7 +855,7 @@
                                     class="flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5"
                                     :class="activeGuideTab === 'preview' ? 'bg-white dark:bg-gray-800 text-indigo-600 dark:text-indigo-400 shadow-xs' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'">
                                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
-                                پیش‌نمایش زنده پیامک
+                                پیش‌نمایش زنده پیامک (RTL)
                             </button>
                             <button type="button"
                                     @click="activeGuideTab = 'regular'"
@@ -632,16 +866,16 @@
                             </button>
                         </div>
 
-                        {{-- تب ۱: پیش‌نمایش زنده شبیه‌ساز گوشی --}}
+                        {{-- تب ۱: پیش‌نمایش زنده شبیه‌ساز گوشی کاملاً راست‌چین و بومی فارسی --}}
                         <div x-show="activeGuideTab === 'preview'" class="animate-in fade-in duration-200">
                             <div class="rounded-2xl border-2 border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-900 p-3 shadow-inner">
                                 {{-- گوشی شبیه‌ساز --}}
-                                <div class="bg-white dark:bg-gray-800 rounded-xl overflow-hidden shadow-md border border-gray-200/80 dark:border-gray-700">
-                                    {{-- نوار وضعیت گوشی --}}
-                                    <div class="bg-gray-50 dark:bg-gray-900/90 px-4 py-2 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between text-[10px] text-gray-400 dark:text-gray-500">
-                                        <span>09:41</span>
-                                        <div class="w-12 h-2.5 bg-gray-200 dark:bg-gray-700 rounded-full mx-auto"></div>
-                                        <div class="flex items-center gap-1 dir-ltr">
+                                <div class="bg-white dark:bg-gray-800 rounded-xl overflow-hidden shadow-md border border-gray-200/80 dark:border-gray-700" dir="rtl">
+                                    {{-- نوار وضعیت گوشی (سازگار با فارسی و RTL) --}}
+                                    <div class="bg-gray-50 dark:bg-gray-900/90 px-4 py-2 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between text-[11px] text-gray-500 dark:text-gray-400 font-sans">
+                                        <span x-text="currentTime || '۱۲:۳۰'"></span>
+                                        <div class="w-14 h-2.5 bg-gray-200 dark:bg-gray-700 rounded-full mx-auto"></div>
+                                        <div class="flex items-center gap-1.5 text-[10px]" dir="ltr">
                                             <span>4G</span>
                                             <span>100%</span>
                                         </div>
@@ -652,43 +886,48 @@
                                         <div class="w-9 h-9 rounded-full bg-indigo-500/10 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-400 flex items-center justify-center font-bold text-xs shrink-0">
                                             <span x-text="sampleRecipientName.charAt(0)"></span>
                                         </div>
-                                        <div class="min-w-0 flex-1">
+                                        <div class="min-w-0 flex-1 text-right">
                                             <div class="text-xs font-bold text-gray-900 dark:text-white truncate" x-text="sampleRecipientName"></div>
-                                            <div class="text-[10px] text-gray-400 dark:text-gray-400 dir-ltr text-right" x-text="sampleRecipientPhone"></div>
+                                            <div class="text-[10px] text-gray-400 dark:text-gray-400 dir-ltr text-right inline-block" x-text="sampleRecipientPhone"></div>
                                         </div>
-                                        <span class="px-2 py-0.5 rounded text-[10px] font-medium bg-indigo-50 text-indigo-600 dark:bg-indigo-900/40 dark:text-indigo-300">
-                                            نمونه پیش‌نمایش
+                                        <span class="px-2 py-0.5 rounded text-[10px] font-medium bg-indigo-50 text-indigo-600 dark:bg-indigo-900/40 dark:text-indigo-300 shrink-0">
+                                            نمونه گیرنده
                                         </span>
                                     </div>
 
-                                    {{-- بدنه چت و حباب پیامک --}}
-                                    <div class="p-4 min-h-[190px] max-h-[280px] overflow-y-auto bg-slate-100 dark:bg-gray-900/90 flex flex-col justify-end space-y-2">
+                                    {{-- بدنه چت و حباب پیامک کاملاً راست‌چین --}}
+                                    <div class="p-4 min-h-[200px] max-h-[290px] overflow-y-auto bg-slate-100 dark:bg-gray-900/90 flex flex-col justify-end space-y-2">
                                         <div class="text-center">
                                             <span class="text-[10px] text-gray-400 dark:text-gray-400 bg-white/80 dark:bg-gray-800/80 px-2.5 py-0.5 rounded-full border border-gray-200/60 dark:border-gray-700">امروز</span>
                                         </div>
 
                                         {{-- حالت پترن --}}
-                                        <div x-show="pattern.trim() !== ''" class="self-end max-w-[90%]">
-                                            <div class="bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 p-3 rounded-2xl rounded-tr-xs text-xs text-amber-900 dark:text-amber-200 leading-relaxed shadow-xs">
-                                                <div class="font-bold flex items-center gap-1.5 text-amber-700 dark:text-amber-400 mb-1 pb-1 border-b border-amber-200/60 dark:border-amber-800/40">
+                                        <div x-show="pattern.trim() !== ''" class="w-full flex justify-end">
+                                            <div class="max-w-[92%] bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 p-3.5 rounded-2xl rounded-tr-xs text-xs text-amber-900 dark:text-amber-200 leading-relaxed shadow-xs text-right dir-rtl">
+                                                <div class="font-bold flex items-center gap-1.5 text-amber-700 dark:text-amber-400 mb-1.5 pb-1 border-b border-amber-200/60 dark:border-amber-800/40">
                                                     <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
                                                     <span>ارسال با پترن خدماتی</span>
-                                                    <span class="dir-ltr inline-block text-amber-800 dark:text-amber-300" x-text="'#' + pattern"></span>
+                                                    <span class="dir-ltr inline-block text-amber-800 dark:text-amber-300 font-bold" x-text="'#' + pattern"></span>
                                                 </div>
-                                                <p class="text-[11px]">
-                                                    متن پیام مطابق با الگوی ثبت شده در پنل پیامک با مقادیر گیرنده ارسال خواهد شد.
+                                                <p class="text-[11px] leading-relaxed">
+                                                    متن پیام طبق قالب ثبت‌شده در سامانه پیامک برای گیرنده ارسال خواهد شد.
                                                 </p>
+                                                <div class="flex items-center justify-end gap-1 mt-1 text-[10px] text-amber-600 dark:text-amber-400">
+                                                    <span x-text="currentTime || '۱۲:۳۰'"></span>
+                                                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+                                                </div>
                                             </div>
                                         </div>
 
-                                        {{-- حالت ارسال عادی با متغیر --}}
-                                        <div x-show="pattern.trim() === ''" class="self-end max-w-[92%]">
-                                            <div class="bg-indigo-600 text-white p-3 rounded-2xl rounded-tr-xs text-xs leading-relaxed shadow-sm transition-all break-words whitespace-pre-wrap">
-                                                <span x-text="renderedPreview || 'متن پیامک شما پس از تایپ به صورت زنده با داده‌های گیرنده در اینجا شبیه‌سازی خواهد شد...'"
-                                                      :class="!renderedPreview ? 'opacity-70 italic text-[11px]' : ''"></span>
-                                                <div class="flex items-center justify-end gap-1 mt-1 text-[9px] text-indigo-200">
-                                                    <span>همین الان</span>
-                                                    <svg class="w-3 h-3 text-indigo-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+                                        {{-- حالت ارسال عادی با متغیر (کاملاً راست‌چین و حباب ارسالی فارسی) --}}
+                                        <div x-show="pattern.trim() === ''" class="w-full flex justify-end">
+                                            <div class="max-w-[92%] bg-indigo-600 text-white p-3.5 rounded-2xl rounded-tr-xs text-xs leading-relaxed shadow-sm transition-all break-words whitespace-pre-wrap text-right dir-rtl">
+                                                <div class="text-[12px] leading-relaxed"
+                                                      x-text="renderedPreview || 'متن پیامک شما پس از تایپ به صورت زنده با مشخصات واقعی گیرنده در این کادر شبیه‌سازی خواهد شد...'"
+                                                      :class="!renderedPreview ? 'opacity-70 italic text-[11px]' : ''"></div>
+                                                <div class="flex items-center justify-end gap-1.5 mt-1.5 text-[10px] text-indigo-200">
+                                                    <span x-text="currentTime || '۱۲:۳۰'"></span>
+                                                    <svg class="w-3.5 h-3.5 text-indigo-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
                                                 </div>
                                             </div>
                                         </div>
@@ -696,10 +935,10 @@
 
                                     {{-- نوار فوتر شبیه‌ساز --}}
                                     <div class="p-2.5 bg-gray-50 dark:bg-gray-800/90 border-t border-gray-100 dark:border-gray-700 flex items-center justify-between text-[11px] text-gray-500 dark:text-gray-400">
-                                        <span>خروجی نهایی برای گیرنده فوق</span>
+                                        <span>شبیه‌سازی پیامک نهایی</span>
                                         <span class="font-medium text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
                                             <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                                            آماده پردازش
+                                            راست‌چین و آماده ارسال
                                         </span>
                                     </div>
                                 </div>
@@ -722,7 +961,7 @@
                                 <div class="space-y-2">
                                     <template x-for="item in availableVariables" :key="item.tag">
                                         <div class="flex items-center justify-between gap-2 p-2.5 bg-white dark:bg-gray-800 rounded-xl border border-indigo-100/80 dark:border-indigo-900/40 text-xs">
-                                            <div class="min-w-0">
+                                            <div class="min-w-0 text-right">
                                                 <div class="flex items-center gap-1.5 font-bold text-gray-800 dark:text-gray-200">
                                                     <span x-text="item.label"></span>
                                                     <span class="text-[10px] px-1.5 py-0.5 rounded bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 dir-ltr inline-block" x-text="item.tag"></span>
@@ -760,5 +999,114 @@
                 </button>
             </div>
         </form>
+
+        {{-- مودال ۱: ذخیره پیامک فعلی به عنوان الگوی جدید --}}
+        <div x-show="saveTemplateModalOpen"
+             class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs"
+             style="display: none;"
+             x-transition>
+            <div class="bg-white dark:bg-gray-800 rounded-2xl max-w-md w-full p-6 space-y-4 border border-gray-200 dark:border-gray-700 shadow-xl"
+                 @click.outside="saveTemplateModalOpen = false">
+                <div class="flex items-center justify-between border-b border-gray-100 dark:border-gray-700 pb-3">
+                    <h3 class="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                        <svg class="w-5 h-5 text-indigo-600 dark:text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" /></svg>
+                        ذخیره به عنوان پیش‌نویس / الگو
+                    </h3>
+                    <button type="button" @click="saveTemplateModalOpen = false" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                    </button>
+                </div>
+
+                <div>
+                    <label class="{{ $labelClass }}">عنوان الگو <span class="text-red-500">*</span></label>
+                    <input type="text"
+                           x-model="templateTitle"
+                           placeholder="مثلاً: پیام تبریک تولد، یادآوری تمدید..."
+                           class="{{ $inputClass }}">
+                </div>
+
+                <div class="bg-gray-50 dark:bg-gray-900/50 p-3 rounded-xl border border-gray-100 dark:border-gray-700 text-xs space-y-1.5">
+                    <div class="text-gray-500 dark:text-gray-400 font-medium">پیش‌نمایش محتوای ذخیره‌شونده:</div>
+                    <div class="text-gray-800 dark:text-gray-200 line-clamp-3 text-[11px] leading-relaxed" x-text="body || 'متن خالی'"></div>
+                    <template x-if="pattern.trim()">
+                        <div class="text-[10px] text-amber-600 dark:text-amber-400">کد پترن: <span x-text="'#' + pattern"></span></div>
+                    </template>
+                </div>
+
+                <div class="flex items-center justify-end gap-2 pt-2">
+                    <button type="button"
+                            @click="saveTemplateModalOpen = false"
+                            class="px-4 py-2 rounded-xl border border-gray-300 dark:border-gray-600 text-xs font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">
+                        انصراف
+                    </button>
+                    <button type="button"
+                            @click="saveNewTemplate()"
+                            :disabled="isSavingTemplate"
+                            class="px-5 py-2 rounded-xl bg-indigo-600 text-white text-xs font-bold hover:bg-indigo-700 shadow-md shadow-indigo-500/20 disabled:opacity-50 flex items-center gap-1.5">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+                        <span x-text="isSavingTemplate ? 'در حال ذخیره...' : 'ذخیره الگو'"></span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        {{-- مودال ۲: مدیریت الگوها (مشاهده و حذف) --}}
+        <div x-show="manageTemplatesModalOpen"
+             class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs"
+             style="display: none;"
+             x-transition>
+            <div class="bg-white dark:bg-gray-800 rounded-2xl max-w-lg w-full p-6 space-y-4 border border-gray-200 dark:border-gray-700 shadow-xl max-h-[85vh] flex flex-col"
+                 @click.outside="manageTemplatesModalOpen = false">
+                <div class="flex items-center justify-between border-b border-gray-100 dark:border-gray-700 pb-3">
+                    <h3 class="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                        <svg class="w-5 h-5 text-indigo-600 dark:text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" /></svg>
+                        مدیریت الگوها و پیش‌نویس‌ها
+                    </h3>
+                    <button type="button" @click="manageTemplatesModalOpen = false" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                    </button>
+                </div>
+
+                <div class="flex-1 overflow-y-auto space-y-2.5 pr-1">
+                    <template x-if="templates.length === 0">
+                        <div class="text-center py-8 text-xs text-gray-400">هنوز الگویی ذخیره نشده است.</div>
+                    </template>
+
+                    <template x-for="tmpl in templates" :key="tmpl.id">
+                        <div class="p-3 bg-gray-50 dark:bg-gray-900/60 rounded-xl border border-gray-200/80 dark:border-gray-700 flex flex-col gap-2">
+                            <div class="flex items-center justify-between">
+                                <div class="font-bold text-xs text-gray-900 dark:text-white" x-text="tmpl.title"></div>
+                                <div class="flex items-center gap-1.5">
+                                    <button type="button"
+                                            @click="applyTemplate(tmpl); manageTemplatesModalOpen = false;"
+                                            class="px-2 py-1 rounded bg-indigo-50 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-300 text-[11px] font-medium hover:bg-indigo-600 hover:text-white dark:hover:bg-indigo-600 dark:hover:text-white transition-colors">
+                                        استفاده
+                                    </button>
+                                    <button type="button"
+                                            @click="deleteTemplate(tmpl.id)"
+                                            class="p-1 rounded text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
+                                            title="حذف الگو">
+                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="text-[11px] text-gray-600 dark:text-gray-300 line-clamp-2 leading-relaxed whitespace-pre-wrap" x-text="tmpl.body"></div>
+                            <template x-if="tmpl.provider_pattern">
+                                <div class="text-[10px] text-amber-600 dark:text-amber-400 font-medium">پترن: <span x-text="'#' + tmpl.provider_pattern"></span></div>
+                            </template>
+                        </div>
+                    </template>
+                </div>
+
+                <div class="flex justify-end pt-2 border-t border-gray-100 dark:border-gray-700">
+                    <button type="button"
+                            @click="manageTemplatesModalOpen = false"
+                            class="px-4 py-2 rounded-xl bg-gray-100 dark:bg-gray-700 text-xs font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600">
+                        بستن
+                    </button>
+                </div>
+            </div>
+        </div>
+
     </div>
 @endsection

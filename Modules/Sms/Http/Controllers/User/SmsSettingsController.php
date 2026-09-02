@@ -24,15 +24,7 @@ class SmsSettingsController extends Controller
                 ->first();
         }
 
-        $balance = null;
-
-        if ($setting && $setting->driver) {
-            try {
-                $balance = $sms->driver($setting->driver)->fetchBalance();
-            } catch (\Throwable $e) {
-                $balance = null;
-            }
-        }
+        $balance = $sms->getAccountInfo(fresh: true);
 
         // آیا ماژول کلاینت نصب است؟
         $clientsModuleInstalled = class_exists(\Modules\Clients\Entities\Client::class);
@@ -41,10 +33,11 @@ class SmsSettingsController extends Controller
         $clientOtpPattern = data_get($setting, 'config.client_otp_pattern');
 
         return view('sms::user.settings.index', [
-            'setting'             => $setting,
-            'balance'             => $balance,
+            'setting'                => $setting,
+            'balance'                => $balance,
+            'accountInfo'            => $balance,
             'clientsModuleInstalled' => $clientsModuleInstalled,
-            'clientOtpPattern'    => $clientOtpPattern,
+            'clientOtpPattern'       => $clientOtpPattern,
         ]);
     }
 

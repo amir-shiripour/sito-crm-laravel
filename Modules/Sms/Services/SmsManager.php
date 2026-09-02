@@ -4,6 +4,7 @@ namespace Modules\Sms\Services;
 
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Modules\Sms\Entities\SmsGatewaySetting;
 use Modules\Sms\Entities\SmsMessage;
@@ -245,5 +246,83 @@ class SmsManager implements SmsSender
 
         $driver->sendOtp($sms);
         return $sms;
+    }
+
+    /**
+     * دریافت اطلاعات حساب و موجودی (با کش هوشمند جهت سرعت لود صفحات)
+     */
+    public function getAccountInfo(bool $fresh = false): ?array
+    {
+        $cacheKey = 'sms_account_info_global';
+
+        if (! $fresh && Cache::has($cacheKey)) {
+            return Cache::get($cacheKey);
+        }
+
+        try {
+            $driverName = $this->getActiveDriverName();
+            $driver     = $this->driver($driverName);
+
+            if (! method_exists($driver, 'fetchBalance')) {
+                return null;
+            }
+
+            $info = $driver->fetchBalance();
+
+            if (! empty($info)) {
+                // کش کردن برای ۵ دقیقه (۳۰۰ ثانیه)
+                Cache::put($cacheKey, $info, 300);
+
+                // ذخیره آخرین موجودی و شناسه پنل در جدول تنظیمات
+                $setting = SmsGatewaySetting::query()->whereNull('user_id')->first();
+                if ($setting) {
+                    $update = [];
+                    if (isset($info['balance']) && is_numeric($info['balance'])) {
+                        $update['balance'] = (int) $info['balance'];
+                        $update['balance_checked_at'] = now();
+                    }
+                    if (! empty($info['user_id'])) {
+                        $cfg = $setting->config ?? [];
+                        $cfg['limo_user_id'] = $info['user_id'];
+                        $update['config'] = $cfg;
+                    }
+                    if (! empty($update)) {
+                        $setting->update($update);
+                    }
+                }
+
+                return $info;
+            }
+        } catch (\Throwable $e) {
+            Log::warning('[SmsManager] getAccountInfo failed: ' . $e->getMessage());
+        }
+
+        // فالبک از پایگاه‌داده در صورت عدم دسترسی به وب‌سرویس یا کش
+        try {
+            $setting = SmsGatewaySetting::query()->whereNull('user_id')->first();
+            if ($setting) {
+                $savedUserId = data_get($setting, 'config.limo_user_id');
+                $savedBalance = $setting->balance;
+
+                if ($savedUserId || $savedBalance !== null) {
+                    $fallbackInfo = [
+                        'driver'     => $setting->driver ?? 'limosms',
+                        'balance'    => $savedBalance,
+                        'user_id'    => $savedUserId,
+                        'currency'   => 'ریال',
+                        'charge_url' => $savedUserId ? "https://sms.vardi.ir/Payment/PayWithBank?UserId={$savedUserId}" : null,
+                        'login_url'  => $savedUserId ? "https://sms.vardi.ir/DirectLogin/{$savedUserId}" : null,
+                        'meta'       => [],
+                    ];
+
+                    Cache::put($cacheKey, $fallbackInfo, 120);
+                    return $fallbackInfo;
+                }
+            }
+        } catch (\Throwable $e) {
+            // ignore
+        }
+
+        return null;
     }
 }

@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use Modules\Sms\Http\Controllers\User\SmsSettingsController;
 use Modules\Sms\Http\Controllers\User\SmsLogController;
 use Modules\Sms\Http\Controllers\User\SmsSendController;
+use Modules\Sms\Http\Controllers\User\SmsTemplateController;
 
 Route::middleware(['can:sms.settings.view'])
     ->prefix('sms')
@@ -35,4 +36,26 @@ Route::middleware(['can:sms.settings.view'])
         Route::post('/send', [SmsSendController::class, 'store'])
             ->name('send.store')
             ->middleware('can:sms.messages.send');
+
+        // الگوها و پیش‌نویس‌های پیامک
+        Route::get('/templates', [SmsTemplateController::class, 'index'])
+            ->name('templates.index')
+            ->middleware('can:sms.messages.send');
+
+        Route::post('/templates', [SmsTemplateController::class, 'store'])
+            ->name('templates.store')
+            ->middleware('can:sms.messages.send');
+
+        Route::put('/templates/{template}', [SmsTemplateController::class, 'update'])
+            ->name('templates.update')
+            ->middleware('can:sms.messages.send');
+
+        Route::delete('/templates/{template}', [SmsTemplateController::class, 'destroy'])
+            ->name('templates.destroy')
+            ->middleware('can:sms.messages.send');
+
+        // استعلام تازه موجودی
+        Route::post('/balance/refresh', [SmsTemplateController::class, 'refreshBalance'])
+            ->name('balance.refresh')
+            ->middleware('can:sms.messages.view');
     });

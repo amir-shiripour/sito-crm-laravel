@@ -14,7 +14,7 @@ use Spatie\Permission\Models\Role;
 
 class SmsSendController extends Controller
 {
-    public function create(Request $request)
+    public function create(Request $request, SmsManager $sms)
     {
         $user = $request->user();
 
@@ -75,6 +75,15 @@ class SmsSendController extends Controller
             'case_number'   => $sampleClient?->case_number ?? 'CR-10492',
         ];
 
+        // الگوها و پیش‌نویس‌های پیامک
+        $templates = \Modules\Sms\Entities\SmsTemplate::query()
+            ->active()
+            ->latest('id')
+            ->get(['id', 'key', 'title', 'body', 'provider_pattern', 'type']);
+
+        // اطلاعات حساب و موجودی
+        $accountInfo = $sms->getAccountInfo();
+
         return view('sms::user.logs.send', [
             'users'            => $users,
             'roles'            => $roles,
@@ -84,6 +93,8 @@ class SmsSendController extends Controller
             'canTargetClients' => $canTargetClients,
             'sampleUserData'   => $sampleUserData,
             'sampleClientData' => $sampleClientData,
+            'templates'        => $templates,
+            'accountInfo'      => $accountInfo,
         ]);
     }
 
