@@ -834,6 +834,13 @@
                         class="w-3 h-3 rounded-full"
                     ></span>
                     <span class="text-xs font-bold text-gray-500 dark:text-gray-400" x-text="activeEvent?.source_label"></span>
+                    <template x-if="activeEvent?.source === 'custom_events'">
+                        <span 
+                            class="text-[10px] font-bold px-2 py-0.5 rounded-md"
+                            :class="activeEvent?.is_public ? 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800' : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-600'"
+                            x-text="activeEvent?.is_public ? 'عمومی' : 'شخصی'"
+                        ></span>
+                    </template>
                     <template x-if="activeEvent?.service_name">
                         <span class="text-[11px] font-bold px-2 py-0.5 rounded-md bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300" x-text="activeEvent?.service_name"></span>
                     </template>
@@ -869,6 +876,16 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                         </svg>
                         <span x-text="'مکان: ' + activeEvent.location"></span>
+                    </div>
+                </template>
+
+                <template x-if="activeEvent?.creator_name">
+                    <div class="mt-2 text-xs font-medium text-gray-500 dark:text-gray-400 flex items-center gap-1.5 bg-gray-50 dark:bg-gray-900/50 p-2 rounded-xl border border-gray-100 dark:border-gray-700">
+                        <svg class="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                        </svg>
+                        <span>ثبت‌شده توسط:</span>
+                        <span class="font-bold text-gray-700 dark:text-gray-200" x-text="activeEvent.creator_name"></span>
                     </div>
                 </template>
             </div>
@@ -977,10 +994,15 @@
                             >
                         </div>
 
-                        <div class="flex items-center justify-between pt-6">
+                        <div class="flex items-center justify-between pt-6 flex-wrap gap-3">
                             <label class="inline-flex items-center gap-2 cursor-pointer select-none">
                                 <input type="checkbox" x-model="eventForm.is_all_day" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 h-4 w-4">
                                 <span class="text-xs font-bold text-gray-700 dark:text-gray-300">تمام‌روز (All day)</span>
+                            </label>
+
+                            <label class="inline-flex items-center gap-2 cursor-pointer select-none">
+                                <input type="checkbox" x-model="eventForm.is_public" class="rounded border-indigo-300 text-indigo-600 focus:ring-indigo-500 h-4 w-4">
+                                <span class="text-xs font-bold text-indigo-700 dark:text-indigo-400">رویداد عمومی (نمایش برای همه کاربران)</span>
                             </label>
                         </div>
                     </div>
@@ -1167,6 +1189,7 @@ function fullCalendarManager() {
             start_time: '09:00',
             end_time: '10:00',
             is_all_day: false,
+            is_public: true,
             color: '#4f46e5',
             location: '',
             description: ''
@@ -1386,6 +1409,7 @@ function fullCalendarManager() {
                 start_time: defaults.start_time || `${startH.toString().padStart(2, '0')}:00`,
                 end_time: defaults.end_time || `${endH.toString().padStart(2, '0')}:00`,
                 is_all_day: !!defaults.is_all_day,
+                is_public: defaults.is_public !== undefined ? !!defaults.is_public : true,
                 color: defaults.color || '#4f46e5',
                 location: defaults.location || '',
                 description: defaults.description || ''
@@ -1410,6 +1434,7 @@ function fullCalendarManager() {
                 start_time: ev.start_time || '09:00',
                 end_time: ev.end_time || '10:00',
                 is_all_day: !!ev.is_all_day,
+                is_public: ev.is_public !== undefined ? !!ev.is_public : true,
                 color: ev.color || '#4f46e5',
                 location: ev.location || '',
                 description: ev.description || ''

@@ -1230,6 +1230,7 @@
                                                                item.custom_field_values[field.id] = parsePriceInput($event.target.value);
                                                            }
                                                        "
+                                                       :disabled="!isFieldSelected(field, item.custom_field_values[field.id])"
                                                        :name="'items[' + index + '][custom_fields_quantities][' + field.id + ']'"
                                                        class="{{ $inputClass }} py-1.5 text-xs text-center tabular-nums font-bold border-indigo-200 dark:border-indigo-800/60 shadow-none"
                                                        dir="ltr" placeholder="۱">
@@ -1240,6 +1241,7 @@
                                                         <input type="text"
                                                                :value="formatPriceInput(getCustomFieldPrice(item, field))"
                                                                @input="setCustomFieldPrice(item, field, null, $event.target.value)"
+                                                               :disabled="!isFieldSelected(field, item.custom_field_values[field.id])"
                                                                :name="'items[' + index + '][custom_fields_prices][' + field.id + ']'"
                                                                :readonly="!isCustomPriceUnlocked(item, field)"
                                                                :class="!isCustomPriceUnlocked(item, field) ? 'bg-gray-100 dark:bg-gray-900/50 cursor-not-allowed text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-800' : 'bg-white dark:bg-gray-900 border-indigo-300'"
@@ -1266,6 +1268,7 @@
                                                     <input type="text"
                                                            :value="formatPriceInput(getCustomFieldDiscount(item, field))"
                                                            @input="setCustomFieldDiscount(item, field, null, $event.target.value)"
+                                                           :disabled="!isFieldSelected(field, item.custom_field_values[field.id])"
                                                            :name="'items[' + index + '][custom_fields_discounts][' + field.id + ']'"
                                                            class="{{ $inputClass }} py-2 text-sm text-center tabular-nums font-black w-full pe-14 shadow-none border-gray-200 dark:border-gray-800"
                                                            dir="ltr" placeholder="۰">
@@ -1280,6 +1283,7 @@
                                                             <input type="text"
                                                                    :value="toPersianNum(getCustomFieldTax(item, field))"
                                                                    @input="setCustomFieldTax(item, field, null, $event.target.value)"
+                                                                   :disabled="!isFieldSelected(field, item.custom_field_values[field.id])"
                                                                    :name="'items[' + index + '][custom_fields_taxes][' + field.id + ']'"
                                                                    class="w-14 rounded-lg border-2 bg-amber-50 dark:bg-amber-900/20 px-2 py-1.5 text-xs text-center tabular-nums font-bold focus:ring-2 focus:ring-amber-500/20 outline-none transition-colors"
                                                                    :class="isCustomTaxUnlocked(item, field) ? 'border-amber-400 text-amber-800 dark:text-amber-200 bg-white dark:bg-gray-900' : 'border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400 cursor-not-allowed opacity-80'"

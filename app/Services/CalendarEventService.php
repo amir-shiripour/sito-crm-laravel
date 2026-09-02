@@ -697,8 +697,10 @@ class CalendarEventService
 
         try {
             $events = \App\Models\CalendarEvent::query()
+                ->with('creator')
                 ->where(function ($q) use ($user) {
-                    $q->where('user_id', $user->id)
+                    $q->where('is_public', true)
+                      ->orWhere('user_id', $user->id)
                       ->orWhere('created_by', $user->id);
                 })
                 ->where('status', 'active')
@@ -716,6 +718,7 @@ class CalendarEventService
                 $endDt      = $ev->end_time;
                 $jalaliDate = $startDt ? Jalalian::fromCarbon($startDt) : null;
                 $isAllDay   = (bool)$ev->is_all_day;
+                $isPublic   = $ev->is_public !== null ? (bool)$ev->is_public : true;
 
                 $startMinute = ($startDt && !$isAllDay) ? ($startDt->hour * 60 + $startDt->minute) : 0;
                 $endMinute   = ($endDt && !$isAllDay) ? ($endDt->hour * 60 + $endDt->minute) : ($startMinute + 60);
@@ -746,6 +749,8 @@ class CalendarEventService
                     'end_minute'       => $endMinute,
                     'duration_minutes' => $duration,
                     'is_all_day'       => $isAllDay,
+                    'is_public'        => $isPublic,
+                    'creator_name'     => $ev->creator?->name ?? '',
                     'date_fa'          => $jalaliDate ? $jalaliDate->format('Y/m/d') : '',
                     'date_en'          => $startDt ? $startDt->format('Y-m-d') : '',
                     'day'              => $jalaliDate ? $jalaliDate->getDay() : null,

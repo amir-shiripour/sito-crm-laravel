@@ -146,13 +146,10 @@ class ServicePackageController extends Controller
                                 } else {
                                     $isSelected = true;
                                 }
-                            } elseif ($cf->type === 'number' && isset($customFieldsQuantities[$cf->id])) {
-                                $qVal = floatval($this->parsePrice($customFieldsQuantities[$cf->id]));
-                                if ($qVal > 0) {
-                                    $isSelected = true;
-                                    $customFields[$cf->id] = $qVal;
-                                    $customFieldsQuantities[$cf->id] = $qVal;
-                                }
+                            }
+                            if (!$isSelected) {
+                                unset($customFieldsQuantities[$cf->id], $customFieldsPrices[$cf->id], $customFields[$cf->id]);
+                                continue;
                             }
                             $customFieldsUseDefaultPrice = $item['custom_fields_use_default_price'] ?? [];
                             if ($cf->has_pricing && $isSelected) {
@@ -369,13 +366,10 @@ class ServicePackageController extends Controller
                                 } else {
                                     $isSelected = true;
                                 }
-                            } elseif ($cf->type === 'number' && isset($customFieldsQuantities[$cf->id])) {
-                                $qVal = floatval($this->parsePrice($customFieldsQuantities[$cf->id]));
-                                if ($qVal > 0) {
-                                    $isSelected = true;
-                                    $customFields[$cf->id] = $qVal;
-                                    $customFieldsQuantities[$cf->id] = $qVal;
-                                }
+                            }
+                            if (!$isSelected) {
+                                unset($customFieldsQuantities[$cf->id], $customFieldsPrices[$cf->id], $customFields[$cf->id]);
+                                continue;
                             }
                             $customFieldsUseDefaultPrice = $item['custom_fields_use_default_price'] ?? [];
                             if ($cf->has_pricing && $isSelected) {
