@@ -1383,7 +1383,14 @@ class AppointmentController extends Controller
             ->where('booking_services.status', BookingService::STATUS_ACTIVE);
 
         if ($categoryId !== null && $categoryId !== '') {
-            $servicesQ->where('booking_services.category_id', (int)$categoryId);
+            $servicesQ->where(function ($sq) use ($categoryId) {
+                $sq->where('booking_services.category_id', (int) $categoryId)
+                   ->orWhereExists(function ($sub) use ($categoryId) {
+                       $sub->from('booking_category_service')
+                           ->whereColumn('booking_category_service.service_id', 'booking_services.id')
+                           ->where('booking_category_service.category_id', (int) $categoryId);
+                   });
+            });
         }
 
         if ($q !== '') {
@@ -1391,16 +1398,24 @@ class AppointmentController extends Controller
         }
 
         $services = $servicesQ
-            ->orderBy('booking_services.name')
+            ->orderByRaw('CASE WHEN bc.id IS NULL THEN 1 ELSE 0 END')
+            ->orderBy('bc.sort_order', 'asc')
+            ->orderBy('bc.name', 'asc')
+            ->orderBy('booking_services.sort_order', 'asc')
+            ->orderBy('booking_services.name', 'asc')
             ->limit(100)
             ->get([
                 'booking_services.id',
                 'booking_services.name',
+                'booking_services.color',
+                'booking_services.base_price',
                 'booking_services.category_id',
+                'booking_services.sort_order',
                 'booking_services.appointment_form_id',
                 'booking_services.custom_schedule_enabled',
                 'booking_services.payment_mode',
                 'bc.name as category_name',
+                'bc.sort_order as category_sort_order',
             ]);
 
         return response()->json(['data' => $services]);
@@ -1420,10 +1435,15 @@ class AppointmentController extends Controller
             ->pluck('service_id')
             ->all();
 
+        $directCatIds = BookingService::query()->whereIn('id', $serviceIds)->pluck('category_id')->filter()->all();
+        $pivotCatIds = \Illuminate\Support\Facades\DB::table('booking_category_service')->whereIn('service_id', $serviceIds)->pluck('category_id')->filter()->all();
+        $allCatIds = array_values(array_unique(array_merge($directCatIds, $pivotCatIds)));
+
         $rows = \Modules\Booking\Entities\BookingCategory::query()
-            ->whereIn('id', BookingService::query()->whereIn('id', $serviceIds)->pluck('category_id')->filter()->all())
-            ->orderBy('name')
-            ->get(['id', 'name']);
+            ->whereIn('id', $allCatIds)
+            ->orderBy('sort_order', 'asc')
+            ->orderBy('name', 'asc')
+            ->get(['id', 'name', 'sort_order']);
 
         return response()->json(['data' => $rows]);
     }
@@ -1440,7 +1460,14 @@ class AppointmentController extends Controller
             ->where('booking_services.status', BookingService::STATUS_ACTIVE);
 
         if ($categoryId !== null && $categoryId !== '') {
-            $servicesQ->where('booking_services.category_id', (int) $categoryId);
+            $servicesQ->where(function ($sq) use ($categoryId) {
+                $sq->where('booking_services.category_id', (int) $categoryId)
+                   ->orWhereExists(function ($sub) use ($categoryId) {
+                       $sub->from('booking_category_service')
+                           ->whereColumn('booking_category_service.service_id', 'booking_services.id')
+                           ->where('booking_category_service.category_id', (int) $categoryId);
+                   });
+            });
         }
 
         if (! $this->isAdminUser($user)) {
@@ -1457,16 +1484,24 @@ class AppointmentController extends Controller
         }
 
         $services = $servicesQ
-            ->orderBy('booking_services.name')
+            ->orderByRaw('CASE WHEN bc.id IS NULL THEN 1 ELSE 0 END')
+            ->orderBy('bc.sort_order', 'asc')
+            ->orderBy('bc.name', 'asc')
+            ->orderBy('booking_services.sort_order', 'asc')
+            ->orderBy('booking_services.name', 'asc')
             ->limit(100)
             ->get([
                 'booking_services.id',
                 'booking_services.name',
+                'booking_services.color',
+                'booking_services.base_price',
                 'booking_services.category_id',
+                'booking_services.sort_order',
                 'booking_services.appointment_form_id',
                 'booking_services.custom_schedule_enabled',
                 'booking_services.payment_mode',
                 'bc.name as category_name',
+                'bc.sort_order as category_sort_order',
             ]);
 
         return response()->json(['data' => $services]);

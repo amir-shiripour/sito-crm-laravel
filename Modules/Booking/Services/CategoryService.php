@@ -19,6 +19,8 @@ class CategoryService
     {
         return $this->scopedQuery($user)
             ->with('creator')
+            ->withCount('services')
+            ->orderBy('sort_order', 'asc')
             ->orderByDesc('id')
             ->paginate($perPage);
     }
@@ -26,6 +28,7 @@ class CategoryService
     public function create(User $user, array $data): BookingCategory
     {
         $data['creator_id'] = $user->id;
+        $data['sort_order'] = isset($data['sort_order']) ? (int) $data['sort_order'] : 0;
 
         $category = BookingCategory::query()->create($data);
 

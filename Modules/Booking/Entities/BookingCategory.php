@@ -18,7 +18,12 @@ class BookingCategory extends Model
         'name',
         'slug',
         'status',
+        'sort_order',
         'creator_id',
+    ];
+
+    protected $casts = [
+        'sort_order' => 'integer',
     ];
 
     protected static function booted(): void
@@ -56,5 +61,10 @@ class BookingCategory extends Model
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'creator_id');
+    }
+
+    public function services(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
+    {
+        return $this->belongsToMany(BookingService::class, 'booking_category_service', 'category_id', 'service_id');
     }
 }

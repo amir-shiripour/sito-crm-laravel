@@ -12,6 +12,16 @@
         -ms-overflow-style: none;
         scrollbar-width: none;
     }
+    /* نمایش بالاتر جلالی دیت‌پیکر نسبت به مدال‌ها و جلوگیری از تغییر رنگ پس‌زمینه */
+    jdp-container {
+        z-index: 99999 !important;
+    }
+    jdp-overlay {
+        display: none !important;
+        background: transparent !important;
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+    }
 </style>
 
 <div 
@@ -816,8 +826,8 @@
     </div>
 
     {{-- مدال جزئیات رویداد --}}
-    <div x-show="activeEvent" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm" x-cloak>
-        <div @click.away="activeEvent = null" class="bg-white dark:bg-gray-800 rounded-2xl max-w-lg w-full p-6 border border-gray-200 dark:border-gray-700 shadow-2xl space-y-4">
+    <div x-show="activeEvent" @click.self="activeEvent = null" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm" x-cloak>
+        <div class="bg-white dark:bg-gray-800 rounded-2xl max-w-lg w-full p-6 border border-gray-200 dark:border-gray-700 shadow-2xl space-y-4">
             <div class="flex items-center justify-between pb-3 border-b border-gray-200 dark:border-gray-700">
                 <div class="flex items-center gap-2">
                     <span 
@@ -935,8 +945,8 @@
     </div>
 
     {{-- مدال ایجاد / ویرایش سریع رویداد به سبک Google Calendar --}}
-    <div x-show="isEventModalOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm" x-cloak>
-        <div @click.away="closeEventModal()" class="bg-white dark:bg-gray-800 rounded-3xl max-w-lg w-full p-6 border border-gray-200 dark:border-gray-700 shadow-2xl space-y-5 transition-all animate-in fade-in zoom-in-95">
+    <div x-show="isEventModalOpen" @click.self="closeEventModal()" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm" x-cloak>
+        <div class="bg-white dark:bg-gray-800 rounded-3xl max-w-lg w-full p-6 border border-gray-200 dark:border-gray-700 shadow-2xl space-y-5 transition-all animate-in fade-in zoom-in-95">
             
             {{-- هدر مدال --}}
             <div class="flex items-center justify-between pb-3 border-b border-gray-100 dark:border-gray-700">
@@ -985,13 +995,24 @@
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
                             <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">تاریخ (شمسی)</label>
-                            <input 
-                                type="text" 
-                                x-model="eventForm.date_fa" 
-                                placeholder="مثلاً: 1405/06/10" 
-                                class="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs font-bold text-gray-900 dark:text-white dir-ltr text-center focus:ring-2 focus:ring-indigo-500/20"
-                                required
-                            >
+                            <div class="relative">
+                                <input 
+                                    type="text" 
+                                    data-jdp 
+                                    data-jdp-only-date
+                                    x-model="eventForm.date_fa" 
+                                    @change="eventForm.date_fa = $el.value"
+                                    @input="eventForm.date_fa = $el.value"
+                                    placeholder="مثلاً: 1405/06/10" 
+                                    class="w-full px-3 py-2.5 pr-9 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs font-bold text-gray-900 dark:text-white dir-ltr text-center focus:ring-2 focus:ring-indigo-500/20 cursor-pointer shadow-xs"
+                                    required
+                                >
+                                <span class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
+                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                    </svg>
+                                </span>
+                            </div>
                         </div>
 
                         <div class="flex items-center justify-between pt-6 flex-wrap gap-3">
@@ -1007,42 +1028,69 @@
                         </div>
                     </div>
 
-                    {{-- زمان شروع و پایان (در صورت تمام‌روز نبودن) --}}
+                    {{-- زمان شروع و پایان (در صورت تمام‌روز نبودن) با جلالی تایم‌پیکر --}}
                     <div x-show="!eventForm.is_all_day" class="grid grid-cols-2 gap-3 pt-1">
                         <div>
                             <label class="block text-xs font-bold text-gray-600 dark:text-gray-400 mb-1">ساعت شروع</label>
-                            <input 
-                                type="time" 
-                                x-model="eventForm.start_time" 
-                                class="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs font-bold text-gray-900 dark:text-white dir-ltr text-center"
-                            >
+                            <div class="relative">
+                                <input 
+                                    type="text" 
+                                    data-jdp 
+                                    data-jdp-only-time
+                                    x-model="eventForm.start_time" 
+                                    @change="eventForm.start_time = $el.value"
+                                    @input="eventForm.start_time = $el.value"
+                                    placeholder="09:00"
+                                    class="w-full px-3 py-2 pr-8 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs font-bold text-gray-900 dark:text-white dir-ltr text-center cursor-pointer shadow-xs focus:ring-2 focus:ring-indigo-500/20"
+                                >
+                                <span class="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
+                                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                </span>
+                            </div>
                         </div>
                         <div>
                             <label class="block text-xs font-bold text-gray-600 dark:text-gray-400 mb-1">ساعت پایان</label>
-                            <input 
-                                type="time" 
-                                x-model="eventForm.end_time" 
-                                class="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs font-bold text-gray-900 dark:text-white dir-ltr text-center"
-                            >
+                            <div class="relative">
+                                <input 
+                                    type="text" 
+                                    data-jdp 
+                                    data-jdp-only-time
+                                    x-model="eventForm.end_time" 
+                                    @change="eventForm.end_time = $el.value"
+                                    @input="eventForm.end_time = $el.value"
+                                    placeholder="10:00"
+                                    class="w-full px-3 py-2 pr-8 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs font-bold text-gray-900 dark:text-white dir-ltr text-center cursor-pointer shadow-xs focus:ring-2 focus:ring-indigo-500/20"
+                                >
+                                <span class="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
+                                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                </span>
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                {{-- ۳. انتخاب رنگ رویداد (پالت رنگی Google Calendar) --}}
+                {{-- ۳. انتخاب رنگ رویداد (پالت رنگ‌های متنوع، گرم، سرد و خنثی) --}}
                 <div>
-                    <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2">رنگ رویداد</label>
-                    <div class="flex items-center gap-2.5 flex-wrap">
+                    <div class="flex items-center justify-between mb-2">
+                        <label class="block text-xs font-bold text-gray-700 dark:text-gray-300">رنگ رویداد</label>
+                        <span class="text-[11px] font-bold text-gray-500 dark:text-gray-400" x-text="(colorPalette.find(c => c.hex === eventForm.color) || {}).label || ''"></span>
+                    </div>
+                    <div class="flex items-center gap-2 flex-wrap bg-gray-50/50 dark:bg-gray-900/30 p-2.5 rounded-2xl border border-gray-100 dark:border-gray-800">
                         <template x-for="c in colorPalette" :key="c.hex">
                             <button 
                                 type="button" 
                                 @click="eventForm.color = c.hex" 
                                 :style="{ backgroundColor: c.hex }"
                                 :class="eventForm.color === c.hex ? 'ring-2 ring-offset-2 ring-indigo-500 scale-110 shadow-md' : 'hover:scale-105 opacity-85 hover:opacity-100'"
-                                class="w-6 h-6 sm:w-7 sm:h-7 rounded-full transition-all flex items-center justify-center text-white"
+                                class="w-6 h-6 sm:w-7 sm:h-7 rounded-full transition-all flex items-center justify-center text-white relative cursor-pointer"
                                 :title="c.label"
                             >
-                                <svg x-show="eventForm.color === c.hex" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" />
+                                <svg x-show="eventForm.color === c.hex" class="w-3.5 h-3.5 stroke-[3]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
                                 </svg>
                             </button>
                         </template>
@@ -1172,15 +1220,24 @@ function fullCalendarManager() {
         editEventId: null,
         eventFormError: null,
         colorPalette: [
-            { hex: '#4f46e5', label: 'نیلی' },
-            { hex: '#0284c7', label: 'آبی' },
+            { hex: '#4f46e5', label: 'نیلی کلاسیک' },
+            { hex: '#0284c7', label: 'آبی آسمانی' },
+            { hex: '#2563eb', label: 'لاجوردی' },
+            { hex: '#0d9488', label: 'فیروزه‌ای' },
             { hex: '#10b981', label: 'زمردی' },
+            { hex: '#16a34a', label: 'سبز روشن' },
+            { hex: '#65a30d', label: 'زیتونی خنثی' },
+            { hex: '#d97706', label: 'کهربایی' },
             { hex: '#ea580c', label: 'نارنجی' },
             { hex: '#e11d48', label: 'یاقوتی' },
+            { hex: '#db2777', label: 'تمشکی' },
             { hex: '#9333ea', label: 'بنفش' },
-            { hex: '#0d9488', label: 'فیروزه‌ای' },
-            { hex: '#d97706', label: 'کهربایی' },
-            { hex: '#475569', label: 'دودی' }
+            { hex: '#7c3aed', label: 'یاسی' },
+            { hex: '#a16207', label: 'شنی خنثی' },
+            { hex: '#78350f', label: 'قهوه‌ای موکا' },
+            { hex: '#71717a', label: 'خاکستری سنگی' },
+            { hex: '#52525b', label: 'سربی خنثی' },
+            { hex: '#334155', label: 'دودی گرافیتی' }
         ],
         eventForm: {
             title: '',
@@ -1213,7 +1270,29 @@ function fullCalendarManager() {
             });
         },
 
+        initJalaliPickers() {
+            if (typeof window !== 'undefined' && window.jalaliDatepicker) {
+                try {
+                    window.jalaliDatepicker.startWatch({
+                        selector: '[data-jdp-only-date]',
+                        minDate: 'attr',
+                    });
+                    window.jalaliDatepicker.startWatch({
+                        selector: '[data-jdp-only-time]',
+                        hasSecond: false,
+                    });
+                    window.jalaliDatepicker.startWatch({
+                        selector: '[data-jdp]',
+                        minDate: 'attr',
+                    });
+                } catch (e) {
+                    console.warn('JalaliDatepicker init warning:', e);
+                }
+            }
+        },
+
         initCalendar() {
+            this.initJalaliPickers();
             this.$watch('selectedSources', (val) => {
                 try {
                     localStorage.setItem('calendar_selected_sources', JSON.stringify(val));
@@ -1417,12 +1496,14 @@ function fullCalendarManager() {
 
             this.isEventModalOpen = true;
             this.$nextTick(() => {
+                this.initJalaliPickers();
                 this.$refs.eventTitleInput?.focus();
             });
         },
 
         openEditEventModal(ev) {
             if (!ev || !ev.can_edit) return;
+            this.activeEvent = null;
             this.isEditingEvent = true;
             this.editEventId = ev.raw_id;
             this.eventFormError = null;
@@ -1442,6 +1523,7 @@ function fullCalendarManager() {
 
             this.isEventModalOpen = true;
             this.$nextTick(() => {
+                this.initJalaliPickers();
                 this.$refs.eventTitleInput?.focus();
             });
         },
@@ -1483,10 +1565,8 @@ function fullCalendarManager() {
                 const data = await response.json();
 
                 if (response.ok && data.success) {
+                    this.activeEvent = null;
                     this.closeEventModal();
-                    if (this.activeEvent && this.isEditingEvent) {
-                        this.activeEvent = null;
-                    }
                     await this.fetchEvents();
                 } else {
                     this.eventFormError = data.message || (data.errors ? Object.values(data.errors).flat().join(' - ') : 'خطایی در ثبت اطلاعات رخ داد.');
