@@ -18,7 +18,7 @@
     if (method_exists($order, 'invoices')) {
         try {
             $relatedInvoices = $order->invoices()->with('status')->get();
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             $relatedInvoices = collect();
         }
     }
@@ -31,7 +31,7 @@
 
     $toJalali = function ($date) {
         if (!$date) return null;
-        $carbon = $date instanceof \Carbon\Carbon ? $date : \Carbon\Carbon::parse($date);
+        $carbon = $date instanceof Carbon ? $date : Carbon::parse($date);
         return Jalalian::fromCarbon($carbon);
     };
 
@@ -163,8 +163,6 @@
 
     $remainingAmount = $invoice ? $invoice->remainingAmount() : 0;
     $isCanceled = $invoice ? str_contains($invoice->status?->name ?? '', 'لغو') : false;
-
-    // فاکتورهای ادغام شده نباید در هیچ کدام جمع‌ها حساب شوند چون پرداختی‌هایشان به فاکتور جدید منتقل شده
     $nonMergedInvoices = $relatedInvoices->filter(fn($inv) => !$inv->isMerged());
     $totalInvoicesAmount = $nonMergedInvoices->sum('total');
     $totalInvoicesPaid = $nonMergedInvoices->sum('paid_amount');
@@ -180,7 +178,7 @@
                 case 'semi_annual': $renewalDate = $issueJalali->addMonths(6)->format('Y/m/d'); break;
                 case 'annual':      $renewalDate = $issueJalali->addYears(1)->format('Y/m/d'); break;
             }
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             $renewalDate = clone Carbon::parse($invoice->issue_date);
             switch ($order->billing_cycle) {
                 case 'monthly':     $renewalDate->addMonth(); break;
@@ -239,7 +237,7 @@
                 case 'semi_annual': $nextRenewalDateCalculated = $currentJalali->addMonths(6)->format('Y/m/d'); break;
                 case 'annual':      $nextRenewalDateCalculated = $currentJalali->addYears(1)->format('Y/m/d'); break;
             }
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             $nextRenewalDateCalculated = null;
         }
     }
@@ -626,9 +624,20 @@
                     </div>
                 </div>
 
-                {{-- DirectAdmin Hosting Service Provisioning Widget (Decoupled with Module Check) --}}
-                @if(\Nwidart\Modules\Facades\Module::has('DirectAdmin') && \Nwidart\Modules\Facades\Module::isEnabled('DirectAdmin'))
+                {{-- DirectAdmin Hosting Service Provisioning Widget (Decoupled with Module & Category Check) --}}
+                @php
+                    $isHostingService = ($order->service?->category?->slug === 'hosting') || ($order->hostingAccount()->exists());
+                @endphp
+                @if(\Nwidart\Modules\Facades\Module::has('DirectAdmin') && \Nwidart\Modules\Facades\Module::isEnabled('DirectAdmin') && $isHostingService)
                     @include('directadmin::partials.order-hosting-card', ['order' => $order])
+                @endif
+
+                {{-- DomainManager Service Details Widget (Decoupled with Module & Category Check) --}}
+                @php
+                    $isDomainService = ($order->service?->category?->slug === 'domain') || (class_exists(\Modules\DomainManager\Entities\DomainRecord::class) && \Modules\DomainManager\Entities\DomainRecord::where('service_order_id', $order->id)->exists());
+                @endphp
+                @if(\Nwidart\Modules\Facades\Module::has('DomainManager') && \Nwidart\Modules\Facades\Module::isEnabled('DomainManager') && $isDomainService)
+                    @include('domainmanager::partials.order-domain-card', ['order' => $order])
                 @endif
             </div>
             <div class="space-y-8">

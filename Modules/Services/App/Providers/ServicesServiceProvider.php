@@ -27,6 +27,7 @@ class ServicesServiceProvider extends ServiceProvider
 
         $this->registerViews();
         $this->registerTranslations();
+        $this->loadMigrationsFrom(module_path($this->moduleName, 'Database/Migrations'));
         $this->loadSettingsIntoConfig();
         $this->commands([
             SeedServiceWorkflows::class,
