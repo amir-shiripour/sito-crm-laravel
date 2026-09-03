@@ -176,7 +176,13 @@ class WalletController extends Controller
         $this->authorizePermission('wallet.deposit');
 
         if ($request->has('amount')) {
-            $cleaned = preg_replace('/[^\d.]/', '', (string) $request->input('amount'));
+            $rawAmount = (string) $request->input('amount');
+            $persian = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
+            $arabic = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
+            $num = range(0, 9);
+            $converted = str_replace($persian, $num, $rawAmount);
+            $converted = str_replace($arabic, $num, $converted);
+            $cleaned = preg_replace('/[^\d.]/', '', $converted);
             $request->merge(['amount' => $cleaned]);
         }
 
@@ -211,7 +217,13 @@ class WalletController extends Controller
         $this->authorizePermission('wallet.withdraw');
 
         if ($request->has('amount')) {
-            $cleaned = preg_replace('/[^\d.]/', '', (string) $request->input('amount'));
+            $rawAmount = (string) $request->input('amount');
+            $persian = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
+            $arabic = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
+            $num = range(0, 9);
+            $converted = str_replace($persian, $num, $rawAmount);
+            $converted = str_replace($arabic, $num, $converted);
+            $cleaned = preg_replace('/[^\d.]/', '', $converted);
             $request->merge(['amount' => $cleaned]);
         }
 

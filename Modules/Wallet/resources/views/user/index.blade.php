@@ -429,10 +429,12 @@
                                    x-model="amount"
                                    @input="amount = formatNumber($event.target.value)"
                                    placeholder="مثلاً: ۱,۰۰۰,۰۰۰"
-                                   required
                                    class="{{ $inputClass }} pl-14 font-bold text-base">
                             <span class="absolute left-3.5 top-2.5 text-xs font-bold text-gray-400 dark:text-gray-500" x-text="activeCurrencyLabel"></span>
                         </div>
+
+                        {{-- Hidden input for actual amount submission --}}
+                        <input type="hidden" name="amount" :value="unformatNumber(amount)">
 
                         {{-- Persian Verbal Amount Preview --}}
                         <div x-show="amount && unformatNumber(amount) > 0" class="mt-1.5 text-[11px] font-bold"
@@ -663,7 +665,9 @@
 
                 formatNumber(val) {
                     if (val === null || val === undefined || val === '') return '';
-                    const clean = String(val).replace(/,/g, '').trim();
+                    let clean = String(val).replace(/,/g, '').trim();
+                    clean = clean.replace(/[۰-۹]/g, d => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d))
+                                 .replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d));
                     if (clean === '') return '';
                     const num = Math.round(parseFloat(clean));
                     if (isNaN(num)) return '';
@@ -672,7 +676,9 @@
 
                 unformatNumber(val) {
                     if (val === null || val === undefined || val === '') return 0;
-                    const clean = String(val).replace(/,/g, '').trim();
+                    let clean = String(val).replace(/,/g, '').trim();
+                    clean = clean.replace(/[۰-۹]/g, d => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d))
+                                 .replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d));
                     if (clean === '') return 0;
                     const num = Math.round(parseFloat(clean));
                     return isNaN(num) ? 0 : num;

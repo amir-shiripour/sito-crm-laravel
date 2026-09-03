@@ -28,6 +28,7 @@ class CategoryController extends Controller
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'status' => ['nullable', Rule::in([BookingCategory::STATUS_ACTIVE, BookingCategory::STATUS_INACTIVE])],
+            'sort_order' => ['nullable', 'integer', 'min:0'],
         ]);
 
         $category = $this->categories->create($request->user(), $data);
@@ -40,6 +41,7 @@ class CategoryController extends Controller
         $data = $request->validate([
             'name' => ['sometimes', 'string', 'max:255'],
             'status' => ['sometimes', Rule::in([BookingCategory::STATUS_ACTIVE, BookingCategory::STATUS_INACTIVE])],
+            'sort_order' => ['sometimes', 'nullable', 'integer', 'min:0'],
         ]);
 
         $category = $this->categories->update($request->user(), $category, $data);

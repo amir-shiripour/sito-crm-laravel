@@ -34,6 +34,7 @@ class BookingService extends Model
         'slug',
         'status',
         'color',
+        'sort_order',
         'base_price',
         'discount_price',
         'discount_from',
@@ -57,6 +58,7 @@ class BookingService extends Model
     ];
 
     protected $casts = [
+        'sort_order' => 'integer',
         'base_price' => 'decimal:0',
         'discount_price' => 'decimal:0',
         'payment_amount_value' => 'decimal:0',
@@ -128,6 +130,8 @@ class BookingService extends Model
     public function categories(): BelongsToMany
     {
         return $this->belongsToMany(BookingCategory::class, 'booking_category_service', 'service_id', 'category_id')
+            ->orderBy('booking_categories.sort_order', 'asc')
+            ->orderBy('booking_categories.name', 'asc')
             ->withTimestamps();
     }
 

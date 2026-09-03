@@ -62,7 +62,9 @@
 
     formatNumber(val) {
         if (!val) return '';
-        const clean = String(val).replace(/,/g, '').trim();
+        let clean = String(val).replace(/,/g, '').trim();
+        clean = clean.replace(/[۰-۹]/g, d => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d))
+                     .replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d));
         if (clean === '') return '';
         const num = Math.round(parseFloat(clean));
         if (isNaN(num)) return '';
@@ -71,7 +73,9 @@
 
     unformatNumber(val) {
         if (!val) return 0;
-        const clean = String(val).replace(/,/g, '').trim();
+        let clean = String(val).replace(/,/g, '').trim();
+        clean = clean.replace(/[۰-۹]/g, d => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d))
+                     .replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d));
         if (clean === '') return 0;
         const num = Math.round(parseFloat(clean));
         return isNaN(num) ? 0 : num;

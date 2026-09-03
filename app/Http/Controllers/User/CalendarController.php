@@ -425,7 +425,7 @@ class CalendarController extends Controller
 
         if (!$dateCarbon && $request->filled('date_fa')) {
             try {
-                $raw = trim($request->input('date_fa'));
+                $raw = $this->normalizeDigits(trim($request->input('date_fa')));
                 $parts = explode('/', str_replace('-', '/', $raw));
                 if (count($parts) === 3) {
                     $jYear = (int)$parts[0];
@@ -444,8 +444,8 @@ class CalendarController extends Controller
             $startDateTime = $dateCarbon->copy()->startOfDay();
             $endDateTime   = $dateCarbon->copy()->endOfDay();
         } else {
-            $startTime = $request->input('start_time', '09:00');
-            $endTime   = $request->input('end_time', '10:00');
+            $startTime = $this->normalizeDigits($request->input('start_time', '09:00'));
+            $endTime   = $this->normalizeDigits($request->input('end_time', '10:00'));
 
             $startParts = explode(':', $startTime);
             $startH = (int)($startParts[0] ?? 9);
@@ -466,5 +466,18 @@ class CalendarController extends Controller
         }
 
         return [$startDateTime, $endDateTime, $isAllDay];
+    }
+
+    /**
+     * تبدیل ارقام فارسی و عربی به انگلیسی
+     */
+    private function normalizeDigits(string $string): string
+    {
+        $persian = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
+        $arabic  = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
+        $english = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
+
+        $string = str_replace($persian, $english, $string);
+        return str_replace($arabic, $english, $string);
     }
 }

@@ -14,23 +14,49 @@
                     || (($isProvider ?? false) && ($settings->allow_role_service_creation ?? false))
                 );
             
+            // Build category sort order map from $categories
+            $catSortMap = [];
+            foreach ($categories as $c) {
+                $catSortMap[$c->name] = (int) ($c->sort_order ?? 0);
+            }
+
             // Group services by category name for display (supports multiple categories per service)
             $groupedArray = [];
             foreach ($services->getCollection() as $service) {
                 if ($service->categories && $service->categories->count() > 0) {
                     foreach ($service->categories as $cat) {
                         $groupedArray[$cat->name][] = $service;
+                        if (!isset($catSortMap[$cat->name])) {
+                            $catSortMap[$cat->name] = (int) ($cat->sort_order ?? 0);
+                        }
                     }
                 } elseif ($service->category) {
                     // Fallback to single category if no pivot is found
                     $groupedArray[$service->category->name][] = $service;
+                    if (!isset($catSortMap[$service->category->name])) {
+                        $catSortMap[$service->category->name] = (int) ($service->category->sort_order ?? 0);
+                    }
                 } else {
                     $groupedArray['بدون دسته‌بندی'][] = $service;
                 }
             }
+
+            // Sort grouped categories according to category sort_order, with 'بدون دسته‌بندی' at the end
+            uksort($groupedArray, function ($a, $b) use ($catSortMap) {
+                if ($a === 'بدون دسته‌بندی') return 1;
+                if ($b === 'بدون دسته‌بندی') return -1;
+                $orderA = $catSortMap[$a] ?? 0;
+                $orderB = $catSortMap[$b] ?? 0;
+                if ($orderA !== $orderB) {
+                    return $orderA <=> $orderB;
+                }
+                return strcmp($a, $b);
+            });
             
             $groupedServices = collect($groupedArray)->map(function ($items) {
-                return collect($items);
+                return collect($items)->sortBy(function ($srv) {
+                    return (int) ($srv->sort_order ?? 0);
+                })->values();
             });
 
             $currencyMap = ['IRR' => 'ریال', 'IRT' => 'تومان', 'rial' => 'ریال', 'toman' => 'تومان'];
@@ -128,6 +154,7 @@
                                 <tr>
                                     <th class="px-5 py-4 font-semibold text-slate-600 dark:text-slate-300 w-16">#</th>
                                     <th class="px-5 py-4 font-semibold text-slate-600 dark:text-slate-300">نام {{ $serviceLabel }}</th>
+                                    <th class="px-5 py-4 font-semibold text-slate-600 dark:text-slate-300">ترتیب نمایش</th>
                                     <th class="px-5 py-4 font-semibold text-slate-600 dark:text-slate-300">وضعیت</th>
                                     <th class="px-5 py-4 font-semibold text-slate-600 dark:text-slate-300">قیمت پایه ({{ $currencyLabel }})</th>
                                     <th class="px-5 py-4 font-semibold text-slate-600 dark:text-slate-300">فرم اختصاصی</th>
@@ -144,7 +171,7 @@
                                         $showToggleForMe = (($isProvider ?? false) && $isPublic);
                                     @endphp
                                     <tr class="group/row hover:bg-slate-50/50 dark:hover:bg-slate-700/30 transition-colors duration-200">
-                                        <td class="px-5 py-4 text-slate-500 dark:text-slate-400 font-mono text-xs">
+                                        <td class="px-5 py-4 text-slate-500 dark:text-slate-400 text-xs">
                                              {{ $srv->id }}
                                         </td>
                                         <td class="px-5 py-4">
@@ -160,6 +187,11 @@
                                                     @endif
                                                 </div>
                                             </div>
+                                        </td>
+                                        <td class="px-5 py-4 text-slate-600 dark:text-slate-300 text-xs">
+                                            <span class="inline-flex items-center px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-700/60 font-semibold">
+                                                {{ $srv->sort_order ?? 0 }}
+                                            </span>
                                         </td>
                                         <td class="px-5 py-4">
                                             @if($srv->status === 'ACTIVE')

@@ -11,6 +11,10 @@
         \Modules\Booking\Entities\Appointment::STATUS_PENDING_PAYMENT => 'در انتظار پرداخت',
         \Modules\Booking\Entities\Appointment::STATUS_CONFIRMED => 'تایید شده',
     ];
+
+    $currencyMap = ['IRR' => 'ریال', 'IRT' => 'تومان', 'rial' => 'ریال', 'toman' => 'تومان'];
+    $currencyUnit = $settings->currency_unit ?? 'IRT';
+    $currencyLabel = $currencyMap[$currencyUnit] ?? ($currencyUnit === 'IRR' ? 'ریال' : 'تومان');
 @endphp
 
 @section('content')
@@ -626,48 +630,159 @@
                 </template>
 
                 <template x-if="flow==='SERVICE_FIRST'">
-                    <div class="space-y-2">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-200">دسته‌بندی</label>
-                            <select
-                                class="w-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg p-2 text-sm dark:text-gray-100 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition"
-                                x-model="categoryId" @change="fetchServicesForServiceFirst()">
-                                <option value="">همه</option>
-                                <template x-for="c in categories" :key="c.id">
-                                    <option :value="c.id" x-text="c.name"></option>
-                                </template>
-                            </select>
+                    <div class="space-y-4">
+                        <!-- Step Header Banner -->
+                        <div class="bg-gradient-to-l from-indigo-50 via-purple-50 to-blue-50 dark:from-indigo-900/20 dark:via-purple-900/10 dark:to-blue-900/20 rounded-2xl p-4 border border-indigo-100 dark:border-indigo-800/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-2xl bg-indigo-600 text-white flex items-center justify-center font-bold text-lg shadow-sm shrink-0">
+                                    🏷️
+                                </div>
+                                <div>
+                                    <div class="font-bold text-base text-gray-900 dark:text-gray-100">انتخاب {{ config('booking.labels.service', 'سرویس') }}</div>
+                                    <div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{{ config('booking.labels.service', 'سرویس') }} مورد نظر خود را برای رزرو نوبت انتخاب کنید.</div>
+                                </div>
+                            </div>
+                            <div x-show="serviceId && selectedService" class="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-100 dark:bg-emerald-900/50 text-emerald-800 dark:text-emerald-200 text-xs font-bold border border-emerald-200 dark:border-emerald-800 shrink-0">
+                                <svg class="w-4 h-4 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>
+                                <span x-text="'سرویس انتخابی: ' + (selectedService ? selectedService.name : '')"></span>
+                            </div>
                         </div>
 
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-200">انتخاب {{ config('booking.labels.service', 'سرویس') }}</label>
-                        <div class="relative">
-                            <input type="text"
-                                   class="w-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg p-2 pr-10 text-sm dark:text-gray-100 placeholder:text-gray-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition"
-                                   placeholder="جستجو سرویس..." x-model="serviceSearch"
-                                   @input.debounce.300ms="fetchServicesForServiceFirst()">
-                            <span class="absolute right-3 top-2.5 text-gray-400">🔎</span>
+                        <!-- Search and Filter Toolbar -->
+                        <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700/80 p-4 space-y-3 shadow-xs">
+                            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                <!-- Search input -->
+                                <div class="relative flex-1">
+                                    <div class="absolute inset-y-0 right-0 flex items-center pr-3.5 pointer-events-none text-slate-400">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                                    </div>
+                                    <input type="text"
+                                           class="w-full pl-9 pr-10 py-2.5 bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 text-sm placeholder:text-slate-400 transition"
+                                           placeholder="جستجوی نام {{ config('booking.labels.service', 'سرویس') }}..."
+                                           x-model="serviceSearch"
+                                           @input.debounce.300ms="onServiceSearchInput()">
+                                    <button type="button" x-show="serviceSearch" @click="serviceSearch=''; onServiceSearchInput()" class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                    </button>
+                                </div>
+
+                                <!-- Total count badge -->
+                                <div class="flex items-center gap-2 shrink-0">
+                                    <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-700/50 text-xs font-medium text-slate-600 dark:text-slate-300">
+                                        <span class="w-2 h-2 rounded-full bg-indigo-500"></span>
+                                        <span>تعداد سرویس‌ها:</span>
+                                        <strong class="font-bold text-slate-800 dark:text-slate-100" x-text="totalServicesCount"></strong>
+                                    </span>
+                                </div>
+                            </div>
+
+                            <!-- Category Pills / Tabs -->
+                            <div class="pt-1" x-show="categories && categories.length > 0">
+                                <div class="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-thin">
+                                    <button type="button"
+                                            class="px-3.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all duration-200 flex items-center gap-1.5 shrink-0"
+                                            :class="!categoryId
+                                                ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-500/30 ring-2 ring-indigo-500/20'
+                                                : 'bg-slate-100 dark:bg-slate-700/50 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'"
+                                            @click="selectCategoryFilter('')">
+                                        <span>همه</span>
+                                        <span class="text-[10px] px-1.5 py-0.5 rounded-full font-mono font-bold"
+                                              :class="!categoryId ? 'bg-white/25 text-white' : 'bg-slate-200 dark:bg-slate-600 text-slate-600 dark:text-slate-300'"
+                                              x-text="totalServicesCount"></span>
+                                    </button>
+
+                                    <template x-for="c in categories" :key="c.id">
+                                        <button type="button"
+                                                class="px-3.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all duration-200 flex items-center gap-1.5 shrink-0"
+                                                :class="String(categoryId) === String(c.id)
+                                                    ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-500/30 ring-2 ring-indigo-500/20'
+                                                    : 'bg-slate-100 dark:bg-slate-700/50 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'"
+                                                @click="selectCategoryFilter(c.id)">
+                                            <span x-text="c.name"></span>
+                                            <span class="text-[10px] px-1.5 py-0.5 rounded-full font-mono font-bold"
+                                                  :class="String(categoryId) === String(c.id) ? 'bg-white/25 text-white' : 'bg-slate-200 dark:bg-slate-600 text-slate-600 dark:text-slate-300'"
+                                                  x-text="getCategoryServicesCount(c)"></span>
+                                        </button>
+                                    </template>
+                                </div>
+                            </div>
                         </div>
 
+                        <!-- Loading indicator -->
                         <template x-if="serviceLoading">
-                            <div class="text-xs text-gray-500 dark:text-gray-400">در حال دریافت {{ config('booking.labels.services', 'سرویس‌ها') }}...</div>
+                            <div class="flex items-center justify-center py-10">
+                                <div class="flex items-center gap-3 text-gray-500 dark:text-gray-400">
+                                    <svg class="animate-spin h-5 w-5 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                    <span class="text-sm">در حال دریافت {{ config('booking.labels.services', 'سرویس‌ها') }}...</span>
+                                </div>
+                            </div>
                         </template>
 
-                        <div class="space-y-4" x-show="!serviceLoading">
+                        <!-- Grouped Services Grid -->
+                        <div class="space-y-6" x-show="!serviceLoading && groupedServices && groupedServices.length > 0">
                             <template x-for="grp in groupedServices" :key="grp.key">
-                                <div class="space-y-2">
-                                    <div class="text-xs font-semibold text-gray-600 dark:text-gray-300" x-text="grp.title">
+                                <div class="space-y-3">
+                                    <!-- Group Header -->
+                                    <div class="flex items-center gap-2.5 px-1">
+                                        <span class="w-2.5 h-2.5 rounded-full bg-indigo-500 shrink-0"></span>
+                                        <h4 class="text-sm font-bold text-slate-800 dark:text-slate-200" x-text="grp.title"></h4>
+                                        <div class="h-px bg-slate-200 dark:bg-slate-700/60 flex-1"></div>
+                                        <span class="text-[11px] font-semibold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2.5 py-0.5 rounded-full font-mono" x-text="grp.items.length + ' {{ config('booking.labels.service', 'سرویس') }}'"></span>
                                     </div>
-                                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+
+                                    <!-- Cards Grid -->
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                                         <template x-for="s in grp.items" :key="s.id">
-                                            <button type="button" class="text-right border rounded-xl p-3 transition"
-                                                    :class="String(serviceId)===String(s.id)
-                                                        ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-800 dark:text-indigo-200'
-                                                        : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-800/70'"
+                                            <button type="button"
+                                                    class="group relative text-right rounded-2xl p-4 transition-all duration-200 border-2 hover:shadow-lg flex flex-col justify-between"
+                                                    :class="String(serviceId) === String(s.id)
+                                                        ? 'border-indigo-600 bg-gradient-to-br from-indigo-50/90 to-indigo-100/60 dark:from-indigo-950/50 dark:to-indigo-900/40 text-indigo-950 dark:text-indigo-100 shadow-md ring-2 ring-indigo-300 dark:ring-indigo-700'
+                                                        : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 hover:border-indigo-300 dark:hover:border-indigo-600 hover:shadow-md'"
                                                     @click="selectService(s, true)">
-                                                <div class="font-semibold text-sm" x-text="s.name"></div>
-                                                <div class="text-[11px] text-gray-500 dark:text-gray-400"
-                                                     x-show="s.duration_min || s.price"
-                                                     x-text="[s.duration_min ? (s.duration_min + ' دقیقه') : null, s.price ? (s.price + ' تومان') : null].filter(Boolean).join(' • ')">
+                                                <!-- Top: Icon + Name + Indicator -->
+                                                <div class="flex items-start justify-between gap-3 w-full mb-3">
+                                                    <div class="flex items-center gap-3 flex-1 min-w-0">
+                                                        <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border transition-transform duration-200 group-hover:scale-105 shadow-2xs"
+                                                             :style="`background-color: ${s.color ? s.color + '18' : '#4f46e518'}; border-color: ${s.color ? s.color + '40' : '#4f46e540'}; color: ${s.color || '#4f46e5'};`">
+                                                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                                            </svg>
+                                                        </div>
+                                                        <div class="min-w-0 flex-1">
+                                                            <div class="font-bold text-sm leading-snug truncate" x-text="s.name" :title="s.name"></div>
+                                                            <div class="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5" x-show="s.category_name" x-text="s.category_name"></div>
+                                                        </div>
+                                                    </div>
+
+                                                    <!-- Selected Checkmark Indicator -->
+                                                    <div class="w-6 h-6 rounded-full flex items-center justify-center shrink-0 transition-colors"
+                                                         :class="String(serviceId) === String(s.id)
+                                                             ? 'bg-indigo-600 text-white shadow-xs'
+                                                             : 'bg-slate-100 dark:bg-slate-700 text-slate-300 dark:text-slate-600 group-hover:text-slate-400'">
+                                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                                                             x-show="String(serviceId) === String(s.id)">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
+                                                        </svg>
+                                                    </div>
+                                                </div>
+
+                                                <!-- Bottom: Price / Form Badge -->
+                                                <div class="pt-2.5 border-t border-slate-100 dark:border-slate-700/60 flex items-center justify-between text-xs w-full">
+                                                    <div>
+                                                        <template x-if="s.base_price !== null && s.base_price !== undefined">
+                                                            <span class="font-bold text-slate-800 dark:text-slate-200" x-text="formatServicePrice(s.base_price)"></span>
+                                                        </template>
+                                                    </div>
+                                                    <div>
+                                                        <template x-if="s.appointment_form_id">
+                                                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium bg-blue-50 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 border border-blue-200/60 dark:border-blue-800/50">
+                                                                فرم اختصاصی
+                                                            </span>
+                                                        </template>
+                                                    </div>
                                                 </div>
                                             </button>
                                         </template>
@@ -676,10 +791,19 @@
                             </template>
                         </div>
 
-                        <template x-if="!serviceLoading && (!services || services.length===0)">
-                            <div class="text-xs text-amber-600">موردی یافت نشد.</div>
-                        </template>
+                        <!-- Empty State -->
+                        <div x-show="!serviceLoading && (!services || services.length === 0)" class="bg-slate-50 dark:bg-slate-800/40 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-2xl p-8 text-center space-y-3">
+                            <div class="w-12 h-12 mx-auto rounded-2xl bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 flex items-center justify-center text-xl">
+                                🔍
+                            </div>
+                            <div class="text-sm font-bold text-slate-700 dark:text-slate-200">سرویسی یافت نشد</div>
+                            <p class="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto">می‌توانید عبارت جستجو را تغییر دهید یا فیلتر دسته‌بندی را پاک کنید.</p>
+                            <button type="button" @click="serviceSearch=''; selectCategoryFilter('')" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 text-xs font-semibold hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition">
+                                پاک کردن فیلترها
+                            </button>
+                        </div>
 
+                        <!-- Footer helper text -->
                         <div class="text-[11px] text-gray-500 dark:text-gray-400">
                             بعد از انتخاب {{ config('booking.labels.service', 'سرویس') }}، به صورت خودکار به مرحله بعد می‌روید.
                         </div>
@@ -690,64 +814,182 @@
             {{-- STEP 3 --}}
             <div x-show="step===3" class="space-y-3">
                 <template x-if="flow==='PROVIDER_FIRST'">
-                    <div class="space-y-3">
-                        <div>
-                            <label class="block text-sm mb-1 dark:text-gray-200">دسته‌بندی</label>
-                            <select
-                                class="w-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg p-2 text-sm dark:text-gray-100 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition"
-                                x-model="categoryId" @change="fetchServicesForProvider()">
-                                <option value="">همه</option>
-                                <template x-for="c in categories" :key="c.id">
-                                    <option :value="c.id" x-text="c.name"></option>
-                                </template>
-                            </select>
+                    <div class="space-y-4">
+                        <!-- Step Header Banner -->
+                        <div class="bg-gradient-to-l from-indigo-50 via-purple-50 to-blue-50 dark:from-indigo-900/20 dark:via-purple-900/10 dark:to-blue-900/20 rounded-2xl p-4 border border-indigo-100 dark:border-indigo-800/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-2xl bg-indigo-600 text-white flex items-center justify-center font-bold text-lg shadow-sm shrink-0">
+                                    🏷️
+                                </div>
+                                <div>
+                                    <div class="font-bold text-base text-gray-900 dark:text-gray-100">انتخاب {{ config('booking.labels.service', 'سرویس') }}</div>
+                                    <div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{{ config('booking.labels.services', 'سرویس‌ها') }}ی مجاز برای {{ config('booking.labels.provider') }} انتخابی را مشخص کنید.</div>
+                                </div>
+                            </div>
+                            <div x-show="serviceId && selectedService" class="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-100 dark:bg-emerald-900/50 text-emerald-800 dark:text-emerald-200 text-xs font-bold border border-emerald-200 dark:border-emerald-800 shrink-0">
+                                <svg class="w-4 h-4 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>
+                                <span x-text="'سرویس انتخابی: ' + (selectedService ? selectedService.name : '')"></span>
+                            </div>
                         </div>
 
-                        <div>
-                            <label class="block text-sm mb-1 dark:text-gray-200">انتخاب {{ config('booking.labels.service', 'سرویس') }}</label>
-                            <div class="relative">
-                                <input type="text"
-                                       class="w-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg p-2 pr-10 text-sm dark:text-gray-100 placeholder:text-gray-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition"
-                                       placeholder="جستجو سرویس..." x-model="serviceSearch"
-                                       @input.debounce.300ms="fetchServicesForProvider()">
-                                <span class="absolute right-3 top-2.5 text-gray-400">🔎</span>
-                            </div>
-
-                            <template x-if="serviceLoading">
-                                <div class="text-xs text-gray-500 dark:text-gray-400 mt-2">در حال دریافت {{ config('booking.labels.services', 'سرویس‌ها') }}...</div>
-                            </template>
-
-                            <div class="space-y-4 mt-2" x-show="!serviceLoading">
-                                <template x-for="grp in groupedServices" :key="grp.key">
-                                    <div class="space-y-2">
-                                        <div class="text-xs font-semibold text-gray-600 dark:text-gray-300"
-                                             x-text="grp.title"></div>
-                                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-                                            <template x-for="s in grp.items" :key="s.id">
-                                                <button type="button" class="text-right border rounded-xl p-3 transition"
-                                                        :class="String(serviceId)===String(s.id)
-                                                            ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-800 dark:text-indigo-200'
-                                                            : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-800/70'"
-                                                        @click="selectService(s, true)">
-                                                    <div class="font-semibold text-sm" x-text="s.name"></div>
-                                                    <div class="text-[11px] text-gray-500 dark:text-gray-400"
-                                                         x-show="s.duration_min || s.price"
-                                                         x-text="[s.duration_min ? (s.duration_min + ' دقیقه') : null, s.price ? (s.price + ' تومان') : null].filter(Boolean).join(' • ')">
-                                                    </div>
-                                                </button>
-                                            </template>
-                                        </div>
+                        <!-- Search and Filter Toolbar -->
+                        <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700/80 p-4 space-y-3 shadow-xs">
+                            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                <!-- Search input -->
+                                <div class="relative flex-1">
+                                    <div class="absolute inset-y-0 right-0 flex items-center pr-3.5 pointer-events-none text-slate-400">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
                                     </div>
-                                </template>
+                                    <input type="text"
+                                           class="w-full pl-9 pr-10 py-2.5 bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 text-sm placeholder:text-slate-400 transition"
+                                           placeholder="جستجوی نام {{ config('booking.labels.service', 'سرویس') }}..."
+                                           x-model="serviceSearch"
+                                           @input.debounce.300ms="onServiceSearchInput()">
+                                    <button type="button" x-show="serviceSearch" @click="serviceSearch=''; onServiceSearchInput()" class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                    </button>
+                                </div>
+
+                                <!-- Total count badge -->
+                                <div class="flex items-center gap-2 shrink-0">
+                                    <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-700/50 text-xs font-medium text-slate-600 dark:text-slate-300">
+                                        <span class="w-2 h-2 rounded-full bg-indigo-500"></span>
+                                        <span>تعداد سرویس‌ها:</span>
+                                        <strong class="font-bold text-slate-800 dark:text-slate-100" x-text="totalServicesCount"></strong>
+                                    </span>
+                                </div>
                             </div>
 
-                            <template x-if="!serviceLoading && (!services || services.length===0)">
-                                <div class="text-xs text-amber-600 mt-2">موردی یافت نشد.</div>
-                            </template>
+                            <!-- Category Pills / Tabs -->
+                            <div class="pt-1" x-show="categories && categories.length > 0">
+                                <div class="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-thin">
+                                    <button type="button"
+                                            class="px-3.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all duration-200 flex items-center gap-1.5 shrink-0"
+                                            :class="!categoryId
+                                                ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-500/30 ring-2 ring-indigo-500/20'
+                                                : 'bg-slate-100 dark:bg-slate-700/50 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'"
+                                            @click="selectCategoryFilter('')">
+                                        <span>همه</span>
+                                        <span class="text-[10px] px-1.5 py-0.5 rounded-full font-mono font-bold"
+                                              :class="!categoryId ? 'bg-white/25 text-white' : 'bg-slate-200 dark:bg-slate-600 text-slate-600 dark:text-slate-300'"
+                                              x-text="totalServicesCount"></span>
+                                    </button>
 
-                            <div class="text-[11px] text-gray-500 dark:text-gray-400 mt-1">فقط {{ config('booking.labels.services', 'سرویس‌ها') }}یی که برای این
-                                {{ config('booking.labels.provider') }} فعال هستند نمایش داده می‌شود. بعد از انتخاب، به صورت خودکار به مرحله بعد
-                                می‌روید.</div>
+                                    <template x-for="c in categories" :key="c.id">
+                                        <button type="button"
+                                                class="px-3.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all duration-200 flex items-center gap-1.5 shrink-0"
+                                                :class="String(categoryId) === String(c.id)
+                                                    ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-500/30 ring-2 ring-indigo-500/20'
+                                                    : 'bg-slate-100 dark:bg-slate-700/50 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'"
+                                                @click="selectCategoryFilter(c.id)">
+                                            <span x-text="c.name"></span>
+                                            <span class="text-[10px] px-1.5 py-0.5 rounded-full font-mono font-bold"
+                                                  :class="String(categoryId) === String(c.id) ? 'bg-white/25 text-white' : 'bg-slate-200 dark:bg-slate-600 text-slate-600 dark:text-slate-300'"
+                                                  x-text="getCategoryServicesCount(c)"></span>
+                                        </button>
+                                    </template>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Loading indicator -->
+                        <template x-if="serviceLoading">
+                            <div class="flex items-center justify-center py-10">
+                                <div class="flex items-center gap-3 text-gray-500 dark:text-gray-400">
+                                    <svg class="animate-spin h-5 w-5 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                    <span class="text-sm">در حال دریافت {{ config('booking.labels.services', 'سرویس‌ها') }}...</span>
+                                </div>
+                            </div>
+                        </template>
+
+                        <!-- Grouped Services Grid -->
+                        <div class="space-y-6" x-show="!serviceLoading && groupedServices && groupedServices.length > 0">
+                            <template x-for="grp in groupedServices" :key="grp.key">
+                                <div class="space-y-3">
+                                    <!-- Group Header -->
+                                    <div class="flex items-center gap-2.5 px-1">
+                                        <span class="w-2.5 h-2.5 rounded-full bg-indigo-500 shrink-0"></span>
+                                        <h4 class="text-sm font-bold text-slate-800 dark:text-slate-200" x-text="grp.title"></h4>
+                                        <div class="h-px bg-slate-200 dark:bg-slate-700/60 flex-1"></div>
+                                        <span class="text-[11px] font-semibold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2.5 py-0.5 rounded-full font-mono" x-text="grp.items.length + ' {{ config('booking.labels.service', 'سرویس') }}'"></span>
+                                    </div>
+
+                                    <!-- Cards Grid -->
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                                        <template x-for="s in grp.items" :key="s.id">
+                                            <button type="button"
+                                                    class="group relative text-right rounded-2xl p-4 transition-all duration-200 border-2 hover:shadow-lg flex flex-col justify-between"
+                                                    :class="String(serviceId) === String(s.id)
+                                                        ? 'border-indigo-600 bg-gradient-to-br from-indigo-50/90 to-indigo-100/60 dark:from-indigo-950/50 dark:to-indigo-900/40 text-indigo-950 dark:text-indigo-100 shadow-md ring-2 ring-indigo-300 dark:ring-indigo-700'
+                                                        : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 hover:border-indigo-300 dark:hover:border-indigo-600 hover:shadow-md'"
+                                                    @click="selectService(s, true)">
+                                                <!-- Top: Icon + Name + Indicator -->
+                                                <div class="flex items-start justify-between gap-3 w-full mb-3">
+                                                    <div class="flex items-center gap-3 flex-1 min-w-0">
+                                                        <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border transition-transform duration-200 group-hover:scale-105 shadow-2xs"
+                                                             :style="`background-color: ${s.color ? s.color + '18' : '#4f46e518'}; border-color: ${s.color ? s.color + '40' : '#4f46e540'}; color: ${s.color || '#4f46e5'};`">
+                                                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                                            </svg>
+                                                        </div>
+                                                        <div class="min-w-0 flex-1">
+                                                            <div class="font-bold text-sm leading-snug truncate" x-text="s.name" :title="s.name"></div>
+                                                            <div class="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5" x-show="s.category_name" x-text="s.category_name"></div>
+                                                        </div>
+                                                    </div>
+
+                                                    <!-- Selected Checkmark Indicator -->
+                                                    <div class="w-6 h-6 rounded-full flex items-center justify-center shrink-0 transition-colors"
+                                                         :class="String(serviceId) === String(s.id)
+                                                             ? 'bg-indigo-600 text-white shadow-xs'
+                                                             : 'bg-slate-100 dark:bg-slate-700 text-slate-300 dark:text-slate-600 group-hover:text-slate-400'">
+                                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                                                             x-show="String(serviceId) === String(s.id)">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
+                                                        </svg>
+                                                    </div>
+                                                </div>
+
+                                                <!-- Bottom: Price / Form Badge -->
+                                                <div class="pt-2.5 border-t border-slate-100 dark:border-slate-700/60 flex items-center justify-between text-xs w-full">
+                                                    <div>
+                                                        <template x-if="s.base_price !== null && s.base_price !== undefined">
+                                                            <span class="font-bold text-slate-800 dark:text-slate-200" x-text="formatServicePrice(s.base_price)"></span>
+                                                        </template>
+                                                    </div>
+                                                    <div>
+                                                        <template x-if="s.appointment_form_id">
+                                                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium bg-blue-50 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 border border-blue-200/60 dark:border-blue-800/50">
+                                                                فرم اختصاصی
+                                                            </span>
+                                                        </template>
+                                                    </div>
+                                                </div>
+                                            </button>
+                                        </template>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+
+                        <!-- Empty State -->
+                        <div x-show="!serviceLoading && (!services || services.length === 0)" class="bg-slate-50 dark:bg-slate-800/40 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-2xl p-8 text-center space-y-3">
+                            <div class="w-12 h-12 mx-auto rounded-2xl bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 flex items-center justify-center text-xl">
+                                🔍
+                            </div>
+                            <div class="text-sm font-bold text-slate-700 dark:text-slate-200">سرویسی یافت نشد</div>
+                            <p class="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto">می‌توانید عبارت جستجو را تغییر دهید یا فیلتر دسته‌بندی را پاک کنید.</p>
+                            <button type="button" @click="serviceSearch=''; selectCategoryFilter('')" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 text-xs font-semibold hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition">
+                                پاک کردن فیلترها
+                            </button>
+                        </div>
+
+                        <!-- Footer helper text -->
+                        <div class="text-[11px] text-gray-500 dark:text-gray-400">
+                            فقط {{ config('booking.labels.services', 'سرویس‌ها') }}یی که برای این {{ config('booking.labels.provider') }} فعال هستند نمایش داده می‌شود. بعد از انتخاب، به صورت خودکار به مرحله بعد می‌روید.
                         </div>
                     </div>
                 </template>
@@ -1585,6 +1827,7 @@
                 providers: [],
                 services: [],
                 categories: [],
+                currencyLabel: '{{ $currencyLabel }}',
 
                 providerLoading: false,
                 serviceLoading: false,
@@ -1787,27 +2030,41 @@
                 get groupedServices() {
                     const items = Array.isArray(this.services) ? this.services : [];
 
-                    const getCatName = (s) => {
-                        if (!s) return '';
-                        if (typeof s.category_name === 'string' && s.category_name.trim()) return s.category_name
-                            .trim();
-                        if (s.category && typeof s.category.name === 'string' && s.category.name.trim()) return s
-                            .category.name.trim();
-                        const cid = s.category_id ?? null;
-                        if (cid && Array.isArray(this.categories) && this.categories.length) {
-                            const found = this.categories.find(c => String(c.id) === String(cid));
-                            if (found && typeof found.name === 'string' && found.name.trim()) return found.name.trim();
+                    const getCatInfo = (s) => {
+                        if (!s) return { name: '', order: 0 };
+                        let name = '';
+                        let order = Number(s.category_sort_order ?? 0);
+
+                        if (typeof s.category_name === 'string' && s.category_name.trim()) {
+                            name = s.category_name.trim();
+                        } else if (s.category && typeof s.category.name === 'string' && s.category.name.trim()) {
+                            name = s.category.name.trim();
+                            if (s.category.sort_order !== undefined && s.category.sort_order !== null) {
+                                order = Number(s.category.sort_order);
+                            }
                         }
-                        return '';
+
+                        const cid = s.category_id ?? null;
+                        if (Array.isArray(this.categories) && this.categories.length) {
+                            const found = this.categories.find(c => (cid && String(c.id) === String(cid)) || (name && c.name === name));
+                            if (found) {
+                                if (!name && typeof found.name === 'string') name = found.name.trim();
+                                if (found.sort_order !== undefined && found.sort_order !== null) {
+                                    order = Number(found.sort_order);
+                                }
+                            }
+                        }
+                        return { name, order };
                     };
 
                     const groups = new Map();
                     for (const s of items) {
-                        const cat = getCatName(s);
+                        const { name: cat, order } = getCatInfo(s);
                         const key = cat ? `cat:${cat}` : 'cat:__none__';
                         if (!groups.has(key)) groups.set(key, {
                             key,
                             title: cat || 'بدون دسته',
+                            order: cat ? order : 999999,
                             items: []
                         });
                         groups.get(key).items.push(s);
@@ -1817,13 +2074,58 @@
                     arr.sort((a, b) => {
                         if (a.key === 'cat:__none__') return 1;
                         if (b.key === 'cat:__none__') return -1;
+                        if (a.order !== b.order) {
+                            return (a.order || 0) - (b.order || 0);
+                        }
                         return (a.title || '').localeCompare(b.title || '', 'fa');
                     });
                     for (const g of arr) {
-                        g.items.sort((x, y) => (x.name || '').localeCompare(y.name || '', 'fa'));
+                        g.items.sort((x, y) => {
+                            const orderX = Number(x.sort_order ?? 0);
+                            const orderY = Number(y.sort_order ?? 0);
+                            if (orderX !== orderY) {
+                                return orderX - orderY;
+                            }
+                            return (x.name || '').localeCompare(y.name || '', 'fa');
+                        });
                     }
                     return arr;
                 },
+
+                get totalServicesCount() {
+                    return Array.isArray(this.services) ? this.services.length : 0;
+                },
+
+                getCategoryServicesCount(cat) {
+                    if (!Array.isArray(this.services)) return 0;
+                    const cid = String(cat.id);
+                    return this.services.filter(s => String(s.category_id) === cid || s.category_name === cat.name).length;
+                },
+
+                async selectCategoryFilter(catId) {
+                    this.categoryId = catId ? String(catId) : '';
+                    if (this.flow === 'SERVICE_FIRST') {
+                        await this.fetchServicesForServiceFirst();
+                    } else {
+                        await this.fetchServicesForProvider();
+                    }
+                },
+
+                async onServiceSearchInput() {
+                    if (this.flow === 'SERVICE_FIRST') {
+                        await this.fetchServicesForServiceFirst();
+                    } else {
+                        await this.fetchServicesForProvider();
+                    }
+                },
+
+                formatServicePrice(val) {
+                    if (val === null || val === undefined || val === '') return null;
+                    const num = Number(val);
+                    if (isNaN(num) || num <= 0) return 'رایگان';
+                    return num.toLocaleString('fa-IR') + ' ' + (this.currencyLabel || 'تومان');
+                },
+
                 slotCapacityDisplay(slot) {
                     if (!slot) return this.defaultSlotCapacity;
                     if (slot.remaining_capacity !== null && slot.remaining_capacity !== undefined) {
@@ -2010,15 +2312,22 @@
                     for (const s of (this.services || [])) {
                         const id = s.category_id ?? null;
                         const name = s.category_name ?? null;
+                        const sort_order = Number(s.category_sort_order ?? 0);
                         if (!id || !name) continue;
                         if (!map.has(String(id))) {
                             map.set(String(id), {
                                 id,
-                                name
+                                name,
+                                sort_order
                             });
                         }
                     }
-                    this.categories = Array.from(map.values()).sort((a, b) => (a.name || '').localeCompare(b.name || '', 'fa'));
+                    this.categories = Array.from(map.values()).sort((a, b) => {
+                        if ((a.sort_order || 0) !== (b.sort_order || 0)) {
+                            return (a.sort_order || 0) - (b.sort_order || 0);
+                        }
+                        return (a.name || '').localeCompare(b.name || '', 'fa');
+                    });
                 },
 
                 resetCalendarAndSlots() {

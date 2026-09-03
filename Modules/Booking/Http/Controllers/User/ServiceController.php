@@ -66,8 +66,11 @@ class ServiceController extends Controller
             $query->where('booking_services.status', $status);
         }
 
-        $services = $query->orderByRaw('CASE WHEN booking_categories.name IS NULL THEN 1 ELSE 0 END')
+        $services = $query->orderByRaw('CASE WHEN booking_categories.id IS NULL THEN 1 ELSE 0 END')
+            ->orderBy('booking_categories.sort_order', 'asc')
             ->orderBy('booking_categories.name', 'asc')
+            ->orderBy('booking_services.sort_order', 'asc')
+            ->orderBy('booking_services.name', 'asc')
             ->orderByDesc('booking_services.id')
             ->paginate(20)
             ->withQueryString();
@@ -79,7 +82,7 @@ class ServiceController extends Controller
             }
         }
 
-        $categories = BookingCategory::orderBy('name')->get(); // We fetch all categories for the filter dropdown
+        $categories = BookingCategory::orderBy('sort_order', 'asc')->orderBy('name', 'asc')->get(); // We fetch all categories for the filter dropdown
 
         session(['services_index_url' => $request->fullUrl()]);
 
@@ -133,6 +136,7 @@ class ServiceController extends Controller
             'description' => ['nullable', 'string'],
             'status'      => ['required', Rule::in([BookingService::STATUS_ACTIVE, BookingService::STATUS_INACTIVE])],
             'color'       => ['nullable', 'string', 'max:20', 'regex:/^#([a-fA-F0-9]{3}|[a-fA-F0-9]{6})$/'],
+            'sort_order'  => ['nullable', 'integer', 'min:0'],
 
             'base_price'     => ['required', 'numeric', 'min:0'],
             'discount_price' => ['nullable', 'numeric', 'min:0'],
@@ -175,6 +179,7 @@ class ServiceController extends Controller
             $this->ensureCategorySelectionAllowed($authUser, $settings, $catId);
         }
         $data['category_id'] = !empty($categoryIds) ? $categoryIds[0] : null;
+        $data['sort_order'] = isset($data['sort_order']) ? (int) $data['sort_order'] : 0;
 
         // Provider اجازه تغییر این گزینه را ندارد
         if (! $isAdminUser) {
@@ -385,6 +390,7 @@ class ServiceController extends Controller
             'description' => ['nullable', 'string'],
             'status'      => ['required', Rule::in([BookingService::STATUS_ACTIVE, BookingService::STATUS_INACTIVE])],
             'color'       => ['nullable', 'string', 'max:20', 'regex:/^#([a-fA-F0-9]{3}|[a-fA-F0-9]{6})$/'],
+            'sort_order'  => ['nullable', 'integer', 'min:0'],
 
             'base_price'     => ['required', 'numeric', 'min:0'],
             'discount_price' => ['nullable', 'numeric', 'min:0'],
@@ -433,6 +439,9 @@ class ServiceController extends Controller
             $this->ensureCategorySelectionAllowed($authUser, $settings, $catId);
         }
         $data['category_id'] = !empty($categoryIds) ? $categoryIds[0] : null;
+        if (array_key_exists('sort_order', $data)) {
+            $data['sort_order'] = isset($data['sort_order']) ? (int) $data['sort_order'] : 0;
+        }
 
         $data['discount_from'] = $data['discount_from'] ?: null;
         $data['discount_to']   = $data['discount_to']   ?: null;
@@ -835,7 +844,7 @@ class ServiceController extends Controller
 
     protected function categoriesForUser(?User $user, BookingSetting $settings)
     {
-        $query = BookingCategory::query()->orderBy('name');
+        $query = BookingCategory::query()->orderBy('sort_order', 'asc')->orderBy('name', 'asc');
 
         if ($settings->service_category_selection_scope === 'OWN'
             && $user
