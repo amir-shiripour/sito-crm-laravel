@@ -169,13 +169,13 @@ class ClinicMonitoringService
     }
 
     /**
-     * Resolve active in-visit patient:
+     * Resolve all active in-visit patients (supporting concurrent multiple appointments):
      * Priority 1: entry_at_utc IS NOT NULL AND exit_at_utc IS NULL and not terminal, ordered by entry_at_utc ASC.
      * Priority 2: In-window fallback: status == CONFIRMED AND start_at_utc <= now('UTC') AND end_at_utc >= now('UTC') ordered by start_at_utc ASC.
      */
-    public function resolveActivePatient(Builder $baseQuery): ?Appointment
+    public function resolveActivePatients(Builder $baseQuery): Collection
     {
-        // 1. Physically checked-in patient currently in consultation (earliest entry prioritized)
+        // 1. Physically checked-in patients currently in consultation (earliest entry prioritized)
         $entered = (clone $baseQuery)
             ->whereNotNull('entry_at_utc')
             ->whereNull('exit_at_utc')
@@ -187,24 +187,61 @@ class ClinicMonitoringService
             ])
             ->orderBy('entry_at_utc', 'asc')
             ->with(['service', 'client', 'provider'])
-            ->first();
+            ->get();
 
-        if ($entered) {
+        if ($entered->isNotEmpty()) {
             return $entered;
         }
 
-        // 2. Currently within scheduled window fallback
+        // 2. Currently within scheduled window fallback (may have multiple appointments in same window)
         $nowUtc = now('UTC');
-        $inWindow = (clone $baseQuery)
+        return (clone $baseQuery)
             ->where('status', Appointment::STATUS_CONFIRMED)
             ->where('start_at_utc', '<=', $nowUtc)
             ->where('end_at_utc', '>=', $nowUtc)
             ->whereNull('exit_at_utc')
             ->orderBy('start_at_utc', 'asc')
             ->with(['service', 'client', 'provider'])
-            ->first();
+            ->get();
+    }
 
-        return $inWindow;
+    /**
+     * Resolve single primary active patient.
+     */
+    public function resolveActivePatient(Builder $baseQuery): ?Appointment
+    {
+        return $this->resolveActivePatients($baseQuery)->first();
+    }
+
+    /**
+     * Resolve next patients waiting in queue (group with same earliest start slot or arrived status).
+     */
+    public function resolveNextInQueueGroup(Builder $baseQuery, array $excludeAppointmentIds = []): Collection
+    {
+        $query = (clone $baseQuery)
+            ->when(! empty($excludeAppointmentIds), fn ($q) => $q->whereNotIn('id', $excludeAppointmentIds))
+            ->whereIn('status', [
+                Appointment::STATUS_CONFIRMED,
+                Appointment::STATUS_PENDING,
+                Appointment::STATUS_PENDING_PAYMENT,
+            ])
+            ->whereNull('exit_at_utc')
+            ->orderByRaw('CASE WHEN entry_at_utc IS NOT NULL THEN 0 ELSE 1 END ASC')
+            ->orderBy('start_at_utc', 'asc')
+            ->orderBy('id', 'asc')
+            ->with(['service', 'client', 'provider']);
+
+        $first = (clone $query)->first();
+        if (! $first) {
+            return collect();
+        }
+
+        // If first patient has specific start_at_utc, return all next appointments sharing that same slot or arrived
+        if ($first->start_at_utc) {
+            return $query->where('start_at_utc', $first->start_at_utc)->get();
+        }
+
+        return $query->take(3)->get();
     }
 
     /**
@@ -215,19 +252,8 @@ class ClinicMonitoringService
      */
     public function resolveNextInQueue(Builder $baseQuery, ?int $excludeAppointmentId = null): ?Appointment
     {
-        return (clone $baseQuery)
-            ->when($excludeAppointmentId, fn ($q) => $q->where('id', '!=', $excludeAppointmentId))
-            ->whereIn('status', [
-                Appointment::STATUS_CONFIRMED,
-                Appointment::STATUS_PENDING,
-                Appointment::STATUS_PENDING_PAYMENT,
-            ])
-            ->whereNull('exit_at_utc')
-            ->orderByRaw('CASE WHEN entry_at_utc IS NOT NULL THEN 0 ELSE 1 END ASC')
-            ->orderBy('start_at_utc', 'asc')
-            ->orderBy('id', 'asc')
-            ->with(['service', 'client', 'provider'])
-            ->first();
+        $excludeIds = $excludeAppointmentId ? [$excludeAppointmentId] : [];
+        return $this->resolveNextInQueueGroup($baseQuery, $excludeIds)->first();
     }
 
     /**
@@ -328,22 +354,24 @@ class ClinicMonitoringService
                 Appointment::STATUS_NO_SHOW,
             ]))->count();
 
-            // 1. Physically checked-in patient currently in consultation (earliest entry prioritized)
-            $activePatient = $providerApts->first(fn ($a) => ! empty($a->entry_at_utc) && empty($a->exit_at_utc) && ! in_array($a->status, [
+            // 1. Physically checked-in patients currently in consultation
+            $activePatients = $providerApts->filter(fn ($a) => ! empty($a->entry_at_utc) && empty($a->exit_at_utc) && ! in_array($a->status, [
                 Appointment::STATUS_DONE,
                 Appointment::STATUS_CANCELED_BY_ADMIN,
                 Appointment::STATUS_CANCELED_BY_CLIENT,
                 Appointment::STATUS_NO_SHOW,
-            ]));
+            ]))->values();
 
             // 2. In-window fallback
-            if (! $activePatient) {
-                $activePatient = $providerApts->first(fn ($a) => $a->status === Appointment::STATUS_CONFIRMED && $a->start_at_utc <= $nowUtc && $a->end_at_utc >= $nowUtc && empty($a->exit_at_utc));
+            if ($activePatients->isEmpty()) {
+                $activePatients = $providerApts->filter(fn ($a) => $a->status === Appointment::STATUS_CONFIRMED && $a->start_at_utc <= $nowUtc && $a->end_at_utc >= $nowUtc && empty($a->exit_at_utc))->values();
             }
 
+            $activeIds = $activePatients->pluck('id')->all();
+
             // Resolve next in queue for this provider
-            $nextPatient = $providerApts->filter(function ($a) use ($activePatient) {
-                if ($activePatient && $a->id === $activePatient->id) {
+            $nextPatients = $providerApts->filter(function ($a) use ($activeIds) {
+                if (in_array($a->id, $activeIds)) {
                     return false;
                 }
 
@@ -356,15 +384,17 @@ class ClinicMonitoringService
                 fn ($a) => ! empty($a->entry_at_utc) ? 0 : 1,
                 fn ($a) => $a->start_at_utc?->timestamp ?? 0,
                 fn ($a) => $a->id,
-            ])->first();
+            ])->values();
 
             return [
                 'provider' => $provider,
                 'total' => $totalCount,
                 'done' => $doneCount,
                 'attended' => $attendedCount,
-                'active_patient' => $activePatient,
-                'next_patient' => $nextPatient,
+                'active_patients' => $activePatients,
+                'active_patient' => $activePatients->first(),
+                'next_patients' => $nextPatients,
+                'next_patient' => $nextPatients->first(),
                 'has_appointments' => $totalCount > 0,
             ];
         });
