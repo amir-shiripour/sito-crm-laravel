@@ -20,7 +20,8 @@ Route::prefix('settings')->middleware(['auth'])->group(function () {
 
     // روت‌های درگاه پرداخت
     Route::post('/payment/request', [PaymentController::class, 'request'])->name('settings.payment.request');
-    Route::get('/payment/verify/{gateway}', [PaymentController::class, 'verify'])->name('settings.payment.verify');
+    Route::match(['get', 'post'], '/payment/verify/{gateway}', [PaymentController::class, 'verify'])->name('settings.payment.verify');
+    Route::get('/payment/redirect/behpardakht', [PaymentController::class, 'redirectBehpardakht'])->name('settings.payment.behpardakht.redirect');
 
     // روت‌های مدیریت کلیدهای API
     Route::post('/api-keys', [ApiKeyController::class, 'store'])->name('settings.api-keys.store');

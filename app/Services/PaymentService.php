@@ -10,6 +10,9 @@ class PaymentService
 {
     protected $gateway;
     protected $merchantId;
+    protected $terminalId;
+    protected $username;
+    protected $password;
     protected $sandbox;
     protected $callbackUrl;
     protected $currency;
@@ -39,6 +42,11 @@ class PaymentService
             // Zibal uses 'zibal' as merchant ID for sandbox, no separate sandbox flag needed
             $this->sandbox = ($this->merchantId === 'zibal'); // Set sandbox true if merchantId is 'zibal'
             $this->callbackUrl = route('settings.payment.verify', ['gateway' => 'zibal']);
+        } elseif ($this->gateway === 'behpardakht') {
+            $this->terminalId = $settings['behpardakht_terminal_id'] ?? null;
+            $this->username = $settings['behpardakht_username'] ?? null;
+            $this->password = $settings['behpardakht_password'] ?? null;
+            $this->callbackUrl = route('settings.payment.verify', ['gateway' => 'behpardakht']);
         }
         // Add other gateways here
     }
@@ -63,6 +71,8 @@ class PaymentService
             return $this->requestZarinpalPayment($amount, $description, $userEmail, $userMobile, $callbackUrl);
         } elseif ($this->gateway === 'zibal') {
             return $this->requestZibalPayment($amount, $description, $userEmail, $userMobile, $callbackUrl);
+        } elseif ($this->gateway === 'behpardakht') {
+            return $this->requestBehpardakhtPayment($amount, $description, $userEmail, $userMobile, $callbackUrl);
         }
         // Add other gateways here
         throw new \Exception("Payment gateway {$this->gateway} not supported.");
@@ -78,6 +88,8 @@ class PaymentService
             return $this->requestZarinpalPaymentRaw($amountInRials, $description, $userEmail, $userMobile, $callbackUrl);
         } elseif ($this->gateway === 'zibal') {
             return $this->requestZibalPaymentRaw($amountInRials, $description, $userEmail, $userMobile, $callbackUrl);
+        } elseif ($this->gateway === 'behpardakht') {
+            return $this->requestBehpardakhtPaymentRaw($amountInRials, $description, $userEmail, $userMobile, $callbackUrl);
         }
         throw new \Exception("Payment gateway {$this->gateway} not supported.");
     }
@@ -88,6 +100,8 @@ class PaymentService
             return $this->verifyZarinpalPayment($data);
         } elseif ($this->gateway === 'zibal') {
             return $this->verifyZibalPayment($data);
+        } elseif ($this->gateway === 'behpardakht') {
+            return $this->verifyBehpardakhtPayment($data);
         }
         // Add other gateways here
         throw new \Exception("Payment gateway {$this->gateway} not supported.");
@@ -472,6 +486,286 @@ class PaymentService
             case 18: return 'تراکنش ریورس شده';
             case 21: return 'پذیرنده نامعتبر است';
             default: return 'خطای ناشناخته در ارتباط با زیبال. (کد: ' . $statusCode . ')';
+        }
+    }
+
+    protected function requestBehpardakhtPayment(float $amount, string $description, string $userEmail = null, string $userMobile = null, string $callbackUrl = null, bool $alreadyInRials = false, ?int $orderId = null)
+    {
+        if (!$this->terminalId || !$this->username || !$this->password) {
+            Log::error('Behpardakht Error: Terminal ID, Username or Password is empty or not set in settings.');
+            throw new \Exception("اطلاعات شماره ترمینال، نام کاربری یا رمز عبور به‌پرداخت ملت در تنظیمات سیستم ثبت نشده است.");
+        }
+
+        $amountInRials = $alreadyInRials ? (int) $amount : $this->getAmountInRials($amount);
+        $orderId = $orderId ?: (int) (time() . rand(100, 999));
+        $effectiveCallbackUrl = $callbackUrl ?? $this->callbackUrl;
+
+        $params = [
+            'terminalId'     => (int) $this->terminalId,
+            'userName'       => (string) $this->username,
+            'userPassword'   => (string) $this->password,
+            'orderId'        => (int) $orderId,
+            'amount'         => (int) $amountInRials,
+            'localDate'      => date('Ymd'),
+            'localTime'      => date('His'),
+            'additionalData' => (string) ($description ?: ''),
+            'callBackUrl'    => (string) $effectiveCallbackUrl,
+            'payerId'        => 0,
+        ];
+
+        if (!empty($userMobile)) {
+            $mobileClean = preg_replace('/[^0-9]/', '', $userMobile);
+            if (strlen($mobileClean) >= 10) {
+                $params['mobileNo'] = $mobileClean;
+            }
+        }
+
+        Log::info('Behpardakht bpPayRequest Data:', array_merge($params, ['userPassword' => '******']));
+
+        try {
+            $rawResponse = $this->callMellatSoap('bpPayRequest', $params);
+            Log::info('Behpardakht bpPayRequest Response: ' . $rawResponse);
+
+            $parts = explode(',', trim($rawResponse));
+            $resCode = $parts[0] ?? '-1';
+
+            if ($resCode === '0' && isset($parts[1]) && !empty($parts[1])) {
+                $refId = trim($parts[1]);
+                $redirectUrl = route('settings.payment.behpardakht.redirect', [
+                    'ref_id' => $refId,
+                    'mobile' => $userMobile,
+                ]);
+
+                Log::info('Behpardakht Request Success. RefId: ' . $refId . ', OrderId: ' . $orderId);
+
+                return [
+                    'success'         => true,
+                    'authority'       => $refId,
+                    'order_id'        => $orderId,
+                    'payment_url'     => $redirectUrl,
+                    'redirect_method' => 'POST',
+                    'redirect_params' => [
+                        'RefId'    => $refId,
+                        'MobileNo' => $userMobile,
+                    ],
+                    'message'         => 'Payment request successful.'
+                ];
+            } else {
+                $errorMessage = $this->getBehpardakhtErrorMessage($resCode);
+                Log::error('Behpardakht Request Failed. Code: ' . $resCode . ', Message: ' . $errorMessage);
+
+                return [
+                    'success' => false,
+                    'code'    => (int) $resCode,
+                    'message' => $errorMessage,
+                ];
+            }
+        } catch (\Exception $e) {
+            Log::error('Behpardakht Request Exception: ' . $e->getMessage());
+            return [
+                'success' => false,
+                'code'    => -52,
+                'message' => 'خطای ارتباط با سرور به‌پرداخت ملت: ' . $e->getMessage(),
+            ];
+        }
+    }
+
+    protected function requestBehpardakhtPaymentRaw(int $amountInRials, string $description, string $userEmail = null, string $userMobile = null, string $callbackUrl = null, ?int $orderId = null)
+    {
+        return $this->requestBehpardakhtPayment($amountInRials, $description, $userEmail, $userMobile, $callbackUrl, true, $orderId);
+    }
+
+    protected function verifyBehpardakhtPayment(array $data)
+    {
+        if (!$this->terminalId || !$this->username || !$this->password) {
+            throw new \Exception("اطلاعات شماره ترمینال، نام کاربری یا رمز عبور به‌پرداخت ملت در تنظیمات سیستم ثبت نشده است.");
+        }
+
+        $refId           = $data['RefId'] ?? null;
+        $resCode         = (string) ($data['ResCode'] ?? '-1');
+        $saleOrderId     = $data['SaleOrderId'] ?? ($data['order_id'] ?? null);
+        $saleReferenceId = $data['SaleReferenceId'] ?? null;
+
+        Log::info('Behpardakht Verify Callback Data:', $data);
+
+        // If gateway ResCode is not 0, user canceled or payment failed on gateway
+        if ($resCode !== '0' && $resCode !== '00') {
+            $errorMessage = $this->getBehpardakhtErrorMessage($resCode);
+            Log::error('Behpardakht Verify Failed at gateway. ResCode: ' . $resCode . ', Message: ' . $errorMessage);
+            return [
+                'success' => false,
+                'code'    => (int) $resCode,
+                'message' => $errorMessage,
+            ];
+        }
+
+        if (!$saleOrderId || !$saleReferenceId) {
+            return [
+                'success' => false,
+                'code'    => -1,
+                'message' => 'اطلاعات تراکنش (SaleOrderId یا SaleReferenceId) ناقص است.',
+            ];
+        }
+
+        // 1. bpVerifyRequest
+        $verifyParams = [
+            'terminalId'      => (int) $this->terminalId,
+            'userName'        => (string) $this->username,
+            'userPassword'    => (string) $this->password,
+            'orderId'         => (int) $saleOrderId,
+            'saleOrderId'     => (int) $saleOrderId,
+            'saleReferenceId' => (int) $saleReferenceId,
+        ];
+
+        Log::info('Behpardakht bpVerifyRequest Data:', array_merge($verifyParams, ['userPassword' => '******']));
+
+        try {
+            $verifyResponse = trim($this->callMellatSoap('bpVerifyRequest', $verifyParams));
+            Log::info('Behpardakht bpVerifyRequest Response: ' . $verifyResponse);
+
+            // 0 = Success, 43 = Transaction already verified
+            if ($verifyResponse === '0' || $verifyResponse === '43') {
+                // 2. bpSettleRequest (finalize the settlement)
+                try {
+                    $settleResponse = trim($this->callMellatSoap('bpSettleRequest', $verifyParams));
+                    Log::info('Behpardakht bpSettleRequest Response: ' . $settleResponse);
+                } catch (\Exception $se) {
+                    Log::warning('Behpardakht Settle Warning: ' . $se->getMessage());
+                }
+
+                return [
+                    'success'   => true,
+                    'ref_id'    => (string) $saleReferenceId,
+                    'authority' => $refId,
+                    'order_id'  => $saleOrderId,
+                    'message'   => 'Payment successfully verified.',
+                ];
+            } else {
+                $errorMessage = $this->getBehpardakhtErrorMessage($verifyResponse);
+                Log::error('Behpardakht bpVerifyRequest Failed. Code: ' . $verifyResponse . ', Message: ' . $errorMessage);
+
+                // Attempt reversal if verify failed
+                try {
+                    $this->callMellatSoap('bpReversalRequest', $verifyParams);
+                } catch (\Exception $re) {
+                    Log::warning('Behpardakht Reversal Attempt Warning: ' . $re->getMessage());
+                }
+
+                return [
+                    'success' => false,
+                    'code'    => (int) $verifyResponse,
+                    'message' => $errorMessage,
+                ];
+            }
+        } catch (\Exception $e) {
+            Log::error('Behpardakht Verify Exception: ' . $e->getMessage());
+            return [
+                'success' => false,
+                'code'    => -52,
+                'message' => 'خطای ارتباط با سرور به‌پرداخت ملت هنگام تایید: ' . $e->getMessage(),
+            ];
+        }
+    }
+
+    /**
+     * Send raw SOAP XML request to Mellat Behpardakht Web Service without requiring ext-soap.
+     */
+    protected function callMellatSoap(string $method, array $params): string
+    {
+        $endpoint = 'https://bpm.shaparak.ir/pgwchannel/services/pgw';
+        $namespace = 'http://interfaces.core.sw.bps.com/';
+
+        $innerXml = '';
+        foreach ($params as $key => $val) {
+            $safeVal = htmlspecialchars((string) $val, ENT_XML1, 'UTF-8');
+            $innerXml .= "<{$key}>{$safeVal}</{$key}>";
+        }
+
+        $soapEnvelope = '<?xml version="1.0" encoding="UTF-8"?>' .
+            '<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:int="' . $namespace . '">' .
+            '<soapenv:Header/>' .
+            '<soapenv:Body>' .
+            "<int:{$method}>" .
+            $innerXml .
+            "</int:{$method}>" .
+            '</soapenv:Body>' .
+            '</soapenv:Envelope>';
+
+        $response = Http::timeout(30)
+            ->connectTimeout(15)
+            ->withHeaders([
+                'Content-Type' => 'text/xml; charset=utf-8',
+                'SOAPAction'   => '""',
+            ])
+            ->send('POST', $endpoint, [
+                'body' => $soapEnvelope,
+            ]);
+
+        $body = $response->body();
+
+        if (preg_match('/<return>(.*?)<\/return>/s', $body, $matches)) {
+            return trim($matches[1]);
+        }
+
+        if (preg_match('/<faultstring>(.*?)<\/faultstring>/s', $body, $matches)) {
+            throw new \Exception('SOAP Fault: ' . trim($matches[1]));
+        }
+
+        return trim(strip_tags($body));
+    }
+
+    protected function getBehpardakhtErrorMessage($statusCode): string
+    {
+        $code = (int) $statusCode;
+        switch ($code) {
+            case 0: return 'تراکنش با موفقیت انجام شد.';
+            case 11: return 'شماره کارت نامعتبر است.';
+            case 12: return 'موجودی کافی نیست.';
+            case 13: return 'رمز نادرست است.';
+            case 14: return 'تعداد دفعات وارد کردن رمز بیش از حد مجاز است.';
+            case 15: return 'کارت نامعتبر است.';
+            case 16: return 'دفعات برداشت وجه بیش از حد مجاز است.';
+            case 17: return 'کاربر از انجام تراکنش منصرف شده است.';
+            case 18: return 'تاریخ انقضای کارت گذشته است.';
+            case 19: return 'مبلغ برداشت وجه بیش از حد مجاز است.';
+            case 111: return 'صادر کننده کارت نامعتبر است.';
+            case 112: return 'خطای سوییچ صادر کننده کارت.';
+            case 113: return 'پاسخی از صادر کننده کارت دریافت نشد.';
+            case 114: return 'دارنده کارت مجاز به انجام این تراکنش نیست.';
+            case 21: return 'پذیرنده نامعتبر است (سرویس مربوطه برای پذیرنده فعال نمی‌باشد).';
+            case 23: return 'خطای امنیتی رخ داده است.';
+            case 24: return 'اطلاعات کاربری پذیرنده نامعتبر است.';
+            case 25: return 'مبلغ نامعتبر است.';
+            case 31: return 'پاسخ نامعتبر است.';
+            case 32: return 'فرمت اطلاعات وارد شده صحیح نمی‌باشد.';
+            case 33: return 'حساب نامعتبر است.';
+            case 34: return 'خطای سیستمی در سرور بانک.';
+            case 35: return 'تاریخ نامعتبر است.';
+            case 41: return 'شماره درخواست تکراری است.';
+            case 42: return 'تراکنش Sale یافت نشد.';
+            case 43: return 'قبلا درخواست Verify داده شده است.';
+            case 44: return 'درخواست Verify یافت نشد.';
+            case 45: return 'تراکنش Settle شده است.';
+            case 46: return 'تراکنش Settle نشده است.';
+            case 47: return 'تراکنش Settle یافت نشد.';
+            case 48: return 'تراکنش Reverse شده است.';
+            case 412: return 'شناسه قبض نادرست است.';
+            case 413: return 'شناسه پرداخت نادرست است.';
+            case 414: return 'سازمان صادر کننده قبض نامعتبر است.';
+            case 415: return 'زمان جلسه کاری به پایان رسیده است.';
+            case 416: return 'خطا در ثبت اطلاعات.';
+            case 417: return 'شناسه پرداخت کننده نامعتبر است.';
+            case 418: return 'اشکال در تعریف اطلاعات مشتری.';
+            case 419: return 'تعداد دفعات ورود اطلاعات از حد مجاز گذشته است.';
+            case 421: return 'IP سرور پذیرنده معتبر نیست (پیشتر به سامانه به‌پرداخت اعلام نشده است).';
+            case 51: return 'تراکنش تکراری است.';
+            case 54: return 'تراکنش مرجع موجود نیست.';
+            case 55: return 'تراکنش نامعتبر است.';
+            case 61: return 'خطا در واریز وجه.';
+            case 62: return 'مسیر بازگشت به سایت در دامنه ثبت شده برای پذیرنده قرار ندارد.';
+            case 98: return 'سقف استفاده از رمز ایستا به پایان رسیده است.';
+            case 995: return 'تعلق کارت بانکی به مشتری احراز نشد.';
+            default: return 'خطای ناشناخته در ارتباط با به‌پرداخت ملت. (کد: ' . $statusCode . ')';
         }
     }
 }

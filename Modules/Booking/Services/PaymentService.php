@@ -151,6 +151,11 @@ class PaymentService
             // زیبال: trackId + success
             $authority = $requestData['trackId'] ?? null;
             $status    = ($requestData['success'] ?? null) == 1 ? 'OK' : 'NOK';
+        } elseif ($gateway === 'behpardakht') {
+            // به‌پرداخت ملت: RefId + ResCode
+            $authority = $requestData['RefId'] ?? null;
+            $resCode   = (string) ($requestData['ResCode'] ?? '-1');
+            $status    = ($resCode === '0' || $resCode === '00') ? 'OK' : 'NOK';
         } else {
             // زرین‌پال و سایر درگاه‌ها: Authority + Status
             $authority = $requestData['Authority'] ?? null;
@@ -180,6 +185,11 @@ class PaymentService
                     'success' => 1,
                     'Amount'  => $payment->amount,
                 ];
+            } elseif ($gateway === 'behpardakht') {
+                $dataToVerify = array_merge($requestData, [
+                    'RefId'  => $authority,
+                    'Amount' => $payment->amount,
+                ]);
             } else {
                 $dataToVerify = [
                     'Authority' => $authority,

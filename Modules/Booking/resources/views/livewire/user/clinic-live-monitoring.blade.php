@@ -162,16 +162,19 @@
         </div>
     </div>
 
-    {{-- کارت‌های آمار و شمارنده‌های وضعیت (KPI Cards) --}}
+    {{-- کارت‌های آمار و شمارنده‌های وضعیت (KPI Cards) هماهنگ با فیلترها --}}
     <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3.5">
         {{-- کل نوبت‌ها --}}
-        <div class="bg-white dark:bg-gray-800 p-4 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm flex flex-col justify-between">
-            <span class="text-xs font-medium text-gray-500 dark:text-gray-400">کل نوبت‌های روز</span>
+        <button type="button" 
+                wire:click="$set('selectedStatus', '')"
+                title="نمایش تمام نوبت‌ها"
+                class="bg-white dark:bg-gray-800 p-4 rounded-2xl border text-right transition cursor-pointer hover:shadow-md {{ empty($selectedStatus) ? 'border-indigo-500 ring-2 ring-indigo-500/20 dark:border-indigo-400' : 'border-gray-100 dark:border-gray-700 hover:border-indigo-200' }} shadow-sm flex flex-col justify-between">
+            <span class="text-xs font-medium text-gray-500 dark:text-gray-400">کل نوبت‌های انتخابی</span>
             <div class="flex items-baseline justify-between mt-2">
                 <span class="text-2xl font-black text-gray-900 dark:text-white">{{ $statusCounts['total'] }}</span>
-                <span class="w-2.5 h-2.5 rounded-full bg-gray-400"></span>
+                <span class="w-2.5 h-2.5 rounded-full {{ empty($selectedStatus) ? 'bg-indigo-500' : 'bg-gray-400' }}"></span>
             </div>
-        </div>
+        </button>
 
         {{-- حاضر شده در کلینیک --}}
         <div class="bg-white dark:bg-gray-800 p-4 rounded-2xl border border-teal-100 dark:border-teal-900/30 shadow-sm flex flex-col justify-between">
@@ -183,49 +186,64 @@
         </div>
 
         {{-- در انتظار --}}
-        <div class="bg-white dark:bg-gray-800 p-4 rounded-2xl border border-amber-100 dark:border-amber-900/30 shadow-sm flex flex-col justify-between">
+        <button type="button" 
+                wire:click="$set('selectedStatus', '{{ $selectedStatus === 'PENDING' ? '' : 'PENDING' }}')"
+                title="فیلتر نوبت‌های در انتظار"
+                class="bg-white dark:bg-gray-800 p-4 rounded-2xl border text-right transition cursor-pointer hover:shadow-md {{ $selectedStatus === 'PENDING' ? 'border-amber-500 ring-2 ring-amber-500/20 dark:border-amber-400' : 'border-amber-100 dark:border-amber-900/30 hover:border-amber-300' }} shadow-sm flex flex-col justify-between">
             <span class="text-xs font-medium text-amber-700 dark:text-amber-300">در انتظار</span>
             <div class="flex items-baseline justify-between mt-2">
                 <span class="text-2xl font-black text-amber-600 dark:text-amber-400">{{ $statusCounts['waiting'] }}</span>
                 <span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
             </div>
-        </div>
+        </button>
 
         {{-- تایید شده --}}
-        <div class="bg-white dark:bg-gray-800 p-4 rounded-2xl border border-emerald-100 dark:border-emerald-900/30 shadow-sm flex flex-col justify-between">
+        <button type="button" 
+                wire:click="$set('selectedStatus', '{{ $selectedStatus === 'CONFIRMED' ? '' : 'CONFIRMED' }}')"
+                title="فیلتر نوبت‌های تایید شده"
+                class="bg-white dark:bg-gray-800 p-4 rounded-2xl border text-right transition cursor-pointer hover:shadow-md {{ $selectedStatus === 'CONFIRMED' ? 'border-emerald-500 ring-2 ring-emerald-500/20 dark:border-emerald-400' : 'border-emerald-100 dark:border-emerald-900/30 hover:border-emerald-300' }} shadow-sm flex flex-col justify-between">
             <span class="text-xs font-medium text-emerald-700 dark:text-emerald-300">تایید شده</span>
             <div class="flex items-baseline justify-between mt-2">
                 <span class="text-2xl font-black text-emerald-600 dark:text-emerald-400">{{ $statusCounts['confirmed'] }}</span>
                 <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
             </div>
-        </div>
+        </button>
 
         {{-- انجام شده --}}
-        <div class="bg-white dark:bg-gray-800 p-4 rounded-2xl border border-blue-100 dark:border-blue-900/30 shadow-sm flex flex-col justify-between">
+        <button type="button" 
+                wire:click="$set('selectedStatus', '{{ $selectedStatus === 'DONE' ? '' : 'DONE' }}')"
+                title="فیلتر نوبت‌های انجام شده"
+                class="bg-white dark:bg-gray-800 p-4 rounded-2xl border text-right transition cursor-pointer hover:shadow-md {{ $selectedStatus === 'DONE' ? 'border-blue-500 ring-2 ring-blue-500/20 dark:border-blue-400' : 'border-blue-100 dark:border-blue-900/30 hover:border-blue-300' }} shadow-sm flex flex-col justify-between">
             <span class="text-xs font-medium text-blue-700 dark:text-blue-300">انجام شده</span>
             <div class="flex items-baseline justify-between mt-2">
                 <span class="text-2xl font-black text-blue-600 dark:text-blue-400">{{ $statusCounts['done'] }}</span>
                 <span class="w-2.5 h-2.5 rounded-full bg-blue-500"></span>
             </div>
-        </div>
+        </button>
 
         {{-- عدم حضور --}}
-        <div class="bg-white dark:bg-gray-800 p-4 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col justify-between">
+        <button type="button" 
+                wire:click="$set('selectedStatus', '{{ $selectedStatus === 'NO_SHOW' ? '' : 'NO_SHOW' }}')"
+                title="فیلتر نوبت‌های عدم حضور"
+                class="bg-white dark:bg-gray-800 p-4 rounded-2xl border text-right transition cursor-pointer hover:shadow-md {{ $selectedStatus === 'NO_SHOW' ? 'border-gray-500 ring-2 ring-gray-500/20 dark:border-gray-400' : 'border-gray-200 dark:border-gray-700 hover:border-gray-400' }} shadow-sm flex flex-col justify-between">
             <span class="text-xs font-medium text-gray-600 dark:text-gray-400">عدم حضور (No-Show)</span>
             <div class="flex items-baseline justify-between mt-2">
                 <span class="text-2xl font-black text-gray-700 dark:text-gray-300">{{ $statusCounts['noshow'] }}</span>
                 <span class="w-2.5 h-2.5 rounded-full bg-gray-500"></span>
             </div>
-        </div>
+        </button>
 
         {{-- لغو شده --}}
-        <div class="bg-white dark:bg-gray-800 p-4 rounded-2xl border border-rose-100 dark:border-rose-900/30 shadow-sm flex flex-col justify-between">
+        <button type="button" 
+                wire:click="$set('selectedStatus', '{{ in_array($selectedStatus, ['CANCELED_BY_ADMIN', 'CANCELED_BY_CLIENT']) ? '' : 'CANCELED_BY_ADMIN' }}')"
+                title="فیلتر نوبت‌های لغو شده"
+                class="bg-white dark:bg-gray-800 p-4 rounded-2xl border text-right transition cursor-pointer hover:shadow-md {{ in_array($selectedStatus, ['CANCELED_BY_ADMIN', 'CANCELED_BY_CLIENT']) ? 'border-rose-500 ring-2 ring-rose-500/20 dark:border-rose-400' : 'border-rose-100 dark:border-rose-900/30 hover:border-rose-300' }} shadow-sm flex flex-col justify-between">
             <span class="text-xs font-medium text-rose-700 dark:text-rose-300">لغو شده</span>
             <div class="flex items-baseline justify-between mt-2">
                 <span class="text-2xl font-black text-rose-600 dark:text-rose-400">{{ $statusCounts['cancelled'] }}</span>
                 <span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
             </div>
-        </div>
+        </button>
     </div>
 
     {{-- مراجعین حاضر در سالن انتظار (Waiting Lobby Queue) --}}

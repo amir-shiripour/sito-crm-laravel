@@ -78,8 +78,8 @@ class PaymentService
             if ($orderId) {
                 $order = Order::findOrFail($orderId);
             } else {
-                // Fallback to finding by transaction ID / Authority / trackId
-                $authority = $request->input('Authority') ?: $request->input('trackId');
+                // Fallback to finding by transaction ID / Authority / trackId / RefId
+                $authority = $request->input('Authority') ?: ($request->input('trackId') ?: $request->input('RefId'));
                 if (!$authority) {
                     throw new \Exception('شناسه تراکنش یافت نشد.');
                 }
@@ -107,6 +107,11 @@ class PaymentService
             } elseif ($gateway === 'zibal') {
                 $verifyData['trackId'] = $request->input('trackId');
                 $verifyData['success'] = $request->input('success');
+            } elseif ($gateway === 'behpardakht') {
+                $verifyData = array_merge($request->all(), [
+                    'Amount' => $amount,
+                    'RefId'  => $request->input('RefId'),
+                ]);
             }
 
             $result = $globalPaymentService->verifyPayment($verifyData);
