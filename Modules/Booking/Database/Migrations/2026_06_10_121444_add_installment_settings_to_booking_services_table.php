@@ -10,7 +10,10 @@ return new class extends Migration {
         if (Schema::hasTable('booking_services')) {
             Schema::table('booking_services', function (Blueprint $table) {
                 if (!Schema::hasColumn('booking_services', 'installment_settings')) {
-                    $table->json('installment_settings')->nullable()->after('custom_prices');
+                    $column = $table->json('installment_settings')->nullable();
+                    if (Schema::hasColumn('booking_services', 'custom_prices')) {
+                        $column->after('custom_prices');
+                    }
                 }
             });
         }

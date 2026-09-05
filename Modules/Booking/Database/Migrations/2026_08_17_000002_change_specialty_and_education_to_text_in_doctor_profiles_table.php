@@ -7,17 +7,29 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration {
     public function up(): void
     {
-        Schema::table('doctor_profiles', function (Blueprint $table) {
-            $table->text('specialty')->nullable()->change();
-            $table->text('education')->nullable()->change();
-        });
+        if (Schema::hasTable('doctor_profiles')) {
+            Schema::table('doctor_profiles', function (Blueprint $table) {
+                if (Schema::hasColumn('doctor_profiles', 'specialty')) {
+                    $table->text('specialty')->nullable()->change();
+                }
+                if (Schema::hasColumn('doctor_profiles', 'education')) {
+                    $table->text('education')->nullable()->change();
+                }
+            });
+        }
     }
 
     public function down(): void
     {
-        Schema::table('doctor_profiles', function (Blueprint $table) {
-            $table->string('specialty', 191)->nullable()->change();
-            $table->string('education', 191)->nullable()->change();
-        });
+        if (Schema::hasTable('doctor_profiles')) {
+            Schema::table('doctor_profiles', function (Blueprint $table) {
+                if (Schema::hasColumn('doctor_profiles', 'specialty')) {
+                    $table->string('specialty', 191)->nullable()->change();
+                }
+                if (Schema::hasColumn('doctor_profiles', 'education')) {
+                    $table->string('education', 191)->nullable()->change();
+                }
+            });
+        }
     }
 };
