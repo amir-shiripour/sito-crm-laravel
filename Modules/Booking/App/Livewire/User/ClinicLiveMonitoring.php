@@ -7,6 +7,7 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
 use Livewire\Component;
 use Modules\Booking\Entities\Appointment;
@@ -16,7 +17,8 @@ use Modules\Booking\Services\ClinicMonitoringService;
 use Morilog\Jalali\CalendarUtils;
 use Morilog\Jalali\Jalalian;
 
-#[Layout('layouts.user')]
+#[Layout('layouts.user', ['title' => 'مانیتورینگ زنده'])]
+#[Title('مانیتورینگ زنده')]
 class ClinicLiveMonitoring extends Component
 {
     public ?int $selectedProviderId = null;
@@ -28,6 +30,8 @@ class ClinicLiveMonitoring extends Component
     public string $selectedDate = '';
 
     public string $selectedDateJalali = '';
+
+    public string $searchQuery = '';
 
     public int $refreshInterval = 15;
 
@@ -130,6 +134,11 @@ class ClinicLiveMonitoring extends Component
         ]);
     }
 
+    public function selectProvider(?int $providerId): void
+    {
+        $this->updatedSelectedProviderId($providerId);
+    }
+
     public function updatedSelectedServiceId($val): void
     {
         if ($val === '' || $val === 'all') {
@@ -197,6 +206,7 @@ class ClinicLiveMonitoring extends Component
         $this->selectedDateJalali = Jalalian::fromDateTime($today)->format('Y/m/d');
         $this->selectedServiceId = null;
         $this->selectedStatus = '';
+        $this->searchQuery = '';
 
         if ($user && ! $monitoringService->isAdminUser($user) && ! $user->can('booking.appointments.view.all')) {
             $this->selectedProviderId = $user->id;
@@ -343,8 +353,51 @@ class ClinicLiveMonitoring extends Component
         $appointment->entry_at_utc = now('UTC');
         $appointment->save();
 
-        $this->toastSuccess = 'ورود بیمار با موفقیت در سیستم ثبت گردید.';
+        $this->toastSuccess = 'ورود مراجع با موفقیت در سیستم ثبت گردید.';
         $this->dispatch('notify', ['type' => 'success', 'text' => $this->toastSuccess]);
+    }
+
+    public function startVisit(int $appointmentId): void
+    {
+        $user = Auth::user();
+        $monitoringService = app(ClinicMonitoringService::class);
+
+        if (! $user || (! $monitoringService->isAdminUser($user) && ! $user->can('booking.appointments.edit'))) {
+            $this->toastError = 'شما مجوز مدیریت ویزیت را ندارید.';
+            $this->dispatch('notify', ['type' => 'error', 'text' => $this->toastError]);
+
+            return;
+        }
+
+        $appointment = Appointment::query()->find($appointmentId);
+        if (! $appointment) {
+            return;
+        }
+
+        if (! $monitoringService->canViewAllAppointments($user)) {
+            if ((int) $appointment->provider_user_id !== (int) $user->id) {
+                $this->toastError = 'شما فقط مجاز به ویرایش نوبت‌های خود هستید.';
+                $this->dispatch('notify', ['type' => 'error', 'text' => $this->toastError]);
+
+                return;
+            }
+        }
+
+        if (empty($appointment->entry_at_utc)) {
+            $appointment->entry_at_utc = now('UTC');
+        }
+        if (in_array($appointment->status, [Appointment::STATUS_PENDING, Appointment::STATUS_PENDING_PAYMENT, Appointment::STATUS_DRAFT])) {
+            $appointment->status = Appointment::STATUS_CONFIRMED;
+        }
+        $appointment->save();
+
+        $this->toastSuccess = 'ویزیت مراجع با موفقیت آغاز شد.';
+        $this->dispatch('notify', ['type' => 'success', 'text' => $this->toastSuccess]);
+    }
+
+    public function finishVisit(int $appointmentId): void
+    {
+        $this->changeStatus($appointmentId, Appointment::STATUS_DONE);
     }
 
     public function render(ClinicMonitoringService $monitoringService)
@@ -364,6 +417,9 @@ class ClinicLiveMonitoring extends Component
 
         $baseQuery = $monitoringService->buildBaseQuery($this->selectedDate);
         $statusCounts = $monitoringService->getStatusCounts($baseQuery);
+        $providers = $monitoringService->getAccessibleProviders();
+        $services = $monitoringService->getActiveServices();
+        $statusesList = Appointment::statusesList();
 
         $filteredQuery = clone $baseQuery;
         $monitoringService->applyFilters(
@@ -373,22 +429,49 @@ class ClinicLiveMonitoring extends Component
             $this->selectedStatus
         );
 
+        // Providers Live Overview Matrix (when viewing all providers)
+        $providersSummary = null;
+        if (empty($this->selectedProviderId)) {
+            $providersSummary = $monitoringService->getProvidersLiveSummary($baseQuery, $providers);
+        }
+
+        // Waiting Lobby Queue
+        $lobbyPatients = $monitoringService->getLobbyWaitingPatients($baseQuery, $this->selectedProviderId);
+
+        // Active patient & next in queue
         $activePatient = $monitoringService->resolveActivePatient($filteredQuery);
         $nextInQueue = $monitoringService->resolveNextInQueue($filteredQuery, $activePatient?->id);
 
-        $appointments = (clone $filteredQuery)
+        // Table Query with Search Query filter
+        $appointmentsQuery = (clone $filteredQuery)
             ->with([
                 'service:id,name,color,base_price',
                 'client:id,full_name,phone,national_code,case_number',
                 'provider:id,name',
-            ])
+            ]);
+
+        if (! empty(trim($this->searchQuery))) {
+            $search = trim($this->searchQuery);
+            $appointmentsQuery->where(function ($q) use ($search) {
+                $q->where('notes', 'like', "%{$search}%")
+                    ->orWhereHas('client', function ($cq) use ($search) {
+                        $cq->where('full_name', 'like', "%{$search}%")
+                            ->orWhere('phone', 'like', "%{$search}%")
+                            ->orWhere('national_code', 'like', "%{$search}%")
+                            ->orWhere('case_number', 'like', "%{$search}%");
+                    });
+            });
+        }
+
+        $appointments = $appointmentsQuery
             ->orderBy('start_at_utc', 'asc')
             ->orderBy('id', 'asc')
             ->get();
 
-        $providers = $monitoringService->getAccessibleProviders();
-        $services = $monitoringService->getActiveServices();
-        $statusesList = Appointment::statusesList();
+        $labelProvider = config('booking.labels.provider', 'ارائه‌دهنده');
+        $labelProviders = config('booking.labels.providers', 'ارائه‌دهندگان');
+        $labelService = config('booking.labels.service', 'سرویس');
+        $labelServices = config('booking.labels.services', 'سرویس‌ها');
 
         return view('booking::livewire.user.clinic-live-monitoring', [
             'activePatient' => $activePatient,
@@ -396,10 +479,16 @@ class ClinicLiveMonitoring extends Component
             'statusCounts' => $statusCounts,
             'appointments' => $appointments,
             'providers' => $providers,
+            'providersSummary' => $providersSummary,
+            'lobbyPatients' => $lobbyPatients,
             'services' => $services,
             'statusesList' => $statusesList,
             'pollInterval' => $this->refreshInterval,
             'quickStatusEnabled' => $this->quickStatusEnabled,
-        ]);
+            'labelProvider' => $labelProvider,
+            'labelProviders' => $labelProviders,
+            'labelService' => $labelService,
+            'labelServices' => $labelServices,
+        ])->layout('layouts.user', ['title' => 'مانیتورینگ زنده'])->title('مانیتورینگ زنده');
     }
 }

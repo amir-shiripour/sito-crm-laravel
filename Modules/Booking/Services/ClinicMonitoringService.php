@@ -305,6 +305,96 @@ class ClinicMonitoringService
     }
 
     /**
+     * Get live status summary for each provider on the given date stream.
+     */
+    public function getProvidersLiveSummary(Builder $baseQuery, Collection $providers): Collection
+    {
+        $appointments = (clone $baseQuery)
+            ->with(['service:id,name,color', 'client:id,full_name,phone,national_code,case_number', 'provider:id,name'])
+            ->get();
+
+        $grouped = $appointments->groupBy('provider_user_id');
+        $nowUtc = now('UTC');
+
+        return $providers->map(function ($provider) use ($grouped, $nowUtc) {
+            $providerApts = $grouped->get($provider->id, collect());
+
+            $totalCount = $providerApts->count();
+            $doneCount = $providerApts->where('status', Appointment::STATUS_DONE)->count();
+            $attendedCount = $providerApts->filter(fn ($a) => ! empty($a->entry_at_utc) && empty($a->exit_at_utc) && ! in_array($a->status, [
+                Appointment::STATUS_DONE,
+                Appointment::STATUS_CANCELED_BY_ADMIN,
+                Appointment::STATUS_CANCELED_BY_CLIENT,
+                Appointment::STATUS_NO_SHOW,
+            ]))->count();
+
+            // 1. Physically checked-in patient currently in consultation (earliest entry prioritized)
+            $activePatient = $providerApts->first(fn ($a) => ! empty($a->entry_at_utc) && empty($a->exit_at_utc) && ! in_array($a->status, [
+                Appointment::STATUS_DONE,
+                Appointment::STATUS_CANCELED_BY_ADMIN,
+                Appointment::STATUS_CANCELED_BY_CLIENT,
+                Appointment::STATUS_NO_SHOW,
+            ]));
+
+            // 2. In-window fallback
+            if (! $activePatient) {
+                $activePatient = $providerApts->first(fn ($a) => $a->status === Appointment::STATUS_CONFIRMED && $a->start_at_utc <= $nowUtc && $a->end_at_utc >= $nowUtc && empty($a->exit_at_utc));
+            }
+
+            // Resolve next in queue for this provider
+            $nextPatient = $providerApts->filter(function ($a) use ($activePatient) {
+                if ($activePatient && $a->id === $activePatient->id) {
+                    return false;
+                }
+
+                return in_array($a->status, [
+                    Appointment::STATUS_CONFIRMED,
+                    Appointment::STATUS_PENDING,
+                    Appointment::STATUS_PENDING_PAYMENT,
+                ]) && empty($a->exit_at_utc);
+            })->sortBy([
+                fn ($a) => ! empty($a->entry_at_utc) ? 0 : 1,
+                fn ($a) => $a->start_at_utc?->timestamp ?? 0,
+                fn ($a) => $a->id,
+            ])->first();
+
+            return [
+                'provider' => $provider,
+                'total' => $totalCount,
+                'done' => $doneCount,
+                'attended' => $attendedCount,
+                'active_patient' => $activePatient,
+                'next_patient' => $nextPatient,
+                'has_appointments' => $totalCount > 0,
+            ];
+        });
+    }
+
+    /**
+     * Get list of patients currently waiting in the clinic lobby (checked-in, not yet exited, not currently in consultation).
+     */
+    public function getLobbyWaitingPatients(Builder $baseQuery, ?int $providerId = null): Collection
+    {
+        $query = (clone $baseQuery)
+            ->whereNotNull('entry_at_utc')
+            ->whereNull('exit_at_utc')
+            ->whereNotIn('status', [
+                Appointment::STATUS_DONE,
+                Appointment::STATUS_CANCELED_BY_ADMIN,
+                Appointment::STATUS_CANCELED_BY_CLIENT,
+                Appointment::STATUS_NO_SHOW,
+            ])
+            ->with(['service:id,name,color', 'client:id,full_name,phone,national_code,case_number', 'provider:id,name'])
+            ->orderBy('entry_at_utc', 'asc');
+
+        if (! empty($providerId)) {
+            $query->where('provider_user_id', $providerId);
+        }
+
+        return $query->get();
+    }
+
+    /**
      * Retrieve filter preferences stored in session.
      */
     public function getSessionFilters(): array
