@@ -97,6 +97,21 @@ return [
         'position'  => 13,
     ],
 
+    // مانیتورینگ زنده
+    [
+        'title'      => __('booking::menu.monitoring'),
+        'route'      => 'user.booking.monitoring.index',
+        'permission' => 'booking.appointments.view',
+        'icon'       => '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5">
+            <rect x="2" y="3" width="20" height="14" rx="2" />
+            <line x1="8" y1="21" x2="16" y2="21" />
+            <line x1="12" y1="17" x2="12" y2="21" />
+            <path d="M7 10l3 3l2 -4l3 3" />
+        </svg>',
+        'group'     => 'booking',
+        'position'  => 13.1,
+    ],
+
     // صف انتظار
     [
         'title'      => __('booking::menu.waitlist'),

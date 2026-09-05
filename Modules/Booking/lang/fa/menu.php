@@ -8,6 +8,7 @@ return [
     'forms' => 'فرم‌ها',
     'providers_schedule' => 'برنامه زمانی ارائه‌دهندگان',
     'appointments' => 'نوبت‌ها',
+    'monitoring' => 'مانیتورینگ زنده',
     'waitlist' => 'صف انتظار',
     'statement' => 'صورت وضعیت',
     'settings' => 'تنظیمات نوبت‌دهی',

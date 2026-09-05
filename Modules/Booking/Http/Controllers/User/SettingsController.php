@@ -203,6 +203,8 @@ class SettingsController extends Controller
             'show_provider_info' => ['nullable'],
             'queue_enabled' => ['nullable'],
             'queue_max_size' => ['nullable', 'integer', 'min:1', 'max:100000'],
+            'monitoring_quick_status_enabled' => ['nullable'],
+            'monitoring_refresh_interval_seconds' => ['nullable', 'integer', 'min:5', 'max:3600'],
         ]);
 
         $generalData['global_online_booking_enabled'] = (bool) $generalData['global_online_booking_enabled'];
@@ -215,6 +217,10 @@ class SettingsController extends Controller
         $generalData['show_service_description'] = $request->boolean('show_service_description');
         $generalData['show_supplementary_info'] = $request->boolean('show_supplementary_info');
         $generalData['show_provider_info'] = $request->boolean('show_provider_info');
+        $generalData['monitoring_quick_status_enabled'] = $request->boolean('monitoring_quick_status_enabled');
+        $generalData['monitoring_refresh_interval_seconds'] = $request->filled('monitoring_refresh_interval_seconds')
+            ? (int) $request->input('monitoring_refresh_interval_seconds')
+            : 15;
 
         $settings->fill($generalData);
         $settings->allowed_roles = $syncRoleInput($normalizeRolesToIds($request->input('allowed_roles', [])), $oldAllowedRoles);
