@@ -7,19 +7,26 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration {
     public function up(): void
     {
-        Schema::table('booking_services', function (Blueprint $table) {
-            if (!Schema::hasColumn('booking_services', 'installments')) {
-                $table->json('installments')->nullable()->after('custom_prices');
-            }
-        });
+        if (Schema::hasTable('booking_services')) {
+            Schema::table('booking_services', function (Blueprint $table) {
+                if (!Schema::hasColumn('booking_services', 'installments')) {
+                    $column = $table->json('installments')->nullable();
+                    if (Schema::hasColumn('booking_services', 'custom_prices')) {
+                        $column->after('custom_prices');
+                    }
+                }
+            });
+        }
     }
 
     public function down(): void
     {
-        Schema::table('booking_services', function (Blueprint $table) {
-            if (Schema::hasColumn('booking_services', 'installments')) {
-                $table->dropColumn('installments');
-            }
-        });
+        if (Schema::hasTable('booking_services')) {
+            Schema::table('booking_services', function (Blueprint $table) {
+                if (Schema::hasColumn('booking_services', 'installments')) {
+                    $table->dropColumn('installments');
+                }
+            });
+        }
     }
 };

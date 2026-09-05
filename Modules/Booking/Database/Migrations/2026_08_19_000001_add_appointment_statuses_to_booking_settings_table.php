@@ -11,22 +11,26 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('booking_settings', function (Blueprint $table) {
-            if (!Schema::hasColumn('booking_settings', 'appointment_statuses')) {
-                $table->json('appointment_statuses')->nullable()->after('ads');
-            }
-        });
+        if (Schema::hasTable('booking_settings')) {
+            Schema::table('booking_settings', function (Blueprint $table) {
+                if (!Schema::hasColumn('booking_settings', 'appointment_statuses')) {
+                    $col = $table->json('appointment_statuses')->nullable();
+                    if (Schema::hasColumn('booking_settings', 'ads')) {
+                        $col->after('ads');
+                    }
+                }
+            });
+        }
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
-        Schema::table('booking_settings', function (Blueprint $table) {
-            if (Schema::hasColumn('booking_settings', 'appointment_statuses')) {
-                $table->dropColumn('appointment_statuses');
-            }
-        });
+        if (Schema::hasTable('booking_settings')) {
+            Schema::table('booking_settings', function (Blueprint $table) {
+                if (Schema::hasColumn('booking_settings', 'appointment_statuses')) {
+                    $table->dropColumn('appointment_statuses');
+                }
+            });
+        }
     }
 };

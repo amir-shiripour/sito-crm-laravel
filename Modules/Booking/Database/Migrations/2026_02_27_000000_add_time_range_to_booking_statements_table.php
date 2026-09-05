@@ -8,16 +8,28 @@ return new class extends Migration
 {
     public function up()
     {
-        Schema::table('booking_statements', function (Blueprint $table) {
-            $table->time('first_appointment_time')->nullable()->after('end_date');
-            $table->time('last_appointment_time')->nullable()->after('first_appointment_time');
-        });
+        if (Schema::hasTable('booking_statements')) {
+            Schema::table('booking_statements', function (Blueprint $table) {
+                if (!Schema::hasColumn('booking_statements', 'first_appointment_time')) {
+                    $table->time('first_appointment_time')->nullable();
+                }
+                if (!Schema::hasColumn('booking_statements', 'last_appointment_time')) {
+                    $table->time('last_appointment_time')->nullable();
+                }
+            });
+        }
     }
 
     public function down()
     {
-        Schema::table('booking_statements', function (Blueprint $table) {
-            $table->dropColumn(['first_appointment_time', 'last_appointment_time']);
-        });
+        if (Schema::hasTable('booking_statements')) {
+            Schema::table('booking_statements', function (Blueprint $table) {
+                $cols = ['first_appointment_time', 'last_appointment_time'];
+                $toDrop = array_filter($cols, fn($c) => Schema::hasColumn('booking_statements', $c));
+                if (!empty($toDrop)) {
+                    $table->dropColumn(array_values($toDrop));
+                }
+            });
+        }
     }
 };
