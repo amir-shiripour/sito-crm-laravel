@@ -65,25 +65,26 @@ class ClinicLiveMonitoring extends Component
         $this->quickStatusEnabled = $settings->isMonitoringQuickStatusEnabled();
 
         $tz = $monitoringService->getScheduleTimezone();
+        $today = Carbon::today($tz);
+        $todayJalali = Jalalian::fromDateTime($today)->format('Y/m/d');
+
         $savedJalali = session('clinic_monitoring_date_jalali');
         $savedDate = session('clinic_monitoring_date') ?? session('monitoring_filter_date');
 
         if ($savedJalali && $this->isValidJalaliDate($savedJalali)) {
             $this->selectedDateJalali = $savedJalali;
-            $this->selectedDate = $this->convertJalaliToGregorian($savedJalali) ?? Carbon::today($tz)->format('Y-m-d');
+            $this->selectedDate = $this->convertJalaliToGregorian($savedJalali) ?? $today->format('Y-m-d');
         } elseif ($savedDate) {
             $this->selectedDate = $savedDate;
             try {
                 $this->selectedDateJalali = Jalalian::fromDateTime(Carbon::parse($savedDate, $tz))->format('Y/m/d');
             } catch (\Throwable) {
-                $today = Carbon::today($tz);
                 $this->selectedDate = $today->format('Y-m-d');
-                $this->selectedDateJalali = Jalalian::fromDateTime($today)->format('Y/m/d');
+                $this->selectedDateJalali = $todayJalali;
             }
         } else {
-            $today = Carbon::today($tz);
             $this->selectedDate = $today->format('Y-m-d');
-            $this->selectedDateJalali = Jalalian::fromDateTime($today)->format('Y/m/d');
+            $this->selectedDateJalali = $todayJalali;
         }
 
         // Scoping: If user cannot view all, lock to own provider ID
@@ -351,6 +352,15 @@ class ClinicLiveMonitoring extends Component
         $settings = BookingSetting::current();
         $this->refreshInterval = $settings->getMonitoringRefreshInterval();
         $this->quickStatusEnabled = $settings->isMonitoringQuickStatusEnabled();
+
+        $tz = $monitoringService->getScheduleTimezone();
+        $today = Carbon::today($tz);
+        if (empty($this->selectedDateJalali)) {
+            $this->selectedDateJalali = Jalalian::fromDateTime($today)->format('Y/m/d');
+            $this->selectedDate = $today->format('Y-m-d');
+        } elseif (empty($this->selectedDate)) {
+            $this->selectedDate = $this->convertJalaliToGregorian($this->selectedDateJalali) ?? $today->format('Y-m-d');
+        }
 
         $baseQuery = $monitoringService->buildBaseQuery($this->selectedDate);
         $statusCounts = $monitoringService->getStatusCounts($baseQuery);

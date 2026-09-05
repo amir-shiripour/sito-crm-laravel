@@ -1,5 +1,3 @@
-@includeIf('partials.jalali-date-picker')
-
 <div @if($pollInterval > 0) wire:poll.{{ $pollInterval }}s @endif class="space-y-6">
     {{-- هدر صفحه و ابزارها --}}
     <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
@@ -14,7 +12,7 @@
                     </svg>
                 </div>
                 <div>
-                    <h1 class="text-xl font-bold text-gray-900 dark:text-white">مانیتورینگ زنده کلینیک</h1>
+                    <h1 class="text-xl font-bold text-gray-900 dark:text-white">مانیتورینگ زنده</h1>
                     <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">پایش بلادرنگ صف و جریان نوبت‌های امروز مراجعین</p>
                 </div>
             </div>
@@ -66,10 +64,7 @@
                            data-jdp-only-date
                            autocomplete="off"
                            placeholder="1405/06/14"
-                           @click="if(window.jalaliDatepicker) { jalaliDatepicker.updateOptions({date: true, time: false}); jalaliDatepicker.show($el); }"
-                           @focus="if(window.jalaliDatepicker) { jalaliDatepicker.updateOptions({date: true, time: false}); jalaliDatepicker.show($el); }"
-                           @change="$wire.set('selectedDateJalali', $el.value)"
-                           x-on:jdp:change="$wire.set('selectedDateJalali', $el.value)"
+                           x-on:jdp:change="$el.dispatchEvent(new Event('input', { bubbles: true }))"
                            class="w-full text-xs rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 px-3 py-2 text-gray-800 dark:text-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none dir-ltr text-right cursor-pointer">
                 </div>
             </div>
