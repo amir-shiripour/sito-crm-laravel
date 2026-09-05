@@ -438,9 +438,11 @@ class ClinicLiveMonitoring extends Component
         // Waiting Lobby Queue
         $lobbyPatients = $monitoringService->getLobbyWaitingPatients($baseQuery, $this->selectedProviderId);
 
-        // Active patient & next in queue
-        $activePatient = $monitoringService->resolveActivePatient($filteredQuery);
-        $nextInQueue = $monitoringService->resolveNextInQueue($filteredQuery, $activePatient?->id);
+        // Active patients collection & next in queue group (supports concurrent appointments)
+        $activePatients = $monitoringService->resolveActivePatients($filteredQuery);
+        $activePatient = $activePatients->first();
+        $nextInQueueGroup = $monitoringService->resolveNextInQueueGroup($filteredQuery, $activePatients->pluck('id')->all());
+        $nextInQueue = $nextInQueueGroup->first();
 
         // Table Query with Search Query filter
         $appointmentsQuery = (clone $filteredQuery)
@@ -475,7 +477,9 @@ class ClinicLiveMonitoring extends Component
 
         return view('booking::livewire.user.clinic-live-monitoring', [
             'activePatient' => $activePatient,
+            'activePatients' => $activePatients,
             'nextInQueue' => $nextInQueue,
+            'nextInQueueGroup' => $nextInQueueGroup,
             'statusCounts' => $statusCounts,
             'appointments' => $appointments,
             'providers' => $providers,
