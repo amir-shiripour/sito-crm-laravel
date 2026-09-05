@@ -591,6 +591,67 @@
                         </div>
                     </div>
 
+                    {{-- کارت: تنظیمات مانیتورینگ زنده (Clinic Live Monitoring) --}}
+                    <div class="{{ $cardClass }}" x-data="{ quickStatusEnabled: {{ old('monitoring_quick_status_enabled', $settings->monitoring_quick_status_enabled ?? false) ? 'true' : 'false' }} }">
+                        <div class="{{ $headerClass }}">
+                            <div class="w-8 h-8 rounded-lg bg-sky-50 dark:bg-sky-900/20 flex items-center justify-center text-sky-600 dark:text-sky-400">
+                                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                                </svg>
+                            </div>
+                            <div>
+                                <h2 class="text-base font-bold text-gray-900 dark:text-white">تنظیمات مانیتورینگ زنده</h2>
+                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">پیکربندی پایش بلادرنگ نوبت‌های کلینیک</p>
+                            </div>
+                        </div>
+                        <div class="p-6 space-y-5">
+                            {{-- سوییچ فعال‌سازی تغییر وضعیت سریع --}}
+                            <div>
+                                <label class="flex items-center justify-between cursor-pointer select-none">
+                                    <div>
+                                        <span class="text-sm font-bold text-gray-900 dark:text-white block">تغییر وضعیت سریع نوبت‌ها</span>
+                                        <span class="text-xs text-gray-500 dark:text-gray-400 block mt-0.5">امکان تغییر آنی وضعیت بدون خروج از صفحه مانیتورینگ</span>
+                                    </div>
+                                    <input type="hidden" name="monitoring_quick_status_enabled" value="0">
+                                    <div class="relative inline-flex items-center shrink-0 mr-3">
+                                        <input type="checkbox"
+                                               name="monitoring_quick_status_enabled"
+                                               value="1"
+                                               x-model="quickStatusEnabled"
+                                               @checked(old('monitoring_quick_status_enabled', $settings->monitoring_quick_status_enabled ?? false))
+                                               class="sr-only peer">
+                                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-sky-600"></div>
+                                    </div>
+                                </label>
+                                <p class="text-[11px] text-gray-400 dark:text-gray-500 mt-2 leading-relaxed">
+                                    در صورت فعال بودن این گزینه، اپراتور یا پزشک مجاز می‌تواند در صفحه مانیتورینگ وضعیت نوبت مراجع را به اتمام یافته، لغو یا عدم حضور تغییر دهد.
+                                </p>
+                            </div>
+
+                            {{-- اینپوت بازه به‌روزرسانی خودکار --}}
+                            <div class="pt-4 border-t border-gray-100 dark:border-gray-700">
+                                <label class="{{ $labelClass }}">بازه زمانی به‌روزرسانی خودکار (ثانیه)</label>
+                                <div class="relative">
+                                    <input type="number"
+                                           name="monitoring_refresh_interval_seconds"
+                                           min="5"
+                                           max="3600"
+                                           step="1"
+                                           class="{{ $inputClass }} text-center dir-ltr pl-14"
+                                           value="{{ old('monitoring_refresh_interval_seconds', $settings->monitoring_refresh_interval_seconds ?? 15) }}"
+                                           placeholder="15"
+                                           required>
+                                    <div class="absolute inset-y-0 left-3 flex items-center pointer-events-none text-gray-400 text-xs font-bold">
+                                        ثانیه
+                                    </div>
+                                </div>
+                                <p class="text-[11px] text-gray-400 mt-1">
+                                    فاصله زمانی فراخوانی Polling برای به‌روزرسانی آمار و کارت‌های مانیتورینگ (پیش‌فرض: ۱۵ ثانیه، حداقل: ۵ ثانیه).
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
                     {{-- کارت ۵: تنظیمات Scope --}}
                     <div class="{{ $cardClass }}">
                         <div class="{{ $headerClass }}">

@@ -158,6 +158,13 @@ Route::prefix('user')->name('user.')->middleware(['web', 'auth'])->group(functio
         Route::get('appointments', [UserAppointmentController::class, 'index'])->name('appointments.index')->middleware('can:booking.appointments.view');
         Route::get('schedule', [UserAppointmentController::class, 'schedule'])->name('schedule.index')->middleware('can:booking.appointments.view');
         Route::get('waitlist', \Modules\Booking\App\Livewire\User\BookingWaitlistManager::class)->name('waitlist.index')->middleware('can:booking.appointments.view');
+        Route::get('monitoring', \Modules\Booking\App\Livewire\User\ClinicLiveMonitoring::class)->name('monitoring.index')->middleware('can:booking.appointments.view');
+        Route::get('csrf-token', function () {
+            return response()->json([
+                'token' => csrf_token(),
+                'status' => 'active',
+            ]);
+        })->name('csrf-token');
         Route::get('appointments/create', [UserAppointmentController::class, 'create'])->name('appointments.create');
         Route::post('appointments', [UserAppointmentController::class, 'store'])->name('appointments.store');
 

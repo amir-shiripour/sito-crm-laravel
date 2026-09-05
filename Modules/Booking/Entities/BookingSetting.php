@@ -54,6 +54,8 @@ class BookingSetting extends Model
             'appointment_statuses',
             'queue_enabled',
             'queue_max_size',
+            'monitoring_quick_status_enabled',
+            'monitoring_refresh_interval_seconds',
             'key',
             'value',
         ];
@@ -62,6 +64,8 @@ class BookingSetting extends Model
             'global_online_booking_enabled' => 'boolean',
             'queue_enabled' => 'boolean',
             'queue_max_size' => 'integer',
+            'monitoring_quick_status_enabled' => 'boolean',
+            'monitoring_refresh_interval_seconds' => 'integer',
             'allow_role_service_creation' => 'boolean',
             'allowed_roles' => 'array',
             'statement_roles' => 'array',
@@ -317,8 +321,21 @@ class BookingSetting extends Model
             'show_service_description' => true,
             'show_supplementary_info' => true,
             'show_provider_info' => true,
+            'monitoring_quick_status_enabled' => false,
+            'monitoring_refresh_interval_seconds' => 15,
             'appointment_statuses' => static::defaultAppointmentStatuses(),
         ]);
+    }
+
+    public function isMonitoringQuickStatusEnabled(): bool
+    {
+        return (bool) ($this->monitoring_quick_status_enabled ?? false);
+    }
+
+    public function getMonitoringRefreshInterval(): int
+    {
+        $interval = (int) ($this->monitoring_refresh_interval_seconds ?? 15);
+        return max(5, $interval);
     }
 
     public static function isQueueEnabled(): bool
