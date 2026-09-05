@@ -1,3 +1,13 @@
+@section('title', 'مانیتورینگ زنده')
+
+@php
+    $lp = $labelProvider ?? config('booking.labels.provider', 'ارائه‌دهنده');
+    $lps = $labelProviders ?? config('booking.labels.providers', 'ارائه‌دهندگان');
+    $ls = $labelService ?? config('booking.labels.service', 'سرویس');
+    $lss = $labelServices ?? config('booking.labels.services', 'سرویس‌ها');
+    $tz = config('booking.timezones.schedule', 'Asia/Tehran');
+@endphp
+
 <div @if($pollInterval > 0) wire:poll.{{ $pollInterval }}s @endif class="space-y-6">
     {{-- هدر صفحه و ابزارها --}}
     <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
@@ -13,7 +23,7 @@
                 </div>
                 <div>
                     <h1 class="text-xl font-bold text-gray-900 dark:text-white">مانیتورینگ زنده</h1>
-                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">پایش بلادرنگ صف و جریان نوبت‌های امروز مراجعین</p>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">پایش بلادرنگ صف، اتاق‌ها و جریان نوبت‌های امروز مراجعین</p>
                 </div>
             </div>
         </div>
@@ -39,7 +49,16 @@
                 <span>به‌روزرسانی</span>
             </button>
 
-            {{-- پیوند به تقویم و نوبت‌ها --}}
+            {{-- پیوند به ثبت نوبت جدید --}}
+            <a href="{{ route('user.booking.appointments.create') }}" 
+               class="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-sm transition">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                </svg>
+                <span>ثبت نوبت جدید</span>
+            </a>
+
+            {{-- پیوند به لیست نوبت‌ها و تقویم --}}
             <a href="{{ route('user.booking.appointments.index') }}" 
                class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/20 hover:bg-indigo-100 rounded-xl transition">
                 <span>لیست نوبت‌ها</span>
@@ -52,7 +71,7 @@
     </div>
 
     {{-- نوار فیلترها و انتخابگرها --}}
-    <div class="bg-white dark:bg-gray-800 p-5 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
+    <div class="bg-white dark:bg-gray-800 p-5 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 space-y-4">
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 items-end">
             {{-- فیلتر تاریخ --}}
             <div>
@@ -69,13 +88,13 @@
                 </div>
             </div>
 
-            {{-- فیلتر پزشک / ارائه‌دهنده --}}
+            {{-- فیلتر ارائه‌دهنده (پویا بر اساس برچسب‌ها) --}}
             <div>
-                <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">پزشک / ارائه‌دهنده</label>
+                <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">{{ $lp }}</label>
                 <select wire:model.live="selectedProviderId" 
                         class="w-full text-xs rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 px-3 py-2 text-gray-800 dark:text-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
                     @if(auth()->user()?->can('booking.appointments.view.all') || auth()->user()?->hasAnyRole(['super-admin', 'admin']))
-                        <option value="">همه پزشکان / ارائه‌دهندگان</option>
+                        <option value="">همه {{ $lps }}</option>
                     @endif
                     @foreach($providers as $provider)
                         <option value="{{ $provider->id }}">{{ $provider->name }}</option>
@@ -83,12 +102,12 @@
                 </select>
             </div>
 
-            {{-- فیلتر سرویس --}}
+            {{-- فیلتر سرویس (پویا بر اساس برچسب‌ها) --}}
             <div>
-                <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">سرویس / خدمت</label>
+                <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">{{ $ls }}</label>
                 <select wire:model.live="selectedServiceId" 
                         class="w-full text-xs rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 px-3 py-2 text-gray-800 dark:text-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
-                    <option value="">همه سرویس‌ها</option>
+                    <option value="">همه {{ $lss }}</option>
                     @foreach($services as $service)
                         <option value="{{ $service->id }}">{{ $service->name }}</option>
                     @endforeach
@@ -119,6 +138,28 @@
                 </button>
             </div>
         </div>
+
+        {{-- جستجوی سریع مراجع (نام، شماره تماس، کد ملی، شماره پرونده) --}}
+        <div class="pt-2 border-t border-gray-100 dark:border-gray-700/60 flex items-center gap-3">
+            <div class="relative flex-1">
+                <div class="absolute inset-y-0 right-0 pr-3.5 flex items-center pointer-events-none text-gray-400">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                </div>
+                <input type="text"
+                       wire:model.live.debounce.300ms="searchQuery"
+                       placeholder="جستجوی سریع مراجع در نوبت‌های امروز (نام، تلفن، کدملی، شماره پرونده یا یادداشت)..."
+                       class="w-full text-xs rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50/60 dark:bg-gray-700/60 pr-10 pl-3 py-2 text-gray-800 dark:text-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
+            </div>
+            @if(!empty($searchQuery))
+                <button wire:click="$set('searchQuery', '')" 
+                        type="button" 
+                        class="text-xs text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 px-3 py-2 rounded-xl bg-gray-100 dark:bg-gray-700 transition">
+                    پاکسازی جستجو
+                </button>
+            @endif
+        </div>
     </div>
 
     {{-- کارت‌های آمار و شمارنده‌های وضعیت (KPI Cards) --}}
@@ -134,7 +175,7 @@
 
         {{-- حاضر شده در کلینیک --}}
         <div class="bg-white dark:bg-gray-800 p-4 rounded-2xl border border-teal-100 dark:border-teal-900/30 shadow-sm flex flex-col justify-between">
-            <span class="text-xs font-medium text-teal-700 dark:text-teal-300">حاضر شده</span>
+            <span class="text-xs font-medium text-teal-700 dark:text-teal-300">حاضر در کلینیک</span>
             <div class="flex items-baseline justify-between mt-2">
                 <span class="text-2xl font-black text-teal-600 dark:text-teal-400">{{ $statusCounts['attended'] }}</span>
                 <span class="w-2.5 h-2.5 rounded-full bg-teal-500"></span>
@@ -187,234 +228,463 @@
         </div>
     </div>
 
-    {{-- بخش اصلی: کارت بیمار فعلی و نفر بعدی در صف --}}
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {{-- کارت بیمار فعلی (در حال ویزیت) --}}
-        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-emerald-100 dark:border-emerald-900/40 p-6 flex flex-col justify-between relative overflow-hidden">
-            <div class="absolute top-0 right-0 w-2 h-full bg-emerald-500"></div>
+    {{-- مراجعین حاضر در سالن انتظار (Waiting Lobby Queue) --}}
+    @if($lobbyPatients && $lobbyPatients->isNotEmpty())
+        <div class="bg-gradient-to-r from-teal-500/10 via-emerald-500/5 to-transparent dark:from-teal-900/30 dark:via-emerald-950/20 border border-teal-200 dark:border-teal-800/60 p-5 rounded-2xl">
+            <div class="flex items-center justify-between mb-3.5">
+                <div class="flex items-center gap-2">
+                    <span class="relative flex h-3 w-3">
+                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-teal-400 opacity-75"></span>
+                        <span class="relative inline-flex rounded-full h-3 w-3 bg-teal-500"></span>
+                    </span>
+                    <h3 class="text-sm font-bold text-gray-900 dark:text-white">
+                        مراجعین حاضر در سالن انتظار کلینیک ({{ $lobbyPatients->count() }} نفر)
+                    </h3>
+                </div>
+                <span class="text-xs text-teal-700 dark:text-teal-300 font-medium">ورود این افراد در پذیرش ثبت شده و منتظر فراخوانی هستند</span>
+            </div>
 
-            <div>
-                <div class="flex items-center justify-between pb-4 border-b border-gray-100 dark:border-gray-700">
-                    <div class="flex items-center gap-2">
-                        <span class="w-3 h-3 rounded-full bg-emerald-500 animate-pulse"></span>
-                        <h2 class="text-base font-bold text-gray-900 dark:text-white">بیمار فعلی (در حال ویزیت)</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                @foreach($lobbyPatients as $lobbyApt)
+                    <div class="bg-white dark:bg-gray-800 p-3.5 rounded-xl border border-teal-100 dark:border-teal-900/50 shadow-sm flex items-center justify-between gap-3">
+                        <div class="flex items-center gap-3">
+                            <div class="w-9 h-9 rounded-full bg-teal-100 dark:bg-teal-900/40 text-teal-700 dark:text-teal-300 flex items-center justify-center font-bold text-xs">
+                                {{ mb_substr($lobbyApt->client?->full_name ?? 'م', 0, 1) }}
+                            </div>
+                            <div>
+                                <div class="font-bold text-xs text-gray-900 dark:text-white">
+                                    {{ $lobbyApt->client?->full_name ?? 'مراجع بدون نام' }}
+                                    @if($lobbyApt->client?->case_number)
+                                        <span class="text-[10px] text-gray-400">#{{ $lobbyApt->client->case_number }}</span>
+                                    @endif
+                                </div>
+                                <div class="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
+                                    <span>{{ $lp }}: <strong>{{ $lobbyApt->provider?->name ?? '—' }}</strong></span>
+                                    <span class="mx-1">•</span>
+                                    <span>{{ $lobbyApt->service?->name ?? '—' }}</span>
+                                </div>
+                                <div class="text-[10px] text-teal-600 dark:text-teal-400 mt-0.5 font-medium">
+                                    زمان ثبت ورود: {{ $lobbyApt->entry_at_utc ? $lobbyApt->entry_at_utc->timezone($tz)->format('H:i') : '—' }}
+                                </div>
+                            </div>
+                        </div>
+
+                        @if($quickStatusEnabled)
+                            <div class="flex flex-col gap-1.5 shrink-0">
+                                <button wire:click="startVisit({{ $lobbyApt->id }})" 
+                                        type="button" 
+                                        title="فراخوانی و شروع ویزیت"
+                                        class="px-2.5 py-1.5 rounded-lg text-xs font-bold text-white bg-teal-600 hover:bg-teal-700 transition flex items-center gap-1 shadow-sm">
+                                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                                    </svg>
+                                    <span>شروع ویزیت</span>
+                                </button>
+                                <button wire:click="finishVisit({{ $lobbyApt->id }})" 
+                                        type="button" 
+                                        class="px-2 py-1 rounded-lg text-[10px] font-medium text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition text-center">
+                                    ثبت خروج (Done)
+                                </button>
+                            </div>
+                        @endif
                     </div>
+                @endforeach
+            </div>
+        </div>
+    @endif
+
+    {{-- نمای ویژه مدیر و پذیرش: تابلوی مانیتورینگ زنده اتاق‌ها و ارائه‌دهندگان (هنگام عدم انتخاب ارائه‌دهنده خاص) --}}
+    @if(empty($selectedProviderId) && $providersSummary)
+        <div class="space-y-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <div class="w-2.5 h-2.5 rounded-full bg-indigo-500"></div>
+                    <h2 class="text-base font-bold text-gray-900 dark:text-white">
+                        تابلوی پایش اتاق‌ها و {{ $lps }} (Live Rooms & {{ $lps }} Board)
+                    </h2>
+                </div>
+                <span class="text-xs text-gray-500 dark:text-gray-400">
+                    وضعیت هر اتاق، مراجع در حال خدمت و نوبت بعدی به تفکیک
+                </span>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                @foreach($providersSummary as $pSummary)
+                    @php
+                        $p = $pSummary['provider'];
+                        $pActive = $pSummary['active_patient'];
+                        $pNext = $pSummary['next_patient'];
+                        $pTotal = $pSummary['total'];
+                        $pDone = $pSummary['done'];
+                        $pAttended = $pSummary['attended'];
+                    @endphp
+                    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border {{ $pActive ? 'border-emerald-200 dark:border-emerald-800/60 shadow-emerald-500/5' : 'border-gray-100 dark:border-gray-700' }} p-5 flex flex-col justify-between transition hover:shadow-md">
+                        <div>
+                            {{-- هدر کارت ارائه‌دهنده --}}
+                            <div class="flex items-center justify-between pb-3.5 border-b border-gray-100 dark:border-gray-700">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-10 h-10 rounded-xl {{ $pActive ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300' : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300' }} flex items-center justify-center font-bold text-sm">
+                                        {{ mb_substr($p->name, 0, 1) }}
+                                    </div>
+                                    <div>
+                                        <h3 class="text-sm font-bold text-gray-900 dark:text-white">{{ $p->name }}</h3>
+                                        <div class="flex items-center gap-1.5 text-[11px] text-gray-400 mt-0.5">
+                                            <span>کل نوبت‌ها: <strong>{{ $pTotal }}</strong></span>
+                                            <span>•</span>
+                                            <span>انجام شده: <strong>{{ $pDone }}</strong></span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    @if($pActive)
+                                        <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                                            <span>در حال ویزیت</span>
+                                        </span>
+                                    @elseif($pTotal > 0)
+                                        <span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300">
+                                            اتاق آماده
+                                        </span>
+                                    @else
+                                        <span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400">
+                                            بدون نوبت امروز
+                                        </span>
+                                    @endif
+                                </div>
+                            </div>
+
+                            {{-- اطلاعات بیمار در حال ویزیت --}}
+                            <div class="mt-4 space-y-3">
+                                <div class="bg-gray-50/70 dark:bg-gray-700/30 p-3 rounded-xl">
+                                    <div class="flex items-center justify-between text-[11px] text-gray-400 mb-1">
+                                        <span class="font-bold text-gray-600 dark:text-gray-300">مراجع فعلی در اتاق:</span>
+                                        @if($pActive)
+                                            <span class="text-emerald-600 dark:text-emerald-400 font-bold">
+                                                ساعت شروع: {{ $pActive->entry_at_utc ? $pActive->entry_at_utc->timezone($tz)->format('H:i') : ($pActive->start_at_utc ? $pActive->start_at_utc->timezone($tz)->format('H:i') : '—') }}
+                                            </span>
+                                        @endif
+                                    </div>
+                                    @if($pActive)
+                                        <div class="flex items-center justify-between">
+                                            <div>
+                                                <div class="text-xs font-bold text-gray-900 dark:text-white">
+                                                    {{ $pActive->client?->full_name ?? 'مراجع بدون نام' }}
+                                                </div>
+                                                <div class="text-[11px] text-gray-500 dark:text-gray-400">
+                                                    {{ $ls }}: {{ $pActive->service?->name ?? '—' }}
+                                                </div>
+                                            </div>
+                                            @if($quickStatusEnabled)
+                                                <button wire:click="finishVisit({{ $pActive->id }})"
+                                                        type="button" 
+                                                        class="px-2.5 py-1 text-[11px] font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-sm transition">
+                                                    اتمام ویزیت
+                                                </button>
+                                            @endif
+                                        </div>
+                                    @else
+                                        <div class="text-xs text-gray-400 py-1 italic">
+                                            در حال حاضر بیماری در این اتاق حضور ندارد.
+                                        </div>
+                                    @endif
+                                </div>
+
+                                {{-- اطلاعات بیمار بعدی در صف این ارائه‌دهنده --}}
+                                <div class="bg-gray-50/70 dark:bg-gray-700/30 p-3 rounded-xl">
+                                    <div class="flex items-center justify-between text-[11px] text-gray-400 mb-1">
+                                        <span class="font-bold text-gray-600 dark:text-gray-300">نوبت بعدی در صف:</span>
+                                        @if($pNext)
+                                            <span class="text-indigo-600 dark:text-indigo-400 font-bold">
+                                                ساعت: {{ $pNext->start_at_utc ? $pNext->start_at_utc->timezone($tz)->format('H:i') : '—' }}
+                                            </span>
+                                        @endif
+                                    </div>
+                                    @if($pNext)
+                                        <div class="flex items-center justify-between">
+                                            <div>
+                                                <div class="text-xs font-bold text-gray-900 dark:text-white flex items-center gap-1.5">
+                                                    <span>{{ $pNext->client?->full_name ?? 'مراجع بدون نام' }}</span>
+                                                    @if($pNext->entry_at_utc)
+                                                        <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-teal-100 text-teal-800 dark:bg-teal-900/50 dark:text-teal-200">
+                                                            حاضر در لابی
+                                                        </span>
+                                                    @endif
+                                                </div>
+                                                <div class="text-[11px] text-gray-500 dark:text-gray-400">
+                                                    {{ $ls }}: {{ $pNext->service?->name ?? '—' }}
+                                                </div>
+                                            </div>
+                                            @if($quickStatusEnabled)
+                                                <button wire:click="startVisit({{ $pNext->id }})"
+                                                        type="button" 
+                                                        class="px-2 py-1 text-[11px] font-medium text-teal-700 dark:text-teal-300 bg-teal-50 dark:bg-teal-900/30 hover:bg-teal-100 rounded-lg transition">
+                                                    فراخوانی
+                                                </button>
+                                            @endif
+                                        </div>
+                                    @else
+                                        <div class="text-xs text-gray-400 py-1 italic">
+                                            نوبت بعدی در صف ثبت نشده است.
+                                        </div>
+                                    @endif
+                                </div>
+                            </div>
+                        </div>
+
+                        {{-- دکمه فیلتر و تمرکز روی این ارائه‌دهنده --}}
+                        <div class="mt-4 pt-3 border-t border-gray-100 dark:border-gray-700 flex items-center justify-between">
+                            <button wire:click="selectProvider({{ $p->id }})" 
+                                    type="button" 
+                                    class="w-full py-1.5 px-3 rounded-xl bg-gray-100 hover:bg-indigo-50 hover:text-indigo-600 dark:bg-gray-700/60 dark:hover:bg-indigo-900/30 dark:hover:text-indigo-300 text-xs font-bold text-gray-700 dark:text-gray-300 transition flex items-center justify-center gap-1.5">
+                                <span>مدیریت و مشاهده صف {{ $p->name }}</span>
+                                <svg class="w-3.5 h-3.5 rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+        </div>
+    @else
+        {{-- نمای متمرکز برای یک ارائه‌دهنده خاص (پزشک، متخصص یا مدیر فیلتر کرده) --}}
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {{-- کارت بیمار فعلی (در حال ویزیت) --}}
+            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-emerald-100 dark:border-emerald-900/40 p-6 flex flex-col justify-between relative overflow-hidden">
+                <div class="absolute top-0 right-0 w-2 h-full bg-emerald-500"></div>
+
+                <div>
+                    <div class="flex items-center justify-between pb-4 border-b border-gray-100 dark:border-gray-700">
+                        <div class="flex items-center gap-2">
+                            <span class="w-3 h-3 rounded-full bg-emerald-500 animate-pulse"></span>
+                            <h2 class="text-base font-bold text-gray-900 dark:text-white">مراجع فعلی (در حال دریافت خدمت)</h2>
+                        </div>
+                        @if($activePatient)
+                            <span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
+                                در حال ارائه خدمت
+                            </span>
+                        @endif
+                    </div>
+
                     @if($activePatient)
-                        <span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
-                            در حال ارائه خدمت
-                        </span>
-                    @endif
-                </div>
-
-                @if($activePatient)
-                    <div class="mt-5 space-y-4">
-                        <div class="flex items-center justify-between">
-                            <div class="flex items-center gap-3">
-                                <div class="w-12 h-12 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 flex items-center justify-center font-bold text-lg">
-                                    {{ mb_substr($activePatient->client?->full_name ?? 'ب', 0, 1) }}
+                        <div class="mt-5 space-y-4">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-12 h-12 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 flex items-center justify-center font-bold text-lg">
+                                        {{ mb_substr($activePatient->client?->full_name ?? 'م', 0, 1) }}
+                                    </div>
+                                    <div>
+                                        <h3 class="text-base font-bold text-gray-900 dark:text-white">
+                                            {{ $activePatient->client?->full_name ?? 'مراجع بدون نام' }}
+                                        </h3>
+                                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5 dir-ltr text-right">
+                                            {{ $activePatient->client?->phone ?? '—' }}
+                                        </p>
+                                    </div>
                                 </div>
-                                <div>
-                                    <h3 class="text-base font-bold text-gray-900 dark:text-white">
-                                        {{ $activePatient->client?->full_name ?? 'مراجع بدون نام' }}
-                                    </h3>
-                                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5 dir-ltr text-right">
-                                        {{ $activePatient->client?->phone ?? '—' }}
-                                    </p>
+
+                                @if($activePatient->client?->case_number)
+                                    <div class="text-right">
+                                        <span class="text-[11px] text-gray-400 block">شماره پرونده</span>
+                                        <span class="text-xs font-bold text-gray-700 dark:text-gray-300">#{{ $activePatient->client->case_number }}</span>
+                                    </div>
+                                @endif
+                            </div>
+
+                            <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-2 text-xs">
+                                <div class="bg-gray-50 dark:bg-gray-700/40 p-3 rounded-xl">
+                                    <span class="text-gray-400 block mb-1">{{ $ls }}</span>
+                                    <span class="font-bold text-gray-800 dark:text-gray-200">{{ $activePatient->service?->name ?? '—' }}</span>
                                 </div>
-                            </div>
-
-                            @if($activePatient->client?->case_number)
-                                <div class="text-right">
-                                    <span class="text-[11px] text-gray-400 block">شماره پرونده</span>
-                                    <span class="text-xs font-bold text-gray-700 dark:text-gray-300">#{{ $activePatient->client->case_number }}</span>
+                                <div class="bg-gray-50 dark:bg-gray-700/40 p-3 rounded-xl">
+                                    <span class="text-gray-400 block mb-1">{{ $lp }}</span>
+                                    <span class="font-bold text-gray-800 dark:text-gray-200">{{ $activePatient->provider?->name ?? '—' }}</span>
                                 </div>
-                            @endif
-                        </div>
-
-                        <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-2 text-xs">
-                            <div class="bg-gray-50 dark:bg-gray-700/40 p-3 rounded-xl">
-                                <span class="text-gray-400 block mb-1">خدمت / سرویس</span>
-                                <span class="font-bold text-gray-800 dark:text-gray-200">{{ $activePatient->service?->name ?? '—' }}</span>
-                            </div>
-                            <div class="bg-gray-50 dark:bg-gray-700/40 p-3 rounded-xl">
-                                <span class="text-gray-400 block mb-1">پزشک معالج</span>
-                                <span class="font-bold text-gray-800 dark:text-gray-200">{{ $activePatient->provider?->name ?? '—' }}</span>
-                            </div>
-                            <div class="bg-gray-50 dark:bg-gray-700/40 p-3 rounded-xl">
-                                <span class="text-gray-400 block mb-1">ساعت ورود / شروع</span>
-                                <span class="font-bold text-emerald-600 dark:text-emerald-400">
-                                    {{ $activePatient->entry_at_utc ? $activePatient->entry_at_utc->timezone(config('booking.timezones.schedule', 'Asia/Tehran'))->format('H:i') : ($activePatient->start_at_utc ? $activePatient->start_at_utc->timezone(config('booking.timezones.schedule', 'Asia/Tehran'))->format('H:i') : '—') }}
-                                </span>
-                            </div>
-                        </div>
-
-                        @if($activePatient->notes)
-                            <div class="bg-amber-50/60 dark:bg-amber-900/20 p-3 rounded-xl border border-amber-100 dark:border-amber-800/40 text-xs text-amber-800 dark:text-amber-200">
-                                <span class="font-bold block mb-0.5">یادداشت نوبت:</span>
-                                <span>{{ $activePatient->notes }}</span>
-                            </div>
-                        @endif
-                    </div>
-                @else
-                    <div class="py-12 text-center text-gray-400 dark:text-gray-500">
-                        <svg class="w-12 h-12 mx-auto mb-3 opacity-40 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                        </svg>
-                        <p class="text-sm font-medium">در حال حاضر بیماری در اتاق ویزیت حضور ندارد.</p>
-                        <p class="text-xs mt-1">با ثبت ورود یا انتخاب وضعیت، ویزیت را شروع کنید.</p>
-                    </div>
-                @endif
-            </div>
-
-            {{-- دکمه‌های عملیات سریع برای بیمار فعلی --}}
-            @if($activePatient && $quickStatusEnabled)
-                <div class="mt-6 pt-4 border-t border-gray-100 dark:border-gray-700 flex flex-wrap gap-2">
-                    <button wire:click="changeStatus({{ $activePatient->id }}, '{{ \Modules\Booking\Entities\Appointment::STATUS_DONE }}')" 
-                            type="button" 
-                            class="flex-1 min-w-[120px] px-3 py-2 rounded-xl text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 transition flex items-center justify-center gap-1 shadow-sm">
-                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                        </svg>
-                        <span>اتمام ویزیت (Done)</span>
-                    </button>
-                    <button wire:click="changeStatus({{ $activePatient->id }}, '{{ \Modules\Booking\Entities\Appointment::STATUS_NO_SHOW }}')" 
-                            type="button" 
-                            class="px-3 py-2 rounded-xl text-xs font-medium text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 transition">
-                        <span>عدم حضور</span>
-                    </button>
-                    <button wire:click="changeStatus({{ $activePatient->id }}, '{{ \Modules\Booking\Entities\Appointment::STATUS_CANCELED_BY_ADMIN }}')" 
-                            type="button" 
-                            class="px-3 py-2 rounded-xl text-xs font-medium text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/30 transition">
-                        <span>لغو نوبت</span>
-                    </button>
-                </div>
-            @endif
-        </div>
-
-        {{-- کارت نفر بعدی در صف --}}
-        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-indigo-100 dark:border-indigo-900/40 p-6 flex flex-col justify-between relative overflow-hidden">
-            <div class="absolute top-0 right-0 w-2 h-full bg-indigo-500"></div>
-
-            <div>
-                <div class="flex items-center justify-between pb-4 border-b border-gray-100 dark:border-gray-700">
-                    <div class="flex items-center gap-2">
-                        <span class="w-3 h-3 rounded-full bg-indigo-500"></span>
-                        <h2 class="text-base font-bold text-gray-900 dark:text-white">نفر بعدی در صف</h2>
-                    </div>
-                    @if($nextInQueue)
-                        @if($nextInQueue->entry_at_utc)
-                            <span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-teal-50 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300">
-                                حاضر در لابی کلینیک
-                            </span>
-                        @else
-                            <span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300">
-                                زمان‌بندی‌شده
-                            </span>
-                        @endif
-                    @endif
-                </div>
-
-                @if($nextInQueue)
-                    <div class="mt-5 space-y-4">
-                        <div class="flex items-center justify-between">
-                            <div class="flex items-center gap-3">
-                                <div class="w-12 h-12 rounded-full bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 flex items-center justify-center font-bold text-lg">
-                                    {{ mb_substr($nextInQueue->client?->full_name ?? 'ب', 0, 1) }}
-                                </div>
-                                <div>
-                                    <h3 class="text-base font-bold text-gray-900 dark:text-white">
-                                        {{ $nextInQueue->client?->full_name ?? 'مراجع بدون نام' }}
-                                    </h3>
-                                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5 dir-ltr text-right">
-                                        {{ $nextInQueue->client?->phone ?? '—' }}
-                                    </p>
+                                <div class="bg-gray-50 dark:bg-gray-700/40 p-3 rounded-xl">
+                                    <span class="text-gray-400 block mb-1">ساعت ورود / شروع</span>
+                                    <span class="font-bold text-emerald-600 dark:text-emerald-400">
+                                        {{ $activePatient->entry_at_utc ? $activePatient->entry_at_utc->timezone($tz)->format('H:i') : ($activePatient->start_at_utc ? $activePatient->start_at_utc->timezone($tz)->format('H:i') : '—') }}
+                                    </span>
                                 </div>
                             </div>
 
-                            @if($nextInQueue->client?->case_number)
-                                <div class="text-right">
-                                    <span class="text-[11px] text-gray-400 block">شماره پرونده</span>
-                                    <span class="text-xs font-bold text-gray-700 dark:text-gray-300">#{{ $nextInQueue->client->case_number }}</span>
+                            @if($activePatient->notes)
+                                <div class="bg-amber-50/60 dark:bg-amber-900/20 p-3 rounded-xl border border-amber-100 dark:border-amber-800/40 text-xs text-amber-800 dark:text-amber-200">
+                                    <span class="font-bold block mb-0.5">یادداشت نوبت:</span>
+                                    <span>{{ $activePatient->notes }}</span>
                                 </div>
                             @endif
                         </div>
-
-                        <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-2 text-xs">
-                            <div class="bg-gray-50 dark:bg-gray-700/40 p-3 rounded-xl">
-                                <span class="text-gray-400 block mb-1">خدمت / سرویس</span>
-                                <span class="font-bold text-gray-800 dark:text-gray-200">{{ $nextInQueue->service?->name ?? '—' }}</span>
-                            </div>
-                            <div class="bg-gray-50 dark:bg-gray-700/40 p-3 rounded-xl">
-                                <span class="text-gray-400 block mb-1">پزشک معالج</span>
-                                <span class="font-bold text-gray-800 dark:text-gray-200">{{ $nextInQueue->provider?->name ?? '—' }}</span>
-                            </div>
-                            <div class="bg-gray-50 dark:bg-gray-700/40 p-3 rounded-xl">
-                                <span class="text-gray-400 block mb-1">ساعت نوبت</span>
-                                <span class="font-bold text-indigo-600 dark:text-indigo-400">
-                                    {{ $nextInQueue->start_at_utc ? $nextInQueue->start_at_utc->timezone(config('booking.timezones.schedule', 'Asia/Tehran'))->format('H:i') : '—' }}
-                                </span>
-                            </div>
-                        </div>
-
-                        @if($nextInQueue->notes)
-                            <div class="bg-gray-50 dark:bg-gray-700/40 p-3 rounded-xl text-xs text-gray-600 dark:text-gray-300">
-                                <span class="font-bold block mb-0.5">یادداشت نوبت:</span>
-                                <span>{{ $nextInQueue->notes }}</span>
-                            </div>
-                        @endif
-                    </div>
-                @else
-                    <div class="py-12 text-center text-gray-400 dark:text-gray-500">
-                        <svg class="w-12 h-12 mx-auto mb-3 opacity-40 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        <p class="text-sm font-medium">نوبت بعدی در صف انتظار ثبت نشده است.</p>
-                        <p class="text-xs mt-1">تمام نوبت‌های برنامه‌ریزی‌شده ویزیت شده‌اند یا نوبتی وجود ندارد.</p>
-                    </div>
-                @endif
-            </div>
-
-            {{-- دکمه‌های عملیات سریع برای نفر بعدی --}}
-            @if($nextInQueue && $quickStatusEnabled)
-                <div class="mt-6 pt-4 border-t border-gray-100 dark:border-gray-700 flex flex-wrap gap-2">
-                    @if(empty($nextInQueue->entry_at_utc))
-                        <button wire:click="checkIn({{ $nextInQueue->id }})" 
-                                type="button" 
-                                class="flex-1 min-w-[120px] px-3 py-2 rounded-xl text-xs font-bold text-white bg-teal-600 hover:bg-teal-700 transition flex items-center justify-center gap-1 shadow-sm">
-                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+                    @else
+                        <div class="py-12 text-center text-gray-400 dark:text-gray-500">
+                            <svg class="w-12 h-12 mx-auto mb-3 opacity-40 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                             </svg>
-                            <span>ثبت ورود بیمار</span>
-                        </button>
+                            <p class="text-sm font-medium">در حال حاضر بیماری در اتاق ویزیت حضور ندارد.</p>
+                            <p class="text-xs mt-1">با ثبت ورود یا شروع ویزیت، وضعیت را آغاز کنید.</p>
+                        </div>
                     @endif
-                    <button wire:click="changeStatus({{ $nextInQueue->id }}, '{{ \Modules\Booking\Entities\Appointment::STATUS_DONE }}')" 
-                            type="button" 
-                            class="px-3 py-2 rounded-xl text-xs font-medium text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition">
-                        <span>انجام شد</span>
-                    </button>
-                    <button wire:click="changeStatus({{ $nextInQueue->id }}, '{{ \Modules\Booking\Entities\Appointment::STATUS_NO_SHOW }}')" 
-                            type="button" 
-                            class="px-3 py-2 rounded-xl text-xs font-medium text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 transition">
-                        <span>عدم حضور</span>
-                    </button>
-                    <button wire:click="changeStatus({{ $nextInQueue->id }}, '{{ \Modules\Booking\Entities\Appointment::STATUS_CANCELED_BY_ADMIN }}')" 
-                            type="button" 
-                            class="px-3 py-2 rounded-xl text-xs font-medium text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/30 transition">
-                        <span>لغو</span>
-                    </button>
                 </div>
-            @endif
+
+                {{-- دکمه‌های عملیات سریع برای بیمار فعلی --}}
+                @if($activePatient && $quickStatusEnabled)
+                    <div class="mt-6 pt-4 border-t border-gray-100 dark:border-gray-700 flex flex-wrap gap-2">
+                        <button wire:click="finishVisit({{ $activePatient->id }})" 
+                                type="button" 
+                                class="flex-1 min-w-[120px] px-3 py-2 rounded-xl text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 transition flex items-center justify-center gap-1 shadow-sm">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                            </svg>
+                            <span>اتمام ویزیت (Done)</span>
+                        </button>
+                        <button wire:click="changeStatus({{ $activePatient->id }}, '{{ \Modules\Booking\Entities\Appointment::STATUS_NO_SHOW }}')" 
+                                type="button" 
+                                class="px-3 py-2 rounded-xl text-xs font-medium text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 transition">
+                            <span>عدم حضور</span>
+                        </button>
+                        <button wire:click="changeStatus({{ $activePatient->id }}, '{{ \Modules\Booking\Entities\Appointment::STATUS_CANCELED_BY_ADMIN }}')" 
+                                type="button" 
+                                class="px-3 py-2 rounded-xl text-xs font-medium text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/30 transition">
+                            <span>لغو نوبت</span>
+                        </button>
+                    </div>
+                @endif
+            </div>
+
+            {{-- کارت نفر بعدی در صف --}}
+            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-indigo-100 dark:border-indigo-900/40 p-6 flex flex-col justify-between relative overflow-hidden">
+                <div class="absolute top-0 right-0 w-2 h-full bg-indigo-500"></div>
+
+                <div>
+                    <div class="flex items-center justify-between pb-4 border-b border-gray-100 dark:border-gray-700">
+                        <div class="flex items-center gap-2">
+                            <span class="w-3 h-3 rounded-full bg-indigo-500"></span>
+                            <h2 class="text-base font-bold text-gray-900 dark:text-white">نفر بعدی در صف</h2>
+                        </div>
+                        @if($nextInQueue)
+                            @if($nextInQueue->entry_at_utc)
+                                <span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-teal-50 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300">
+                                    حاضر در لابی کلینیک
+                                </span>
+                            @else
+                                <span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300">
+                                    زمان‌بندی‌شده
+                                </span>
+                            @endif
+                        @endif
+                    </div>
+
+                    @if($nextInQueue)
+                        <div class="mt-5 space-y-4">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-12 h-12 rounded-full bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 flex items-center justify-center font-bold text-lg">
+                                        {{ mb_substr($nextInQueue->client?->full_name ?? 'م', 0, 1) }}
+                                    </div>
+                                    <div>
+                                        <h3 class="text-base font-bold text-gray-900 dark:text-white">
+                                            {{ $nextInQueue->client?->full_name ?? 'مراجع بدون نام' }}
+                                        </h3>
+                                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5 dir-ltr text-right">
+                                            {{ $nextInQueue->client?->phone ?? '—' }}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                @if($nextInQueue->client?->case_number)
+                                    <div class="text-right">
+                                        <span class="text-[11px] text-gray-400 block">شماره پرونده</span>
+                                        <span class="text-xs font-bold text-gray-700 dark:text-gray-300">#{{ $nextInQueue->client->case_number }}</span>
+                                    </div>
+                                @endif
+                            </div>
+
+                            <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-2 text-xs">
+                                <div class="bg-gray-50 dark:bg-gray-700/40 p-3 rounded-xl">
+                                    <span class="text-gray-400 block mb-1">{{ $ls }}</span>
+                                    <span class="font-bold text-gray-800 dark:text-gray-200">{{ $nextInQueue->service?->name ?? '—' }}</span>
+                                </div>
+                                <div class="bg-gray-50 dark:bg-gray-700/40 p-3 rounded-xl">
+                                    <span class="text-gray-400 block mb-1">{{ $lp }}</span>
+                                    <span class="font-bold text-gray-800 dark:text-gray-200">{{ $nextInQueue->provider?->name ?? '—' }}</span>
+                                </div>
+                                <div class="bg-gray-50 dark:bg-gray-700/40 p-3 rounded-xl">
+                                    <span class="text-gray-400 block mb-1">ساعت نوبت</span>
+                                    <span class="font-bold text-indigo-600 dark:text-indigo-400">
+                                        {{ $nextInQueue->start_at_utc ? $nextInQueue->start_at_utc->timezone($tz)->format('H:i') : '—' }}
+                                    </span>
+                                </div>
+                            </div>
+
+                            @if($nextInQueue->notes)
+                                <div class="bg-gray-50 dark:bg-gray-700/40 p-3 rounded-xl text-xs text-gray-600 dark:text-gray-300">
+                                    <span class="font-bold block mb-0.5">یادداشت نوبت:</span>
+                                    <span>{{ $nextInQueue->notes }}</span>
+                                </div>
+                            @endif
+                        </div>
+                    @else
+                        <div class="py-12 text-center text-gray-400 dark:text-gray-500">
+                            <svg class="w-12 h-12 mx-auto mb-3 opacity-40 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <p class="text-sm font-medium">نوبت بعدی در صف انتظار ثبت نشده است.</p>
+                            <p class="text-xs mt-1">تمام نوبت‌های برنامه‌ریزی‌شده ارائه خدمت شده‌اند یا نوبتی وجود ندارد.</p>
+                        </div>
+                    @endif
+                </div>
+
+                {{-- دکمه‌های عملیات سریع برای نفر بعدی --}}
+                @if($nextInQueue && $quickStatusEnabled)
+                    <div class="mt-6 pt-4 border-t border-gray-100 dark:border-gray-700 flex flex-wrap gap-2">
+                        @if(empty($nextInQueue->entry_at_utc))
+                            <button wire:click="checkIn({{ $nextInQueue->id }})" 
+                                    type="button" 
+                                    class="flex-1 min-w-[120px] px-3 py-2 rounded-xl text-xs font-bold text-white bg-teal-600 hover:bg-teal-700 transition flex items-center justify-center gap-1 shadow-sm">
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+                                </svg>
+                                <span>ثبت ورود به لابی</span>
+                            </button>
+                        @endif
+                        <button wire:click="startVisit({{ $nextInQueue->id }})" 
+                                type="button" 
+                                class="flex-1 min-w-[120px] px-3 py-2 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 transition flex items-center justify-center gap-1 shadow-sm">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                            </svg>
+                            <span>فراخوانی و شروع</span>
+                        </button>
+                        <button wire:click="changeStatus({{ $nextInQueue->id }}, '{{ \Modules\Booking\Entities\Appointment::STATUS_NO_SHOW }}')" 
+                                type="button" 
+                                class="px-3 py-2 rounded-xl text-xs font-medium text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 transition">
+                            <span>عدم حضور</span>
+                        </button>
+                        <button wire:click="changeStatus({{ $nextInQueue->id }}, '{{ \Modules\Booking\Entities\Appointment::STATUS_CANCELED_BY_ADMIN }}')" 
+                                type="button" 
+                                class="px-3 py-2 rounded-xl text-xs font-medium text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/30 transition">
+                            <span>لغو</span>
+                        </button>
+                    </div>
+                @endif
+            </div>
         </div>
-    </div>
+    @endif
 
     {{-- جدول جریان نوبت‌های امروز --}}
     <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
-        <div class="p-5 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
+        <div class="p-5 border-b border-gray-100 dark:border-gray-700 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div class="flex items-center gap-2">
                 <h3 class="text-base font-bold text-gray-900 dark:text-white">جریان نوبت‌های امروز</h3>
-                <span class="px-2 py-0.5 rounded-full text-xs font-bold bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
+                <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300">
                     {{ $appointments->count() }} نوبت
                 </span>
+                @if(!empty($searchQuery))
+                    <span class="text-xs text-gray-400">
+                        (فیلتر شده با جستجوی: «{{ $searchQuery }}»)
+                    </span>
+                @endif
             </div>
             @if(!$quickStatusEnabled)
                 <span class="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-2.5 py-1 rounded-lg border border-amber-200 dark:border-amber-800">
@@ -429,9 +699,9 @@
                     <tr>
                         <th class="py-3.5 px-4">#</th>
                         <th class="py-3.5 px-4">ساعت</th>
-                        <th class="py-3.5 px-4">نام بیمار</th>
-                        <th class="py-3.5 px-4">سرویس</th>
-                        <th class="py-3.5 px-4">پزشک / ارائه‌دهنده</th>
+                        <th class="py-3.5 px-4">نام مراجع</th>
+                        <th class="py-3.5 px-4">{{ $ls }}</th>
+                        <th class="py-3.5 px-4">{{ $lp }}</th>
                         <th class="py-3.5 px-4">وضعیت</th>
                         <th class="py-3.5 px-4">ورود / خروج</th>
                         <th class="py-3.5 px-4 text-center">عملیات سریع</th>
@@ -444,7 +714,6 @@
                                 'label' => $apt->status_label,
                                 'class' => 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200',
                             ];
-                            $tz = config('booking.timezones.schedule', 'Asia/Tehran');
                         @endphp
                         <tr class="hover:bg-gray-50/80 dark:hover:bg-gray-700/30 transition">
                             <td class="py-3.5 px-4 font-mono text-gray-400">{{ $index + 1 }}</td>
@@ -452,7 +721,12 @@
                                 {{ $apt->start_at_utc ? $apt->start_at_utc->timezone($tz)->format('H:i') : '—' }}
                             </td>
                             <td class="py-3.5 px-4">
-                                <div class="font-bold text-gray-900 dark:text-white">{{ $apt->client?->full_name ?? '—' }}</div>
+                                <div class="flex items-center gap-1.5 font-bold text-gray-900 dark:text-white">
+                                    <span>{{ $apt->client?->full_name ?? '—' }}</span>
+                                    @if($apt->client?->case_number)
+                                        <span class="text-[10px] font-normal text-gray-400 bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded">#{{ $apt->client->case_number }}</span>
+                                    @endif
+                                </div>
                                 <div class="text-[11px] text-gray-400 dir-ltr text-right">{{ $apt->client?->phone ?? '' }}</div>
                             </td>
                             <td class="py-3.5 px-4">
@@ -468,7 +742,7 @@
                             </td>
                             <td class="py-3.5 px-4 text-[11px] text-gray-500 dark:text-gray-400">
                                 @if($apt->entry_at_utc)
-                                    <div>ورود: {{ $apt->entry_at_utc->timezone($tz)->format('H:i') }}</div>
+                                    <div class="text-teal-600 dark:text-teal-400">ورود: {{ $apt->entry_at_utc->timezone($tz)->format('H:i') }}</div>
                                 @endif
                                 @if($apt->exit_at_utc)
                                     <div>خروج: {{ $apt->exit_at_utc->timezone($tz)->format('H:i') }}</div>
@@ -480,9 +754,10 @@
                             <td class="py-3.5 px-4 text-center">
                                 @if($quickStatusEnabled)
                                     <div class="inline-flex items-center gap-1.5 justify-center">
+                                        {{-- ثبت ورود به لابی --}}
                                         @if(empty($apt->entry_at_utc) && !in_array($apt->status, [\Modules\Booking\Entities\Appointment::STATUS_DONE, \Modules\Booking\Entities\Appointment::STATUS_CANCELED_BY_ADMIN, \Modules\Booking\Entities\Appointment::STATUS_CANCELED_BY_CLIENT, \Modules\Booking\Entities\Appointment::STATUS_NO_SHOW]))
                                             <button wire:click="checkIn({{ $apt->id }})" 
-                                                    title="ثبت ورود"
+                                                    title="ثبت ورود مراجع"
                                                     type="button" 
                                                     class="p-1 rounded-lg text-teal-600 hover:bg-teal-50 dark:hover:bg-teal-900/30 transition">
                                                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -491,7 +766,20 @@
                                             </button>
                                         @endif
 
-                                        <button wire:click="changeStatus({{ $apt->id }}, '{{ \Modules\Booking\Entities\Appointment::STATUS_DONE }}')" 
+                                        {{-- شروع ویزیت / فراخوانی --}}
+                                        @if(!in_array($apt->status, [\Modules\Booking\Entities\Appointment::STATUS_DONE, \Modules\Booking\Entities\Appointment::STATUS_CANCELED_BY_ADMIN, \Modules\Booking\Entities\Appointment::STATUS_CANCELED_BY_CLIENT, \Modules\Booking\Entities\Appointment::STATUS_NO_SHOW]))
+                                            <button wire:click="startVisit({{ $apt->id }})" 
+                                                    title="شروع ویزیت / فراخوانی"
+                                                    type="button" 
+                                                    class="p-1 rounded-lg text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition">
+                                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                                                </svg>
+                                            </button>
+                                        @endif
+
+                                        {{-- اتمام ویزیت --}}
+                                        <button wire:click="finishVisit({{ $apt->id }})" 
                                                 title="علامت‌گذاری انجام شده"
                                                 type="button" 
                                                 class="p-1 rounded-lg text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition">
@@ -500,6 +788,7 @@
                                             </svg>
                                         </button>
 
+                                        {{-- عدم حضور --}}
                                         <button wire:click="changeStatus({{ $apt->id }}, '{{ \Modules\Booking\Entities\Appointment::STATUS_NO_SHOW }}')" 
                                                 title="علامت‌گذاری عدم حضور"
                                                 type="button" 
@@ -509,6 +798,7 @@
                                             </svg>
                                         </button>
 
+                                        {{-- لغو نوبت --}}
                                         <button wire:click="changeStatus({{ $apt->id }}, '{{ \Modules\Booking\Entities\Appointment::STATUS_CANCELED_BY_ADMIN }}')" 
                                                 title="لغو نوبت"
                                                 type="button" 
@@ -610,4 +900,3 @@
     })();
 </script>
 @endscript
-
