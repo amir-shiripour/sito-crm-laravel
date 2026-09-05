@@ -37,7 +37,7 @@ Route::prefix('booking')->name('booking.')->middleware('web')->group(function ()
     Route::get('/result/{appointment}', [OnlineBookingController::class, 'result'])->name('public.result');
 
     // Payment callback for booking
-    Route::get('/payment/verify/{gateway}/{payment}', [OnlineBookingController::class, 'verifyPayment'])->name('payment.verify');
+    Route::match(['get', 'post'], '/payment/verify/{gateway}/{payment}', [OnlineBookingController::class, 'verifyPayment'])->name('payment.verify');
 });
 
 // User area

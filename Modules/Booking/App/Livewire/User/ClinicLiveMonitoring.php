@@ -416,7 +416,17 @@ class ClinicLiveMonitoring extends Component
         }
 
         $baseQuery = $monitoringService->buildBaseQuery($this->selectedDate);
-        $statusCounts = $monitoringService->getStatusCounts($baseQuery);
+
+        // Calculate statusCounts filtered by current provider and service selections
+        $statsQuery = clone $baseQuery;
+        if (! empty($this->selectedProviderId) && $this->selectedProviderId !== 'all') {
+            $statsQuery->where('provider_user_id', (int) $this->selectedProviderId);
+        }
+        if (! empty($this->selectedServiceId) && $this->selectedServiceId !== 'all') {
+            $statsQuery->where('service_id', (int) $this->selectedServiceId);
+        }
+        $statusCounts = $monitoringService->getStatusCounts($statsQuery);
+
         $providers = $monitoringService->getAccessibleProviders();
         $services = $monitoringService->getActiveServices();
         $statusesList = Appointment::statusesList();
