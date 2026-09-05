@@ -7,6 +7,7 @@ use Exception;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Modules\Accounting\App\Helpers\AccountingWalletHelper;
+use Modules\Accounting\App\Models\AccountingSetting;
 use Modules\Accounting\App\Models\Category;
 use Modules\Accounting\App\Models\FundAccount;
 use Modules\Accounting\Entities\Cheque;
