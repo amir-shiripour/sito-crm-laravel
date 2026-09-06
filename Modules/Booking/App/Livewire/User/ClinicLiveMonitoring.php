@@ -417,17 +417,66 @@ class ClinicLiveMonitoring extends Component
             return;
         }
 
-        $cleanDelay = max(5, min(120, $minutes));
-        $noteTag = " [اعلام تاخیر مراجع: +{$cleanDelay} دقیقه]";
-        if (! str_contains((string) $appointment->notes, "اعلام تاخیر مراجع")) {
-            $appointment->notes = trim(($appointment->notes ? $appointment->notes . ' | ' : '') . $noteTag);
+        if (! $monitoringService->canViewAllAppointments($user)) {
+            if ((int) $appointment->provider_user_id !== (int) $user->id) {
+                $this->toastError = 'شما فقط مجاز به ویرایش نوبت‌های خود هستید.';
+                $this->dispatch('notify', ['type' => 'error', 'text' => $this->toastError]);
+
+                return;
+            }
+        }
+
+        $cleanDelay = max(5, min(240, $minutes));
+        $noteTag = "[اعلام تاخیر مراجع: +{$cleanDelay} دقیقه]";
+        
+        $currentNotes = (string) ($appointment->notes ?? '');
+        if (! str_contains($currentNotes, "اعلام تاخیر مراجع")) {
+            $appointment->notes = trim(($currentNotes ? $currentNotes . ' | ' : '') . $noteTag);
         } else {
-            $appointment->notes = preg_replace('/\[اعلام تاخیر مراجع: \+\d+ دقیقه\]/', $noteTag, (string) $appointment->notes);
+            $appointment->notes = preg_replace('/\[اعلام تاخیر مراجع: \+\d+ دقیقه\]/', $noteTag, $currentNotes);
         }
 
         $appointment->save();
 
-        $this->toastSuccess = "اعلام تاخیر {$cleanDelay} دقیقه‌ای برای مراجع با موفقیت ثبت شد.";
+        $this->toastSuccess = "اعلام تاخیر {$cleanDelay} دقیقه‌ای برای نوبت #{$appointment->id} ثبت شد.";
+        $this->dispatch('notify', ['type' => 'success', 'text' => $this->toastSuccess]);
+    }
+
+    public function clearClientDelay(int $appointmentId): void
+    {
+        $user = Auth::user();
+        $monitoringService = app(ClinicMonitoringService::class);
+
+        if (! $user || (! $monitoringService->isAdminUser($user) && ! $user->can('booking.appointments.edit'))) {
+            $this->toastError = 'شما مجوز ویرایش تاخیر مراجع را ندارید.';
+            $this->dispatch('notify', ['type' => 'error', 'text' => $this->toastError]);
+
+            return;
+        }
+
+        $appointment = Appointment::query()->find($appointmentId);
+        if (! $appointment) {
+            return;
+        }
+
+        if (! $monitoringService->canViewAllAppointments($user)) {
+            if ((int) $appointment->provider_user_id !== (int) $user->id) {
+                $this->toastError = 'شما فقط مجاز به ویرایش نوبت‌های خود هستید.';
+                $this->dispatch('notify', ['type' => 'error', 'text' => $this->toastError]);
+
+                return;
+            }
+        }
+
+        $currentNotes = (string) ($appointment->notes ?? '');
+        $cleanedNotes = preg_replace('/\s*\|\s*\[اعلام تاخیر مراجع: \+\d+ دقیقه\]/', '', $currentNotes);
+        $cleanedNotes = preg_replace('/\[اعلام تاخیر مراجع: \+\d+ دقیقه\]\s*\|\s*/', '', $cleanedNotes);
+        $cleanedNotes = preg_replace('/\[اعلام تاخیر مراجع: \+\d+ دقیقه\]/', '', $cleanedNotes);
+
+        $appointment->notes = trim($cleanedNotes);
+        $appointment->save();
+
+        $this->toastSuccess = "اعلام تاخیر نوبت #{$appointment->id} با موفقیت لغو شد.";
         $this->dispatch('notify', ['type' => 'success', 'text' => $this->toastSuccess]);
     }
 
