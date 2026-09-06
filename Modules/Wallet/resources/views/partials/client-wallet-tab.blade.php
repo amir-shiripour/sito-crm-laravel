@@ -181,7 +181,7 @@
         <div class="p-5 rounded-2xl bg-white dark:bg-gray-800/80 border border-gray-200 dark:border-gray-700 shadow-xs flex flex-col justify-between">
             <div class="flex items-center justify-between">
                 <span class="text-xs font-bold text-gray-500 dark:text-gray-400">عملیات سریع کیف پول</span>
-                <span class="text-xs font-mono font-bold text-gray-400">{{ $faNum($txCount) }} تراکنش</span>
+                <span class="text-xs font-bold text-gray-400">{{ $faNum($txCount) }} تراکنش</span>
             </div>
             <div class="mt-3 flex items-center gap-2">
                 @can('wallet.deposit')
@@ -246,7 +246,7 @@
                             $isPositive = in_array($tx->type->value, ['deposit', 'refund', 'commission', 'bonus']);
                         @endphp
                         <tr class="hover:bg-gray-50/70 dark:hover:bg-gray-700/30 transition-colors">
-                            <td class="px-6 py-4 whitespace-nowrap text-xs text-gray-500 dark:text-gray-400 font-mono">
+                            <td class="px-6 py-4 whitespace-nowrap text-xs text-gray-500 dark:text-gray-400">
                                 {{ Str::limit($tx->uuid, 10) }}
                             </td>
 
@@ -270,7 +270,7 @@
                                 {{ $tx->description ?? '—' }}
                             </td>
 
-                            <td class="px-6 py-4 whitespace-nowrap text-xs text-gray-500 dark:text-gray-400 font-mono">
+                            <td class="px-6 py-4 whitespace-nowrap text-xs text-gray-500 dark:text-gray-400">
                                 {{ $tx->created_at ? $faNum($toJalali($tx->created_at)->format('Y/m/d H:i')) : '—' }}
                             </td>
                         </tr>
