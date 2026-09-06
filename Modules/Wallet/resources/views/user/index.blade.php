@@ -2,8 +2,15 @@
 
 @section('content')
     @php
-        $inputClass = "w-full rounded-xl border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 transition-all dark:border-gray-700 dark:bg-gray-900/50 dark:text-gray-100 dark:focus:bg-gray-900";
+        $inputClass = "w-full rounded-xl border-gray-200 bg-gray-50 px-3.5 py-2.5 text-xs text-gray-900 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 transition-all dark:border-gray-700 dark:bg-gray-900/60 dark:text-gray-100 dark:focus:bg-gray-900";
         $labelClass = "block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5";
+
+        $activeFiltersCount = count(array_filter(
+            request()->only(['search', 'holder_type', 'status', 'balance_status', 'min_balance', 'max_balance', 'sort', 'per_page']),
+            fn($v, $k) => !empty($v) && !($k === 'sort' && $v === 'latest') && !($k === 'per_page' && $v == '20'),
+            ARRAY_FILTER_USE_BOTH
+        ));
+        $isFiltered = $activeFiltersCount > 0;
     @endphp
 
     <div class="w-full mx-auto px-4 py-8 space-y-6" x-data="walletManager()">
@@ -30,237 +37,696 @@
             </div>
         @endif
 
-        {{-- Header --}}
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-                <h1 class="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                    <span class="flex items-center justify-center w-9 h-9 rounded-xl bg-indigo-100 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-300 shadow-xs">
-                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        {{-- Main Header --}}
+        <div class="bg-white dark:bg-gray-800/90 rounded-2xl border border-gray-200/80 dark:border-gray-700/70 p-5 shadow-xs backdrop-blur-sm">
+            <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                <div class="flex items-center gap-3.5">
+                    <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-indigo-700 text-white flex items-center justify-center shadow-md shadow-indigo-500/20 shrink-0">
+                        <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
                         </svg>
-                    </span>
-                    مدیریت کیف پول‌ها
-                </h1>
-                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 mr-11">
-                    لیست کیف پول‌های فعال سیستمی، کلاینت‌ها و مدیریت موجودی حساب‌ها (واحد پول: {{ $currencyLabel ?? 'تومان' }})
-                </p>
-            </div>
-
-            <div class="flex flex-wrap items-center gap-2.5">
-                @can('wallet.transactions.view')
-                    <a href="{{ route('user.wallet.transactions.index') }}"
-                       class="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold bg-white text-gray-700 border border-gray-200 hover:bg-gray-50 hover:border-gray-300 shadow-xs transition-all dark:bg-gray-800 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-700">
-                        <svg class="w-4 h-4 text-gray-500 dark:text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
-                        <span>تراکنش‌های مالی</span>
-                    </a>
-                @endcan
-
-                @can('wallet.withdraw')
-                    <button type="button" @click="openModal('withdraw')"
-                            class="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold bg-rose-600 text-white hover:bg-rose-700 shadow-md shadow-rose-500/20 transition-all active:scale-95">
-                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4" /></svg>
-                        <span>کسر / برداشت</span>
-                    </button>
-                @endcan
-
-                @can('wallet.deposit')
-                    <button type="button" @click="openModal('deposit')"
-                            class="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold bg-emerald-600 text-white hover:bg-emerald-700 shadow-md shadow-emerald-500/20 transition-all active:scale-95">
-                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
-                        <span>شارژ / واریز</span>
-                    </button>
-                @endcan
-            </div>
-        </div>
-
-        {{-- Filters --}}
-        <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-5 shadow-xs">
-            <form method="GET" class="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end">
-                <div>
-                    <label class="{{ $labelClass }}">جستجو در لیست</label>
-                    <div class="relative">
-                        <input type="text" name="search" value="{{ request('search') }}"
-                               placeholder="نام کیف پول، اسلاگ، دارنده..."
-                               class="{{ $inputClass }} pl-8">
-                        <svg class="w-4 h-4 text-gray-400 absolute left-3 top-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2.5">
+                            <h1 class="text-xl font-black text-gray-900 dark:text-white tracking-tight">
+                                مدیریت کیف پول‌ها
+                            </h1>
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-100 dark:border-indigo-900/50">
+                                {{ $wallets->total() }} رکورد یافت‌شده
+                            </span>
+                        </div>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 flex items-center gap-1.5">
+                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                            <span>مدیریت حساب‌ها، شارژ و برداشت اعتبارات (واحد پول: {{ $currencyLabel ?? 'تومان' }})</span>
+                        </p>
                     </div>
                 </div>
 
-                <div>
-                    <label class="{{ $labelClass }}">نوع دارنده</label>
-                    <select name="holder_type" class="{{ $inputClass }}">
-                        <option value="">همه دارندگان</option>
-                        <option value="user" @selected(request('holder_type') === 'user')>کاربران سیستم (User)</option>
-                        <option value="client" @selected(request('holder_type') === 'client')>کلاینت‌ها (Client)</option>
-                    </select>
+                <div class="flex flex-wrap items-center gap-2.5">
+                    @can('wallet.transactions.view')
+                        <a href="{{ route('user.wallet.transactions.index') }}"
+                           class="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold bg-white text-gray-700 border border-gray-200 hover:bg-gray-50 hover:border-gray-300 shadow-xs transition-all dark:bg-gray-800 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-700">
+                            <svg class="w-4 h-4 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
+                            <span>دفتر کل تراکنش‌ها</span>
+                        </a>
+                    @endcan
+
+                    @can('wallet.withdraw')
+                        <button type="button" @click="openModal('withdraw')"
+                                class="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold bg-rose-600 text-white hover:bg-rose-700 shadow-md shadow-rose-500/20 transition-all active:scale-95">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4" /></svg>
+                            <span>کسر / برداشت</span>
+                        </button>
+                    @endcan
+
+                    @can('wallet.deposit')
+                        <button type="button" @click="openModal('deposit')"
+                                class="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold bg-emerald-600 text-white hover:bg-emerald-700 shadow-md shadow-emerald-500/20 transition-all active:scale-95">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
+                            <span>شارژ / واریز</span>
+                        </button>
+                    @endcan
+                </div>
+            </div>
+        </div>
+
+        {{-- KPI Overview Cards --}}
+        @if(isset($stats))
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {{-- Card 1: Total System Balance --}}
+                <div class="p-5 rounded-2xl bg-gradient-to-br from-indigo-500 to-indigo-700 text-white shadow-md shadow-indigo-500/10 relative overflow-hidden">
+                    <div class="relative z-10">
+                        <div class="flex items-center justify-between text-indigo-100">
+                            <span class="text-xs font-bold">کل موجودی در گردش سیستم</span>
+                            <span class="p-2 rounded-xl bg-white/10 backdrop-blur-xs">
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                            </span>
+                        </div>
+                        <div class="mt-3 flex items-baseline gap-1.5">
+                            <span class="text-2xl font-black tabular-nums">{{ number_format($stats['total_balance']) }}</span>
+                            <span class="text-xs font-bold text-indigo-200">{{ $currencyLabel }}</span>
+                        </div>
+                        <span class="mt-1.5 block text-[11px] text-indigo-100/90">
+                            در {{ number_format($stats['positive_count']) }} کیف پول دارای اعتبار
+                        </span>
+                    </div>
+                    <div class="absolute -left-4 -bottom-6 w-24 h-24 bg-white/10 rounded-full blur-xl pointer-events-none"></div>
                 </div>
 
-                <div class="flex gap-2">
+                {{-- Card 2: Clients Balance --}}
+                <div class="p-5 rounded-2xl bg-white dark:bg-gray-800 border border-gray-200/80 dark:border-gray-700/80 shadow-xs">
+                    <div class="flex items-center justify-between text-gray-500 dark:text-gray-400">
+                        <span class="text-xs font-bold">موجودی کلاینت‌ها (مشتریان)</span>
+                        <span class="p-2 rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-300">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+                        </span>
+                    </div>
+                    <div class="mt-3 flex items-baseline gap-1.5">
+                        <span class="text-2xl font-black text-blue-600 dark:text-blue-400 tabular-nums">{{ number_format($stats['clients_balance']) }}</span>
+                        <span class="text-xs font-bold text-gray-400">{{ $currencyLabel }}</span>
+                    </div>
+                    <span class="mt-1.5 block text-[11px] text-gray-400 dark:text-gray-500">
+                        مجموع سپرده‌ها و اعتبارات مشتریان
+                    </span>
+                </div>
+
+                {{-- Card 3: Users Balance --}}
+                <div class="p-5 rounded-2xl bg-white dark:bg-gray-800 border border-gray-200/80 dark:border-gray-700/80 shadow-xs">
+                    <div class="flex items-center justify-between text-gray-500 dark:text-gray-400">
+                        <span class="text-xs font-bold">موجودی کاربران سیستم</span>
+                        <span class="p-2 rounded-xl bg-purple-50 text-purple-600 dark:bg-purple-950/40 dark:text-purple-300">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                        </span>
+                    </div>
+                    <div class="mt-3 flex items-baseline gap-1.5">
+                        <span class="text-2xl font-black text-purple-600 dark:text-purple-400 tabular-nums">{{ number_format($stats['users_balance']) }}</span>
+                        <span class="text-xs font-bold text-gray-400">{{ $currencyLabel }}</span>
+                    </div>
+                    <span class="mt-1.5 block text-[11px] text-gray-400 dark:text-gray-500">
+                        اعتبارات کارمندان و کاربران داخلی
+                    </span>
+                </div>
+
+                {{-- Card 4: Total Wallets Counts --}}
+                <div class="p-5 rounded-2xl bg-white dark:bg-gray-800 border border-gray-200/80 dark:border-gray-700/80 shadow-xs">
+                    <div class="flex items-center justify-between text-gray-500 dark:text-gray-400">
+                        <span class="text-xs font-bold">تعداد کل کیف پول‌ها</span>
+                        <span class="p-2 rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-300">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" /></svg>
+                        </span>
+                    </div>
+                    <div class="mt-3 flex items-baseline gap-1.5">
+                        <span class="text-2xl font-black text-gray-900 dark:text-white tabular-nums">{{ number_format($stats['total_wallets']) }}</span>
+                        <span class="text-xs font-bold text-gray-400">حساب</span>
+                    </div>
+                    <div class="mt-1.5 flex items-center gap-2 text-[11px]">
+                        <span class="text-emerald-600 dark:text-emerald-400 font-bold">{{ $stats['active_wallets'] }} فعال</span>
+                        <span class="text-gray-300 dark:text-gray-600">•</span>
+                        <span class="text-rose-600 dark:text-rose-400 font-bold">{{ $stats['inactive_wallets'] }} مسدود</span>
+                    </div>
+                </div>
+            </div>
+        @endif
+
+        {{-- Advanced Filter & Search Hub --}}
+        <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200/80 dark:border-gray-700 shadow-xs overflow-hidden">
+            
+            {{-- Quick Search & Filter Toggle Bar --}}
+            <div class="p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                
+                {{-- Fast Search Input with Immediate Submit --}}
+                <form method="GET" action="{{ route('user.wallet.index') }}" class="flex-1 flex items-center gap-2 max-w-xl">
+                    {{-- Preserve existing active filters if searching quickly --}}
+                    @foreach(request()->except(['search', 'page']) as $k => $v)
+                        <input type="hidden" name="{{ $k }}" value="{{ $v }}">
+                    @endforeach
+
+                    <div class="relative flex-1">
+                        <input type="text" name="search" value="{{ request('search') }}"
+                               placeholder="جستجوی هوشمند (نام کیف پول، اسلاگ، نام دارنده، شماره تماس، کد ملی، شناسه)..."
+                               class="{{ $inputClass }} pl-9 pr-4 py-2.5 font-medium">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
+                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                        </div>
+                    </div>
                     <button type="submit"
-                            class="flex-1 px-4 py-2.5 rounded-xl text-xs font-bold bg-indigo-50 text-indigo-600 border border-indigo-100 hover:bg-indigo-100 transition-colors dark:bg-indigo-900/30 dark:border-indigo-800 dark:text-indigo-300">
-                        اعمال فیلتر
+                            class="px-4 py-2.5 rounded-xl text-xs font-bold bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm shadow-indigo-600/20 transition active:scale-95 shrink-0">
+                        جستجو
                     </button>
-                    @if(request()->anyFilled(['search', 'holder_type']))
+                </form>
+
+                {{-- Action Buttons --}}
+                <div class="flex items-center gap-2 shrink-0">
+                    {{-- Advanced Filter Toggle Button --}}
+                    <button type="button" @click="filterOpen = !filterOpen"
+                            class="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-bold border transition-all shrink-0
+                            {{ $isFiltered ? 'bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/50 dark:text-indigo-300 dark:border-indigo-800' : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100 dark:bg-gray-750 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-700' }}">
+                        <svg class="w-4 h-4 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                        </svg>
+                        <span>فیلترهای پیشرفته</span>
+                        @if($activeFiltersCount > 0)
+                            <span class="w-4 h-4 rounded-full bg-indigo-600 text-white text-[10px] flex items-center justify-center font-black">
+                                {{ $activeFiltersCount }}
+                            </span>
+                        @endif
+                    </button>
+
+                    @if($isFiltered)
                         <a href="{{ route('user.wallet.index') }}"
-                           class="px-3.5 py-2.5 rounded-xl text-xs font-medium border border-gray-200 text-gray-500 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-750">
-                            حذف فیلتر
+                           class="inline-flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-bold text-rose-600 hover:bg-rose-50 border border-rose-200 dark:text-rose-400 dark:border-rose-900/60 dark:hover:bg-rose-950/40 transition">
+                            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                            <span>حذف تمام فیلترها</span>
                         </a>
                     @endif
                 </div>
-            </form>
+            </div>
+
+            {{-- Quick Filter Presets (Pills) --}}
+            <div class="px-5 pb-4 pt-1 border-t border-gray-100 dark:border-gray-700/60 flex items-center gap-2 overflow-x-auto custom-scrollbar">
+                <span class="text-[11px] font-bold text-gray-400 shrink-0 ml-1">دسترسی سریع:</span>
+                
+                <a href="{{ route('user.wallet.index') }}"
+                   class="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0
+                   {{ !request()->hasAny(['holder_type', 'status', 'balance_status']) ? 'bg-indigo-600 text-white shadow-xs' : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700/60 dark:text-gray-300 dark:hover:bg-gray-700' }}">
+                    همه کیف پول‌ها
+                </a>
+
+                <a href="{{ route('user.wallet.index', array_merge(request()->except(['page', 'holder_type']), ['holder_type' => 'client'])) }}"
+                   class="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0
+                   {{ request('holder_type') === 'client' ? 'bg-blue-600 text-white shadow-xs' : 'bg-blue-50 text-blue-700 hover:bg-blue-100 dark:bg-blue-950/40 dark:text-blue-300 dark:hover:bg-blue-900/50' }}">
+                    <span class="w-1.5 h-1.5 rounded-full bg-blue-400"></span>
+                    فقط کلاینت‌ها
+                </a>
+
+                <a href="{{ route('user.wallet.index', array_merge(request()->except(['page', 'holder_type']), ['holder_type' => 'user'])) }}"
+                   class="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0
+                   {{ request('holder_type') === 'user' ? 'bg-purple-600 text-white shadow-xs' : 'bg-purple-50 text-purple-700 hover:bg-purple-100 dark:bg-purple-950/40 dark:text-purple-300 dark:hover:bg-purple-900/50' }}">
+                    <span class="w-1.5 h-1.5 rounded-full bg-purple-400"></span>
+                    فقط کاربران سیستم
+                </a>
+
+                <a href="{{ route('user.wallet.index', array_merge(request()->except(['page', 'balance_status']), ['balance_status' => 'positive'])) }}"
+                   class="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0
+                   {{ request('balance_status') === 'positive' ? 'bg-emerald-600 text-white shadow-xs' : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300 dark:hover:bg-emerald-900/50' }}">
+                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                    دارای موجودی (> ۰)
+                </a>
+
+                <a href="{{ route('user.wallet.index', array_merge(request()->except(['page', 'balance_status']), ['balance_status' => 'zero'])) }}"
+                   class="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0
+                   {{ request('balance_status') === 'zero' ? 'bg-amber-600 text-white shadow-xs' : 'bg-amber-50 text-amber-700 hover:bg-amber-100 dark:bg-amber-950/40 dark:text-amber-300 dark:hover:bg-amber-900/50' }}">
+                    <span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
+                    موجودی صفر
+                </a>
+
+                <a href="{{ route('user.wallet.index', array_merge(request()->except(['page', 'status']), ['status' => 'inactive'])) }}"
+                   class="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0
+                   {{ request('status') === 'inactive' ? 'bg-rose-600 text-white shadow-xs' : 'bg-rose-50 text-rose-700 hover:bg-rose-100 dark:bg-rose-950/40 dark:text-rose-300 dark:hover:bg-rose-900/50' }}">
+                    <span class="w-1.5 h-1.5 rounded-full bg-rose-400"></span>
+                    مسدود / غیرفعال
+                </a>
+            </div>
+
+            {{-- Collapsible Advanced Filters Drawer --}}
+            <div x-show="filterOpen"
+                 x-collapse
+                 class="border-t border-gray-100 dark:border-gray-700/80 bg-gray-50/50 dark:bg-gray-900/40 p-5 sm:p-6">
+                
+                <form method="GET" action="{{ route('user.wallet.index') }}" class="space-y-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                        
+                        {{-- 1. Search Query --}}
+                        <div>
+                            <label class="{{ $labelClass }}">جستجوی هوشمند</label>
+                            <div class="relative">
+                                <input type="text" name="search" value="{{ request('search') }}"
+                                       placeholder="نام، اسلاگ، شماره، کد ملی..."
+                                       class="{{ $inputClass }} pl-8">
+                                <svg class="w-4 h-4 text-gray-400 absolute left-2.5 top-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                            </div>
+                        </div>
+
+                        {{-- 2. Holder Type --}}
+                        <div>
+                            <label class="{{ $labelClass }}">نوع دارنده حساب</label>
+                            <select name="holder_type" class="{{ $inputClass }}">
+                                <option value="">همه دارندگان</option>
+                                <option value="client" @selected(request('holder_type') === 'client')>کلاینت‌ها (Client)</option>
+                                <option value="user" @selected(request('holder_type') === 'user')>کاربران سیستم (User)</option>
+                            </select>
+                        </div>
+
+                        {{-- 3. Wallet Status --}}
+                        <div>
+                            <label class="{{ $labelClass }}">وضعیت کیف پول</label>
+                            <select name="status" class="{{ $inputClass }}">
+                                <option value="">همه وضعیت‌ها</option>
+                                <option value="active" @selected(request('status') === 'active')>فقط فعال</option>
+                                <option value="inactive" @selected(request('status') === 'inactive')>فقط مسدود / غیرفعال</option>
+                            </select>
+                        </div>
+
+                        {{-- 4. Balance Status --}}
+                        <div>
+                            <label class="{{ $labelClass }}">وضعیت موجودی</label>
+                            <select name="balance_status" class="{{ $inputClass }}">
+                                <option value="">همه مقادیر</option>
+                                <option value="positive" @selected(request('balance_status') === 'positive')>دارای موجودی (> ۰)</option>
+                                <option value="zero" @selected(request('balance_status') === 'zero')>موجودی صفر (۰)</option>
+                            </select>
+                        </div>
+
+                        {{-- 5. Min Balance --}}
+                        <div>
+                            <label class="{{ $labelClass }}">حداقل موجودی ({{ $currencyLabel }})</label>
+                            <input type="text" name="min_balance" value="{{ request('min_balance') }}"
+                                   placeholder="مثلاً: ۵۰,۰۰۰"
+                                   class="{{ $inputClass }}">
+                        </div>
+
+                        {{-- 6. Max Balance --}}
+                        <div>
+                            <label class="{{ $labelClass }}">حداکثر موجودی ({{ $currencyLabel }})</label>
+                            <input type="text" name="max_balance" value="{{ request('max_balance') }}"
+                                   placeholder="مثلاً: ۵,۰۰۰,۰۰۰"
+                                   class="{{ $inputClass }}">
+                        </div>
+
+                        {{-- 7. Sort By --}}
+                        <div>
+                            <label class="{{ $labelClass }}">مرتب‌سازی بر اساس</label>
+                            <select name="sort" class="{{ $inputClass }}">
+                                <option value="latest" @selected(request('sort', 'latest') === 'latest')>جدیدترین (پیش‌فرض)</option>
+                                <option value="balance_desc" @selected(request('sort') === 'balance_desc')>بیشترین موجودی</option>
+                                <option value="balance_asc" @selected(request('sort') === 'balance_asc')>کمترین موجودی</option>
+                                <option value="oldest" @selected(request('sort') === 'oldest')>قدیمی‌ترین</option>
+                                <option value="name_asc" @selected(request('sort') === 'name_asc')>نام کیف پول (الف تا ی)</option>
+                                <option value="name_desc" @selected(request('sort') === 'name_desc')>نام کیف پول (ی تا الف)</option>
+                            </select>
+                        </div>
+
+                        {{-- 8. Items Per Page --}}
+                        <div>
+                            <label class="{{ $labelClass }}">تعداد نمایش در صفحه</label>
+                            <select name="per_page" class="{{ $inputClass }}">
+                                <option value="15" @selected(request('per_page') == '15')>۱۵ مورد</option>
+                                <option value="20" @selected(request('per_page', '20') == '20')>۲۰ مورد</option>
+                                <option value="30" @selected(request('per_page') == '30')>۳۰ مورد</option>
+                                <option value="50" @selected(request('per_page') == '50')>۵۰ مورد</option>
+                                <option value="100" @selected(request('per_page') == '100')>۱۰۰ مورد</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    {{-- Filter Actions --}}
+                    <div class="flex items-center justify-between pt-4 border-t border-gray-200/70 dark:border-gray-700/60">
+                        <div class="text-xs text-gray-500 dark:text-gray-400">
+                            فیلترها به صورت همزمان با تمام شرایط اعمال می‌شوند.
+                        </div>
+                        <div class="flex items-center gap-2">
+                            @if($isFiltered)
+                                <a href="{{ route('user.wallet.index') }}"
+                                   class="px-4 py-2.5 rounded-xl text-xs font-bold border border-gray-200 text-gray-600 hover:bg-gray-100 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-750 transition">
+                                    پاک کردن فیلترها
+                                </a>
+                            @endif
+                            <button type="submit"
+                                    class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-600/20 active:scale-95 transition">
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                <span>اعمال فیلترهای پیشرفته</span>
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            {{-- Active Filter Tags Bar --}}
+            @if($isFiltered)
+                <div class="px-5 py-3 border-t border-gray-100 dark:border-gray-700/60 bg-indigo-50/30 dark:bg-indigo-950/20 flex flex-wrap items-center gap-2">
+                    <span class="text-[11px] font-bold text-indigo-700 dark:text-indigo-300 flex items-center gap-1">
+                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/></svg>
+                        فیلترهای فعال:
+                    </span>
+
+                    @if(request('search'))
+                        <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 shadow-2xs">
+                            جستجو: <strong class="text-indigo-600 dark:text-indigo-400">{{ request('search') }}</strong>
+                            <a href="{{ route('user.wallet.index', request()->except(['page', 'search'])) }}" class="text-gray-400 hover:text-rose-500 mr-1 font-bold">×</a>
+                        </span>
+                    @endif
+
+                    @if(request('holder_type'))
+                        <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 shadow-2xs">
+                            دارنده: <strong class="text-indigo-600 dark:text-indigo-400">{{ request('holder_type') === 'user' ? 'کاربر سیستم' : 'کلاینت' }}</strong>
+                            <a href="{{ route('user.wallet.index', request()->except(['page', 'holder_type'])) }}" class="text-gray-400 hover:text-rose-500 mr-1 font-bold">×</a>
+                        </span>
+                    @endif
+
+                    @if(request('status'))
+                        <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 shadow-2xs">
+                            وضعیت: <strong class="text-indigo-600 dark:text-indigo-400">{{ request('status') === 'active' ? 'فعال' : 'مسدود/غیرفعال' }}</strong>
+                            <a href="{{ route('user.wallet.index', request()->except(['page', 'status'])) }}" class="text-gray-400 hover:text-rose-500 mr-1 font-bold">×</a>
+                        </span>
+                    @endif
+
+                    @if(request('balance_status'))
+                        <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 shadow-2xs">
+                            موجودی: <strong class="text-indigo-600 dark:text-indigo-400">{{ request('balance_status') === 'positive' ? 'دارای موجودی' : 'موجودی صفر' }}</strong>
+                            <a href="{{ route('user.wallet.index', request()->except(['page', 'balance_status'])) }}" class="text-gray-400 hover:text-rose-500 mr-1 font-bold">×</a>
+                        </span>
+                    @endif
+
+                    @if(request('min_balance'))
+                        <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 shadow-2xs">
+                            حداقل: <strong class="text-indigo-600 dark:text-indigo-400">{{ request('min_balance') }}</strong>
+                            <a href="{{ route('user.wallet.index', request()->except(['page', 'min_balance'])) }}" class="text-gray-400 hover:text-rose-500 mr-1 font-bold">×</a>
+                        </span>
+                    @endif
+
+                    @if(request('max_balance'))
+                        <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 shadow-2xs">
+                            حداکثر: <strong class="text-indigo-600 dark:text-indigo-400">{{ request('max_balance') }}</strong>
+                            <a href="{{ route('user.wallet.index', request()->except(['page', 'max_balance'])) }}" class="text-gray-400 hover:text-rose-500 mr-1 font-bold">×</a>
+                        </span>
+                    @endif
+
+                    @if(request('sort') && request('sort') !== 'latest')
+                        @php
+                            $sortLabels = [
+                                'balance_desc' => 'بیشترین موجودی',
+                                'balance_asc'  => 'کمترین موجودی',
+                                'oldest'        => 'قدیمی‌ترین',
+                                'name_asc'      => 'نام (الف تا ی)',
+                                'name_desc'     => 'نام (ی تا الف)',
+                            ];
+                        @endphp
+                        <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 shadow-2xs">
+                            مرتب‌سازی: <strong class="text-indigo-600 dark:text-indigo-400">{{ $sortLabels[request('sort')] ?? request('sort') }}</strong>
+                            <a href="{{ route('user.wallet.index', request()->except(['page', 'sort'])) }}" class="text-gray-400 hover:text-rose-500 mr-1 font-bold">×</a>
+                        </span>
+                    @endif
+
+                    @if(request('per_page') && request('per_page') != '20')
+                        <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 shadow-2xs">
+                            نمایش: <strong class="text-indigo-600 dark:text-indigo-400">{{ request('per_page') }} تایی</strong>
+                            <a href="{{ route('user.wallet.index', request()->except(['page', 'per_page'])) }}" class="text-gray-400 hover:text-rose-500 mr-1 font-bold">×</a>
+                        </span>
+                    @endif
+                </div>
+            @endif
+
         </div>
 
-        {{-- Table --}}
-        <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden shadow-xs">
+        {{-- Wallets List & Table Section --}}
+        <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200/80 dark:border-gray-700 shadow-xs overflow-hidden">
+            
+            {{-- Table Top Toolbar --}}
+            <div class="p-4 sm:p-5 border-b border-gray-100 dark:border-gray-700/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-gray-50/40 dark:bg-gray-900/30">
+                <div class="flex items-center gap-2.5">
+                    <span class="w-2.5 h-2.5 rounded-full bg-indigo-600 dark:bg-indigo-400 animate-pulse"></span>
+                    <h2 class="text-sm font-black text-gray-900 dark:text-white">
+                        فهرست حساب‌های کیف پول
+                    </h2>
+                    <span class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
+                        صفحه {{ $wallets->currentPage() }} از {{ $wallets->lastPage() ?: 1 }}
+                    </span>
+                </div>
+
+                <div class="text-xs text-gray-500 dark:text-gray-400 font-medium">
+                    نمایش {{ $wallets->firstItem() ?? 0 }} تا {{ $wallets->lastItem() ?? 0 }} از مجموع {{ $wallets->total() }} حساب
+                </div>
+            </div>
+
             @if($wallets->count())
+                {{-- Desktop & Tablet Table --}}
                 <div class="overflow-x-auto">
-                    <table class="min-w-full divide-y divide-gray-100 dark:divide-gray-700">
-                        <thead class="bg-gray-50/80 dark:bg-gray-900/50">
-                        <tr>
-                            <th class="px-6 py-4 text-right text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">شناسه</th>
-                            <th class="px-6 py-4 text-right text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">دارنده حساب</th>
-                            <th class="px-6 py-4 text-right text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">نام کیف پول / شناسه</th>
-                            <th class="px-6 py-4 text-right text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">موجودی فعلی</th>
-                            <th class="px-6 py-4 text-center text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">وضعیت</th>
-                            <th class="px-6 py-4 text-center text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">عملیات</th>
-                        </tr>
-                        </thead>
-                        <tbody class="divide-y divide-gray-100 dark:divide-gray-700 bg-white dark:bg-gray-800">
-                        @foreach($wallets as $wallet)
-                            @php
-                                $holderName = '—';
-                                $holderPhone = '';
-                                $holderBadge = 'سیستم';
-                                $isUser = str_contains($wallet->holder_type, 'User');
-                                if ($wallet->holder) {
-                                    $holderName = $wallet->holder->name ?? $wallet->holder->full_name ?? $wallet->holder->username ?? 'نامشخص';
-                                    $holderPhone = $wallet->holder->phone ?? $wallet->holder->mobile ?? '';
-                                    $holderBadge = $isUser ? 'کاربر سیستم' : 'کلاینت';
-                                }
-                                $walletCurr = ($wallet->currency === 'rial' || $wallet->currency === 'IRR') ? 'ریال' : 'تومان';
-                            @endphp
-                            <tr class="hover:bg-gray-50/70 dark:hover:bg-gray-700/30 transition-colors">
-                                <td class="px-6 py-4 whitespace-nowrap text-xs font-semibold text-gray-400">
-                                    #{{ $wallet->id }}
-                                </td>
-
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <div class="flex items-center gap-2.5">
-                                        <div class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-black {{ $isUser ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300' : 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300' }}">
-                                            {{ mb_substr($holderName, 0, 1) }}
-                                        </div>
-                                        <div>
-                                            <div class="flex items-center gap-1.5">
-                                                <span class="px-1.5 py-0.5 rounded text-[10px] font-bold {{ $isUser ? 'bg-purple-50 text-purple-600 dark:bg-purple-900/30 dark:text-purple-300' : 'bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-300' }}">
-                                                    {{ $holderBadge }}
-                                                </span>
-                                                <span class="text-sm font-bold text-gray-900 dark:text-white">
-                                                    {{ $holderName }}
-                                                </span>
-                                            </div>
-                                            @if($holderPhone)
-                                                <span class="text-[11px] text-gray-400 dark:text-gray-500 font-mono block mt-0.5">{{ $holderPhone }}</span>
-                                            @endif
-                                        </div>
-                                    </div>
-                                </td>
-
-                                <td class="px-6 py-4 whitespace-nowrap text-xs font-medium text-gray-700 dark:text-gray-300">
-                                    <span class="font-bold">{{ $wallet->name ?? $wallet->slug }}</span>
-                                    <span class="text-gray-400 font-mono block text-[11px]">({{ $wallet->slug }})</span>
-                                </td>
-
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <div class="flex items-baseline gap-1">
-                                        <span class="text-base font-black {{ (float)$wallet->balance > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-600 dark:text-gray-400' }}">
-                                            {{ number_format((float)$wallet->balance) }}
-                                        </span>
-                                        <span class="text-[11px] font-bold text-gray-500 dark:text-gray-400">{{ $walletCurr }}</span>
-                                    </div>
-                                </td>
-
-                                <td class="px-6 py-4 whitespace-nowrap text-center">
-                                    @if($wallet->is_active)
-                                        <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800">
-                                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                                            فعال
-                                        </span>
-                                    @else
-                                        <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-rose-50 text-rose-700 border border-rose-200 dark:bg-rose-900/20 dark:text-rose-400 dark:border-rose-800">
-                                            <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
-                                            مسدود / غیرفعال
-                                        </span>
-                                    @endif
-                                </td>
-
-                                <td class="px-6 py-4 whitespace-nowrap text-center">
-                                    <div class="flex items-center justify-center gap-1.5">
-                                        @can('wallet.deposit')
-                                            <button type="button"
-                                                    @click="openModal('deposit', {
-                                                        id: {{ $wallet->holder_id }},
-                                                        holder_type: '{{ $isUser ? 'user' : 'client' }}',
-                                                        holder_name: '{{ addslashes($holderName) }}',
-                                                        phone: '{{ $holderPhone }}',
-                                                        balance: {{ (float)$wallet->balance }},
-                                                        currency: '{{ $wallet->currency }}',
-                                                        currency_label: '{{ $walletCurr }}',
-                                                        is_active: {{ $wallet->is_active ? 'true' : 'false' }}
-                                                    })"
-                                                    class="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950/40 transition-colors"
-                                                    title="شارژ مستقیم این کیف پول">
-                                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
-                                            </button>
-                                        @endcan
-
-                                        @can('wallet.withdraw')
-                                            <button type="button"
-                                                    @click="openModal('withdraw', {
-                                                        id: {{ $wallet->holder_id }},
-                                                        holder_type: '{{ $isUser ? 'user' : 'client' }}',
-                                                        holder_name: '{{ addslashes($holderName) }}',
-                                                        phone: '{{ $holderPhone }}',
-                                                        balance: {{ (float)$wallet->balance }},
-                                                        currency: '{{ $wallet->currency }}',
-                                                        currency_label: '{{ $walletCurr }}',
-                                                        is_active: {{ $wallet->is_active ? 'true' : 'false' }}
-                                                    })"
-                                                    class="p-1.5 rounded-lg text-rose-600 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-950/40 transition-colors"
-                                                    title="کسر موجودی از این کیف پول">
-                                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"/></svg>
-                                            </button>
-                                        @endcan
-
-                                        @can('wallet.manage')
-                                            <form action="{{ route('user.wallet.toggle-status', $wallet->id) }}" method="POST" class="inline">
-                                                @csrf
-                                                <button type="submit"
-                                                        class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-all active:scale-95 {{ $wallet->is_active ? 'bg-amber-50 text-amber-700 border-amber-200/80 hover:bg-amber-100 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800/60 dark:hover:bg-amber-900/50' : 'bg-emerald-50 text-emerald-700 border-emerald-200/80 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/60 dark:hover:bg-emerald-900/50' }}"
-                                                        title="{{ $wallet->is_active ? 'مسدودسازی و غیرفعال‌سازی کیف پول' : 'فعال‌سازی مجدد کیف پول' }}">
-                                                    <span class="w-1.5 h-1.5 rounded-full {{ $wallet->is_active ? 'bg-amber-500' : 'bg-emerald-500' }}"></span>
-                                                    <span>{{ $wallet->is_active ? 'غیرفعال‌سازی' : 'فعال‌سازی' }}</span>
-                                                </button>
-                                            </form>
-                                        @endcan
-                                    </div>
-                                </td>
+                    <table class="min-w-full divide-y divide-gray-100 dark:divide-gray-700/80">
+                        <thead class="bg-gray-50/80 dark:bg-gray-900/60">
+                            <tr>
+                                <th scope="col" class="px-5 py-3.5 text-right text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-16">
+                                    #
+                                </th>
+                                <th scope="col" class="px-5 py-3.5 text-right text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                    دارنده حساب
+                                </th>
+                                <th scope="col" class="px-5 py-3.5 text-right text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                    مشخصات کیف پول
+                                </th>
+                                <th scope="col" class="px-5 py-3.5 text-right text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                    موجودی
+                                </th>
+                                <th scope="col" class="px-5 py-3.5 text-center text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                    وضعیت
+                                </th>
+                                <th scope="col" class="px-5 py-3.5 text-right text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                    تاریخ ایجاد
+                                </th>
+                                <th scope="col" class="px-5 py-3.5 text-center text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-40">
+                                    عملیات
+                                </th>
                             </tr>
-                        @endforeach
+                        </thead>
+                        <tbody class="divide-y divide-gray-100 dark:divide-gray-700/60 bg-white dark:bg-gray-800">
+                            @foreach($wallets as $wallet)
+                                @php
+                                    $holder = $wallet->holder;
+                                    $isUser = $wallet->holder_type === (new \App\Models\User())->getMorphClass() || ($holder instanceof \App\Models\User);
+                                    $holderName = $isUser 
+                                        ? ($holder->name ?? ('کاربر #' . $wallet->holder_id))
+                                        : ($holder->full_name ?? ($holder->username ?? ('کلاینت #' . $wallet->holder_id)));
+                                    $holderPhone = $isUser ? ($holder->mobile ?? '') : ($holder->phone ?? '');
+                                    $holderEmail = $holder->email ?? '';
+                                    $walletCurr = ($wallet->currency === 'rial' || $wallet->currency === 'IRR') ? 'ریال' : ($currencyLabel ?? 'تومان');
+                                    $holderTypeParam = $isUser ? 'user' : 'client';
+                                    $hasBalance = (float)$wallet->balance > 0;
+                                @endphp
+                                <tr class="hover:bg-gray-50/80 dark:hover:bg-gray-750/40 transition-colors group">
+                                    
+                                    {{-- 1. ID --}}
+                                    <td class="px-5 py-4 whitespace-nowrap text-xs text-gray-400 font-bold">
+                                        #{{ $wallet->id }}
+                                    </td>
+
+                                    {{-- 2. Holder Info --}}
+                                    <td class="px-5 py-4 whitespace-nowrap">
+                                        <div class="flex items-center gap-3">
+                                            <div class="w-10 h-10 rounded-2xl flex items-center justify-center font-black text-sm shrink-0 shadow-xs
+                                                {{ $isUser ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300' : 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300' }}">
+                                                {{ mb_substr($holderName, 0, 1, 'utf-8') }}
+                                            </div>
+                                            <div>
+                                                <div class="flex items-center gap-2">
+                                                    @if(!$isUser && $holder && Route::has('user.clients.show'))
+                                                        <a href="{{ route('user.clients.show', $holder->id) }}" class="text-xs sm:text-sm font-bold text-gray-900 dark:text-white hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
+                                                            {{ $holderName }}
+                                                        </a>
+                                                    @else
+                                                        <span class="text-xs sm:text-sm font-bold text-gray-900 dark:text-white">
+                                                            {{ $holderName }}
+                                                        </span>
+                                                    @endif
+
+                                                    <span class="px-2 py-0.5 rounded-md text-[10px] font-bold border
+                                                        {{ $isUser ? 'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/50 dark:text-purple-300 dark:border-purple-800' : 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/50 dark:text-blue-300 dark:border-blue-800' }}">
+                                                        {{ $isUser ? 'کاربر سیستم' : 'کلاینت' }}
+                                                    </span>
+                                                </div>
+
+                                                <div class="flex items-center gap-2 mt-1 text-[11px] text-gray-500 dark:text-gray-400">
+                                                    @if($holderPhone)
+                                                        <span class="dir-ltr text-right font-medium text-gray-600 dark:text-gray-400">{{ $holderPhone }}</span>
+                                                    @endif
+                                                    @if($holderPhone && $holderEmail)
+                                                        <span class="text-gray-300 dark:text-gray-600">•</span>
+                                                    @endif
+                                                    @if($holderEmail)
+                                                        <span class="truncate max-w-[150px]">{{ $holderEmail }}</span>
+                                                    @endif
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </td>
+
+                                    {{-- 3. Wallet Details --}}
+                                    <td class="px-5 py-4 whitespace-nowrap">
+                                        <div class="text-xs font-bold text-gray-900 dark:text-white">
+                                            {{ $wallet->name ?: 'کیف پول اصلی' }}
+                                        </div>
+                                        <div class="text-[11px] text-gray-400 dark:text-gray-500 font-normal mt-0.5 flex items-center gap-1.5">
+                                            <span>اسلاگ: <code class="px-1 py-0.2 rounded bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300">{{ $wallet->slug }}</code></span>
+                                            <span class="text-gray-300 dark:text-gray-600">•</span>
+                                            <span>{{ $walletCurr }}</span>
+                                        </div>
+                                    </td>
+
+                                    {{-- 4. Balance --}}
+                                    <td class="px-5 py-4 whitespace-nowrap">
+                                        <div class="inline-flex items-baseline gap-1.5 px-3 py-1.5 rounded-xl font-black text-sm
+                                            {{ $hasBalance ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/80 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-800/80 shadow-2xs' : 'bg-gray-50 text-gray-600 border border-gray-200/60 dark:bg-gray-900/60 dark:text-gray-400 dark:border-gray-700' }}">
+                                            <span class="text-base tabular-nums">{{ number_format((float)$wallet->balance) }}</span>
+                                            <span class="text-[11px] font-bold text-gray-400 dark:text-gray-500">{{ $walletCurr }}</span>
+                                        </div>
+                                    </td>
+
+                                    {{-- 5. Status --}}
+                                    <td class="px-5 py-4 whitespace-nowrap text-center">
+                                        @if($wallet->is_active)
+                                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-800/60">
+                                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                                فعال
+                                            </span>
+                                        @else
+                                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200 dark:bg-rose-950/50 dark:text-rose-300 dark:border-rose-800/60">
+                                                <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+                                                مسدود
+                                            </span>
+                                        @endif
+                                    </td>
+
+                                    {{-- 6. Created Date --}}
+                                    <td class="px-5 py-4 whitespace-nowrap text-xs text-gray-500 dark:text-gray-400">
+                                        <div class="font-medium">
+                                            {{ $wallet->created_at ? (class_exists(\Morilog\Jalali\Jalalian::class) ? \Morilog\Jalali\Jalalian::fromCarbon($wallet->created_at)->format('Y/m/d H:i') : $wallet->created_at->format('Y-m-d')) : '—' }}
+                                        </div>
+                                    </td>
+
+                                    {{-- 7. Action Buttons --}}
+                                    <td class="px-5 py-4 whitespace-nowrap text-center">
+                                        <div class="flex items-center justify-center gap-1.5">
+                                            {{-- Deposit Button --}}
+                                            @can('wallet.deposit')
+                                                <button type="button"
+                                                        @click="openModal('deposit', {
+                                                            id: {{ $wallet->holder_id }},
+                                                            holder_type: '{{ $holderTypeParam }}',
+                                                            holder_name: '{{ addslashes($holderName) }}',
+                                                            phone: '{{ addslashes($holderPhone) }}',
+                                                            email: '{{ addslashes($holderEmail) }}',
+                                                            balance: {{ (float)$wallet->balance }},
+                                                            currency: '{{ $wallet->currency }}',
+                                                            currency_label: '{{ $walletCurr }}',
+                                                            is_active: {{ $wallet->is_active ? 'true' : 'false' }},
+                                                            wallet_id: {{ $wallet->id }}
+                                                        })"
+                                                        title="شارژ و واریز وجه به این کیف پول"
+                                                        class="inline-flex items-center justify-center w-8 h-8 rounded-xl text-emerald-600 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/50 dark:text-emerald-300 dark:hover:bg-emerald-900/60 border border-emerald-200/80 dark:border-emerald-800/60 transition shadow-2xs active:scale-95">
+                                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
+                                                </button>
+                                            @endcan
+
+                                            {{-- Withdraw Button --}}
+                                            @can('wallet.withdraw')
+                                                <button type="button"
+                                                        @click="openModal('withdraw', {
+                                                            id: {{ $wallet->holder_id }},
+                                                            holder_type: '{{ $holderTypeParam }}',
+                                                            holder_name: '{{ addslashes($holderName) }}',
+                                                            phone: '{{ addslashes($holderPhone) }}',
+                                                            email: '{{ addslashes($holderEmail) }}',
+                                                            balance: {{ (float)$wallet->balance }},
+                                                            currency: '{{ $wallet->currency }}',
+                                                            currency_label: '{{ $walletCurr }}',
+                                                            is_active: {{ $wallet->is_active ? 'true' : 'false' }},
+                                                            wallet_id: {{ $wallet->id }}
+                                                        })"
+                                                        title="کسر و برداشت از موجودی این کیف پول"
+                                                        class="inline-flex items-center justify-center w-8 h-8 rounded-xl text-rose-600 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/50 dark:text-rose-300 dark:hover:bg-rose-900/60 border border-rose-200/80 dark:border-rose-800/60 transition shadow-2xs active:scale-95">
+                                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"/></svg>
+                                                </button>
+                                            @endcan
+
+                                            {{-- Transactions Link --}}
+                                            @can('wallet.transactions.view')
+                                                <a href="{{ route('user.wallet.transactions.index', ['wallet_id' => $wallet->id]) }}"
+                                                   title="مشاهده دفتر تراکنش‌های این کیف پول"
+                                                   class="inline-flex items-center justify-center w-8 h-8 rounded-xl text-gray-600 bg-gray-50 hover:bg-gray-100 dark:bg-gray-700/60 dark:text-gray-300 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-600 transition shadow-2xs">
+                                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+                                                </a>
+                                            @endcan
+
+                                            {{-- Toggle Status --}}
+                                            @can('wallet.manage')
+                                                <form action="{{ route('user.wallet.toggle-status', $wallet) }}" method="POST" class="inline" onsubmit="return confirm('آیا از تغییر وضعیت این کیف پول مطمئن هستید؟')">
+                                                    @csrf
+                                                    <button type="submit"
+                                                            title="{{ $wallet->is_active ? 'مسدود کردن این حساب' : 'فعال کردن این حساب' }}"
+                                                            class="inline-flex items-center justify-center w-8 h-8 rounded-xl text-xs {{ $wallet->is_active ? 'text-amber-600 bg-amber-50 hover:bg-amber-100 border-amber-200/80 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800/60' : 'text-emerald-600 bg-emerald-50 hover:bg-emerald-100 border-emerald-200/80 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/60' }} border transition shadow-2xs">
+                                                        @if($wallet->is_active)
+                                                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg>
+                                                        @else
+                                                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                                        @endif
+                                                    </button>
+                                                </form>
+                                            @endcan
+                                        </div>
+                                    </td>
+                                </tr>
+                            @endforeach
                         </tbody>
                     </table>
                 </div>
 
-                <div class="px-6 py-4 border-t border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/50">
-                    {{ $wallets->links() }}
+                {{-- Pagination & Summary Footer --}}
+                <div class="px-6 py-4 border-t border-gray-100 dark:border-gray-700/80 bg-gray-50/50 dark:bg-gray-900/40 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div class="text-xs text-gray-500 dark:text-gray-400">
+                        نمایش {{ $wallets->firstItem() ?? 0 }} تا {{ $wallets->lastItem() ?? 0 }} از مجموع {{ $wallets->total() }} حساب
+                    </div>
+                    <div>
+                        {{ $wallets->links() }}
+                    </div>
                 </div>
             @else
-                <div class="py-16 text-center text-gray-500 dark:text-gray-400">
-                    <svg class="w-12 h-12 mx-auto text-gray-300 dark:text-gray-600 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
-                    </svg>
-                    هیچ کیف پولی ثبت نشده است.
+                {{-- Empty State --}}
+                <div class="py-16 px-6 text-center space-y-4">
+                    <div class="w-16 h-16 mx-auto rounded-3xl bg-gray-100 dark:bg-gray-700/60 text-gray-400 dark:text-gray-500 flex items-center justify-center shadow-inner">
+                        <svg class="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                        </svg>
+                    </div>
+                    <div class="max-w-sm mx-auto space-y-1">
+                        <h3 class="text-base font-bold text-gray-900 dark:text-white">هیچ کیف پولی با این شرایط یافت نشد!</h3>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">
+                            @if($isFiltered)
+                                فیلترهای جستجو بیش از حد محدودکننده هستند. برای مشاهده تمامی حساب‌ها فیلترها را حذف کنید.
+                            @else
+                                تا این لحظه هیچ حسابی در سیستم ایجاد نشده است.
+                            @endif
+                        </p>
+                    </div>
+                    @if($isFiltered)
+                        <div>
+                            <a href="{{ route('user.wallet.index') }}"
+                               class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 dark:bg-indigo-950/50 dark:text-indigo-300 dark:border-indigo-800 transition">
+                                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                                <span>حذف فیلترها و مشاهده همه</span>
+                            </a>
+                        </div>
+                    @endif
                 </div>
             @endif
+
         </div>
 
         {{-- Advanced Professional Transaction Modal (Deposit & Withdraw) --}}
@@ -287,7 +753,7 @@
                             <h3 class="text-base font-bold text-gray-900 dark:text-white"
                                 x-text="mode === 'deposit' ? 'شارژ و افزایش موجودی کیف پول' : 'کسر و برداشت از موجودی کیف پول'"></h3>
                             <p class="text-xs text-gray-400 dark:text-gray-400 mt-0.5"
-                               x-text="mode === 'deposit' ? 'واریز دستی وجه به کیف پول کلاینت یا کاربر' : 'برداشت دستی وجه از موجودی کیف پول کلاینت یا کاربر'"></p>
+                                x-text="mode === 'deposit' ? 'واریز دستی وجه به کیف پول کلاینت یا کاربر' : 'برداشت دستی وجه از موجودی کیف پول کلاینت یا کاربر'"></p>
                         </div>
                     </div>
                     <button type="button" @click="closeModal()" class="w-8 h-8 rounded-xl flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 dark:hover:text-gray-200 transition">
@@ -299,7 +765,7 @@
                 <form :action="mode === 'deposit' ? '{{ route('user.wallet.deposit') }}' : '{{ route('user.wallet.withdraw') }}'"
                       method="POST"
                       class="space-y-4"
-                      @submit="return validateSubmit($event)">
+                      @submit="validateSubmit($event)">
                     @csrf
 
                     {{-- Section 1: Searchable Holder Selection --}}
@@ -313,7 +779,7 @@
                                 <div class="flex items-center gap-3">
                                     <div class="w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm"
                                          :class="selectedHolder.holder_type === 'user' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300' : 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300'">
-                                        <span x-text="selectedHolder.holder_name.charAt(0)"></span>
+                                        <span x-text="selectedHolder.holder_name ? selectedHolder.holder_name.charAt(0) : ''"></span>
                                     </div>
                                     <div>
                                         <div class="flex items-center gap-1.5">
@@ -323,10 +789,10 @@
                                             <span class="font-bold text-sm text-gray-900 dark:text-white" x-text="selectedHolder.holder_name"></span>
                                         </div>
                                         <div class="flex items-center gap-2 mt-0.5 text-xs text-gray-500 dark:text-gray-400">
-                                            <span x-show="selectedHolder.phone" x-text="selectedHolder.phone" class="font-mono"></span>
+                                            <span x-show="selectedHolder.phone" x-text="selectedHolder.phone"></span>
                                             <span class="text-gray-300 dark:text-gray-600">•</span>
                                             <span>موجودی فعلی:</span>
-                                            <span class="font-bold text-emerald-600 dark:text-emerald-400" x-text="formatNumber(selectedHolder.balance) + ' ' + (selectedHolder.currency_label || activeCurrencyLabel)"></span>
+                                            <span class="font-bold text-emerald-600 dark:text-emerald-400" x-text="formatNumber(selectedHolder.balance) + ' ' + holderCurrencyLabel()"></span>
                                         </div>
                                     </div>
                                 </div>
@@ -385,7 +851,7 @@
                                                           x-text="item.badge"></span>
                                                     <span class="text-xs font-bold text-gray-900 dark:text-gray-100" x-text="item.holder_name"></span>
                                                 </div>
-                                                <span class="text-[10px] text-gray-400 dark:text-gray-500 block font-mono mt-0.5" x-text="item.phone"></span>
+                                                <span class="text-[10px] text-gray-400 dark:text-gray-500 block mt-0.5" x-text="item.phone"></span>
                                             </div>
                                         </div>
                                         <div class="text-left">
@@ -463,13 +929,13 @@
                          :class="isWithdrawExceeded() ? 'bg-rose-50 border-rose-200 text-rose-800 dark:bg-rose-950/40 dark:border-rose-900/80 dark:text-rose-200' : 'bg-gray-50 border-gray-200 text-gray-700 dark:bg-gray-900/60 dark:border-gray-700/80 dark:text-gray-300'">
                         <div class="flex items-center justify-between">
                             <span class="font-medium">موجودی فعلی:</span>
-                            <span class="font-bold" x-text="formatNumber(selectedHolder ? selectedHolder.balance : 0) + ' ' + (selectedHolder.currency_label || activeCurrencyLabel)"></span>
+                            <span class="font-bold" x-text="formatNumber(selectedHolder ? selectedHolder.balance : 0) + ' ' + holderCurrencyLabel()"></span>
                         </div>
                         <div class="flex items-center justify-between font-bold pt-1 border-t border-gray-200/70 dark:border-gray-700/70">
                             <span x-text="mode === 'deposit' ? 'موجودی پس از شارژ:' : 'موجودی پس از کسر:'"></span>
                             <span class="text-sm"
                                   :class="mode === 'deposit' ? 'text-emerald-600 dark:text-emerald-400' : (isWithdrawExceeded() ? 'text-rose-600 dark:text-rose-400' : 'text-blue-600 dark:text-blue-400')"
-                                  x-text="formatNumber(calculateProjectedBalance()) + ' ' + (selectedHolder.currency_label || activeCurrencyLabel)"></span>
+                                  x-text="formatNumber(calculateProjectedBalance()) + ' ' + holderCurrencyLabel()"></span>
                         </div>
                         <template x-if="isWithdrawExceeded()">
                             <p class="text-[11px] font-bold text-rose-600 dark:text-rose-400 pt-1 flex items-center gap-1">
@@ -527,6 +993,7 @@
             const currencyLabel = '{{ $currencyLabel ?? "تومان" }}';
 
             return {
+                filterOpen: {{ $isFiltered ? 'true' : 'false' }},
                 showModal: false,
                 mode: 'deposit', // 'deposit' or 'withdraw'
                 selectedHolder: null,
@@ -539,6 +1006,12 @@
                 description: '',
                 activeCurrencyLabel: currencyLabel,
                 isRialSystem: isRial,
+
+                holderCurrencyLabel() {
+                    return (this.selectedHolder && this.selectedHolder.currency_label)
+                        ? this.selectedHolder.currency_label
+                        : this.activeCurrencyLabel;
+                },
 
                 quickChips: isRial ? [
                     { label: '۱۰۰ هزار', value: 100000 },

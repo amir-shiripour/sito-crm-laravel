@@ -18,6 +18,6 @@ class PropertiesDatabaseSeeder extends Seeder
         Model::unguard();
 
         $installer = new Installer();
-        $installer->createPermissions();
+        $installer->syncPermissions();
     }
 }
