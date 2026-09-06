@@ -400,6 +400,55 @@ class ClinicLiveMonitoring extends Component
         $this->changeStatus($appointmentId, Appointment::STATUS_DONE);
     }
 
+    public function recordClientDelay(int $appointmentId, int $minutes = 15): void
+    {
+        $user = Auth::user();
+        $monitoringService = app(ClinicMonitoringService::class);
+
+        if (! $user || (! $monitoringService->isAdminUser($user) && ! $user->can('booking.appointments.edit'))) {
+            $this->toastError = 'شما مجوز ثبت تاخیر مراجع را ندارید.';
+            $this->dispatch('notify', ['type' => 'error', 'text' => $this->toastError]);
+
+            return;
+        }
+
+        $appointment = Appointment::query()->find($appointmentId);
+        if (! $appointment) {
+            return;
+        }
+
+        $cleanDelay = max(5, min(120, $minutes));
+        $noteTag = " [اعلام تاخیر مراجع: +{$cleanDelay} دقیقه]";
+        if (! str_contains((string) $appointment->notes, "اعلام تاخیر مراجع")) {
+            $appointment->notes = trim(($appointment->notes ? $appointment->notes . ' | ' : '') . $noteTag);
+        } else {
+            $appointment->notes = preg_replace('/\[اعلام تاخیر مراجع: \+\d+ دقیقه\]/', $noteTag, (string) $appointment->notes);
+        }
+
+        $appointment->save();
+
+        $this->toastSuccess = "اعلام تاخیر {$cleanDelay} دقیقه‌ای برای مراجع با موفقیت ثبت شد.";
+        $this->dispatch('notify', ['type' => 'success', 'text' => $this->toastSuccess]);
+    }
+
+    public function callNextInQueue(int $nextAppointmentId, ?int $delayedAppointmentId = null): void
+    {
+        if ($delayedAppointmentId) {
+            $delayed = Appointment::query()->find($delayedAppointmentId);
+            if ($delayed && ! str_contains((string) $delayed->notes, 'جابجایی نوبت به دلیل تاخیر')) {
+                $delayed->notes = trim(($delayed->notes ? $delayed->notes . ' | ' : '') . '[جابجایی نوبت به دلیل تاخیر در حضور]');
+                $delayed->save();
+            }
+        }
+
+        $this->startVisit($nextAppointmentId);
+    }
+
+    public function markNoShow(int $appointmentId): void
+    {
+        $this->changeStatus($appointmentId, Appointment::STATUS_NO_SHOW);
+    }
+
     public function render(ClinicMonitoringService $monitoringService)
     {
         $settings = BookingSetting::current();

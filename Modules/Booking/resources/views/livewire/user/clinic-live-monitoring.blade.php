@@ -6,6 +6,7 @@
     $ls = $labelService ?? config('booking.labels.service', 'سرویس');
     $lss = $labelServices ?? config('booking.labels.services', 'سرویس‌ها');
     $tz = config('booking.timezones.schedule', 'Asia/Tehran');
+    $nowUtc = now('UTC');
 @endphp
 
 <div @if($pollInterval > 0) wire:poll.{{ $pollInterval }}s @endif class="space-y-6">
@@ -23,7 +24,7 @@
                 </div>
                 <div>
                     <h1 class="text-xl font-bold text-gray-900 dark:text-white">مانیتورینگ زنده</h1>
-                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">پایش بلادرنگ صف، اتاق‌ها و جریان نوبت‌های امروز مراجعین</p>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">پایش بلادرنگ صف، تاخیرها، اتاق‌ها و جریان نوبت‌های امروز مراجعین</p>
                 </div>
             </div>
         </div>
@@ -120,6 +121,7 @@
                 <select wire:model.live="selectedStatus" 
                         class="w-full text-xs rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 px-3 py-2 text-gray-800 dark:text-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
                     <option value="">همه وضعیت‌ها</option>
+                    <option value="DELAYED">⚠️ نوبت‌های دارای تاخیر</option>
                     @foreach($statusesList as $statusKey => $meta)
                         <option value="{{ $statusKey }}">{{ $meta['label'] }}</option>
                     @endforeach
@@ -163,25 +165,45 @@
     </div>
 
     {{-- کارت‌های آمار و شمارنده‌های وضعیت (KPI Cards) هماهنگ با فیلترها --}}
-    <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3.5">
+    <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
         {{-- کل نوبت‌ها --}}
         <button type="button" 
                 wire:click="$set('selectedStatus', '')"
                 title="نمایش تمام نوبت‌ها"
-                class="bg-white dark:bg-gray-800 p-4 rounded-2xl border text-right transition cursor-pointer hover:shadow-md {{ empty($selectedStatus) ? 'border-indigo-500 ring-2 ring-indigo-500/20 dark:border-indigo-400' : 'border-gray-100 dark:border-gray-700 hover:border-indigo-200' }} shadow-sm flex flex-col justify-between">
-            <span class="text-xs font-medium text-gray-500 dark:text-gray-400">کل نوبت‌های انتخابی</span>
-            <div class="flex items-baseline justify-between mt-2">
-                <span class="text-2xl font-black text-gray-900 dark:text-white">{{ $statusCounts['total'] }}</span>
-                <span class="w-2.5 h-2.5 rounded-full {{ empty($selectedStatus) ? 'bg-indigo-500' : 'bg-gray-400' }}"></span>
+                class="bg-white dark:bg-gray-800 p-3.5 rounded-2xl border text-right transition cursor-pointer hover:shadow-md {{ empty($selectedStatus) ? 'border-indigo-500 ring-2 ring-indigo-500/20 dark:border-indigo-400' : 'border-gray-100 dark:border-gray-700 hover:border-indigo-200' }} shadow-sm flex flex-col justify-between">
+            <span class="text-[11px] font-medium text-gray-500 dark:text-gray-400">کل نوبت‌ها</span>
+            <div class="flex items-baseline justify-between mt-1.5">
+                <span class="text-xl font-black text-gray-900 dark:text-white">{{ $statusCounts['total'] }}</span>
+                <span class="w-2 h-2 rounded-full {{ empty($selectedStatus) ? 'bg-indigo-500' : 'bg-gray-400' }}"></span>
+            </div>
+        </button>
+
+        {{-- دارای تاخیر (نشانگر ویژه هوشمند) --}}
+        <button type="button" 
+                wire:click="$set('selectedStatus', '{{ $selectedStatus === 'DELAYED' ? '' : 'DELAYED' }}')"
+                title="فیلتر نوبت‌های دارای تاخیر"
+                class="bg-white dark:bg-gray-800 p-3.5 rounded-2xl border text-right transition cursor-pointer hover:shadow-md {{ $selectedStatus === 'DELAYED' ? 'border-amber-500 ring-2 ring-amber-500/20 dark:border-amber-400' : 'border-amber-200 dark:border-amber-800/60 hover:border-amber-400' }} shadow-sm flex flex-col justify-between relative overflow-hidden">
+            @if($statusCounts['delayed'] > 0)
+                <div class="absolute top-0 left-0 w-1.5 h-full bg-amber-500 animate-pulse"></div>
+            @endif
+            <span class="text-[11px] font-bold text-amber-700 dark:text-amber-300 flex items-center gap-1">
+                <span>دارای تاخیر</span>
+                @if($statusCounts['delayed'] > 0)
+                    <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping"></span>
+                @endif
+            </span>
+            <div class="flex items-baseline justify-between mt-1.5">
+                <span class="text-xl font-black text-amber-600 dark:text-amber-400">{{ $statusCounts['delayed'] }}</span>
+                <span class="w-2 h-2 rounded-full bg-amber-500"></span>
             </div>
         </button>
 
         {{-- حاضر شده در کلینیک --}}
-        <div class="bg-white dark:bg-gray-800 p-4 rounded-2xl border border-teal-100 dark:border-teal-900/30 shadow-sm flex flex-col justify-between">
-            <span class="text-xs font-medium text-teal-700 dark:text-teal-300">حاضر در کلینیک</span>
-            <div class="flex items-baseline justify-between mt-2">
-                <span class="text-2xl font-black text-teal-600 dark:text-teal-400">{{ $statusCounts['attended'] }}</span>
-                <span class="w-2.5 h-2.5 rounded-full bg-teal-500"></span>
+        <div class="bg-white dark:bg-gray-800 p-3.5 rounded-2xl border border-teal-100 dark:border-teal-900/30 shadow-sm flex flex-col justify-between">
+            <span class="text-[11px] font-medium text-teal-700 dark:text-teal-300">حاضر در کلینیک</span>
+            <div class="flex items-baseline justify-between mt-1.5">
+                <span class="text-xl font-black text-teal-600 dark:text-teal-400">{{ $statusCounts['attended'] }}</span>
+                <span class="w-2 h-2 rounded-full bg-teal-500"></span>
             </div>
         </div>
 
@@ -189,11 +211,11 @@
         <button type="button" 
                 wire:click="$set('selectedStatus', '{{ $selectedStatus === 'PENDING' ? '' : 'PENDING' }}')"
                 title="فیلتر نوبت‌های در انتظار"
-                class="bg-white dark:bg-gray-800 p-4 rounded-2xl border text-right transition cursor-pointer hover:shadow-md {{ $selectedStatus === 'PENDING' ? 'border-amber-500 ring-2 ring-amber-500/20 dark:border-amber-400' : 'border-amber-100 dark:border-amber-900/30 hover:border-amber-300' }} shadow-sm flex flex-col justify-between">
-            <span class="text-xs font-medium text-amber-700 dark:text-amber-300">در انتظار</span>
-            <div class="flex items-baseline justify-between mt-2">
-                <span class="text-2xl font-black text-amber-600 dark:text-amber-400">{{ $statusCounts['waiting'] }}</span>
-                <span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
+                class="bg-white dark:bg-gray-800 p-3.5 rounded-2xl border text-right transition cursor-pointer hover:shadow-md {{ $selectedStatus === 'PENDING' ? 'border-orange-500 ring-2 ring-orange-500/20 dark:border-orange-400' : 'border-orange-100 dark:border-orange-900/30 hover:border-orange-300' }} shadow-sm flex flex-col justify-between">
+            <span class="text-[11px] font-medium text-orange-700 dark:text-orange-300">در انتظار</span>
+            <div class="flex items-baseline justify-between mt-1.5">
+                <span class="text-xl font-black text-orange-600 dark:text-orange-400">{{ $statusCounts['waiting'] }}</span>
+                <span class="w-2 h-2 rounded-full bg-orange-500"></span>
             </div>
         </button>
 
@@ -201,11 +223,11 @@
         <button type="button" 
                 wire:click="$set('selectedStatus', '{{ $selectedStatus === 'CONFIRMED' ? '' : 'CONFIRMED' }}')"
                 title="فیلتر نوبت‌های تایید شده"
-                class="bg-white dark:bg-gray-800 p-4 rounded-2xl border text-right transition cursor-pointer hover:shadow-md {{ $selectedStatus === 'CONFIRMED' ? 'border-emerald-500 ring-2 ring-emerald-500/20 dark:border-emerald-400' : 'border-emerald-100 dark:border-emerald-900/30 hover:border-emerald-300' }} shadow-sm flex flex-col justify-between">
-            <span class="text-xs font-medium text-emerald-700 dark:text-emerald-300">تایید شده</span>
-            <div class="flex items-baseline justify-between mt-2">
-                <span class="text-2xl font-black text-emerald-600 dark:text-emerald-400">{{ $statusCounts['confirmed'] }}</span>
-                <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                class="bg-white dark:bg-gray-800 p-3.5 rounded-2xl border text-right transition cursor-pointer hover:shadow-md {{ $selectedStatus === 'CONFIRMED' ? 'border-emerald-500 ring-2 ring-emerald-500/20 dark:border-emerald-400' : 'border-emerald-100 dark:border-emerald-900/30 hover:border-emerald-300' }} shadow-sm flex flex-col justify-between">
+            <span class="text-[11px] font-medium text-emerald-700 dark:text-emerald-300">تایید شده</span>
+            <div class="flex items-baseline justify-between mt-1.5">
+                <span class="text-xl font-black text-emerald-600 dark:text-emerald-400">{{ $statusCounts['confirmed'] }}</span>
+                <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
             </div>
         </button>
 
@@ -213,11 +235,11 @@
         <button type="button" 
                 wire:click="$set('selectedStatus', '{{ $selectedStatus === 'DONE' ? '' : 'DONE' }}')"
                 title="فیلتر نوبت‌های انجام شده"
-                class="bg-white dark:bg-gray-800 p-4 rounded-2xl border text-right transition cursor-pointer hover:shadow-md {{ $selectedStatus === 'DONE' ? 'border-blue-500 ring-2 ring-blue-500/20 dark:border-blue-400' : 'border-blue-100 dark:border-blue-900/30 hover:border-blue-300' }} shadow-sm flex flex-col justify-between">
-            <span class="text-xs font-medium text-blue-700 dark:text-blue-300">انجام شده</span>
-            <div class="flex items-baseline justify-between mt-2">
-                <span class="text-2xl font-black text-blue-600 dark:text-blue-400">{{ $statusCounts['done'] }}</span>
-                <span class="w-2.5 h-2.5 rounded-full bg-blue-500"></span>
+                class="bg-white dark:bg-gray-800 p-3.5 rounded-2xl border text-right transition cursor-pointer hover:shadow-md {{ $selectedStatus === 'DONE' ? 'border-blue-500 ring-2 ring-blue-500/20 dark:border-blue-400' : 'border-blue-100 dark:border-blue-900/30 hover:border-blue-300' }} shadow-sm flex flex-col justify-between">
+            <span class="text-[11px] font-medium text-blue-700 dark:text-blue-300">انجام شده</span>
+            <div class="flex items-baseline justify-between mt-1.5">
+                <span class="text-xl font-black text-blue-600 dark:text-blue-400">{{ $statusCounts['done'] }}</span>
+                <span class="w-2 h-2 rounded-full bg-blue-500"></span>
             </div>
         </button>
 
@@ -225,11 +247,11 @@
         <button type="button" 
                 wire:click="$set('selectedStatus', '{{ $selectedStatus === 'NO_SHOW' ? '' : 'NO_SHOW' }}')"
                 title="فیلتر نوبت‌های عدم حضور"
-                class="bg-white dark:bg-gray-800 p-4 rounded-2xl border text-right transition cursor-pointer hover:shadow-md {{ $selectedStatus === 'NO_SHOW' ? 'border-gray-500 ring-2 ring-gray-500/20 dark:border-gray-400' : 'border-gray-200 dark:border-gray-700 hover:border-gray-400' }} shadow-sm flex flex-col justify-between">
-            <span class="text-xs font-medium text-gray-600 dark:text-gray-400">عدم حضور (No-Show)</span>
-            <div class="flex items-baseline justify-between mt-2">
-                <span class="text-2xl font-black text-gray-700 dark:text-gray-300">{{ $statusCounts['noshow'] }}</span>
-                <span class="w-2.5 h-2.5 rounded-full bg-gray-500"></span>
+                class="bg-white dark:bg-gray-800 p-3.5 rounded-2xl border text-right transition cursor-pointer hover:shadow-md {{ $selectedStatus === 'NO_SHOW' ? 'border-gray-500 ring-2 ring-gray-500/20 dark:border-gray-400' : 'border-gray-200 dark:border-gray-700 hover:border-gray-400' }} shadow-sm flex flex-col justify-between">
+            <span class="text-[11px] font-medium text-gray-600 dark:text-gray-400">عدم حضور (No-Show)</span>
+            <div class="flex items-baseline justify-between mt-1.5">
+                <span class="text-xl font-black text-gray-700 dark:text-gray-300">{{ $statusCounts['noshow'] }}</span>
+                <span class="w-2 h-2 rounded-full bg-gray-500"></span>
             </div>
         </button>
 
@@ -237,11 +259,11 @@
         <button type="button" 
                 wire:click="$set('selectedStatus', '{{ in_array($selectedStatus, ['CANCELED_BY_ADMIN', 'CANCELED_BY_CLIENT']) ? '' : 'CANCELED_BY_ADMIN' }}')"
                 title="فیلتر نوبت‌های لغو شده"
-                class="bg-white dark:bg-gray-800 p-4 rounded-2xl border text-right transition cursor-pointer hover:shadow-md {{ in_array($selectedStatus, ['CANCELED_BY_ADMIN', 'CANCELED_BY_CLIENT']) ? 'border-rose-500 ring-2 ring-rose-500/20 dark:border-rose-400' : 'border-rose-100 dark:border-rose-900/30 hover:border-rose-300' }} shadow-sm flex flex-col justify-between">
-            <span class="text-xs font-medium text-rose-700 dark:text-rose-300">لغو شده</span>
-            <div class="flex items-baseline justify-between mt-2">
-                <span class="text-2xl font-black text-rose-600 dark:text-rose-400">{{ $statusCounts['cancelled'] }}</span>
-                <span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
+                class="bg-white dark:bg-gray-800 p-3.5 rounded-2xl border text-right transition cursor-pointer hover:shadow-md {{ in_array($selectedStatus, ['CANCELED_BY_ADMIN', 'CANCELED_BY_CLIENT']) ? 'border-rose-500 ring-2 ring-rose-500/20 dark:border-rose-400' : 'border-rose-100 dark:border-rose-900/30 hover:border-rose-300' }} shadow-sm flex flex-col justify-between">
+            <span class="text-[11px] font-medium text-rose-700 dark:text-rose-300">لغو شده</span>
+            <div class="flex items-baseline justify-between mt-1.5">
+                <span class="text-xl font-black text-rose-600 dark:text-rose-400">{{ $statusCounts['cancelled'] }}</span>
+                <span class="w-2 h-2 rounded-full bg-rose-500"></span>
             </div>
         </button>
     </div>
@@ -264,6 +286,9 @@
 
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                 @foreach($lobbyPatients as $lobbyApt)
+                    @php
+                        $waitLobbyMins = $lobbyApt->entry_at_utc ? (int) $nowUtc->diffInMinutes($lobbyApt->entry_at_utc) : 0;
+                    @endphp
                     <div class="bg-white dark:bg-gray-800 p-3.5 rounded-xl border border-teal-100 dark:border-teal-900/50 shadow-sm flex items-center justify-between gap-3">
                         <div class="flex items-center gap-3">
                             <div class="w-9 h-9 rounded-full bg-teal-100 dark:bg-teal-900/40 text-teal-700 dark:text-teal-300 flex items-center justify-center font-bold text-xs">
@@ -284,7 +309,7 @@
                                 <div class="text-[10px] text-teal-600 dark:text-teal-400 mt-0.5 font-medium flex items-center gap-2">
                                     <span>ساعت نوبت: {{ $lobbyApt->start_at_utc ? $lobbyApt->start_at_utc->timezone($tz)->format('H:i') : '—' }}</span>
                                     <span>•</span>
-                                    <span>ساعت ورود: {{ $lobbyApt->entry_at_utc ? $lobbyApt->entry_at_utc->timezone($tz)->format('H:i') : '—' }}</span>
+                                    <span>ورود: {{ $lobbyApt->entry_at_utc ? $lobbyApt->entry_at_utc->timezone($tz)->format('H:i') : '—' }} ({{ $waitLobbyMins }} دقیقه در لابی)</span>
                                 </div>
                             </div>
                         </div>
@@ -324,7 +349,7 @@
                     </h2>
                 </div>
                 <span class="text-xs text-gray-500 dark:text-gray-400">
-                    پشتیبانی از نوبت‌های هم‌زمان و تفکیک جریان کار هر اتاق
+                    پایش هوشمند جریان خدمت، تاخیرها و مراجعین هم‌زمان هر اتاق
                 </span>
             </div>
 
@@ -396,7 +421,12 @@
                                     @if($pActives->isNotEmpty())
                                         <div class="space-y-2">
                                             @foreach($pActives as $pActItem)
-                                                <div class="p-2 rounded-lg bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 flex items-center justify-between gap-2">
+                                                @php
+                                                    $actElapsed = $pActItem->entry_at_utc ? (int) $nowUtc->diffInMinutes($pActItem->entry_at_utc) : 0;
+                                                    $actSlotDuration = $pActItem->start_at_utc && $pActItem->end_at_utc ? (int) $pActItem->start_at_utc->diffInMinutes($pActItem->end_at_utc) : 30;
+                                                    $actIsOverrun = $actElapsed > $actSlotDuration;
+                                                @endphp
+                                                <div class="p-2 rounded-lg bg-white dark:bg-gray-800 border {{ $actIsOverrun ? 'border-amber-300 dark:border-amber-800/80' : 'border-gray-100 dark:border-gray-700' }} flex items-center justify-between gap-2">
                                                     <div>
                                                         <div class="text-xs font-bold text-gray-900 dark:text-white flex items-center gap-1.5">
                                                             <span>{{ $pActItem->client?->full_name ?? 'مراجع بدون نام' }}</span>
@@ -404,13 +434,15 @@
                                                                 <span class="text-[10px] text-gray-400">#{{ $pActItem->client->case_number }}</span>
                                                             @endif
                                                         </div>
-                                                        <div class="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5 flex flex-wrap items-center gap-2">
+                                                        <div class="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5 flex flex-wrap items-center gap-1.5">
                                                             <span>{{ $ls }}: {{ $pActItem->service?->name ?? '—' }}</span>
                                                             <span>•</span>
                                                             <span class="text-indigo-600 dark:text-indigo-400">ساعت نوبت: {{ $pActItem->start_at_utc ? $pActItem->start_at_utc->timezone($tz)->format('H:i') : '—' }}</span>
                                                             <span>•</span>
                                                             @if($pActItem->entry_at_utc)
-                                                                <span class="text-emerald-600 dark:text-emerald-400 font-medium">ورود: {{ $pActItem->entry_at_utc->timezone($tz)->format('H:i') }}</span>
+                                                                <span class="{{ $actIsOverrun ? 'text-amber-600 dark:text-amber-400 font-bold' : 'text-emerald-600 dark:text-emerald-400' }}">
+                                                                    ورود: {{ $pActItem->entry_at_utc->timezone($tz)->format('H:i') }} ({{ $actElapsed }} دقیقه در اتاق)
+                                                                </span>
                                                             @else
                                                                 <span class="text-amber-500">ورود: ثبت نشده</span>
                                                             @endif
@@ -429,7 +461,7 @@
                                         </div>
                                     @else
                                         <div class="text-xs text-gray-400 py-1 italic">
-                                            در حال حاضر بیماری در این اتاق حضور ندارد.
+                                            در حال حاضر مراجعی در این اتاق حضور ندارد.
                                         </div>
                                     @endif
                                 </div>
@@ -445,6 +477,10 @@
                                         @endif
                                     </div>
                                     @if($pNext)
+                                        @php
+                                            $pNextIsLate = empty($pNext->entry_at_utc) && $pNext->start_at_utc && $pNext->start_at_utc < $nowUtc;
+                                            $pNextLateMins = $pNextIsLate ? (int) $nowUtc->diffInMinutes($pNext->start_at_utc) : 0;
+                                        @endphp
                                         <div class="flex items-center justify-between gap-2">
                                             <div>
                                                 <div class="text-xs font-bold text-gray-900 dark:text-white flex items-center gap-1.5">
@@ -452,6 +488,10 @@
                                                     @if($pNext->entry_at_utc)
                                                         <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-teal-100 text-teal-800 dark:bg-teal-900/50 dark:text-teal-200">
                                                             حاضر در لابی
+                                                        </span>
+                                                    @elseif($pNextIsLate)
+                                                        <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-200 animate-pulse">
+                                                            تاخیر +{{ $pNextLateMins }} دقیقه
                                                         </span>
                                                     @endif
                                                 </div>
@@ -463,11 +503,21 @@
                                                 </div>
                                             </div>
                                             @if($quickStatusEnabled)
-                                                <button wire:click="startVisit({{ $pNext->id }})"
-                                                        type="button" 
-                                                        class="px-2 py-1 text-[11px] font-medium text-teal-700 dark:text-teal-300 bg-teal-50 dark:bg-teal-900/30 hover:bg-teal-100 rounded-lg transition shrink-0">
-                                                    فراخوانی
-                                                </button>
+                                                <div class="flex items-center gap-1 shrink-0">
+                                                    <button wire:click="startVisit({{ $pNext->id }})"
+                                                            type="button" 
+                                                            class="px-2 py-1 text-[11px] font-medium text-teal-700 dark:text-teal-300 bg-teal-50 dark:bg-teal-900/30 hover:bg-teal-100 rounded-lg transition">
+                                                        فراخوانی
+                                                    </button>
+                                                    @if($pNextIsLate)
+                                                        <button wire:click="recordClientDelay({{ $pNext->id }}, 15)"
+                                                                type="button" 
+                                                                title="ثبت اعلام تاخیر ۱۵ دقیقه"
+                                                                class="p-1 rounded-lg text-amber-600 bg-amber-50 hover:bg-amber-100 dark:bg-amber-900/30 text-[10px]">
+                                                            +۱۵د
+                                                        </button>
+                                                    @endif
+                                                </div>
                                             @endif
                                         </div>
                                     @else
@@ -523,6 +573,12 @@
                     @if($activePatients && $activePatients->isNotEmpty())
                         <div class="mt-5 space-y-4">
                             @foreach($activePatients as $actIndex => $activeItem)
+                                @php
+                                    $itemElapsed = $activeItem->entry_at_utc ? (int) $nowUtc->diffInMinutes($activeItem->entry_at_utc) : 0;
+                                    $itemSlotDur = $activeItem->start_at_utc && $activeItem->end_at_utc ? (int) $activeItem->start_at_utc->diffInMinutes($activeItem->end_at_utc) : 30;
+                                    $itemOverrun = $itemElapsed > $itemSlotDur;
+                                    $lateCheckin = $activeItem->entry_at_utc && $activeItem->start_at_utc && $activeItem->entry_at_utc > $activeItem->start_at_utc ? (int) $activeItem->entry_at_utc->diffInMinutes($activeItem->start_at_utc) : 0;
+                                @endphp
                                 <div class="{{ $activePatients->count() > 1 ? 'p-4 rounded-xl border border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-700/20' : '' }} space-y-3">
                                     <div class="flex items-center justify-between">
                                         <div class="flex items-center gap-3">
@@ -539,12 +595,19 @@
                                             </div>
                                         </div>
 
-                                        @if($activeItem->client?->case_number)
-                                            <div class="text-right">
-                                                <span class="text-[10px] text-gray-400 block">شماره پرونده</span>
+                                        <div class="flex flex-col items-end gap-1">
+                                            @if($activeItem->client?->case_number)
                                                 <span class="text-xs font-bold text-gray-700 dark:text-gray-300">#{{ $activeItem->client->case_number }}</span>
-                                            </div>
-                                        @endif
+                                            @endif
+                                            @if($activeItem->entry_at_utc)
+                                                <span class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full {{ $itemOverrun ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-200' : 'bg-teal-50 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300' }}">
+                                                    <span>⏱️ مدت حضور: {{ $itemElapsed }} دقیقه</span>
+                                                    @if($itemOverrun)
+                                                        <span>(طولانی شده)</span>
+                                                    @endif
+                                                </span>
+                                            @endif
+                                        </div>
                                     </div>
 
                                     {{-- مشخصات تفکیک شده زمان و خدمت --}}
@@ -563,6 +626,9 @@
                                             @if($activeItem->entry_at_utc)
                                                 <span class="font-bold text-emerald-600 dark:text-emerald-400">
                                                     {{ $activeItem->entry_at_utc->timezone($tz)->format('H:i') }}
+                                                    @if($lateCheckin > 5)
+                                                        <span class="text-[10px] text-amber-500 font-normal">({{ $lateCheckin }}د تاخیر)</span>
+                                                    @endif
                                                 </span>
                                             @else
                                                 <span class="font-medium text-amber-500 text-[11px]">ثبت نشده</span>
@@ -670,7 +736,15 @@
                             <h2 class="text-base font-bold text-gray-900 dark:text-white">نوبت بعدی در صف</h2>
                         </div>
                         @if($nextInQueue)
-                            @if($nextInQueueGroup && $nextInQueueGroup->count() > 1)
+                            @php
+                                $nextIsDelayed = empty($nextInQueue->entry_at_utc) && $nextInQueue->start_at_utc && $nextInQueue->start_at_utc < $nowUtc;
+                                $nextDelayMins = $nextIsDelayed ? (int) $nowUtc->diffInMinutes($nextInQueue->start_at_utc) : 0;
+                            @endphp
+                            @if($nextIsDelayed)
+                                <span class="px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-200 border border-amber-300 dark:border-amber-700 animate-pulse">
+                                    ⚠️ تاخیر در حضور (+{{ $nextDelayMins }} دقیقه)
+                                </span>
+                            @elseif($nextInQueueGroup && $nextInQueueGroup->count() > 1)
                                 <span class="px-2.5 py-1 rounded-full text-xs font-bold bg-indigo-100 text-indigo-800 dark:bg-indigo-900/50 dark:text-indigo-200 border border-indigo-300 dark:border-indigo-700">
                                     {{ $nextInQueueGroup->count() }} مراجع در این نوبت
                                 </span>
@@ -687,15 +761,24 @@
                     </div>
 
                     @if($nextInQueue)
+                        @php
+                            $isNextLate = empty($nextInQueue->entry_at_utc) && $nextInQueue->start_at_utc && $nextInQueue->start_at_utc < $nowUtc;
+                            $lateMinutes = $isNextLate ? (int) $nowUtc->diffInMinutes($nextInQueue->start_at_utc) : 0;
+                        @endphp
                         <div class="mt-5 space-y-4">
                             <div class="flex items-center justify-between">
                                 <div class="flex items-center gap-3">
-                                    <div class="w-12 h-12 rounded-full bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 flex items-center justify-center font-bold text-lg">
+                                    <div class="w-12 h-12 rounded-full {{ $isNextLate ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300' : 'bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300' }} flex items-center justify-center font-bold text-lg">
                                         {{ mb_substr($nextInQueue->client?->full_name ?? 'م', 0, 1) }}
                                     </div>
                                     <div>
-                                        <h3 class="text-base font-bold text-gray-900 dark:text-white">
-                                            {{ $nextInQueue->client?->full_name ?? 'مراجع بدون نام' }}
+                                        <h3 class="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                                            <span>{{ $nextInQueue->client?->full_name ?? 'مراجع بدون نام' }}</span>
+                                            @if($isNextLate)
+                                                <span class="text-[11px] font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/30 px-2 py-0.5 rounded-full border border-amber-200">
+                                                    {{ $lateMinutes }} دقیقه تاخیر
+                                                </span>
+                                            @endif
                                         </h3>
                                         <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5 dir-ltr text-right">
                                             {{ $nextInQueue->client?->phone ?? '—' }}
@@ -725,6 +808,8 @@
                                     <span class="text-gray-400 block mb-0.5 text-[10px]">وضعیت حضور</span>
                                     @if($nextInQueue->entry_at_utc)
                                         <span class="font-bold text-teal-600 dark:text-teal-400 text-[11px]">حاضر در لابی</span>
+                                    @elseif($isNextLate)
+                                        <span class="font-bold text-amber-600 dark:text-amber-400 text-[11px]">تاخیر در حضور</span>
                                     @else
                                         <span class="font-medium text-gray-500 text-[11px]">در انتظار مراجعه</span>
                                     @endif
@@ -743,6 +828,39 @@
                                 </div>
                             </div>
 
+                            {{-- ابزارهای ویژه مدیریت تاخیر نوبت بعدی --}}
+                            @if($isNextLate && $quickStatusEnabled)
+                                <div class="bg-amber-50/70 dark:bg-amber-950/30 p-3 rounded-xl border border-amber-200 dark:border-amber-800/60 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5">
+                                    <div>
+                                        <span class="text-xs font-bold text-amber-900 dark:text-amber-200 block">
+                                            مراجع هنوز در کلینیک حضور نیافته است.
+                                        </span>
+                                        <span class="text-[11px] text-amber-700 dark:text-amber-300">
+                                            می‌توانید اعلام تاخیر مراجع را ثبت کنید یا نوبت را رد کرده و به نفر بعد اختصاص دهید.
+                                        </span>
+                                    </div>
+                                    <div class="flex items-center gap-1.5 shrink-0">
+                                        <button wire:click="recordClientDelay({{ $nextInQueue->id }}, 15)" 
+                                                type="button" 
+                                                title="مراجع تماس گرفته و ۱۵ دقیقه تاخیر دارد"
+                                                class="px-2.5 py-1 text-[11px] font-bold text-amber-800 dark:text-amber-200 bg-white dark:bg-gray-800 hover:bg-amber-100 rounded-lg border border-amber-300 shadow-sm transition">
+                                            اعلام تاخیر +۱۵د
+                                        </button>
+                                        <button wire:click="recordClientDelay({{ $nextInQueue->id }}, 30)" 
+                                                type="button" 
+                                                title="مراجع تماس گرفته و ۳۰ دقیقه تاخیر دارد"
+                                                class="px-2.5 py-1 text-[11px] font-bold text-amber-800 dark:text-amber-200 bg-white dark:bg-gray-800 hover:bg-amber-100 rounded-lg border border-amber-300 shadow-sm transition">
+                                            +۳۰د
+                                        </button>
+                                        <button wire:click="markNoShow({{ $nextInQueue->id }})" 
+                                                type="button" 
+                                                class="px-2.5 py-1 text-[11px] font-medium text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-900/30 hover:bg-rose-100 rounded-lg transition">
+                                            ثبت عدم حضور
+                                        </button>
+                                    </div>
+                                </div>
+                            @endif
+
                             @if($nextInQueueGroup && $nextInQueueGroup->count() > 1)
                                 <div class="bg-indigo-50/70 dark:bg-indigo-900/20 p-3 rounded-xl border border-indigo-100 dark:border-indigo-800/40">
                                     <span class="text-xs font-bold text-indigo-900 dark:text-indigo-200 block mb-2">
@@ -755,7 +873,7 @@
                                                     <span class="font-bold text-gray-800 dark:text-gray-200">{{ $concurrentNext->client?->full_name ?? 'مراجع' }}</span>
                                                     <span class="text-gray-400 text-[11px]">({{ $concurrentNext->service?->name }})</span>
                                                     @if($concurrentNext->entry_at_utc)
-                                                        <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-teal-100 text-teal-800 dark:bg-teal-900/50">حاضر</span>
+                                                        <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-teal-100 text-teal-800 dark:bg-teal-900/50">حاضر در لابی</span>
                                                     @endif
                                                 </div>
                                                 @if($quickStatusEnabled)
@@ -868,11 +986,21 @@
                                 'label' => $apt->status_label,
                                 'class' => 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200',
                             ];
+                            $rowIsLate = empty($apt->entry_at_utc) && $apt->start_at_utc && $apt->start_at_utc < $nowUtc && !in_array($apt->status, ['DONE', 'CANCELED_BY_ADMIN', 'CANCELED_BY_CLIENT', 'NO_SHOW']);
+                            $rowLateMins = $rowIsLate ? (int) $nowUtc->diffInMinutes($apt->start_at_utc) : 0;
+                            $rowLateCheckin = $apt->entry_at_utc && $apt->start_at_utc && $apt->entry_at_utc > $apt->start_at_utc ? (int) $apt->entry_at_utc->diffInMinutes($apt->start_at_utc) : 0;
                         @endphp
-                        <tr class="hover:bg-gray-50/80 dark:hover:bg-gray-700/30 transition">
+                        <tr class="hover:bg-gray-50/80 dark:hover:bg-gray-700/30 transition {{ $rowIsLate ? 'bg-amber-50/40 dark:bg-amber-950/20' : '' }}">
                             <td class="py-3.5 px-4 font-mono text-gray-400">{{ $index + 1 }}</td>
-                            <td class="py-3.5 px-4 font-bold text-gray-900 dark:text-white">
-                                {{ $apt->start_at_utc ? $apt->start_at_utc->timezone($tz)->format('H:i') : '—' }}
+                            <td class="py-3.5 px-4">
+                                <div class="font-bold text-gray-900 dark:text-white">
+                                    {{ $apt->start_at_utc ? $apt->start_at_utc->timezone($tz)->format('H:i') : '—' }}
+                                </div>
+                                @if($rowIsLate)
+                                    <span class="inline-flex items-center gap-1 text-[10px] font-bold text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-900/50 px-1.5 py-0.5 rounded mt-0.5 animate-pulse">
+                                        تاخیر +{{ $rowLateMins }}د
+                                    </span>
+                                @endif
                             </td>
                             <td class="py-3.5 px-4">
                                 <div class="flex items-center gap-1.5 font-bold text-gray-900 dark:text-white">
@@ -882,6 +1010,11 @@
                                     @endif
                                 </div>
                                 <div class="text-[11px] text-gray-400 dir-ltr text-right">{{ $apt->client?->phone ?? '' }}</div>
+                                @if(str_contains((string) $apt->notes, 'اعلام تاخیر'))
+                                    <span class="text-[10px] text-amber-600 dark:text-amber-400 font-medium block mt-0.5">
+                                        {{ Str::limit($apt->notes, 35) }}
+                                    </span>
+                                @endif
                             </td>
                             <td class="py-3.5 px-4">
                                 <span class="font-medium text-gray-800 dark:text-gray-200">{{ $apt->service?->name ?? '—' }}</span>
@@ -896,7 +1029,12 @@
                             </td>
                             <td class="py-3.5 px-4 text-[11px] text-gray-500 dark:text-gray-400">
                                 @if($apt->entry_at_utc)
-                                    <div class="text-teal-600 dark:text-teal-400 font-medium">ورود: {{ $apt->entry_at_utc->timezone($tz)->format('H:i') }}</div>
+                                    <div class="text-teal-600 dark:text-teal-400 font-medium">
+                                        ورود: {{ $apt->entry_at_utc->timezone($tz)->format('H:i') }}
+                                        @if($rowLateCheckin > 5)
+                                            <span class="text-amber-500 font-normal">({{ $rowLateCheckin }}د تاخیر)</span>
+                                        @endif
+                                    </div>
                                 @endif
                                 @if($apt->exit_at_utc)
                                     <div>خروج: {{ $apt->exit_at_utc->timezone($tz)->format('H:i') }}</div>
@@ -911,7 +1049,7 @@
                                         {{-- ثبت ورود به لابی --}}
                                         @if(empty($apt->entry_at_utc) && !in_array($apt->status, [\Modules\Booking\Entities\Appointment::STATUS_DONE, \Modules\Booking\Entities\Appointment::STATUS_CANCELED_BY_ADMIN, \Modules\Booking\Entities\Appointment::STATUS_CANCELED_BY_CLIENT, \Modules\Booking\Entities\Appointment::STATUS_NO_SHOW]))
                                             <button wire:click="checkIn({{ $apt->id }})" 
-                                                    title="ثبت ورود مراجع"
+                                                    title="ثبت ورود مراجع به لابی"
                                                     type="button" 
                                                     class="p-1 rounded-lg text-teal-600 hover:bg-teal-50 dark:hover:bg-teal-900/30 transition">
                                                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -920,10 +1058,22 @@
                                             </button>
                                         @endif
 
-                                        {{-- شروع ویزیت / فراخوانی --}}
+                                        {{-- ثبت اعلام تاخیر مراجع --}}
+                                        @if($rowIsLate)
+                                            <button wire:click="recordClientDelay({{ $apt->id }}, 15)" 
+                                                    title="ثبت اعلام تاخیر مراجع (+۱۵ دقیقه)"
+                                                    type="button" 
+                                                    class="p-1 rounded-lg text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/30 transition">
+                                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                </svg>
+                                            </button>
+                                        @endif
+
+                                        {{-- شروع خدمت / فراخوانی --}}
                                         @if(!in_array($apt->status, [\Modules\Booking\Entities\Appointment::STATUS_DONE, \Modules\Booking\Entities\Appointment::STATUS_CANCELED_BY_ADMIN, \Modules\Booking\Entities\Appointment::STATUS_CANCELED_BY_CLIENT, \Modules\Booking\Entities\Appointment::STATUS_NO_SHOW]))
                                             <button wire:click="startVisit({{ $apt->id }})" 
-                                                    title="شروع ویزیت / فراخوانی"
+                                                    title="شروع خدمت / فراخوانی"
                                                     type="button" 
                                                     class="p-1 rounded-lg text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition">
                                                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -932,7 +1082,7 @@
                                             </button>
                                         @endif
 
-                                        {{-- اتمام ویزیت --}}
+                                        {{-- اتمام خدمت --}}
                                         <button wire:click="finishVisit({{ $apt->id }})" 
                                                 title="علامت‌گذاری انجام شده"
                                                 type="button" 
