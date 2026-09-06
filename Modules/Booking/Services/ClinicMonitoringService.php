@@ -173,7 +173,7 @@ class ClinicMonitoringService
                     $sub->whereNull('entry_at_utc')->where('start_at_utc', '<', $nowUtc);
                 })->orWhere(function ($sub) use ($nowUtc) {
                     $sub->whereNotNull('entry_at_utc')->whereNull('exit_at_utc')->whereNotNull('end_at_utc')->where('end_at_utc', '<', $nowUtc);
-                });
+                })->orWhere('notes', 'like', '%اعلام تاخیر مراجع%');
             });
         } elseif (! empty($status) && $status !== 'all' && $status !== '') {
             $query->where('status', $status);
@@ -287,7 +287,8 @@ class ClinicMonitoringService
                 SUM(CASE WHEN status = 'DONE' THEN 1 ELSE 0 END) as done,
                 SUM(CASE WHEN status NOT IN ('DONE', 'CANCELED_BY_ADMIN', 'CANCELED_BY_CLIENT', 'NO_SHOW') AND (
                     (entry_at_utc IS NULL AND start_at_utc < '{$nowUtc}') OR
-                    (entry_at_utc IS NOT NULL AND exit_at_utc IS NULL AND end_at_utc IS NOT NULL AND end_at_utc < '{$nowUtc}')
+                    (entry_at_utc IS NOT NULL AND exit_at_utc IS NULL AND end_at_utc IS NOT NULL AND end_at_utc < '{$nowUtc}') OR
+                    (notes LIKE '%اعلام تاخیر مراجع%')
                 ) THEN 1 ELSE 0 END) as delayed_count
             ")
             ->first();
