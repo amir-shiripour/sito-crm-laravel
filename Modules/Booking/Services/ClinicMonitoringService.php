@@ -161,7 +161,21 @@ class ClinicMonitoringService
             $query->where('service_id', (int) $serviceId);
         }
 
-        if (! empty($status) && $status !== 'all' && $status !== '') {
+        if ($status === 'DELAYED') {
+            $nowUtc = now('UTC')->toDateTimeString();
+            $query->whereNotIn('status', [
+                Appointment::STATUS_DONE,
+                Appointment::STATUS_CANCELED_BY_ADMIN,
+                Appointment::STATUS_CANCELED_BY_CLIENT,
+                Appointment::STATUS_NO_SHOW,
+            ])->where(function ($q) use ($nowUtc) {
+                $q->where(function ($sub) use ($nowUtc) {
+                    $sub->whereNull('entry_at_utc')->where('start_at_utc', '<', $nowUtc);
+                })->orWhere(function ($sub) use ($nowUtc) {
+                    $sub->whereNotNull('entry_at_utc')->whereNull('exit_at_utc')->whereNotNull('end_at_utc')->where('end_at_utc', '<', $nowUtc);
+                });
+            });
+        } elseif (! empty($status) && $status !== 'all' && $status !== '') {
             $query->where('status', $status);
         }
 
@@ -261,6 +275,7 @@ class ClinicMonitoringService
      */
     public function getStatusCounts(Builder $baseQuery): array
     {
+        $nowUtc = now('UTC')->toDateTimeString();
         $raw = (clone $baseQuery)
             ->selectRaw("
                 COUNT(id) as total,
@@ -269,7 +284,11 @@ class ClinicMonitoringService
                 SUM(CASE WHEN status = 'CONFIRMED' THEN 1 ELSE 0 END) as confirmed,
                 SUM(CASE WHEN status IN ('CANCELED_BY_ADMIN', 'CANCELED_BY_CLIENT') THEN 1 ELSE 0 END) as cancelled,
                 SUM(CASE WHEN status = 'NO_SHOW' THEN 1 ELSE 0 END) as noshow,
-                SUM(CASE WHEN status = 'DONE' THEN 1 ELSE 0 END) as done
+                SUM(CASE WHEN status = 'DONE' THEN 1 ELSE 0 END) as done,
+                SUM(CASE WHEN status NOT IN ('DONE', 'CANCELED_BY_ADMIN', 'CANCELED_BY_CLIENT', 'NO_SHOW') AND (
+                    (entry_at_utc IS NULL AND start_at_utc < '{$nowUtc}') OR
+                    (entry_at_utc IS NOT NULL AND exit_at_utc IS NULL AND end_at_utc IS NOT NULL AND end_at_utc < '{$nowUtc}')
+                ) THEN 1 ELSE 0 END) as delayed_count
             ")
             ->first();
 
@@ -281,6 +300,7 @@ class ClinicMonitoringService
             'cancelled' => (int) ($raw->cancelled ?? 0),
             'noshow' => (int) ($raw->noshow ?? 0),
             'done' => (int) ($raw->done ?? 0),
+            'delayed' => (int) ($raw->delayed_count ?? 0),
         ];
     }
 
