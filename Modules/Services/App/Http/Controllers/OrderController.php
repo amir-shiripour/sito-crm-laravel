@@ -3,6 +3,7 @@
 namespace Modules\Services\App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -12,6 +13,7 @@ use Modules\Clients\Entities\Client;
 use Modules\Services\App\Http\Models\Order;
 use Modules\Services\App\Http\Models\Status;
 use Modules\Services\App\Http\Models\Service;
+use Modules\Services\App\Http\Models\ServiceCategory;
 use Modules\Services\App\Http\Models\Invoice;
 use Modules\Services\App\Http\Models\InvoiceItem;
 use Modules\Services\App\Http\Models\ActivityLog;
@@ -22,19 +24,37 @@ class OrderController extends Controller
 {
     public function index(Request $request)
     {
-        // $this->authorize('viewAny', Order::class);
+        $this->authorize('viewAny', Order::class);
 
-        $query = Order::with(['customer', 'status', 'service', 'invoice.payments'])
+        $user = $request->user();
+        $canViewAll = $user->can('services.orders.view.all') || $user->can('services.orders.manage');
+
+        $query = Order::with(['customer', 'status', 'service.category', 'invoice.payments', 'hostingAccount', 'domainRecord'])
+            ->when(!$canViewAll, fn($q) => $q->where('created_by', $user->id))
             ->when($request->search, function ($q, $s) {
-                $q->where('order_number', 'like', "%$s%")
-                    ->orWhere('client_name', 'like', "%$s%")
-                    ->orWhereHas('service', function ($q) use ($s) {
-                        $q->where('name', 'like', "%$s%");
-                    })
-                    ->orWhereHas('invoice', function ($q) use ($s) {
-                        $q->where('invoice_number', 'like', "%$s%")
-                            ->orWhere('proforma_invoice_number', 'like', "%$s%");
-                    });
+                $q->where(function ($sub) use ($s) {
+                    $sub->where('order_number', 'like', "%$s%")
+                        ->orWhere('client_name', 'like', "%$s%")
+                        ->orWhereHas('service', function ($q) use ($s) {
+                            $q->where('name', 'like', "%$s%");
+                        })
+                        ->orWhereHas('invoice', function ($q) use ($s) {
+                            $q->where('invoice_number', 'like', "%$s%")
+                                ->orWhere('proforma_invoice_number', 'like', "%$s%");
+                        })
+                        ->orWhereHas('customer', function ($q) use ($s) {
+                            $q->where('full_name', 'like', "%$s%")
+                                ->orWhere('phone', 'like', "%$s%")
+                                ->orWhere('email', 'like', "%$s%");
+                        })
+                        ->orWhereHas('hostingAccount', function ($q) use ($s) {
+                            $q->where('username', 'like', "%$s%")
+                                ->orWhere('domain', 'like', "%$s%");
+                        })
+                        ->orWhereHas('domainRecord', function ($q) use ($s) {
+                            $q->where('domain_name', 'like', "%$s%");
+                        });
+                });
             })
             ->when($request->status_id, function ($q, $v) {
                 $q->where('status_id', $v);
@@ -45,8 +65,89 @@ class OrderController extends Controller
             ->when($request->customer_id, function ($q, $v) {
                 $q->where('customer_id', $v);
             });
+        $sortBy = $request->input('sort_by', 'latest');
+        $sortOrder = strtolower($request->input('sort_order', 'desc')) === 'asc' ? 'asc' : 'desc';
 
-        $orders = $query->orderBy('invoice_id', 'desc')->orderBy('id', 'asc')->paginate(20)->withQueryString();
+        switch ($sortBy) {
+            case 'oldest':
+                $query->orderBy('service_orders.id', 'asc');
+                break;
+            case 'latest':
+            case 'id':
+                $query->orderBy('service_orders.id', $sortOrder);
+                break;
+            case 'order_number':
+                $query->orderBy('service_orders.order_number', $sortOrder);
+                break;
+            case 'order_number_asc':
+                $query->orderBy('service_orders.order_number', 'asc');
+                break;
+            case 'order_number_desc':
+                $query->orderBy('service_orders.order_number', 'desc');
+                break;
+            case 'client':
+            case 'customer':
+            case 'client_name':
+                $query->leftJoin('clients', 'service_orders.customer_id', '=', 'clients.id')
+                    ->select('service_orders.*')
+                    ->orderBy(DB::raw("COALESCE(clients.full_name, service_orders.client_name, '')"), $sortOrder);
+                break;
+            case 'service':
+                $query->leftJoin('services', 'service_orders.service_id', '=', 'services.id')
+                    ->select('service_orders.*')
+                    ->orderBy('services.name', $sortOrder);
+                break;
+            case 'invoice':
+            case 'invoice_id':
+                $query->orderBy('service_orders.invoice_id', $sortOrder);
+                break;
+            case 'total_amount':
+            case 'amount':
+                $query->orderBy('service_orders.total_amount', $sortOrder);
+                break;
+            case 'amount_desc':
+                $query->orderBy('service_orders.total_amount', 'desc');
+                break;
+            case 'amount_asc':
+                $query->orderBy('service_orders.total_amount', 'asc');
+                break;
+            case 'renewal_price':
+                $query->orderBy('service_orders.renewal_price', $sortOrder);
+                break;
+            case 'issue_date':
+                $query->orderByRaw("service_orders.issue_date IS NULL, service_orders.issue_date {$sortOrder}")
+                    ->orderBy('service_orders.id', $sortOrder);
+                break;
+            case 'issue_date_desc':
+                $query->orderByRaw("service_orders.issue_date IS NULL, service_orders.issue_date desc")
+                    ->orderBy('service_orders.id', 'desc');
+                break;
+            case 'issue_date_asc':
+                $query->orderByRaw("service_orders.issue_date IS NULL, service_orders.issue_date asc")
+                    ->orderBy('service_orders.id', 'asc');
+                break;
+            case 'renewal_date':
+                $query->orderByRaw("service_orders.renewal_date IS NULL, service_orders.renewal_date {$sortOrder}")
+                    ->orderBy('service_orders.id', $sortOrder);
+                break;
+            case 'renewal_date_asc':
+                $query->orderByRaw("service_orders.renewal_date IS NULL, service_orders.renewal_date asc")
+                    ->orderBy('service_orders.id', 'asc');
+                break;
+            case 'renewal_date_desc':
+                $query->orderByRaw("service_orders.renewal_date IS NULL, service_orders.renewal_date desc")
+                    ->orderBy('service_orders.id', 'desc');
+                break;
+            case 'status':
+            case 'status_id':
+                $query->orderBy('service_orders.status_id', $sortOrder);
+                break;
+            default:
+                $query->orderBy('service_orders.id', 'desc');
+                break;
+        }
+
+        $orders = $query->paginate(20)->withQueryString();
 
         $statuses = Status::where('type', 'order')->orderBy('sort_order')->get();
         $services = Service::orderBy('name')->get();
@@ -58,6 +159,8 @@ class OrderController extends Controller
 
     public function show(Order $order)
     {
+        $this->authorize('view', $order);
+
         $order->load(['customer', 'status', 'service', 'invoice.payments']);
 
         $statuses = Status::where('type', 'order')->orderBy('sort_order')->get();
@@ -68,6 +171,8 @@ class OrderController extends Controller
 
     public function update(Request $request, Order $order)
     {
+        $this->authorize('update', $order);
+
         if ($request->has('renewal_price')) {
             $request->merge(['renewal_price' => str_replace(',', '', $request->renewal_price)]);
         }
@@ -88,7 +193,7 @@ class OrderController extends Controller
                     $request->renewal_date
                 );
                 $validated['renewal_date'] = Jalalian::fromFormat('Y/m/d', $englishDate)->toCarbon();
-            } catch (\Exception $e) {
+            } catch (Exception $e) {
                 unset($validated['renewal_date']);
             }
         }
@@ -104,6 +209,8 @@ class OrderController extends Controller
 
     public function createRenewalInvoice(Request $request, Order $order)
     {
+        $this->authorize('update', $order);
+
         if (!$order->billing_cycle) {
             return back()->with('error', 'این سفارش یک سرویس دوره‌ای نیست یا دوره تمدید برای آن مشخص نشده است.');
         }
@@ -171,24 +278,45 @@ class OrderController extends Controller
             try {
                 $jalali = Jalalian::fromCarbon($currentRenewalDate);
                 switch ($order->billing_cycle) {
-                    case 'monthly':     $nextJalali = $jalali->addMonths(1); break;
-                    case 'quarterly':   $nextJalali = $jalali->addMonths(3); break;
-                    case 'semi_annual': $nextJalali = $jalali->addMonths(6); break;
-                    case 'annual':      $nextJalali = $jalali->addYears(1); break;
-                    default:            $nextJalali = null; break;
+                    case 'monthly':
+                        $nextJalali = $jalali->addMonths(1);
+                        break;
+                    case 'quarterly':
+                        $nextJalali = $jalali->addMonths(3);
+                        break;
+                    case 'semi_annual':
+                        $nextJalali = $jalali->addMonths(6);
+                        break;
+                    case 'annual':
+                        $nextJalali = $jalali->addYears(1);
+                        break;
+                    default:
+                        $nextJalali = null;
+                        break;
                 }
                 if (isset($nextJalali)) {
                     $nextRenewalDate = $nextJalali->toCarbon()->format('Y-m-d');
                 }
-            } catch (\Throwable $e) {}
+            } catch (\Throwable $e) {
+            }
         }
         if (!$nextRenewalDate) {
             switch ($order->billing_cycle) {
-                case 'monthly':     $nextRenewalDate = $currentRenewalDate->copy()->addMonth()->format('Y-m-d'); break;
-                case 'quarterly':   $nextRenewalDate = $currentRenewalDate->copy()->addMonths(3)->format('Y-m-d'); break;
-                case 'semi_annual': $nextRenewalDate = $currentRenewalDate->copy()->addMonths(6)->format('Y-m-d'); break;
-                case 'annual':      $nextRenewalDate = $currentRenewalDate->copy()->addYear()->format('Y-m-d'); break;
-                default:            $nextRenewalDate = $currentRenewalDate->copy()->addMonth()->format('Y-m-d'); break;
+                case 'monthly':
+                    $nextRenewalDate = $currentRenewalDate->copy()->addMonth()->format('Y-m-d');
+                    break;
+                case 'quarterly':
+                    $nextRenewalDate = $currentRenewalDate->copy()->addMonths(3)->format('Y-m-d');
+                    break;
+                case 'semi_annual':
+                    $nextRenewalDate = $currentRenewalDate->copy()->addMonths(6)->format('Y-m-d');
+                    break;
+                case 'annual':
+                    $nextRenewalDate = $currentRenewalDate->copy()->addYear()->format('Y-m-d');
+                    break;
+                default:
+                    $nextRenewalDate = $currentRenewalDate->copy()->addMonth()->format('Y-m-d');
+                    break;
             }
         }
 
@@ -280,22 +408,5 @@ class OrderController extends Controller
         $nextJalaliStr = $order->renewal_date ? Jalalian::fromCarbon(Carbon::parse($order->renewal_date))->format('Y/m/d') : '—';
 
         return back()->with('success', "فاکتور تمدید دستی با شماره {$renewalInvoice->invoice_number} با موفقیت صادر شد و تاریخ سررسید تمدید بعدی سفارش به {$nextJalaliStr} منتقل گردید.");
-    }
-
-    public function create()
-    {
-        return redirect()->route('services.invoices.create', ['type' => 'invoice']);
-    }
-
-    public function store(Request $request)
-    {
-    }
-
-    public function edit($id)
-    {
-    }
-
-    public function destroy($id)
-    {
     }
 }

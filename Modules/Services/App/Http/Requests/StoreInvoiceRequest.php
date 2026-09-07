@@ -145,6 +145,12 @@ class StoreInvoiceRequest extends FormRequest
             'items.*.mode' => 'nullable|string',
             'items.*._isDebt' => 'nullable',
             'items.*.debt_invoice_ids' => 'nullable|string',
+            'items.*._packageGroupId' => 'nullable|string|max:255',
+            'items.*._packageTitle' => 'nullable|string|max:255',
+            'items.*._baseQuantity' => 'nullable',
+            'items.*._baseCustomFieldQuantities' => 'nullable|array',
+            'items.*._baseCustomFieldValues' => 'nullable|array',
+            'items.*._isMerged' => 'nullable',
 
             'items.*.custom_fields' => 'nullable|array',
             'items.*.custom_fields_old' => 'nullable|array',
@@ -158,6 +164,8 @@ class StoreInvoiceRequest extends FormRequest
             'items.*.custom_fields_discounts.*' => 'nullable',
             'items.*.custom_fields_taxes' => 'nullable|array',
             'items.*.custom_fields_taxes.*' => 'nullable',
+            'items.*.custom_fields_use_default_price' => 'nullable|array',
+            'items.*.custom_fields_use_default_price.*' => 'nullable',
 
             'payment_mode' => 'nullable|in:cash,installment',
             'payment_method' => 'nullable|in:online,transfer,pos,installment,cod',

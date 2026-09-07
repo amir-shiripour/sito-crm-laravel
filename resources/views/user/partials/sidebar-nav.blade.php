@@ -1,6 +1,8 @@
 {{-- resources/views/user/partials/sidebar-nav.blade.php --}}
 
 @php
+    $isGroupCounterEnabled = $isGroupCounterEnabled ?? true;
+
     // استایل‌های مشترک لینک‌ها با کنتراست دقیق در هر دو تم لایت و دارک
     $linkBaseClass = "group flex items-center justify-between rounded-xl px-3 py-2.5 font-medium transition-all duration-200 relative overflow-hidden text-sm";
 
@@ -91,6 +93,16 @@
     twoStepActive: {{ !empty($isTwoStepEnabled) ? 'true' : 'false' }},
     activeDrilldown: {{ $activeDrilldownOnInit }},
     activeDrilldownTitle: {{ $activeDrilldownTitleOnInit }},
+    init() {
+        @if($activeDrilldownOnInit === 'null')
+            try {
+                localStorage.removeItem('openedMenuKey');
+            } catch (e) {}
+            if (typeof this.closeAllMenus === 'function') {
+                this.closeAllMenus();
+            }
+        @endif
+    },
     setDrilldown(key, title) {
         this.activeDrilldown = key;
         this.activeDrilldownTitle = title || '';
@@ -110,7 +122,9 @@
         if (sidebarFilter && sidebarFilter.trim().length > 0) return true;
         return !this.activeDrilldown;
     }
-}" class="space-y-1.5">
+}"
+@close-all-menus.window="clearDrilldown()"
+class="space-y-1.5">
 
     {{-- هدر مرحله دوم: دکمه بازگشت به منوی اصلی --}}
     @if(!empty($isTwoStepEnabled))
@@ -163,6 +177,7 @@
                      x-show="isStep1() && (!sidebarFilter || '{{ addslashes($dashTitle) }}'.toLowerCase().includes(sidebarFilter.toLowerCase()))"
                      class="relative group/navitem">
                     <a href="{{ route('user.dashboard') }}"
+                       @click="closeAllMenus()"
                        class="{{ $linkBaseClass }} {{ $isDashActive ? $linkActiveClass : $linkInactiveClass }}">
                         
                         <div class="flex items-center gap-2.5 min-w-0">
@@ -223,6 +238,7 @@
                      x-show="isStep1() && (!sidebarFilter || '{{ addslashes($itemTitle) }}'.toLowerCase().includes(sidebarFilter.toLowerCase()))"
                      class="relative group/navitem">
                     <a href="{{ $routeUrl }}"
+                       @click="closeAllMenus()"
                        class="{{ $linkBaseClass }} {{ $isActive ? $linkActiveClass : $linkInactiveClass }}">
                         
                         <div class="flex items-center gap-2.5 min-w-0">
@@ -343,15 +359,17 @@
                         </div>
 
                         <div x-show="!sidebarCollapsed" class="flex items-center gap-1.5 shrink-0">
-                            @if($isGroupActive)
-                                <span class="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-900/80 text-indigo-700 dark:text-indigo-200 border border-indigo-200/50 dark:border-indigo-800/60">
-                                    {{ count($validGroupItems) }}
-                                </span>
-                            @else
-                                <span class="text-[10px] font-bold px-1.5 py-0.5 rounded-full transition-colors border border-transparent"
-                                      :class="isOpen() ? 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 dark:border-gray-600/50' : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 dark:border-gray-700/60 group-hover:bg-gray-200 dark:group-hover:bg-gray-700 group-hover:text-gray-800 dark:group-hover:text-white'">
-                                    {{ count($validGroupItems) }}
-                                </span>
+                            @if(!empty($isGroupCounterEnabled))
+                                @if($isGroupActive)
+                                    <span class="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-900/80 text-indigo-700 dark:text-indigo-200 border border-indigo-200/50 dark:border-indigo-800/60">
+                                        {{ count($validGroupItems) }}
+                                    </span>
+                                @else
+                                    <span class="text-[10px] font-bold px-1.5 py-0.5 rounded-full transition-colors border border-transparent"
+                                          :class="isOpen() ? 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 dark:border-gray-600/50' : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 dark:border-gray-700/60 group-hover:bg-gray-200 dark:group-hover:bg-gray-700 group-hover:text-gray-800 dark:group-hover:text-white'">
+                                        {{ count($validGroupItems) }}
+                                    </span>
+                                @endif
                             @endif
 
                             {{-- آیکون هدایت یا باز شدن --}}
@@ -412,9 +430,11 @@
                     
                     <div class="px-3 py-2 border-b border-gray-100 dark:border-gray-700/70 mb-1 flex items-center justify-between">
                         <span class="font-bold text-xs text-gray-900 dark:text-white truncate">{{ $groupTitle }}</span>
+                        @if(!empty($isGroupCounterEnabled))
                         <span class="text-[10px] font-bold px-1.5 py-0.5 rounded-full {{ $isGroupActive ? 'bg-indigo-100 dark:bg-indigo-900/80 text-indigo-700 dark:text-indigo-200 border border-indigo-200/50 dark:border-indigo-800/60' : 'bg-gray-100 dark:bg-gray-700/90 text-gray-600 dark:text-gray-300 border border-transparent dark:border-gray-600/50' }}">
                             {{ count($validGroupItems) }}
                         </span>
+                        @endif
                     </div>
 
                     <div class="space-y-1 max-h-72 overflow-y-auto custom-scrollbar">
@@ -526,15 +546,17 @@
                         </div>
 
                         <div x-show="!sidebarCollapsed" class="flex items-center gap-1.5 shrink-0">
-                            @if($isSettingsActive)
-                                <span class="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-900/80 text-indigo-700 dark:text-indigo-200 border border-indigo-200/50 dark:border-indigo-800/60">
-                                    {{ count($settingsValidItems) }}
-                                </span>
-                            @else
-                                <span class="text-[10px] font-bold px-1.5 py-0.5 rounded-full transition-colors border border-transparent"
-                                      :class="isOpen() ? 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 dark:border-gray-600/50' : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 dark:border-gray-700/60 group-hover:bg-gray-200 dark:group-hover:bg-gray-700 group-hover:text-gray-800 dark:group-hover:text-white'">
-                                    {{ count($settingsValidItems) }}
-                                </span>
+                            @if(!empty($isGroupCounterEnabled))
+                                @if($isSettingsActive)
+                                    <span class="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-900/80 text-indigo-700 dark:text-indigo-200 border border-indigo-200/50 dark:border-indigo-800/60">
+                                        {{ count($settingsValidItems) }}
+                                    </span>
+                                @else
+                                    <span class="text-[10px] font-bold px-1.5 py-0.5 rounded-full transition-colors border border-transparent"
+                                          :class="isOpen() ? 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 dark:border-gray-600/50' : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 dark:border-gray-700/60 group-hover:bg-gray-200 dark:group-hover:bg-gray-700 group-hover:text-gray-800 dark:group-hover:text-white'">
+                                        {{ count($settingsValidItems) }}
+                                    </span>
+                                @endif
                             @endif
 
                             {{-- آیکون هدایت یا باز شدن --}}
@@ -589,9 +611,11 @@
                                             {{ $categoryTitle }}
                                         </span>
                                     </div>
+                                    @if(!empty($isGroupCounterEnabled))
                                     <span class="text-[10px] font-bold px-1.5 py-0.5 rounded-md {{ $isCatActive ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/80 dark:text-indigo-200' : 'bg-white/90 dark:bg-gray-700/90 text-gray-600 dark:text-gray-300 border border-gray-200/60 dark:border-gray-600/60' }}">
                                         {{ count($validCatItems) }}
                                     </span>
+                                    @endif
                                 </div>
 
                                 {{-- Category Header in Default Mode or Filter Mode --}}
@@ -600,9 +624,11 @@
                                     <span class="w-1.5 h-1.5 rounded-full bg-indigo-600 dark:bg-indigo-400 ring-2 ring-indigo-200 dark:ring-indigo-900/60"></span>
                                     <span class="whitespace-nowrap tracking-wide">{{ $categoryTitle }}</span>
                                     <span class="h-px flex-1 bg-indigo-200/90 dark:bg-indigo-800/80"></span>
+                                    @if(!empty($isGroupCounterEnabled))
                                     <span class="text-[9px] font-bold text-indigo-700 dark:text-indigo-200 px-1.5 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/80 border border-indigo-200/70 dark:border-indigo-800/70">
                                         {{ count($validCatItems) }}
                                     </span>
+                                    @endif
                                 </div>
 
                                 {{-- Submenu Items inside this Category --}}
@@ -647,9 +673,11 @@
                         
                         <div class="px-3 py-2 border-b border-gray-100 dark:border-gray-700/70 mb-2 flex items-center justify-between">
                             <span class="font-bold text-xs text-gray-900 dark:text-white truncate">{{ $settingsTitle }}</span>
+                            @if(!empty($isGroupCounterEnabled))
                             <span class="text-[10px] font-bold px-1.5 py-0.5 rounded-full {{ $isSettingsActive ? 'bg-indigo-100 dark:bg-indigo-900/80 text-indigo-700 dark:text-indigo-200 border border-indigo-200/50 dark:border-indigo-800/60' : 'bg-gray-100 dark:bg-gray-700/90 text-gray-600 dark:text-gray-300 border border-transparent dark:border-gray-600/50' }}">
                                 {{ count($settingsValidItems) }}
                             </span>
+                            @endif
                         </div>
 
                         <div class="space-y-3 max-h-80 overflow-y-auto custom-scrollbar">
@@ -709,6 +737,7 @@
              x-show="isStep1() && (!sidebarFilter || 'پیشخوان'.toLowerCase().includes(sidebarFilter.toLowerCase()))"
              class="relative group/navitem">
             <a href="{{ route('user.dashboard') }}"
+               @click="closeAllMenus()"
                class="{{ $linkBaseClass }} {{ request()->routeIs('user.dashboard') ? $linkActiveClass : $linkInactiveClass }}">
                 
                 <div class="flex items-center gap-2.5 min-w-0">
@@ -839,15 +868,17 @@
                     </div>
 
                     <div x-show="!sidebarCollapsed" class="flex items-center gap-1.5 shrink-0">
-                        @if($isClientsActive)
-                            <span class="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-900/80 text-indigo-700 dark:text-indigo-200 border border-indigo-200/50 dark:border-indigo-800/60">
-                                {{ count($clientsItems) }}
-                            </span>
-                        @else
-                            <span class="text-[10px] font-bold px-1.5 py-0.5 rounded-full transition-colors border border-transparent"
-                                  :class="isOpen() ? 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 dark:border-gray-600/50' : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 dark:border-gray-700/60 group-hover:bg-gray-200 dark:group-hover:bg-gray-700 group-hover:text-gray-800 dark:group-hover:text-white'">
-                                {{ count($clientsItems) }}
-                            </span>
+                        @if(!empty($isGroupCounterEnabled))
+                            @if($isClientsActive)
+                                <span class="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-900/80 text-indigo-700 dark:text-indigo-200 border border-indigo-200/50 dark:border-indigo-800/60">
+                                    {{ count($clientsItems) }}
+                                </span>
+                            @else
+                                <span class="text-[10px] font-bold px-1.5 py-0.5 rounded-full transition-colors border border-transparent"
+                                      :class="isOpen() ? 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 dark:border-gray-600/50' : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 dark:border-gray-700/60 group-hover:bg-gray-200 dark:group-hover:bg-gray-700 group-hover:text-gray-800 dark:group-hover:text-white'">
+                                    {{ count($clientsItems) }}
+                                </span>
+                            @endif
                         @endif
 
                         {{-- آیکون هدایت یا باز شدن --}}
@@ -906,9 +937,11 @@
                     
                     <div class="px-3 py-2 border-b border-gray-100 dark:border-gray-700/70 mb-1 flex items-center justify-between">
                         <span class="font-bold text-xs text-gray-900 dark:text-white truncate">{{ $clientsTitle }}</span>
+                        @if(!empty($isGroupCounterEnabled))
                         <span class="text-[10px] font-bold px-1.5 py-0.5 rounded-full {{ $isClientsActive ? 'bg-indigo-100 dark:bg-indigo-900/80 text-indigo-700 dark:text-indigo-200 border border-indigo-200/50 dark:border-indigo-800/60' : 'bg-gray-100 dark:bg-gray-700/90 text-gray-600 dark:text-gray-300 border border-transparent dark:border-gray-600/50' }}">
                             {{ count($clientsItems) }}
                         </span>
+                        @endif
                     </div>
 
                     <div class="space-y-1 max-h-72 overflow-y-auto custom-scrollbar">
@@ -962,6 +995,7 @@
                  x-show="isStep1() && (!sidebarFilter || '{{ addslashes($itemTitle) }}'.toLowerCase().includes(sidebarFilter.toLowerCase()))"
                  class="relative group/navitem">
                 <a href="{{ $routeUrl }}"
+                   @click="closeAllMenus()"
                    class="{{ $linkBaseClass }} {{ $isActive ? $linkActiveClass : $linkInactiveClass }}">
                     
                     <div class="flex items-center gap-2.5 min-w-0">
@@ -1083,15 +1117,17 @@
                     </div>
 
                     <div x-show="!sidebarCollapsed" class="flex items-center gap-1.5 shrink-0">
-                        @if($isGroupActive)
-                            <span class="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-900/80 text-indigo-700 dark:text-indigo-200 border border-indigo-200/50 dark:border-indigo-800/60">
-                                {{ count($validGroupItems) }}
-                            </span>
-                        @else
-                            <span class="text-[10px] font-bold px-1.5 py-0.5 rounded-full transition-colors border border-transparent"
-                                  :class="isOpen() ? 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 dark:border-gray-600/50' : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 dark:border-gray-700/60 group-hover:bg-gray-200 dark:group-hover:bg-gray-700 group-hover:text-gray-800 dark:group-hover:text-white'">
-                                {{ count($validGroupItems) }}
-                            </span>
+                        @if(!empty($isGroupCounterEnabled))
+                            @if($isGroupActive)
+                                <span class="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-900/80 text-indigo-700 dark:text-indigo-200 border border-indigo-200/50 dark:border-indigo-800/60">
+                                    {{ count($validGroupItems) }}
+                                </span>
+                            @else
+                                <span class="text-[10px] font-bold px-1.5 py-0.5 rounded-full transition-colors border border-transparent"
+                                      :class="isOpen() ? 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 dark:border-gray-600/50' : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 dark:border-gray-700/60 group-hover:bg-gray-200 dark:group-hover:bg-gray-700 group-hover:text-gray-800 dark:group-hover:text-white'">
+                                    {{ count($validGroupItems) }}
+                                </span>
+                            @endif
                         @endif
 
                         {{-- آیکون هدایت یا باز شدن --}}
@@ -1152,9 +1188,11 @@
                     
                     <div class="px-3 py-2 border-b border-gray-100 dark:border-gray-700/70 mb-1 flex items-center justify-between">
                         <span class="font-bold text-xs text-gray-900 dark:text-white truncate">{{ $groupTitle }}</span>
+                        @if(!empty($isGroupCounterEnabled))
                         <span class="text-[10px] font-bold px-1.5 py-0.5 rounded-full {{ $isGroupActive ? 'bg-indigo-100 dark:bg-indigo-900/80 text-indigo-700 dark:text-indigo-200 border border-indigo-200/50 dark:border-indigo-800/60' : 'bg-gray-100 dark:bg-gray-700/90 text-gray-600 dark:text-gray-300 border border-transparent dark:border-gray-600/50' }}">
                             {{ count($validGroupItems) }}
                         </span>
+                        @endif
                     </div>
 
                     <div class="space-y-1 max-h-72 overflow-y-auto custom-scrollbar">
@@ -1269,15 +1307,17 @@
                     </div>
 
                     <div x-show="!sidebarCollapsed" class="flex items-center gap-1.5 shrink-0">
-                        @if($isSettingsActive)
-                            <span class="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-900/80 text-indigo-700 dark:text-indigo-200 border border-indigo-200/50 dark:border-indigo-800/60">
-                                {{ count($settingsItems) }}
-                            </span>
-                        @else
-                            <span class="text-[10px] font-bold px-1.5 py-0.5 rounded-full transition-colors border border-transparent"
-                                  :class="isOpen() ? 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 dark:border-gray-600/50' : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 dark:border-gray-700/60 group-hover:bg-gray-200 dark:group-hover:bg-gray-700 group-hover:text-gray-800 dark:group-hover:text-white'">
-                                {{ count($settingsItems) }}
-                            </span>
+                        @if(!empty($isGroupCounterEnabled))
+                            @if($isSettingsActive)
+                                <span class="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-900/80 text-indigo-700 dark:text-indigo-200 border border-indigo-200/50 dark:border-indigo-800/60">
+                                    {{ count($settingsItems) }}
+                                </span>
+                            @else
+                                <span class="text-[10px] font-bold px-1.5 py-0.5 rounded-full transition-colors border border-transparent"
+                                      :class="isOpen() ? 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 dark:border-gray-600/50' : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 dark:border-gray-700/60 group-hover:bg-gray-200 dark:group-hover:bg-gray-700 group-hover:text-gray-800 dark:group-hover:text-white'">
+                                    {{ count($settingsItems) }}
+                                </span>
+                            @endif
                         @endif
 
                         {{-- آیکون هدایت یا باز شدن --}}
@@ -1332,9 +1372,11 @@
                                         {{ $categoryTitle }}
                                     </span>
                                 </div>
+                                @if(!empty($isGroupCounterEnabled))
                                 <span class="text-[10px] font-bold px-1.5 py-0.5 rounded-md {{ $isCatActive ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/80 dark:text-indigo-200' : 'bg-white/90 dark:bg-gray-700/90 text-gray-600 dark:text-gray-300 border border-gray-200/60 dark:border-gray-600/60' }}">
                                     {{ count($validCatItems) }}
                                 </span>
+                                @endif
                             </div>
 
                             {{-- Category Header in Default Mode or Filter Mode --}}
@@ -1343,9 +1385,11 @@
                                 <span class="w-1.5 h-1.5 rounded-full bg-indigo-600 dark:bg-indigo-400 ring-2 ring-indigo-200 dark:ring-indigo-900/60"></span>
                                 <span class="whitespace-nowrap tracking-wide">{{ $categoryTitle }}</span>
                                 <span class="h-px flex-1 bg-indigo-200/90 dark:bg-indigo-800/80"></span>
+                                @if(!empty($isGroupCounterEnabled))
                                 <span class="text-[9px] font-bold text-indigo-700 dark:text-indigo-200 px-1.5 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/80 border border-indigo-200/70 dark:border-indigo-800/70">
                                     {{ count($validCatItems) }}
                                 </span>
+                                @endif
                             </div>
 
                             {{-- Submenu Items inside this Category --}}
@@ -1390,9 +1434,11 @@
                     
                     <div class="px-3 py-2 border-b border-gray-100 dark:border-gray-700/70 mb-2 flex items-center justify-between">
                         <span class="font-bold text-xs text-gray-900 dark:text-white truncate">{{ $settingsTitle }}</span>
+                        @if(!empty($isGroupCounterEnabled))
                         <span class="text-[10px] font-bold px-1.5 py-0.5 rounded-full {{ $isSettingsActive ? 'bg-indigo-100 dark:bg-indigo-900/80 text-indigo-700 dark:text-indigo-200 border border-indigo-200/50 dark:border-indigo-800/60' : 'bg-gray-100 dark:bg-gray-700/90 text-gray-600 dark:text-gray-300 border border-transparent dark:border-gray-600/50' }}">
                             {{ count($settingsItems) }}
                         </span>
+                        @endif
                     </div>
 
                     <div class="space-y-3 max-h-80 overflow-y-auto custom-scrollbar">

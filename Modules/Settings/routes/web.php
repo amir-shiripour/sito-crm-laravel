@@ -47,8 +47,12 @@ Route::prefix('settings')->middleware(['auth'])->group(function () {
         Route::get('/items', [\Modules\Settings\Http\Controllers\MenuManagerController::class, 'getItems'])->name('items');
         Route::post('/save', [\Modules\Settings\Http\Controllers\MenuManagerController::class, 'save'])->name('save');
         Route::post('/reset', [\Modules\Settings\Http\Controllers\MenuManagerController::class, 'reset'])->name('reset');
+        Route::post('/inherit-global', [\Modules\Settings\Http\Controllers\MenuManagerController::class, 'inheritGlobal'])->name('inherit-global');
+        Route::get('/search-users', [\Modules\Settings\Http\Controllers\MenuManagerController::class, 'searchUsers'])->name('search-users');
+        Route::get('/stats', [\Modules\Settings\Http\Controllers\MenuManagerController::class, 'getStats'])->name('stats');
         Route::post('/toggle-status', [\Modules\Settings\Http\Controllers\MenuManagerController::class, 'toggleStatus'])->name('toggle-status');
         Route::post('/toggle-two-step', [\Modules\Settings\Http\Controllers\MenuManagerController::class, 'toggleTwoStep'])->name('toggle-two-step');
+        Route::post('/toggle-group-counter', [\Modules\Settings\Http\Controllers\MenuManagerController::class, 'toggleGroupCounter'])->name('toggle-group-counter');
         Route::post('/groups', [\Modules\Settings\Http\Controllers\MenuManagerController::class, 'saveGroup'])->name('groups.save');
         Route::delete('/groups/{group}', [\Modules\Settings\Http\Controllers\MenuManagerController::class, 'deleteGroup'])->name('groups.delete');
     });

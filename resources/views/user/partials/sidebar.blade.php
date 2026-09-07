@@ -10,6 +10,7 @@
     $customMenuService = app(App\Services\Modules\MenuCustomizationService::class);
     $isCustomEnabled = $customMenuService->isCustomMenuEnabled();
     $isTwoStepEnabled = $customMenuService->isTwoStepMenuEnabled();
+    $isGroupCounterEnabled = $customMenuService->isGroupCounterEnabled();
 
     // Backward compatibility for clients module only in core/default mode
     $clientsItems = [];
@@ -41,7 +42,7 @@
 {{-- Header section of the sidebar --}}
 <div class="h-20 px-4 flex items-center justify-between border-b border-gray-100 dark:border-gray-800/80 shrink-0 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md z-10 transition-colors">
     <div class="flex items-center gap-3 overflow-hidden">
-        <a href="{{ route('user.dashboard') }}" class="flex items-center gap-3 group">
+        <a href="{{ route('user.dashboard') }}" @click="closeAllMenus()" class="flex items-center gap-3 group">
             <div class="w-10 h-10 flex items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-700 text-white shadow-md shadow-indigo-500/20 dark:shadow-indigo-900/40 group-hover:scale-105 transition-all duration-300">
                 <svg class="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
@@ -112,6 +113,7 @@
         'settingsGroupMeta' => $settingsGroupMeta,
         'isCustomEnabled' => $isCustomEnabled,
         'isTwoStepEnabled' => $isTwoStepEnabled,
+        'isGroupCounterEnabled' => $isGroupCounterEnabled,
         'menuBlocks' => $menuData['blocks'] ?? [],
     ])
 </nav>

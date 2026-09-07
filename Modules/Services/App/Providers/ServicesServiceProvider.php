@@ -7,8 +7,11 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 use Modules\Services\App\Http\Models\Invoice;
 use Modules\Services\App\Http\Models\Service;
+use Modules\Services\App\Http\Models\Order;
+use Modules\Services\App\Observers\OrderObserver;
 use Modules\Services\App\Policies\InvoicePolicy;
 use Modules\Services\App\Policies\ServicePolicy;
+use Modules\Services\App\Policies\OrderPolicy;
 use Modules\Services\App\Console\Commands\SeedServiceWorkflows;
 use Modules\Services\App\Services\ServiceManagementService;
 use Modules\Services\App\Services\StatusBuilderService;
@@ -24,6 +27,7 @@ class ServicesServiceProvider extends ServiceProvider
     {
         Gate::policy(Service::class, ServicePolicy::class);
         Gate::policy(Invoice::class, InvoicePolicy::class);
+        Gate::policy(Order::class, OrderPolicy::class);
 
         $this->registerViews();
         $this->registerTranslations();
@@ -33,7 +37,7 @@ class ServicesServiceProvider extends ServiceProvider
             SeedServiceWorkflows::class,
         ]);
 
-        \Modules\Services\App\Http\Models\Order::observe(\Modules\Services\App\Observers\OrderObserver::class);
+        Order::observe(OrderObserver::class);
     }
 
     public function register(): void

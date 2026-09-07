@@ -226,9 +226,9 @@ class PermissionCatalog
                 'title' => 'سرویس و خدمات',
                 'matchers' => ['services.view', 'services.manage', 'services.create', 'services.edit', 'services.delete', 'services.duplicate', 'services.settings.'],
             ],
-            'services_projects' => [
-                'title' => 'سرویس و خدمات: پروژه‌ها',
-                'matchers' => ['services.projects.'],
+            'projects' => [
+                'title' => 'پروژه‌ها (Projects)',
+                'matchers' => ['projects.'],
             ],
             'services_orders' => [
                 'title' => 'سرویس و خدمات: سفارشات',
@@ -261,6 +261,24 @@ class PermissionCatalog
             'wallet' => [
                 'title' => 'کیف پول (Wallet)',
                 'matchers' => ['wallet.'],
+            ],
+
+            // DirectAdmin module
+            'directadmin' => [
+                'title' => 'دایرکت ادمین (DirectAdmin)',
+                'matchers' => ['directadmin.'],
+            ],
+
+            // Domain Manager module
+            'domainmanager' => [
+                'title' => 'مدیریت دامنه (Domain Manager)',
+                'matchers' => ['domainmanager.'],
+            ],
+
+            // SmsReseller module
+            'smsreseller' => [
+                'title' => 'ریسیلر پیامک (SMS Reseller)',
+                'matchers' => ['smsreseller.'],
             ],
 
             // Status Builder
@@ -592,29 +610,30 @@ class PermissionCatalog
             'services.delete' => 'حذف خدمت',
             'services.duplicate' => 'تکثیر/کپی خدمت',
 
-            'services.projects.view' => 'مشاهده پروژه‌های خدمات',
-            'services.projects.create' => 'ایجاد پروژه خدمات جدید',
-            'services.projects.edit' => 'ویرایش پروژه خدمات',
-            'services.projects.delete' => 'حذف پروژه خدمات',
-            'services.projects.manage' => 'مدیریت پروژه‌های خدمات',
+            // Projects
+            'projects.view' => 'مشاهده پروژه‌ها',
+            'projects.create' => 'ایجاد پروژه جدید',
+            'projects.edit' => 'ویرایش پروژه',
+            'projects.delete' => 'حذف پروژه',
+            'projects.manage' => 'مدیریت کامل پروژه‌ها',
+            'projects.categories.manage' => 'مدیریت دسته‌بندی‌های پروژه',
+            'projects.settings.manage' => 'مدیریت تنظیمات پروژه‌ها',
+            'projects.status-builder.manage' => 'مدیریت وضعیت‌های پروژه',
 
             'services.orders.view' => 'مشاهده سفارشات خدمات',
             'services.orders.view.all' => 'مشاهده همه سفارشات خدمات',
-            'services.orders.create' => 'ثبت سفارش خدمت جدید',
-            'services.orders.edit' => 'ویرایش سفارش خدمت',
-            'services.orders.delete' => 'حذف سفارش خدمت',
             'services.orders.manage' => 'مدیریت سفارشات خدمات',
 
             'services.invoices.view' => 'مشاهده فاکتورهای خدمات',
             'services.invoices.view.all' => 'مشاهده همه فاکتورهای خدمات',
             'services.invoices.create' => 'صدور فاکتور خدمت',
             'services.invoices.edit' => 'ویرایش فاکتور خدمت',
-            'services.invoices.delete' => 'حذف فاکتور خدمت',
+            'services.invoices.delete' => 'حذف پیش‌فاکتورهای خدمات',
             'services.invoices.manage' => 'مدیریت فاکتورهای خدمات',
             'services.invoices.pay' => 'ثبت پرداخت فاکتور خدمت',
             'services.invoices.cancel' => 'لغو فاکتور خدمت',
             'services.invoices.cancel-payment' => 'لغو پرداخت فاکتور خدمت',
-            'services.invoices.convert' => 'تبدیل سفارش به فاکتور خدمت',
+            'services.invoices.convert' => 'تبدیل پیش‌فاکتور به فاکتور خدمت',
 
             'services.settings.manage' => 'مدیریت تنظیمات خدمات',
 
@@ -653,6 +672,40 @@ class PermissionCatalog
             'wallet.deposit' => 'شارژ / واریز به کیف پول',
             'wallet.withdraw' => 'برداشت از کیف پول',
             'wallet.transactions.view' => 'مشاهده تراکنش‌های کیف پول',
+
+            // DirectAdmin
+            'directadmin.view' => 'مشاهده دایرکت ادمین',
+            'directadmin.settings.manage' => 'مدیریت تنظیمات دایرکت ادمین',
+            'directadmin.accounts.view' => 'مشاهده اکانت‌های دایرکت ادمین',
+            'directadmin.accounts.create' => 'ایجاد اکانت دایرکت ادمین',
+            'directadmin.accounts.delete' => 'حذف اکانت دایرکت ادمین',
+            'directadmin.accounts.suspend' => 'مسدودسازی/رفع مسدودی اکانت دایرکت ادمین',
+            'directadmin.accounts.password' => 'تغییر رمز عبور اکانت دایرکت ادمین',
+            'directadmin.accounts.sync' => 'همگام‌سازی اکانت‌های دایرکت ادمین',
+            'directadmin.wordpress.manage' => 'مدیریت وردپرس دایرکت ادمین',
+            'directadmin.login-history.view' => 'مشاهده تاریخچه ورود دایرکت ادمین',
+
+            // Domain Manager
+            'domainmanager.view' => 'مشاهده مدیریت دامنه',
+            'domainmanager.domains.view' => 'مشاهده دامنه‌ها',
+            'domainmanager.domains.manage' => 'مدیریت دامنه‌ها',
+            'domainmanager.domains.register' => 'ثبت دامنه جدید',
+            'domainmanager.connections.manage' => 'مدیریت اتصال‌های دامنه',
+
+            // SmsReseller
+            'smsreseller.view' => 'مشاهده داشبورد ریسیلر پیامک',
+            'smsreseller.manage' => 'مدیریت کل ماژول ریسیلر پیامک',
+            'smsreseller.profitability.view' => 'مشاهده و تحلیل سود مشتریان',
+            'smsreseller.margins.view' => 'مشاهده و محاسبه حاشیه سود خطوط (مارجین)',
+            'smsreseller.margins.manage' => 'ویرایش و تنظیم قیمت‌های فروش خطوط (مارجین)',
+            'smsreseller.user-credits.view' => 'مشاهده تراکنش‌های کاربران',
+            'smsreseller.user-payments.view' => 'مشاهده واریزی‌های کاربران',
+            'smsreseller.panel-payments.view' => 'مشاهده شارژهای پنل اصلی',
+            'smsreseller.reconciliation.view' => 'مشاهده بخش مغایرت‌گیری و تطبیق',
+            'smsreseller.reconciliation.manage' => 'ثبت سند تطبیق تجمیعی',
+            'smsreseller.accounting.record' => 'ثبت اسناد حسابداری (واریزی و هزینه)',
+            'smsreseller.sync' => 'همگام‌سازی اطلاعات با سامانه پیامک',
+            'smsreseller.settings.manage' => 'مدیریت تنظیمات و سرفصل‌های ریسیلر پیامک',
 
             // Status Builder
             'status-builder.manage' => 'مدیریت وضعیت‌ساز (Status Builder)',

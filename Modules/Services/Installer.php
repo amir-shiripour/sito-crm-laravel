@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Schema;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionRegistrar;
+use Throwable;
 
 class Installer extends BaseModuleInstaller
 {
@@ -109,10 +110,8 @@ class Installer extends BaseModuleInstaller
             Schema::dropIfExists($table);
         }
 
-        // فعال کردن مجدد بررسی کلیدهای خارجی
         Schema::enableForeignKeyConstraints();
 
-        // پاک کردن سوابق مایگریشن‌های این ماژول از جدول migrations برای جلوگیری از بروز خطا در پس‌روی (Rollback)
         try {
             $migrationsPath = __DIR__ . '/Database/Migrations';
             if (File::isDirectory($migrationsPath)) {
@@ -126,7 +125,7 @@ class Installer extends BaseModuleInstaller
                     Log::info('Services Installer: Cleared migration records for Services module.');
                 }
             }
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             Log::warning('Services Installer: Failed to clear migration records: ' . $e->getMessage());
         }
 
@@ -145,8 +144,6 @@ class Installer extends BaseModuleInstaller
             'services.edit',
             'services.delete',
             'services.duplicate',
-
-            // فاکتورها
             'services.invoices.view',
             'services.invoices.view.all',
             'services.invoices.create',
@@ -154,8 +151,12 @@ class Installer extends BaseModuleInstaller
             'services.invoices.delete',
             'services.invoices.manage',
             'services.invoices.pay',
-
-            // تنظیمات و مدیریت وضعیت‌ها
+            'services.invoices.cancel',
+            'services.invoices.cancel-payment',
+            'services.invoices.convert',
+            'services.orders.view',
+            'services.orders.view.all',
+            'services.orders.manage',
             'status-builder.manage',
             'services.settings.manage',
         ];

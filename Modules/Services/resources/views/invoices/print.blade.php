@@ -1,5 +1,5 @@
 @php
-    use Morilog\Jalali\Jalalian;
+    use Modules\Clients\Entities\ClientForm;use Morilog\Jalali\Jalalian;
 
     if (!isset($settings)) {
         $settings = \Illuminate\Support\Facades\DB::table('settings')->pluck('value', 'key')->all();
@@ -112,6 +112,20 @@
         $appLogo = $pickSetting(['identity_logo', 'site_logo', 'app_logo', 'company_logo']);
     }
 
+    $stampStandardWidth = !empty($settings['services_stamp_standard_width']) ? (int) $settings['services_stamp_standard_width'] : null;
+    $stampStandardHeight = !empty($settings['services_stamp_standard_height']) ? (int) $settings['services_stamp_standard_height'] : null;
+
+    $stampStandardImgStyle = 'max-width: 100%; object-fit: contain; mix-blend-mode: multiply;';
+    if ($stampStandardWidth && $stampStandardHeight) {
+        $stampStandardImgStyle .= " width: {$stampStandardWidth}px; height: {$stampStandardHeight}px;";
+    } elseif ($stampStandardWidth) {
+        $stampStandardImgStyle .= " width: {$stampStandardWidth}px; height: auto;";
+    } elseif ($stampStandardHeight) {
+        $stampStandardImgStyle .= " height: {$stampStandardHeight}px; width: auto;";
+    } else {
+        $stampStandardImgStyle .= " max-height: 3rem;";
+    }
+
     // --- پردازش فیلدهای انتخابی خریدار ---
     $defaultBuyerFieldIds = ['full_name', 'phone', 'email', 'national_code', 'case_number'];
     $savedBuyerFieldIds = array_key_exists('services_invoice_client_fields', $settings)
@@ -136,8 +150,8 @@
         'case_number' => 'شماره پرونده',
         'address' => 'نشانی',
     ];
-    $activeClientForm = class_exists(\Modules\Clients\Entities\ClientForm::class)
-        ? \Modules\Clients\Entities\ClientForm::active()
+    $activeClientForm = class_exists(ClientForm::class)
+        ? ClientForm::active()
         : null;
 
     foreach ($savedBuyerFieldIds as $fid) {
@@ -642,8 +656,10 @@
             </div>
             <div class="invoice-meta-card">
                 <div class="invoice-meta-header">
-                    <h1 class="invoice-title">{{ $isProforma ? 'پیش فاکتور' : 'صورتحساب' }} #{{ $faNum($invoice->invoice_number ?: $invoice->proforma_invoice_number) }}</h1>
-                    <span class="status-tag" style="background-color: {{ $statusColor }}15; color: {{ $statusColor }}; border-color: {{ $statusColor }}44;">
+                    <h1 class="invoice-title">{{ $isProforma ? 'پیش فاکتور' : 'صورتحساب' }}
+                        #{{ $faNum($invoice->invoice_number ?: $invoice->proforma_invoice_number) }}</h1>
+                    <span class="status-tag"
+                          style="background-color: {{ $statusColor }}15; color: {{ $statusColor }}; border-color: {{ $statusColor }}44;">
                         {{ $statusName }}
                     </span>
                 </div>
@@ -653,6 +669,19 @@
                     @endif
                     @if($invoice->due_date)
                         <span>تاریخ سررسید: {{ $toJalali($invoice->due_date) }}</span>
+                    @endif
+                    @php
+                        $invoicePackages = collect($invoice->items)->map(function($it) {
+                            return $it->meta['_packageTitle'] ?? null;
+                        })->filter()->unique()->values();
+                        if ($invoicePackages->isEmpty() && !empty($invoice->meta['packages']) && is_array($invoice->meta['packages'])) {
+                            $invoicePackages = collect($invoice->meta['packages'])->filter()->unique()->values();
+                        }
+                    @endphp
+                    @if($invoicePackages->isNotEmpty())
+                        <div style="font-size: 9.5px; font-weight: bold; color: #b45309; margin-top: 3px;">
+                            <span>پکیج: </span>{{ $invoicePackages->implode(' ، ') }}
+                        </div>
                     @endif
                 </div>
             </div>
@@ -711,10 +740,26 @@
                     if (($taxMode ?? 'invoice') === 'item') {
                         $rowTotal += $item->tax_amount;
                     }
+                    $itemMeta = is_array($item->meta) ? $item->meta : (json_decode($item->meta, true) ?: []);
+                    $currentPkgId = $itemMeta['_packageGroupId'] ?? (!empty($itemMeta['_packageTitle']) ? $itemMeta['_packageTitle'] : null);
+                    $prevItem = $loop->first ? null : $invoice->items[$loop->index - 1];
+                    $prevMeta = $prevItem ? (is_array($prevItem->meta) ? $prevItem->meta : (json_decode($prevItem->meta, true) ?: [])) : [];
+                    $prevPkgId = $prevMeta['_packageGroupId'] ?? (!empty($prevMeta['_packageTitle']) ? $prevMeta['_packageTitle'] : null);
+                    $isFirstInPackage = !empty($currentPkgId) && ($currentPkgId !== $prevPkgId);
+                    $isInPackage = !empty($currentPkgId);
                 @endphp
-                <tr class="avoid-break">
-                    <td>
-                        <p class="item-title">{{ $item->custom_service_name ?: ($item->service->name ?? 'ردیف دستی') }}</p>
+                @if($isFirstInPackage)
+                    <tr class="avoid-break" style="background-color: #fef3c7; border-top: 1.5px solid #f59e0b; border-bottom: 1px solid #fcd34d; -webkit-print-color-adjust: exact; print-color-adjust: exact;">
+                        <td colspan="2" style="padding: 6px 10px; font-weight: bold; font-size: 10.5px; color: #92400e;">
+                            <span>{{ $itemMeta['_packageTitle'] ?? 'اقلام پکیج' }}</span>
+                        </td>
+                    </tr>
+                @endif
+                <tr class="avoid-break" @if($isInPackage) style="background-color: #fffdf5;" @endif>
+                    <td @if($isInPackage) style="border-right: 3px solid #f59e0b;" @endif>
+                        <p class="item-title">
+                            {{ $item->custom_service_name ?: ($item->service->name ?? 'ردیف دستی') }}
+                        </p>
                         @if($item->description && $item->description !== ($item->custom_service_name ?: ($item->service->name ?? '')))
                             <p class="item-note">{{ $item->description }}</p>
                         @endif
@@ -890,12 +935,14 @@
         @endif
 
         <div class="invoice-footer mt-3 pt-2 avoid-break">
-            <div class="signature-block">
+            <div class="signature-block"
+                 style="{{ $stampStandardWidth ? 'min-width: ' . max(170, $stampStandardWidth + 10) . 'px; width: auto;' : '' }}">
                 <p class="label">مهر و امضا:</p>
-                <div class="signature-box">
+                <div class="signature-box"
+                     style="{{ $stampStandardHeight ? 'min-height: ' . $stampStandardHeight . 'px; height: auto;' : '' }}">
                     @if($stampSignatureDataUri)
                         <img src="{{ $stampSignatureDataUri }}" alt="مهر و امضا"
-                             style="max-height: 3rem; max-width: 100%; object-fit: contain; mix-blend-mode: multiply;">
+                             style="{{ $stampStandardImgStyle }}">
                     @endif
                 </div>
                 <p class="seller-name">{{ $sellerInfo['name'] }}</p>

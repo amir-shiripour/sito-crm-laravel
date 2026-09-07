@@ -252,7 +252,7 @@
                             </form>
                         @endcan
                     @else
-                        @can('update', $invoice)
+                        @can('pay', $invoice)
                             @if (!str_contains($invoice->status?->name ?? '', 'لغو') && !str_contains($invoice->status?->name ?? '', 'cancel') && !$invoice->isMerged() && $remainingAmount > 0)
                                 <a href="{{ route('services.invoices.payment', $invoice) }}"
                                    class="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-white text-sm font-bold shadow-lg transition-all active:scale-95 @if(!$invoice->isPaid()) bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 shadow-emerald-500/30 hover:shadow-emerald-500/50 @else bg-gradient-to-r from-sky-500 to-sky-600 hover:from-sky-400 hover:to-sky-500 shadow-sky-500/30 hover:shadow-sky-500/50 @endif">
@@ -315,7 +315,7 @@
                             </form>
                         @endcan
                     @else
-                        @can('update', $invoice)
+                        @can('cancel', $invoice)
                             @if (!str_contains($invoice->status?->name ?? '', 'لغو') && !str_contains($invoice->status?->name ?? '', 'cancel') && !$invoice->isMerged() && $remainingAmount > 0)
                                 <form action="{{ route('services.invoices.cancel', $invoice) }}" method="POST"
                                       onsubmit="return confirm('آیا از لغو این فاکتور اطمینان دارید؟ این عمل غیرقابل بازگشت است.');">
@@ -396,8 +396,47 @@
             </div>
         @endif
 
+        @php
+            $invoicePackages = collect($invoice->items)->map(function($it) {
+                return $it->meta['_packageTitle'] ?? null;
+            })->filter()->unique()->values();
+            if ($invoicePackages->isEmpty() && !empty($invoice->meta['packages']) && is_array($invoice->meta['packages'])) {
+                $invoicePackages = collect($invoice->meta['packages'])->filter()->unique()->values();
+            }
+        @endphp
+        @if($invoicePackages->isNotEmpty())
+            <div
+                class="rounded-3xl border border-amber-200 dark:border-amber-500/20 bg-amber-50/60 dark:bg-amber-500/5 p-6 shadow-sm">
+                <div class="flex items-center gap-4">
+                    <span
+                        class="flex items-center justify-center w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400 shrink-0">
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                  d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
+                        </svg>
+                    </span>
+                    <div>
+                        <h3 class="text-base font-bold text-gray-900 dark:text-white mb-1">این فاکتور شامل پکیج خدمات
+                            است</h3>
+                        <div class="flex flex-wrap gap-2 mt-1">
+                            @foreach($invoicePackages as $pkgTitle)
+                                <span
+                                    class="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold bg-white dark:bg-gray-800 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-500/30 shadow-sm">
+                                    <svg class="w-3.5 h-3.5 text-amber-500" fill="none" viewBox="0 0 24 24"
+                                         stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                              d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
+                                    </svg>
+                                    {{ $pkgTitle }}
+                                </span>
+                            @endforeach
+                        </div>
+                    </div>
+                </div>
+            </div>
+        @endif
+
         @if(!empty($buyerExtraFields))
-            {{-- اطلاعات مشتری --}}
             <div class="{{ $cardClass }}">
                 <div class="p-6 border-b border-gray-100 dark:border-gray-700/50 bg-gray-50/50 dark:bg-gray-900/20">
                     <h3 class="text-lg font-black text-gray-800 dark:text-gray-100 flex items-center gap-3">
@@ -424,7 +463,6 @@
             </div>
         @endif
 
-        {{-- اقلام و خدمات فاکتور --}}
         <div class="{{ $cardClass }}">
             <div
                 class="p-6 border-b border-gray-100 dark:border-gray-700/50 bg-gray-50/50 dark:bg-gray-900/20 flex items-center justify-between">
@@ -462,16 +500,55 @@
                             $savedCustomFields = $item->meta['custom_fields'] ?? [];
                             $itemQty = (float) $item->quantity;
                             $displayQty = fmod($itemQty, 1.0) === 0.0 ? (int)$itemQty : $itemQty;
+                            $itemMeta = is_array($item->meta) ? $item->meta : (json_decode($item->meta, true) ?: []);
+                            $isMarketItem = ($itemMeta['type'] ?? null) === 'product';
+                            $isDebtItem = !empty($itemMeta['_isDebt']) || ($itemMeta['type'] ?? null) === 'debt' || (!empty($item->custom_service_name) && str_contains($item->custom_service_name, 'مانده بدهی'));
+
+                            $currentPkgId = $itemMeta['_packageGroupId'] ?? (!empty($itemMeta['_packageTitle']) ? $itemMeta['_packageTitle'] : null);
+                            $prevItem = $loop->first ? null : $invoice->items[$loop->index - 1];
+                            $prevMeta = $prevItem ? (is_array($prevItem->meta) ? $prevItem->meta : (json_decode($prevItem->meta, true) ?: [])) : [];
+                            $prevPkgId = $prevMeta['_packageGroupId'] ?? (!empty($prevMeta['_packageTitle']) ? $prevMeta['_packageTitle'] : null);
+                            $isFirstInPackage = !empty($currentPkgId) && ($currentPkgId !== $prevPkgId);
+                            $isInPackage = !empty($currentPkgId);
                         @endphp
                         <tbody class="divide-y divide-gray-100 dark:divide-gray-700/50 transition-all">
-                        <tr class="hover:bg-gray-50/50 dark:hover:bg-gray-800/30 transition-colors group">
-                            @php
-                                $itemMeta = is_array($item->meta) ? $item->meta : (json_decode($item->meta, true) ?: []);
-                                $isMarketItem = ($itemMeta['type'] ?? null) === 'product';
-                                $isDebtItem = !empty($itemMeta['_isDebt']) || ($itemMeta['type'] ?? null) === 'debt' || (!empty($item->custom_service_name) && str_contains($item->custom_service_name, 'مانده بدهی'));
-                            @endphp
+                        @if($isFirstInPackage)
+                            <tr class="bg-amber-50/80 dark:bg-amber-950/30 border-y-2 border-amber-200 dark:border-amber-700/60">
+                                <td colspan="{{ (($settings['services_tax_mode'] ?? 'invoice') === 'item') ? 7 : 6 }}"
+                                    class="px-4 py-2.5">
+                                    <div class="flex items-center gap-2.5">
+                                        <span
+                                            class="w-6 h-6 flex items-center justify-center rounded-lg bg-amber-200/80 dark:bg-amber-500/20 text-amber-700 dark:text-amber-300 shadow-xs">
+                                            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"
+                                                 stroke="currentColor" stroke-width="2">
+                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                      d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
+                                            </svg>
+                                        </span>
+                                        <span
+                                            class="text-xs font-black text-amber-900 dark:text-amber-200">{{ $itemMeta['_packageTitle'] ?? 'اقلام پکیج' }}</span>
+                                        @php
+                                            $pkgItemCount = $invoice->items->filter(function($it) use ($currentPkgId) {
+                                                $m = is_array($it->meta) ? $it->meta : (json_decode($it->meta, true) ?: []);
+                                                $pId = $m['_packageGroupId'] ?? (!empty($m['_packageTitle']) ? $m['_packageTitle'] : null);
+                                                return $pId === $currentPkgId;
+                                            })->count();
+                                        @endphp
+                                        <span
+                                            class="text-[10px] font-bold text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-500/10 px-2 py-0.5 rounded-md">
+                                            {{ $faNum($pkgItemCount) }} ردیف
+                                        </span>
+                                    </div>
+                                </td>
+                            </tr>
+                        @endif
+                        <tr class="hover:bg-gray-50/50 dark:hover:bg-gray-800/30 transition-colors group @if($isInPackage) bg-amber-50/20 dark:bg-amber-950/10 @endif">
                             <td class="px-4 py-4 align-top font-bold text-gray-800 dark:text-gray-100 text-start">
                                 <div class="flex items-center gap-2 flex-wrap">
+                                    @if($isInPackage)
+                                        <span
+                                            class="w-1.5 h-1.5 rounded-full bg-amber-400 dark:bg-amber-500 shrink-0"></span>
+                                    @endif
                                     <span>{{ $item->custom_service_name ?: ($item->service->name ?? 'ردیف دستی') }}</span>
                                     @if($isMarketItem)
                                         <span
@@ -968,16 +1045,18 @@
                                         <td class="px-4 py-4 text-gray-500 dark:text-gray-400 text-start">{{ $payment->notes ?: '—' }}</td>
                                         <td class="px-4 py-4 text-start">
                                             @if($payment->status !== 'canceled' && !str_contains($invoice->status?->name ?? '', 'لغو'))
-                                                <form
-                                                    action="{{ route('services.invoices.cancelPayment', [$invoice, $payment]) }}"
-                                                    method="POST"
-                                                    onsubmit="return confirm('آیا از لغو این پرداخت اطمینان دارید؟');">
-                                                    @csrf
-                                                    <button type="submit"
-                                                            class="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-500 text-xs font-bold">
-                                                        لغو
-                                                    </button>
-                                                </form>
+                                                @can('cancelPayment', $invoice)
+                                                    <form
+                                                        action="{{ route('services.invoices.cancelPayment', [$invoice, $payment]) }}"
+                                                        method="POST"
+                                                        onsubmit="return confirm('آیا از لغو این پرداخت اطمینان دارید؟');">
+                                                        @csrf
+                                                        <button type="submit"
+                                                                class="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-500 text-xs font-bold">
+                                                            لغو
+                                                        </button>
+                                                    </form>
+                                                @endcan
                                             @endif
                                         </td>
                                     </tr>
@@ -1004,51 +1083,51 @@
                             </div>
                         </div>
                     </div>
-                    @endif
+                @endif
 
-                    @if($invoice->activities->isNotEmpty())
-                        <div class="{{ $cardClass }}">
-                            <div
-                                class="p-6 border-b border-gray-100 dark:border-gray-700/50 bg-gray-50/50 dark:bg-gray-900/20">
-                                <h3 class="text-lg font-black text-gray-800 dark:text-gray-100 flex items-center gap-3">
-                                    <div
-                                        class="p-2 bg-gray-100 text-gray-600 dark:bg-gray-700/40 dark:text-gray-300 rounded-lg">
-                                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                                             stroke-width="2">
-                                            <path stroke-linecap="round" stroke-linejoin="round"
-                                                  d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                                        </svg>
-                                    </div>
-                                    تاریخچه فعالیت و لاگ‌ها
-                                </h3>
-                            </div>
-                            <div class="p-8">
-                                <ol class="relative border-e-2 border-gray-100 dark:border-gray-700/50 pe-6 space-y-8">
-                                    @foreach($invoice->activities->take(10) as $log)
-                                        <li class="relative">
+                @if($invoice->activities->isNotEmpty())
+                    <div class="{{ $cardClass }}">
+                        <div
+                            class="p-6 border-b border-gray-100 dark:border-gray-700/50 bg-gray-50/50 dark:bg-gray-900/20">
+                            <h3 class="text-lg font-black text-gray-800 dark:text-gray-100 flex items-center gap-3">
+                                <div
+                                    class="p-2 bg-gray-100 text-gray-600 dark:bg-gray-700/40 dark:text-gray-300 rounded-lg">
+                                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                         stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                              d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                    </svg>
+                                </div>
+                                تاریخچه فعالیت و لاگ‌ها
+                            </h3>
+                        </div>
+                        <div class="p-8">
+                            <ol class="relative border-e-2 border-gray-100 dark:border-gray-700/50 pe-6 space-y-8">
+                                @foreach($invoice->activities->take(10) as $log)
+                                    <li class="relative">
                                         <span
                                             class="absolute top-1.5 -end-7.75 w-3 h-3 rounded-full bg-indigo-500 ring-4 ring-white dark:ring-gray-800"></span>
-                                            <span
-                                                class="text-base text-gray-800 dark:text-gray-200 font-bold block">{{ $log->description ?? $log->action }}</span>
-                                            <div class="flex items-center gap-3 mt-2">
-                                                @if($log->user)
-                                                    <span
-                                                        class="text-xs font-bold text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-700/50 border border-gray-100 dark:border-gray-700 px-2.5 py-1 rounded-md flex items-center gap-1.5">
+                                        <span
+                                            class="text-base text-gray-800 dark:text-gray-200 font-bold block">{{ $log->description ?? $log->action }}</span>
+                                        <div class="flex items-center gap-3 mt-2">
+                                            @if($log->user)
+                                                <span
+                                                    class="text-xs font-bold text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-700/50 border border-gray-100 dark:border-gray-700 px-2.5 py-1 rounded-md flex items-center gap-1.5">
                                                     <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"
                                                          stroke="currentColor" stroke-width="2"><path
                                                             stroke-linecap="round" stroke-linejoin="round"
                                                             d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
                                                     {{ $log->user->name }}
                                                 </span>
-                                                @endif
-                                                <span
-                                                    class="text-xs font-medium text-gray-400 dir-ltr tabular-nums">{{ $faNum($toJalali($log->created_at)->format('Y-m-d H:i')) }}</span>
-                                            </div>
-                                        </li>
-                                    @endforeach
-                                </ol>
-                            </div>
+                                            @endif
+                                            <span
+                                                class="text-xs font-medium text-gray-400 dir-ltr tabular-nums">{{ $faNum($toJalali($log->created_at)->format('Y-m-d H:i')) }}</span>
+                                        </div>
+                                    </li>
+                                @endforeach
+                            </ol>
                         </div>
+                    </div>
                     @endif
             </div>
         </div>

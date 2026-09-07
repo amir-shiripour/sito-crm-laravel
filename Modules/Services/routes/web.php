@@ -78,7 +78,7 @@ Route::middleware(['auth', 'verified'])
         ->name('services.orders.')
         ->group(function () {
             Route::post('/{order}/create-renewal-invoice', [OrderController::class, 'createRenewalInvoice'])->name('createRenewalInvoice');
-            Route::resource('/', OrderController::class)->parameters(['' => 'order']);
+            Route::resource('/', OrderController::class)->parameters(['' => 'order'])->only(['index', 'show', 'update']);
         });
 
     // Status Builder & Settings

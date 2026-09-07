@@ -4,6 +4,7 @@ namespace Modules\Services\App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
+use Illuminate\Support\Facades\Artisan;
 use Modules\Settings\Entities\Setting;
 use Modules\Clients\Entities\ClientForm;
 use Modules\Clients\Entities\ClientSetting;
@@ -41,6 +42,10 @@ class ServicesSettingsController extends Controller
         'services_official_invoice_orientation',
         'services_rounding_mode',
         'services_rounding_factor',
+        'services_stamp_standard_width',
+        'services_stamp_standard_height',
+        'services_stamp_official_width',
+        'services_stamp_official_height',
     ];
 
     private const BOOLEANS = [
@@ -68,7 +73,9 @@ class ServicesSettingsController extends Controller
     public function index()
     {
         $this->authorize('services.settings.manage');
-        $raw = Setting::whereIn('key', self::KEYS)->pluck('value', 'key')->toArray();
+
+        $fetchKeys = array_merge(self::KEYS, ['identity_seal_signature']);
+        $raw = Setting::whereIn('key', $fetchKeys)->pluck('value', 'key')->toArray();
 
         $clientFormFields = $this->availableClientFields();
 
@@ -92,7 +99,7 @@ class ServicesSettingsController extends Controller
     protected function availableClientFields(): array
     {
         $excludedTypes = ['password', 'file', 'profile-photo'];
-        $excludedIds   = ['password'];
+        $excludedIds = ['password'];
 
         $systemFields = collect(ClientForm::systemFieldDefaults())
             ->reject(function ($f, $id) use ($excludedIds, $excludedTypes) {
@@ -101,9 +108,9 @@ class ServicesSettingsController extends Controller
             })
             ->map(function ($f, $id) {
                 return [
-                    'id'        => $id,
-                    'label'     => $f['label'] ?? $id,
-                    'group'     => $f['group'] ?? 'اطلاعات هویتی',
+                    'id' => $id,
+                    'label' => $f['label'] ?? $id,
+                    'group' => $f['group'] ?? 'اطلاعات هویتی',
                     'is_system' => true,
                 ];
             })
@@ -121,9 +128,9 @@ class ServicesSettingsController extends Controller
                 })
                 ->map(function ($f) {
                     return [
-                        'id'        => $f['id'],
-                        'label'     => $f['label'] ?? $f['id'],
-                        'group'     => $f['group'] ?? 'سایر',
+                        'id' => $f['id'],
+                        'label' => $f['label'] ?? $f['id'],
+                        'group' => $f['group'] ?? 'سایر',
                         'is_system' => false,
                     ];
                 })
@@ -161,6 +168,10 @@ class ServicesSettingsController extends Controller
             'services_official_invoice_orientation' => 'nullable|in:portrait,landscape',
             'services_rounding_mode' => 'nullable|in:none,up,down',
             'services_rounding_factor' => 'nullable|integer|min:1',
+            'services_stamp_standard_width' => 'nullable|integer|min:20|max:800',
+            'services_stamp_standard_height' => 'nullable|integer|min:20|max:600',
+            'services_stamp_official_width' => 'nullable|integer|min:20|max:800',
+            'services_stamp_official_height' => 'nullable|integer|min:20|max:600',
         ];
 
         $request->validate($rules);
@@ -189,6 +200,8 @@ class ServicesSettingsController extends Controller
 
     public function previewNumber(Request $request)
     {
+        $this->authorize('services.settings.manage');
+
         $prefix = $request->input('prefix', 'SRV-');
         $middle = $request->input('middle', now()->format('Y'));
         $suffix = $request->input('suffix', '');
@@ -204,7 +217,7 @@ class ServicesSettingsController extends Controller
         $this->authorize('services.settings.manage');
 
         try {
-            \Illuminate\Support\Facades\Artisan::call('services:seed-workflows');
+            Artisan::call('services:seed-workflows');
             return back()->with('success', 'گردش کارهای پیش‌فرض با موفقیت نصب/بروزرسانی شدند.')->with('active_tab', 'automation');
         } catch (\Exception $e) {
             return back()->with('error', 'خطا در نصب گردش کارها: ' . $e->getMessage())->with('active_tab', 'automation');

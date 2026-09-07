@@ -168,6 +168,7 @@
             sidebarFilter: '',
             openedMenuKey: localStorage.getItem('openedMenuKey') || null,
             activeClosedKeys: JSON.parse(localStorage.getItem('activeClosedKeys') || '{}'),
+            closedAll: false,
             theme: localStorage.getItem('theme') || 'system',
             themeIcon: 'system',
 
@@ -188,6 +189,7 @@
             isMenuOpen(key, isGroupActive = false) {
                 if (this.sidebarCollapsed) return false;
                 if (this.sidebarFilter && this.sidebarFilter.trim().length > 0) return true;
+                if (this.closedAll) return false;
                 if (isGroupActive) {
                     return !this.activeClosedKeys[key];
                 }
@@ -195,6 +197,7 @@
             },
             toggleMenu(key, isGroupActive = false) {
                 if (this.sidebarCollapsed) return;
+                this.closedAll = false;
                 if (isGroupActive) {
                     this.activeClosedKeys[key] = !this.activeClosedKeys[key];
                     localStorage.setItem('activeClosedKeys', JSON.stringify(this.activeClosedKeys));
@@ -206,6 +209,16 @@
                     }
                     localStorage.setItem('openedMenuKey', this.openedMenuKey || '');
                 }
+            },
+            closeAllMenus() {
+                this.openedMenuKey = null;
+                this.closedAll = true;
+                this.sidebarFilter = '';
+                this.mobileOpen = false;
+                try {
+                    localStorage.removeItem('openedMenuKey');
+                } catch (e) {}
+                window.dispatchEvent(new CustomEvent('close-all-menus'));
             },
 
             themeTitle() {
