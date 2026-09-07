@@ -34,8 +34,38 @@ Route::middleware(['auth', 'verified'])
             ->name('projects.templates.')
             ->group(function () {
                 Route::post('/{template}/apply/{project}', [ProjectsTemplateController::class, 'apply'])->name('apply');
-                Route::resource('/', ProjectsTemplateController::class)
-                    ->parameters(['' => 'template']);
+
+                Route::post('/import', [ProjectsTemplateController::class, 'import'])
+                    ->middleware('can:projects.templates.manage')
+                    ->name('import');
+                Route::get('/{template}/export', [ProjectsTemplateController::class, 'export'])
+                    ->middleware('can:projects.templates.manage')
+                    ->name('export');
+
+                Route::get('/create', [ProjectsTemplateController::class, 'create'])
+                    ->middleware('can:projects.templates.create')
+                    ->name('create');
+                Route::post('/', [ProjectsTemplateController::class, 'store'])
+                    ->middleware('can:projects.templates.create')
+                    ->name('store');
+
+                Route::get('/{template}/edit', [ProjectsTemplateController::class, 'edit'])
+                    ->middleware('can:projects.templates.edit')
+                    ->name('edit');
+                Route::match(['put', 'patch'], '/{template}', [ProjectsTemplateController::class, 'update'])
+                    ->middleware('can:projects.templates.edit')
+                    ->name('update');
+
+                Route::delete('/{template}', [ProjectsTemplateController::class, 'destroy'])
+                    ->middleware('can:projects.templates.delete')
+                    ->name('destroy');
+
+                Route::get('/', [ProjectsTemplateController::class, 'index'])
+                    ->middleware('can:projects.templates.view')
+                    ->name('index');
+                Route::get('/{template}', [ProjectsTemplateController::class, 'show'])
+                    ->middleware('can:projects.templates.view')
+                    ->name('show');
             });
 
         // Project Categories
@@ -105,7 +135,7 @@ Route::middleware(['auth', 'verified'])
                     Route::delete('/{timeLog}', [ProjectsTimeLogController::class, 'destroy'])->name('destroy');
                 });
 
-                // Phases (فازها و دسته‌بندی کارها)
+                // Phases
                 Route::prefix('/{project}/phases')->name('phases.')->group(function () {
                     Route::post('/', [ProjectsPhaseController::class, 'store'])->name('store');
                     Route::post('/bulk-destroy', [ProjectsPhaseController::class, 'bulkDestroy'])->name('bulkDestroy');

@@ -36,4 +36,12 @@ class BookingPaymentObserver
             $this->walletSyncService->handlePaymentStatusChange($payment, null, $payment->status);
         }
     }
+
+    /**
+     * Handle the BookingPayment "deleting" event.
+     */
+    public function deleting(BookingPayment $payment): void
+    {
+        $this->walletSyncService->handlePaymentDeleted($payment);
+    }
 }

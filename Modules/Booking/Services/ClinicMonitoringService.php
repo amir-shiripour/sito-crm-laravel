@@ -60,7 +60,7 @@ class ClinicMonitoringService
 
         $userRoleIds = $user->roles()->pluck('id')->map(fn ($v) => (int) $v)->all();
 
-        return count(array_intersect($providerRoleIds, $userRoleIds)) > 0 || $user->hasRole('doctor');
+        return count(array_intersect($providerRoleIds, $userRoleIds)) > 0;
     }
 
     /**
@@ -81,9 +81,20 @@ class ClinicMonitoringService
             return false;
         }
 
-        return $user->can('booking.appointments.view.all')
+        // If user has explicit view.all or manage permissions
+        if ($user->can('booking.appointments.view.all')
             || $user->can('booking.manage')
-            || $user->can('booking.appointments.manage');
+            || $user->can('booking.appointments.manage')) {
+            return true;
+        }
+
+        // If user is a configured provider (doctor/specialist), scope by default to their own appointments
+        if ($this->userIsProvider($user)) {
+            return false;
+        }
+
+        // Non-provider staff (e.g. receptionist, secretary, operator) who have access to booking can view all appointments
+        return true;
     }
 
     /**
@@ -134,10 +145,8 @@ class ClinicMonitoringService
         }
 
         if (! $this->canViewAllAppointments($user)) {
-            if ($user->can('booking.appointments.view.own') || $this->userIsProvider($user) || $user->hasRole('doctor')) {
+            if ($this->userIsProvider($user) || $user->hasPermissionTo('booking.appointments.view.own')) {
                 $query->where('provider_user_id', $user->id);
-            } else {
-                $query->where('created_by_user_id', $user->id);
             }
         }
 

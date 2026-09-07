@@ -385,7 +385,11 @@ class ProjectsTaskController extends Controller
 
     public function updateStatus(Request $request, Project $project, ProjectTask $task)
     {
-        $this->authorize('changeTaskStatus', $project);
+        if ($request->boolean('from_kanban')) {
+            $this->authorize('changeKanbanStatus', $project);
+        } else {
+            $this->authorize('changeTaskStatus', $project);
+        }
 
         if ($task->isCanceled()) {
             return response()->json([

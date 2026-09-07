@@ -40,6 +40,8 @@ class ServicePackageController extends Controller
 
     public function index(Request $request)
     {
+        $this->authorize('viewAny', Service::class);
+
         $packages = ServicePackage::withCount('items')
             ->when($request->search, fn($q, $s) => $q->where('name', 'like', "%{$s}%")->orWhere('code', 'like', "%{$s}%"))
             ->when($request->status, fn($q, $v) => $q->where('status', $v))
@@ -54,6 +56,8 @@ class ServicePackageController extends Controller
 
     public function create()
     {
+        $this->authorize('create', Service::class);
+
         $services = Service::active()->with('customFields')->orderBy('name')->get();
         $currency = Setting::where('key', 'currency')->value('value') ?? 'toman';
         $marketModuleEnabled = $this->isMarketModuleEnabled();
@@ -266,6 +270,8 @@ class ServicePackageController extends Controller
 
     public function show(ServicePackage $package)
     {
+        $this->authorize('viewAny', Service::class);
+
         $package->load(['items.service.customFields']);
         $currency = Setting::where('key', 'currency')->value('value') ?? 'toman';
 
@@ -274,6 +280,8 @@ class ServicePackageController extends Controller
 
     public function edit(ServicePackage $package)
     {
+        $this->authorize('update', Service::class);
+
         $package->load(['items.service.customFields']);
         $services = Service::active()->with('customFields')->orderBy('name')->get();
         $currency = Setting::where('key', 'currency')->value('value') ?? 'toman';
@@ -487,6 +495,8 @@ class ServicePackageController extends Controller
 
     public function destroy(ServicePackage $package)
     {
+        $this->authorize('delete', Service::class);
+
         $package->delete();
 
         return redirect()

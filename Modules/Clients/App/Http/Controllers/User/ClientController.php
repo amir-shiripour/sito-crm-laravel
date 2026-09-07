@@ -9,6 +9,7 @@ use Exception;
 use Illuminate\Http\Request;
 use Modules\Accounting\App\Models\Document;
 use Modules\Accounting\App\Models\SourceDocument;
+use Modules\Accounting\App\Models\Transaction;
 use Modules\Accounting\Entities\Cheque;
 use Modules\Booking\Entities\Appointment;
 use Modules\Clients\Entities\Client;
@@ -152,19 +153,39 @@ class ClientController extends Controller
         $activeForm = ClientForm::active($keyFromSettings);
 
         $clientOrders = collect([]);
+        $clientOrderStats = ['count' => 0, 'active' => 0, 'total' => 0, 'renewal_total' => 0];
+        $orderStatuses = collect([]);
         $clientInvoices = collect([]);
         $clientInvoiceStats = ['count' => 0, 'total' => 0, 'paid' => 0, 'due' => 0];
 
         if (class_exists(Order::class)) {
             try {
-                $clientOrders = Order::with(['customer', 'status', 'service', 'invoice.payments'])
-                    ->where('customer_id', $client->id)
+                if (class_exists(Status::class)) {
+                    $orderStatuses = Status::where('type', 'order')->orderBy('sort_order')->get();
+                }
+
+                $ordersBaseQuery = Order::where('customer_id', $client->id);
+                $activeStatusIds = Status::where('type', 'order')
+                    ->where('name', 'LIKE', '%فعال%')
+                    ->where('name', 'NOT LIKE', '%غیر%')
+                    ->pluck('id');
+
+                $clientOrderStats = [
+                    'count' => (clone $ordersBaseQuery)->count(),
+                    'active' => (clone $ordersBaseQuery)->whereIn('status_id', $activeStatusIds)->count(),
+                    'total' => (int)(clone $ordersBaseQuery)->sum('total_amount'),
+                    'renewal_total' => (int)(clone $ordersBaseQuery)->where('renewal_price', '>', 0)->sum('renewal_price'),
+                ];
+
+                $clientOrders = (clone $ordersBaseQuery)
+                    ->with(['customer', 'status', 'service', 'invoice.payments'])
                     ->orderByDesc('invoice_id')
                     ->orderBy('id', 'asc')
                     ->paginate(15, ['*'], 'orders_page')
                     ->withQueryString();
             } catch (Exception $e) {
                 $clientOrders = collect([]);
+                $clientOrderStats = ['count' => 0, 'active' => 0, 'total' => 0, 'renewal_total' => 0];
             }
         }
 
@@ -223,6 +244,13 @@ class ClientController extends Controller
         $accountingModule = Module::where('slug', 'accounting')->first();
         $isAccountingActive = $accountingModule && $accountingModule->installed && $accountingModule->active;
         $accountingDocuments = collect([]);
+        $clientAccountingStats = [
+            'documents_count' => 0,
+            'transactions_count' => 0,
+            'total_turnover' => 0,
+            'system_docs_count' => 0,
+            'manual_docs_count' => 0,
+        ];
 
         if ($isAccountingActive && class_exists(Document::class)) {
             try {
@@ -272,7 +300,10 @@ class ClientController extends Controller
                         $ids = SourceDocument::where('sourceable_type', Invoice::class)
                             ->whereIn('sourceable_id', $srvInvoicesIds)
                             ->pluck('document_id')->toArray();
-                        $docIds = $docIds->merge($ids);
+                        $directIds = Document::where('documentable_type', Invoice::class)
+                            ->whereIn('documentable_id', $srvInvoicesIds)
+                            ->pluck('id')->toArray();
+                        $docIds = $docIds->merge($directIds);
                     }
                 }
 
@@ -288,9 +319,26 @@ class ClientController extends Controller
                     }
                 }
 
-                $uniqueDocIds = $docIds->unique()->toArray();
+                // 6. Direct documents where documentable is Client
+                $directClientDocIds = Document::where('documentable_type', $client->getMorphClass())
+                    ->where('documentable_id', $client->id)
+                    ->pluck('id')->toArray();
+                $docIds = $docIds->merge($directClientDocIds);
+
+                $uniqueDocIds = $docIds->unique()->filter()->values()->toArray();
 
                 if (!empty($uniqueDocIds)) {
+                    $clientAccountingStats['documents_count'] = count($uniqueDocIds);
+                    if (class_exists(Transaction::class)) {
+                        $clientAccountingStats['transactions_count'] = Transaction::whereIn('document_id', $uniqueDocIds)->count();
+                        $clientAccountingStats['total_turnover'] = (int)Transaction::whereIn('document_id', $uniqueDocIds)->sum('debit');
+                    }
+                    $systemDocsCount = class_exists(SourceDocument::class)
+                        ? SourceDocument::whereIn('document_id', $uniqueDocIds)->count()
+                        : 0;
+                    $clientAccountingStats['system_docs_count'] = $systemDocsCount;
+                    $clientAccountingStats['manual_docs_count'] = max(0, count($uniqueDocIds) - $systemDocsCount);
+
                     $accountingDocuments = Document::with(['transactions', 'sourceDocument'])
                         ->whereIn('id', $uniqueDocIds)
                         ->latest('document_date')
@@ -299,6 +347,7 @@ class ClientController extends Controller
                         ->withQueryString();
                 }
             } catch (Exception $e) {
+                \Log::error('Accounting documents error in ClientController: ' . $e->getMessage());
                 // Keep it empty on error
             }
         }
@@ -368,9 +417,9 @@ class ClientController extends Controller
         }
 
         return view('clients::user.clients.show', compact(
-            'client', 'activeForm', 'clientOrders', 'clientInvoices',
+            'client', 'activeForm', 'clientOrders', 'clientOrderStats', 'orderStatuses', 'clientInvoices', 'clientInvoiceStats',
             'bookingModule', 'workflowsModule', 'availableWorkflows',
-            'accountingModule', 'accountingDocuments',
+            'accountingModule', 'accountingDocuments', 'clientAccountingStats',
             'isBookingQueueEnabled', 'clientWaitlists',
             'clientAppointments',
             'walletModule', 'clientWallet', 'clientWalletTransactions', 'clientWalletTransactionsCount'

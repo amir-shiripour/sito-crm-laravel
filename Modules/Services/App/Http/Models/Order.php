@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Modules\Clients\Entities\Client;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Modules\DirectAdmin\Entities\DaAccount;
+use Modules\DomainManager\Entities\DomainRecord;
 
 class Order extends Model
 {
@@ -71,16 +72,46 @@ class Order extends Model
 
     public function invoices()
     {
+        if (empty($this->invoice_id) && empty($this->id)) {
+            return Invoice::whereRaw('1 = 0');
+        }
+
         return Invoice::where(function($query) {
-            $query->where('id', $this->invoice_id)
-                  ->orWhere('meta->source_order_id', $this->id)
-                  ->orWhereJsonContains('meta->merged_from_invoice_ids', $this->invoice_id)
-                  ->orWhere('meta->was_merged_into', $this->invoice_id);
+            $hasCondition = false;
+
+            if (!empty($this->invoice_id)) {
+                $query->where('id', $this->invoice_id)
+                      ->orWhereJsonContains('meta->merged_from_invoice_ids', (int)$this->invoice_id)
+                      ->orWhere('meta->was_merged_into', (int)$this->invoice_id);
+                $hasCondition = true;
+            }
+
+            if (!empty($this->id)) {
+                if ($hasCondition) {
+                    $query->orWhere('meta->source_order_id', (int)$this->id)
+                          ->orWhere('meta->source_order_id', (string)$this->id);
+                } else {
+                    $query->where(function($q) {
+                        $q->where('meta->source_order_id', (int)$this->id)
+                          ->orWhere('meta->source_order_id', (string)$this->id);
+                    });
+                    $hasCondition = true;
+                }
+            }
+
+            if (!$hasCondition) {
+                $query->whereRaw('1 = 0');
+            }
         })->latest();
     }
 
     public function hostingAccount()
     {
         return $this->hasOne(DaAccount::class, 'order_id');
+    }
+
+    public function domainRecord()
+    {
+        return $this->hasOne(DomainRecord::class, 'service_order_id');
     }
 }

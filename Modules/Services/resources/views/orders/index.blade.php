@@ -29,7 +29,50 @@
         'annual'      => 'سالانه',
     ];
 
-    $statuses = Status::where('type', 'order')->get();
+    if (!function_exists('orderSortUrl')) {
+        function orderSortUrl($col) {
+            $currentCol = request('sort_by', 'latest');
+            $currentOrder = strtolower(request('sort_order', 'desc'));
+
+            if ($currentCol === $col . '_asc') {
+                $currentCol = $col;
+                $currentOrder = 'asc';
+            } elseif ($currentCol === $col . '_desc') {
+                $currentCol = $col;
+                $currentOrder = 'desc';
+            }
+
+            $newOrder = ($currentCol === $col && $currentOrder === 'asc') ? 'desc' : 'asc';
+            return request()->fullUrlWithQuery(['sort_by' => $col, 'sort_order' => $newOrder]);
+        }
+    }
+
+    if (!function_exists('orderSortIcon')) {
+        function orderSortIcon($col) {
+            $currentCol = request('sort_by', 'latest');
+            $currentOrder = strtolower(request('sort_order', 'desc'));
+
+            if ($currentCol === $col . '_asc') {
+                $currentCol = $col;
+                $currentOrder = 'asc';
+            } elseif ($currentCol === $col . '_desc') {
+                $currentCol = $col;
+                $currentOrder = 'desc';
+            }
+
+            if ($currentCol === $col) {
+                if ($currentOrder === 'asc') {
+                    return '<svg class="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 inline shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 15l7-7 7 7"/></svg>';
+                } else {
+                    return '<svg class="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 inline shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/></svg>';
+                }
+            }
+
+            return '<svg class="w-3.5 h-3.5 opacity-30 group-hover:opacity-100 transition-opacity inline shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"/></svg>';
+        }
+    }
+
+    $statuses = $statuses ?? Status::where('type', 'order')->get();
 @endphp
 
 @section('content')
@@ -61,52 +104,79 @@
         {{-- Filter bar --}}
         <form method="GET"
               class="bg-white dark:bg-gray-800/60 p-5 rounded-3xl border border-gray-100 dark:border-gray-700/50 shadow-sm backdrop-blur-xl">
-            <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-12 gap-5">
-                <div class="relative xl:col-span-4">
-                    <div class="absolute inset-y-0 start-0 ps-5 flex items-center pointer-events-none">
-                        <svg class="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                             stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round"
-                                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-12 gap-4 items-center">
+                {{-- جستجو --}}
+                <div class="relative xl:col-span-3">
+                    <div class="absolute inset-y-0 start-0 ps-4 flex items-center pointer-events-none">
+                        <svg class="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
                         </svg>
                     </div>
                     <input type="text" name="search" value="{{ request('search') }}"
                            placeholder="جستجو: نام مشتری، شماره سفارش، نام سرویس..."
-                           class="w-full rounded-2xl border-gray-200 bg-gray-50 dark:bg-gray-900/50 dark:border-gray-700 ps-12 pe-4 py-3.5 text-sm focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all dark:text-white">
+                           class="w-full rounded-2xl border-gray-200 bg-gray-50 dark:bg-gray-900/50 dark:border-gray-700 ps-11 pe-4 py-3 text-sm focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all dark:text-white">
                 </div>
-                <div class="xl:col-span-3">
+
+                {{-- وضعیت --}}
+                <div class="xl:col-span-2">
                     <select name="status_id"
-                            class="w-full rounded-2xl border-gray-200 bg-gray-50 dark:bg-gray-900/50 dark:border-gray-700 px-4 py-3.5 text-sm focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all dark:text-white cursor-pointer">
+                            class="w-full rounded-2xl border-gray-200 bg-gray-50 dark:bg-gray-900/50 dark:border-gray-700 px-3.5 py-3 text-sm focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all dark:text-white cursor-pointer">
                         <option value="">همه وضعیت‌ها</option>
                         @foreach($statuses as $st)
-                            <option
-                                value="{{ $st->id }}" @selected(request('status_id') == $st->id)>{{ $st->name }}</option>
+                            <option value="{{ $st->id }}" @selected(request('status_id') == $st->id)>
+                                {{ $st->name }}
+                            </option>
                         @endforeach
                     </select>
                 </div>
+
+                {{-- سرویس --}}
                 <div class="xl:col-span-3">
                     <select name="service_id"
-                            class="w-full rounded-2xl border-gray-200 bg-gray-50 dark:bg-gray-900/50 dark:border-gray-700 px-4 py-3.5 text-sm focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all dark:text-white cursor-pointer">
+                            class="w-full rounded-2xl border-gray-200 bg-gray-50 dark:bg-gray-900/50 dark:border-gray-700 px-3.5 py-3 text-sm focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all dark:text-white cursor-pointer">
                         <option value="">همه سرویس‌ها</option>
                         @foreach($services as $srv)
-                            <option
-                                value="{{ $srv->id }}" @selected(request('service_id') == $srv->id)>{{ $srv->name }}</option>
+                            <option value="{{ $srv->id }}" @selected(request('service_id') == $srv->id)>
+                                {{ $srv->name }}
+                            </option>
                         @endforeach
                     </select>
                 </div>
+
+                {{-- سورت دستی (مرتب‌سازی) --}}
+                <div class="xl:col-span-2">
+                    <select name="sort_by"
+                            class="w-full rounded-2xl border-gray-200 bg-gray-50 dark:bg-gray-900/50 dark:border-gray-700 px-3.5 py-3 text-sm focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all dark:text-white cursor-pointer font-bold text-xs">
+                        <option value="latest" @selected(request('sort_by') === 'latest' || !request('sort_by'))>جدیدترین (پیش‌فرض)</option>
+                        <option value="oldest" @selected(request('sort_by') === 'oldest')>قدیمی‌ترین</option>
+                        <option value="renewal_date_asc" @selected(request('sort_by') === 'renewal_date_asc')>تاریخ تمدید (نزدیک‌ترین)</option>
+                        <option value="renewal_date_desc" @selected(request('sort_by') === 'renewal_date_desc')>تاریخ تمدید (دورترین)</option>
+                        <option value="issue_date_desc" @selected(request('sort_by') === 'issue_date_desc')>تاریخ صدور (جدیدترین)</option>
+                        <option value="issue_date_asc" @selected(request('sort_by') === 'issue_date_asc')>تاریخ صدور (قدیمی‌ترین)</option>
+                        <option value="amount_desc" @selected(request('sort_by') === 'amount_desc')>مبلغ نهایی (بیشترین)</option>
+                        <option value="amount_asc" @selected(request('sort_by') === 'amount_asc')>مبلغ نهایی (کمترین)</option>
+                        <option value="order_number_asc" @selected(request('sort_by') === 'order_number_asc')>شماره سفارش (صعودی)</option>
+                        <option value="order_number_desc" @selected(request('sort_by') === 'order_number_desc')>شماره سفارش (نزولی)</option>
+                    </select>
+                </div>
+
+                @if(request('sort_order'))
+                    <input type="hidden" name="sort_order" value="{{ request('sort_order') }}">
+                @endif
+
+                {{-- دکمه‌ها --}}
                 <div class="xl:col-span-2 flex gap-2">
                     <button type="submit"
-                            class="flex-1 px-6 py-3.5 rounded-2xl bg-indigo-50 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-400 text-sm font-bold hover:bg-indigo-100 dark:hover:bg-indigo-500/20 transition-colors flex items-center justify-center gap-2">
-                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round"
-                                  d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/>
+                            class="flex-1 px-4 py-3 rounded-2xl bg-indigo-50 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-400 text-xs font-bold hover:bg-indigo-100 dark:hover:bg-indigo-500/20 transition-colors flex items-center justify-center gap-1.5 cursor-pointer">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/>
                         </svg>
                         فیلتر
                     </button>
-                    @if(request()->hasAny(['search', 'status_id', 'service_id']))
+                    @if(request()->hasAny(['search', 'status_id', 'service_id', 'sort_by', 'sort_order']))
                         <a href="{{ route('services.orders.index') }}" title="پاک کردن فیلترها"
-                           class="px-5 py-3.5 rounded-2xl bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 text-sm font-bold hover:bg-red-100 dark:hover:bg-red-500/20 transition-colors flex items-center justify-center">
-                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                           class="px-3.5 py-3 rounded-2xl bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 text-sm font-bold hover:bg-red-100 dark:hover:bg-red-500/20 transition-colors flex items-center justify-center shrink-0">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
                             </svg>
                         </a>
@@ -123,25 +193,46 @@
                     <thead class="bg-gray-50/80 dark:bg-gray-900/40">
                     <tr>
                         <th class="px-6 py-5 font-bold text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wider text-start">
-                            سرویس و مشتری
+                            <a href="{{ orderSortUrl('service') }}" class="group inline-flex items-center gap-1.5 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
+                                <span>سرویس و مشتری</span>
+                                {!! orderSortIcon('service') !!}
+                            </a>
                         </th>
                         <th class="px-6 py-5 font-bold text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wider text-center">
-                            شماره فاکتور
+                            <a href="{{ orderSortUrl('invoice') }}" class="group inline-flex items-center gap-1.5 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
+                                <span>شماره فاکتور</span>
+                                {!! orderSortIcon('invoice') !!}
+                            </a>
                         </th>
                         <th class="px-6 py-5 font-bold text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wider text-center">
-                            دوره و مبلغ تمدید
+                            <a href="{{ orderSortUrl('renewal_price') }}" class="group inline-flex items-center gap-1.5 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
+                                <span>دوره و مبلغ تمدید</span>
+                                {!! orderSortIcon('renewal_price') !!}
+                            </a>
                         </th>
                         <th class="px-6 py-5 font-bold text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wider text-center">
-                            مبلغ نهایی سرویس (فاکتور)
+                            <a href="{{ orderSortUrl('total_amount') }}" class="group inline-flex items-center gap-1.5 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
+                                <span>مبلغ نهایی سرویس (فاکتور)</span>
+                                {!! orderSortIcon('total_amount') !!}
+                            </a>
                         </th>
                         <th class="px-6 py-5 font-bold text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wider text-center">
-                            تاریخ صدور
+                            <a href="{{ orderSortUrl('issue_date') }}" class="group inline-flex items-center gap-1.5 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
+                                <span>تاریخ صدور</span>
+                                {!! orderSortIcon('issue_date') !!}
+                            </a>
                         </th>
                         <th class="px-6 py-5 font-bold text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wider text-center">
-                            تاریخ تمدید
+                            <a href="{{ orderSortUrl('renewal_date') }}" class="group inline-flex items-center gap-1.5 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
+                                <span>تاریخ تمدید</span>
+                                {!! orderSortIcon('renewal_date') !!}
+                            </a>
                         </th>
                         <th class="px-6 py-5 font-bold text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wider text-center">
-                            وضعیت
+                            <a href="{{ orderSortUrl('status') }}" class="group inline-flex items-center gap-1.5 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
+                                <span>وضعیت</span>
+                                {!! orderSortIcon('status') !!}
+                            </a>
                         </th>
                         <th class="px-6 py-5 font-bold text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wider text-end">
                             جزئیات
@@ -221,28 +312,71 @@
                         @endphp
 
                         <tr class="group bg-white dark:bg-gray-800 hover:bg-indigo-50/50 dark:hover:bg-indigo-500/10 transition-colors duration-300">
+                            @php
+                                $catSlug = $order->service?->category?->slug;
+                                $isHostingOrder = ($catSlug === 'hosting') || !empty($order->hostingAccount);
+                                $isDomainOrder = ($catSlug === 'domain') || !empty($order->domainRecord);
+                            @endphp
 
                             {{-- سرویس و مشتری --}}
                             <td class="px-6 py-4 align-middle">
                                 <div class="flex items-center gap-3">
                                     <div
-                                        class="flex-shrink-0 w-11 h-11 rounded-2xl bg-indigo-100 dark:bg-indigo-500/20 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-black text-base border border-indigo-200 dark:border-indigo-500/30">
-                                        {{ mb_substr($order->service->name ?? 'د', 0, 1) }}
+                                        class="flex-shrink-0 w-11 h-11 rounded-2xl {{ $isHostingOrder ? 'bg-sky-100 dark:bg-sky-500/20 text-sky-600 dark:text-sky-400 border border-sky-200 dark:border-sky-500/30' : 'bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-500/30' }} flex items-center justify-center font-black text-base">
+                                        @if($isHostingOrder)
+                                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2"/>
+                                            </svg>
+                                        @else
+                                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"/>
+                                            </svg>
+                                        @endif
                                     </div>
                                     <div class="min-w-0">
-                                        <div
-                                            class="font-black text-gray-900 dark:text-white text-base truncate">{{ $order->service->name ?? $order->notes ?? 'ردیف دستی' }}</div>
-                                        <div
-                                            class="mt-1 flex items-center gap-1.5 text-sm font-bold text-gray-500 dark:text-gray-400">
-                                            <svg class="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24"
-                                                 stroke="currentColor" stroke-width="2">
-                                                <path stroke-linecap="round" stroke-linejoin="round"
-                                                      d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
-                                            </svg>
-                                            <span class="truncate max-w-[160px]">{{ $customerName }}</span>
+                                        <div class="flex items-center gap-2 flex-wrap">
+                                            <span class="font-black text-gray-900 dark:text-white text-base truncate">
+                                                {{ $order->service->name ?? $order->notes ?? 'ردیف دستی' }}
+                                            </span>
+                                            @if($isHostingOrder)
+                                                <span class="px-2 py-0.5 rounded-md text-[10px] font-black bg-sky-50 text-sky-700 dark:bg-sky-500/10 dark:text-sky-300 border border-sky-200/60 dark:border-sky-500/20 shrink-0">
+                                                    هاستینگ
+                                                </span>
+                                            @elseif($isDomainOrder)
+                                                <span class="px-2 py-0.5 rounded-md text-[10px] font-black bg-indigo-50 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-500/20 shrink-0">
+                                                    دامنه
+                                                </span>
+                                            @endif
                                         </div>
-                                        <div
-                                            class="text-xs font-bold text-gray-400 mt-1 uppercase tabular-nums">{{ $order->order_number }}</div>
+
+                                        @if($order->hostingAccount)
+                                            <div class="mt-1 flex items-center gap-1.5 text-xs font-bold text-sky-600 dark:text-sky-400">
+                                                <svg class="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2"/>
+                                                </svg>
+                                                <a href="{{ route('user.directadmin.accounts.show', $order->hostingAccount->username) }}" class="hover:underline dir-ltr truncate max-w-[180px]">
+                                                    {{ $order->hostingAccount->username }} ({{ $order->hostingAccount->domain }})
+                                                </a>
+                                            </div>
+                                        @elseif($order->domainRecord)
+                                            <div class="mt-1 flex items-center gap-1.5 text-xs font-bold text-indigo-600 dark:text-indigo-400">
+                                                <svg class="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"/>
+                                                </svg>
+                                                <a href="{{ route('user.domainmanager.domains.show', $order->domainRecord->domain_name) }}" class="hover:underline dir-ltr truncate max-w-[180px]">
+                                                    {{ $order->domainRecord->domain_name }}
+                                                </a>
+                                            </div>
+                                        @endif
+
+                                        <div class="mt-1 flex items-center gap-1.5 text-sm font-bold text-gray-500 dark:text-gray-400">
+                                            <svg class="w-4 h-4 text-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                                            </svg>
+                                            <span class="truncate max-w-[170px]">{{ $customerName }}</span>
+                                            <span class="text-gray-300 dark:text-gray-600">•</span>
+                                            <span class="text-xs font-bold text-gray-400 uppercase tabular-nums dir-ltr">{{ $order->order_number }}</span>
+                                        </div>
                                     </div>
                                 </div>
                             </td>

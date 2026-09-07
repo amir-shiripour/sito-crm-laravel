@@ -121,52 +121,109 @@
                 <input type="hidden" name="active_tab" x-model="activeTab">
 
                 <!-- Horizontal Tabs -->
-                <div class="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl border border-gray-200 dark:border-gray-700 rounded-2xl p-2 shadow-sm flex flex-wrap gap-2">
-                    <button type="button" @click="activeTab = 'general'" :class="activeTab === 'general' ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-400 font-bold shadow-sm' : 'text-gray-600 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800/50'" class="flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all duration-200 text-sm">
-                        <div :class="activeTab === 'general' ? 'bg-indigo-100 text-indigo-600 dark:bg-indigo-800/50 dark:text-indigo-300' : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'" class="p-1 rounded-lg transition-colors">
-                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                <div
+                    class="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl border border-gray-200 dark:border-gray-700 rounded-2xl p-2 shadow-sm flex flex-wrap gap-2">
+                    <button type="button" @click="activeTab = 'general'"
+                            :class="activeTab === 'general' ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-400 font-bold shadow-sm' : 'text-gray-600 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800/50'"
+                            class="flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all duration-200 text-sm">
+                        <div
+                            :class="activeTab === 'general' ? 'bg-indigo-100 text-indigo-600 dark:bg-indigo-800/50 dark:text-indigo-300' : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'"
+                            class="p-1 rounded-lg transition-colors">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                      d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
                         </div>
                         اطلاعات پایه و ظاهر
                     </button>
-                    <button type="button" @click="activeTab = 'identity'" :class="activeTab === 'identity' ? 'bg-amber-50 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400 font-bold shadow-sm' : 'text-gray-600 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800/50'" class="flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all duration-200 text-sm">
-                        <div :class="activeTab === 'identity' ? 'bg-amber-100 text-amber-600 dark:bg-amber-800/50 dark:text-amber-300' : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'" class="p-1 rounded-lg transition-colors">
-                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h3"/></svg>
+                    <button type="button" @click="activeTab = 'identity'"
+                            :class="activeTab === 'identity' ? 'bg-amber-50 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400 font-bold shadow-sm' : 'text-gray-600 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800/50'"
+                            class="flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all duration-200 text-sm">
+                        <div
+                            :class="activeTab === 'identity' ? 'bg-amber-100 text-amber-600 dark:bg-amber-800/50 dark:text-amber-300' : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'"
+                            class="p-1 rounded-lg transition-colors">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                      d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h3"/>
+                            </svg>
                         </div>
                         اطلاعات هویتی
                     </button>
-                    <button type="button" @click="activeTab = 'contact'" :class="activeTab === 'contact' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400 font-bold shadow-sm' : 'text-gray-600 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800/50'" class="flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all duration-200 text-sm">
-                        <div :class="activeTab === 'contact' ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-800/50 dark:text-emerald-300' : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'" class="p-1 rounded-lg transition-colors">
-                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg>
+                    <button type="button" @click="activeTab = 'contact'"
+                            :class="activeTab === 'contact' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400 font-bold shadow-sm' : 'text-gray-600 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800/50'"
+                            class="flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all duration-200 text-sm">
+                        <div
+                            :class="activeTab === 'contact' ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-800/50 dark:text-emerald-300' : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'"
+                            class="p-1 rounded-lg transition-colors">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                      d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/>
+                            </svg>
                         </div>
                         ارتباطات
                     </button>
-                    <button type="button" @click="activeTab = 'registration'" :class="activeTab === 'registration' ? 'bg-sky-50 text-sky-700 dark:bg-sky-900/40 dark:text-sky-400 font-bold shadow-sm' : 'text-gray-600 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800/50'" class="flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all duration-200 text-sm">
-                        <div :class="activeTab === 'registration' ? 'bg-sky-100 text-sky-600 dark:bg-sky-800/50 dark:text-sky-300' : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'" class="p-1 rounded-lg transition-colors">
-                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>
+                    <button type="button" @click="activeTab = 'registration'"
+                            :class="activeTab === 'registration' ? 'bg-sky-50 text-sky-700 dark:bg-sky-900/40 dark:text-sky-400 font-bold shadow-sm' : 'text-gray-600 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800/50'"
+                            class="flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all duration-200 text-sm">
+                        <div
+                            :class="activeTab === 'registration' ? 'bg-sky-100 text-sky-600 dark:bg-sky-800/50 dark:text-sky-300' : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'"
+                            class="p-1 rounded-lg transition-colors">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                      d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/>
+                            </svg>
                         </div>
                         کاربران و ثبت‌نام
                     </button>
-                    <button type="button" @click="activeTab = 'ai'" :class="activeTab === 'ai' ? 'bg-purple-50 text-purple-700 dark:bg-purple-900/40 dark:text-purple-400 font-bold shadow-sm' : 'text-gray-600 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800/50'" class="flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all duration-200 text-sm">
-                        <div :class="activeTab === 'ai' ? 'bg-purple-100 text-purple-600 dark:bg-purple-800/50 dark:text-purple-300' : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'" class="p-1 rounded-lg transition-colors">
-                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/></svg>
+                    <button type="button" @click="activeTab = 'ai'"
+                            :class="activeTab === 'ai' ? 'bg-purple-50 text-purple-700 dark:bg-purple-900/40 dark:text-purple-400 font-bold shadow-sm' : 'text-gray-600 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800/50'"
+                            class="flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all duration-200 text-sm">
+                        <div
+                            :class="activeTab === 'ai' ? 'bg-purple-100 text-purple-600 dark:bg-purple-800/50 dark:text-purple-300' : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'"
+                            class="p-1 rounded-lg transition-colors">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                      d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/>
+                            </svg>
                         </div>
                         هوش مصنوعی
                     </button>
-                    <button type="button" @click="activeTab = 'payment'" :class="activeTab === 'payment' ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400 font-bold shadow-sm' : 'text-gray-600 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800/50'" class="flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all duration-200 text-sm">
-                        <div :class="activeTab === 'payment' ? 'bg-blue-100 text-blue-600 dark:bg-blue-800/50 dark:text-blue-300' : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'" class="p-1 rounded-lg transition-colors">
-                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
+                    <button type="button" @click="activeTab = 'payment'"
+                            :class="activeTab === 'payment' ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400 font-bold shadow-sm' : 'text-gray-600 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800/50'"
+                            class="flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all duration-200 text-sm">
+                        <div
+                            :class="activeTab === 'payment' ? 'bg-blue-100 text-blue-600 dark:bg-blue-800/50 dark:text-blue-300' : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'"
+                            class="p-1 rounded-lg transition-colors">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                      d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/>
+                            </svg>
                         </div>
                         مالی و پرداخت
                     </button>
-                    <button type="button" @click="activeTab = 'widgets'" :class="activeTab === 'widgets' ? 'bg-rose-50 text-rose-700 dark:bg-rose-900/40 dark:text-rose-400 font-bold shadow-sm' : 'text-gray-600 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800/50'" class="flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all duration-200 text-sm">
-                        <div :class="activeTab === 'widgets' ? 'bg-rose-100 text-rose-600 dark:bg-rose-800/50 dark:text-rose-300' : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'" class="p-1 rounded-lg transition-colors">
-                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>
+                    <button type="button" @click="activeTab = 'widgets'"
+                            :class="activeTab === 'widgets' ? 'bg-rose-50 text-rose-700 dark:bg-rose-900/40 dark:text-rose-400 font-bold shadow-sm' : 'text-gray-600 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800/50'"
+                            class="flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all duration-200 text-sm">
+                        <div
+                            :class="activeTab === 'widgets' ? 'bg-rose-100 text-rose-600 dark:bg-rose-800/50 dark:text-rose-300' : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'"
+                            class="p-1 rounded-lg transition-colors">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                      d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/>
+                            </svg>
                         </div>
                         ویجت‌ها
                     </button>
-                    <button type="button" @click="activeTab = 'menu-manager'" :class="activeTab === 'menu-manager' ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-400 font-bold shadow-sm' : 'text-gray-600 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800/50'" class="flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all duration-200 text-sm">
-                        <div :class="activeTab === 'menu-manager' ? 'bg-indigo-100 text-indigo-600 dark:bg-indigo-800/50 dark:text-indigo-300' : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'" class="p-1 rounded-lg transition-colors">
-                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7"/></svg>
+                    <button type="button" @click="activeTab = 'menu-manager'"
+                            :class="activeTab === 'menu-manager' ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-400 font-bold shadow-sm' : 'text-gray-600 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800/50'"
+                            class="flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all duration-200 text-sm">
+                        <div
+                            :class="activeTab === 'menu-manager' ? 'bg-indigo-100 text-indigo-600 dark:bg-indigo-800/50 dark:text-indigo-300' : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'"
+                            class="p-1 rounded-lg transition-colors">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                      d="M4 6h16M4 12h16M4 18h7"/>
+                            </svg>
                         </div>
                         مدیریت منو کاربری
                     </button>
@@ -176,7 +233,9 @@
                 <div class="w-full relative">
 
                     {{-- تب عمومی: اطلاعات پایه و پالت رنگی --}}
-                    <div x-show="activeTab === 'general'" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 translate-y-4" x-transition:enter-end="opacity-100 translate-y-0" class="space-y-8">
+                    <div x-show="activeTab === 'general'" x-transition:enter="transition ease-out duration-300"
+                         x-transition:enter-start="opacity-0 translate-y-4"
+                         x-transition:enter-end="opacity-100 translate-y-0" class="space-y-8">
                         {{-- کارت ۱: اطلاعات پایه --}}
                         <div class="{{ $cardClass }}">
                             <div class="{{ $headerClass }}">
@@ -207,10 +266,12 @@
                                                 value="default" {{ ($settings['app_theme'] ?? 'default') == 'default' ? 'selected' : '' }}>
                                                 پیش‌فرض (شرکتی/خدماتی)
                                             </option>
-                                            <option value="booking" {{ ($settings['app_theme'] ?? '') == 'booking' ? 'selected' : '' }}>
+                                            <option
+                                                value="booking" {{ ($settings['app_theme'] ?? '') == 'booking' ? 'selected' : '' }}>
                                                 کلینیک درمانی و پزشکی (Booking)
                                             </option>
-                                            <option value="market" {{ ($settings['app_theme'] ?? '') == 'market' ? 'selected' : '' }}>
+                                            <option
+                                                value="market" {{ ($settings['app_theme'] ?? '') == 'market' ? 'selected' : '' }}>
                                                 فروشگاهی (Market)
                                             </option>
                                             <option
@@ -218,18 +279,24 @@
                                                 املاک (Properties)
                                             </option>
                                         </select>
-                                        <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center px-3 text-gray-500 dark:text-gray-400">
-                                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4" /></svg>
+                                        <div
+                                            class="pointer-events-none absolute inset-y-0 left-0 flex items-center px-3 text-gray-500 dark:text-gray-400">
+                                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                      d="M8 9l4-4 4 4m0 6l-4 4-4-4"/>
+                                            </svg>
                                         </div>
                                     </div>
-                                    <p class="text-[11px] text-gray-400 dark:text-gray-500 mt-1">با تغییر این گزینه، صفحه اول و استایل‌های سایت تغییر
+                                    <p class="text-[11px] text-gray-400 dark:text-gray-500 mt-1">با تغییر این گزینه،
+                                        صفحه اول و استایل‌های سایت تغییر
                                         خواهد کرد.</p>
                                 </div>
 
                                 <div>
                                     <label for="site_display_type" class="{{ $labelClass }}">قالب نمایش سایت</label>
                                     <div class="select-wrapper relative">
-                                        <select class="{{ $selectClass }} !pl-10" id="site_display_type" name="site_display_type">
+                                        <select class="{{ $selectClass }} !pl-10" id="site_display_type"
+                                                name="site_display_type">
                                             <option
                                                 value="landing" {{ ($settings['site_display_type'] ?? 'landing') == 'landing' ? 'selected' : '' }}>
                                                 لندینگ پیج
@@ -243,30 +310,47 @@
                                                 پنل مدیران
                                             </option>
                                         </select>
-                                        <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center px-3 text-gray-500 dark:text-gray-400">
-                                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4" /></svg>
+                                        <div
+                                            class="pointer-events-none absolute inset-y-0 left-0 flex items-center px-3 text-gray-500 dark:text-gray-400">
+                                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                      d="M8 9l4-4 4 4m0 6l-4 4-4-4"/>
+                                            </svg>
                                         </div>
                                     </div>
-                                    <p class="text-[11px] text-gray-400 dark:text-gray-500 mt-1">نحوه نمایش صفحه اول سایت را انتخاب کنید.</p>
+                                    <p class="text-[11px] text-gray-400 dark:text-gray-500 mt-1">نحوه نمایش صفحه اول
+                                        سایت را انتخاب کنید.</p>
                                 </div>
 
                                 @if($isContentForgeActive && $contentEntities->isNotEmpty())
                                     <div>
-                                        <label for="content_entity_id" class="{{ $labelClass }}">موجودیت قالب اختصاصی (چند‌کسب‌وکاری)</label>
+                                        <label for="content_entity_id" class="{{ $labelClass }}">موجودیت قالب اختصاصی
+                                            (چند‌کسب‌وکاری)</label>
                                         <div class="select-wrapper relative">
-                                            <select class="{{ $selectClass }} !pl-10" id="content_entity_id" name="content_entity_id">
+                                            <select class="{{ $selectClass }} !pl-10" id="content_entity_id"
+                                                    name="content_entity_id">
                                                 <option value="">-- غیرفعال (استفاده از قالب سیستم) --</option>
                                                 @foreach($contentEntities as $entity)
-                                                    <option value="{{ $entity->id }}" {{ ($settings['content_entity_id'] ?? '') == $entity->id ? 'selected' : '' }}>
-                                                        {{ $entity->name }} ({{ $entity->theme_key ? 'تم: ' . $entity->theme_key : 'بدون تم' }})
+                                                    <option
+                                                        value="{{ $entity->id }}" {{ ($settings['content_entity_id'] ?? '') == $entity->id ? 'selected' : '' }}>
+                                                        {{ $entity->name }}
+                                                        ({{ $entity->theme_key ? 'تم: ' . $entity->theme_key : 'بدون تم' }}
+                                                        )
                                                     </option>
                                                 @endforeach
                                             </select>
-                                            <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center px-3 text-gray-500 dark:text-gray-400">
-                                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4" /></svg>
+                                            <div
+                                                class="pointer-events-none absolute inset-y-0 left-0 flex items-center px-3 text-gray-500 dark:text-gray-400">
+                                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24"
+                                                     stroke="currentColor">
+                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                          stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4"/>
+                                                </svg>
                                             </div>
                                         </div>
-                                        <p class="text-[11px] text-gray-400 dark:text-gray-500 mt-1">با انتخاب یک موجودیت، هدر، فوتر و سایر فایل‌ها ابتدا از پوشه قالب اختصاصی آن لود می‌شوند.</p>
+                                        <p class="text-[11px] text-gray-400 dark:text-gray-500 mt-1">با انتخاب یک
+                                            موجودیت، هدر، فوتر و سایر فایل‌ها ابتدا از پوشه قالب اختصاصی آن لود
+                                            می‌شوند.</p>
                                     </div>
                                 @endif
 
@@ -275,29 +359,48 @@
                                     <div class="flex items-center gap-4">
                                         <div class="relative flex-1">
                                             <input type="file" class="hidden" id="app_logo" name="app_logo"
+                                                   accept="image/*"
                                                    onchange="document.getElementById('logo-preview').src = window.URL.createObjectURL(this.files[0]); document.getElementById('logo-preview').classList.remove('hidden');">
                                             <label for="app_logo"
                                                    class="flex items-center justify-center w-full px-4 py-2.5 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl cursor-pointer hover:border-indigo-500 dark:hover:border-indigo-500 transition-colors bg-gray-50 dark:bg-gray-900/50 text-sm text-gray-500 dark:text-gray-400">
-                                                <svg class="w-5 h-5 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                <svg class="w-5 h-5 ml-2" fill="none" viewBox="0 0 24 24"
+                                                     stroke="currentColor">
+                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                          stroke-width="2"
                                                           d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
                                                 </svg>
                                                 انتخاب فایل...
                                             </label>
                                         </div>
-                                        @if(isset($settings['app_logo']) && $settings['app_logo'])
+                                        @php
+                                            $appLogoVal = $settings['app_logo'] ?? null;
+                                            $appLogoUrl = null;
+                                            if (!empty($appLogoVal)) {
+                                                $appLogoUrl = str_starts_with($appLogoVal, 'http')
+                                                    ? $appLogoVal
+                                                    : (str_starts_with($appLogoVal, 'storage/') || str_starts_with($appLogoVal, 'uploads/')
+                                                        ? asset($appLogoVal)
+                                                        : asset('storage/' . $appLogoVal));
+                                            }
+                                        @endphp
+                                        @if($appLogoUrl)
                                             <div
                                                 class="w-12 h-12 rounded-lg border border-gray-200 dark:border-gray-700 p-1 bg-white flex items-center justify-center">
-                                                <img id="logo-preview" src="{{ asset($settings['app_logo']) }}" alt="Logo"
+                                                <img id="logo-preview" src="{{ $appLogoUrl }}"
+                                                     alt="Logo"
                                                      class="max-w-full max-h-full object-contain">
                                             </div>
                                         @else
                                             <div
                                                 class="w-12 h-12 rounded-lg border border-gray-200 dark:border-gray-700 p-1 bg-white flex items-center justify-center">
-                                                <img id="logo-preview" src="" alt="" class="max-w-full max-h-full object-contain hidden">
+                                                <img id="logo-preview" src="" alt=""
+                                                     class="max-w-full max-h-full object-contain hidden">
                                             </div>
                                         @endif
                                     </div>
+                                    @error('app_logo')
+                                        <p class="text-xs text-rose-500 mt-1.5">{{ $message }}</p>
+                                    @enderror
                                 </div>
 
                                 <div class="md:col-span-2">
@@ -317,8 +420,10 @@
                                     </svg>
                                 </div>
                                 <div>
-                                    <h2 class="text-base font-bold text-gray-900 dark:text-white">شخصی‌سازی پالت رنگی</h2>
-                                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">رنگ اصلی قالبی که در بالا انتخاب
+                                    <h2 class="text-base font-bold text-gray-900 dark:text-white">شخصی‌سازی پالت
+                                        رنگی</h2>
+                                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">رنگ اصلی قالبی که در بالا
+                                        انتخاب
                                         کرده‌اید را تعیین کنید.</p>
                                 </div>
                             </div>
@@ -341,7 +446,8 @@
                                                     $activeColor = $savedColors[$themeKey] ?? $defaultColorName;
                                                     $isChecked = $activeColor === $colorName;
                                                 @endphp
-                                                <label class="cursor-pointer relative group" title="{{ ucfirst($colorName) }}">
+                                                <label class="cursor-pointer relative group"
+                                                       title="{{ ucfirst($colorName) }}">
                                                     <input type="radio" name="theme_colors[{{ $themeKey }}]"
                                                            value="{{ $colorName }}"
                                                            class="peer sr-only" {{ $isChecked ? 'checked' : '' }}>
@@ -352,7 +458,8 @@
                                                         <svg
                                                             class="w-5 h-5 text-white opacity-0 peer-checked:opacity-100 transition-opacity drop-shadow-md"
                                                             fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3"
+                                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                                  stroke-width="3"
                                                                   d="M5 13l4 4L19 7"/>
                                                         </svg>
                                                     </div>
@@ -365,8 +472,10 @@
                                 <div
                                     class="mt-6 bg-blue-50/50 border border-blue-100 dark:bg-blue-900/10 dark:border-blue-800/30 p-4 rounded-xl">
                                     <p class="text-sm text-blue-700 dark:text-blue-400 leading-relaxed font-medium">
-                                        <span class="font-bold">راهنما:</span> با انتخاب هر رنگ، تمام سیستم (شامل دکمه‌ها،
-                                        پس‌زمینه‌ها، سایه‌ها، هاورها و متون) به صورت خودکار با طیف‌های استاندارد آن رنگ هماهنگ
+                                        <span class="font-bold">راهنما:</span> با انتخاب هر رنگ، تمام سیستم (شامل
+                                        دکمه‌ها،
+                                        پس‌زمینه‌ها، سایه‌ها، هاورها و متون) به صورت خودکار با طیف‌های استاندارد آن رنگ
+                                        هماهنگ
                                         می‌شود. رنگ‌ها برای هر قالب به‌صورت مجزا ذخیره می‌شوند.
                                     </p>
                                 </div>
@@ -376,17 +485,24 @@
                     </div> {{-- پایان تب عمومی --}}
 
                     {{-- تب اطلاعات هویتی --}}
-                    <div x-show="activeTab === 'identity'" style="display: none;" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 translate-y-4" x-transition:enter-end="opacity-100 translate-y-0" class="space-y-8">
+                    <div x-show="activeTab === 'identity'" style="display: none;"
+                         x-transition:enter="transition ease-out duration-300"
+                         x-transition:enter-start="opacity-0 translate-y-4"
+                         x-transition:enter-end="opacity-100 translate-y-0" class="space-y-8">
                         <div class="{{ $cardClass }}">
                             <div class="{{ $headerClass }}">
-                                <div class="w-8 h-8 rounded-lg bg-amber-50 dark:bg-amber-900/20 flex items-center justify-center text-amber-600 dark:text-amber-400">
+                                <div
+                                    class="w-8 h-8 rounded-lg bg-amber-50 dark:bg-amber-900/20 flex items-center justify-center text-amber-600 dark:text-amber-400">
                                     <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h3"/>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                              d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h3"/>
                                     </svg>
                                 </div>
                                 <div>
-                                    <h2 class="text-base font-bold text-gray-900 dark:text-white">اطلاعات هویتی شخص حقیقی / حقوقی</h2>
-                                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">این اطلاعات برای صدور فاکتورهای رسمی و قراردادها استفاده می‌شود.</p>
+                                    <h2 class="text-base font-bold text-gray-900 dark:text-white">اطلاعات هویتی شخص
+                                        حقیقی / حقوقی</h2>
+                                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">این اطلاعات برای صدور
+                                        فاکتورهای رسمی و قراردادها استفاده می‌شود.</p>
                                 </div>
                             </div>
                             <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -394,67 +510,106 @@
                                 <div class="md:col-span-2">
                                     <label for="identity_name" class="{{ $labelClass }}">نام شخص حقیقی / حقوقی</label>
                                     <input type="text" class="{{ $inputClass }}" id="identity_name" name="identity_name"
-                                           value="{{ $settings['identity_name'] ?? '' }}" placeholder="مثال:اژانس خلاقیت وردی / محمد حسین وردی">
+                                           value="{{ $settings['identity_name'] ?? '' }}"
+                                           placeholder="مثال:اژانس خلاقیت وردی / محمد حسین وردی">
                                 </div>
 
                                 <div>
-                                    <label for="identity_national_id" class="{{ $labelClass }}">شناسه ملی / کد ملی</label>
-                                    <input type="text" class="{{ $inputClass }} dir-ltr text-left" id="identity_national_id" name="identity_national_id"
-                                           value="{{ $settings['identity_national_id'] ?? '' }}" placeholder="1010XXXXXXX">
+                                    <label for="identity_national_id" class="{{ $labelClass }}">شناسه ملی / کد
+                                        ملی</label>
+                                    <input type="text" class="{{ $inputClass }} dir-ltr text-left"
+                                           id="identity_national_id" name="identity_national_id"
+                                           value="{{ $settings['identity_national_id'] ?? '' }}"
+                                           placeholder="1010XXXXXXX">
                                 </div>
 
                                 <div>
                                     <label for="identity_economic_code" class="{{ $labelClass }}">کد اقتصادی</label>
-                                    <input type="text" class="{{ $inputClass }} dir-ltr text-left" id="identity_economic_code" name="identity_economic_code"
-                                           value="{{ $settings['identity_economic_code'] ?? '' }}" placeholder="4111XXXXXXXX">
+                                    <input type="text" class="{{ $inputClass }} dir-ltr text-left"
+                                           id="identity_economic_code" name="identity_economic_code"
+                                           value="{{ $settings['identity_economic_code'] ?? '' }}"
+                                           placeholder="4111XXXXXXXX">
                                 </div>
 
                                 <div>
-                                    <label for="identity_registration_number" class="{{ $labelClass }}">شماره ثبت</label>
-                                    <input type="text" class="{{ $inputClass }} dir-ltr text-left" id="identity_registration_number" name="identity_registration_number"
-                                           value="{{ $settings['identity_registration_number'] ?? '' }}" placeholder="123456">
+                                    <label for="identity_registration_number" class="{{ $labelClass }}">شماره
+                                        ثبت</label>
+                                    <input type="text" class="{{ $inputClass }} dir-ltr text-left"
+                                           id="identity_registration_number" name="identity_registration_number"
+                                           value="{{ $settings['identity_registration_number'] ?? '' }}"
+                                           placeholder="123456">
                                 </div>
 
                                 <div>
                                     <label for="identity_phone_fax" class="{{ $labelClass }}">تلفن / نمابر (فکس)</label>
-                                    <input type="text" class="{{ $inputClass }} dir-ltr text-left" id="identity_phone_fax" name="identity_phone_fax"
-                                           value="{{ $settings['identity_phone_fax'] ?? '' }}" placeholder="021-XXXXXXXX">
+                                    <input type="text" class="{{ $inputClass }} dir-ltr text-left"
+                                           id="identity_phone_fax" name="identity_phone_fax"
+                                           value="{{ $settings['identity_phone_fax'] ?? '' }}"
+                                           placeholder="021-XXXXXXXX">
                                 </div>
 
                                 <div class="md:col-span-2">
                                     <label for="identity_full_address" class="{{ $labelClass }}">نشانی کامل</label>
-                                    <textarea class="{{ $inputClass }}" id="identity_full_address" name="identity_full_address" rows="3"
+                                    <textarea class="{{ $inputClass }}" id="identity_full_address"
+                                              name="identity_full_address" rows="3"
                                               placeholder="استان، شهر، خیابان، کوچه، پلاک، واحد">{{ $settings['identity_full_address'] ?? '' }}</textarea>
-                                    <p class="text-[11px] text-gray-400 dark:text-gray-500 mt-1">نشانی دقیق پستی برای درج در سربرگ‌ها و فاکتورهای رسمی.</p>
+                                    <p class="text-[11px] text-gray-400 dark:text-gray-500 mt-1">نشانی دقیق پستی برای
+                                        درج در سربرگ‌ها و فاکتورهای رسمی.</p>
                                 </div>
 
                                 <div class="md:col-span-2 mt-2 pt-6 border-t border-gray-100 dark:border-gray-700">
-                                    <label for="identity_seal_signature" class="{{ $labelClass }}">تصویر مهر و امضای مجاز</label>
+                                    <label for="identity_seal_signature" class="{{ $labelClass }}">تصویر مهر و امضای
+                                        مجاز</label>
                                     <div class="flex items-center gap-4">
                                         <div class="relative flex-1">
-                                            <input type="file" class="hidden" id="identity_seal_signature" name="identity_seal_signature"
+                                            <input type="file" class="hidden" id="identity_seal_signature"
+                                                   name="identity_seal_signature"
+                                                   accept="image/*"
                                                    onchange="document.getElementById('seal-preview').src = window.URL.createObjectURL(this.files[0]); document.getElementById('seal-preview').classList.remove('hidden');">
                                             <label for="identity_seal_signature"
                                                    class="flex items-center justify-center w-full px-4 py-2.5 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl cursor-pointer hover:border-amber-500 dark:hover:border-amber-500 transition-colors bg-gray-50 dark:bg-gray-900/50 text-sm text-gray-500 dark:text-gray-400">
-                                                <svg class="w-5 h-5 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                <svg class="w-5 h-5 ml-2" fill="none" viewBox="0 0 24 24"
+                                                     stroke="currentColor">
+                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                          stroke-width="2"
                                                           d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
                                                 </svg>
                                                 انتخاب فایل تصویر...
                                             </label>
                                         </div>
-                                        @if(isset($settings['identity_seal_signature']) && $settings['identity_seal_signature'])
-                                            <div class="w-16 h-16 rounded-lg border border-gray-200 dark:border-gray-700 p-1.5 bg-white flex items-center justify-center shrink-0">
-                                                <img id="seal-preview" src="{{ asset($settings['identity_seal_signature']) }}" alt="مهر و امضا"
+                                        @php
+                                            $sealVal = $settings['identity_seal_signature'] ?? null;
+                                            $sealUrl = null;
+                                            if (!empty($sealVal)) {
+                                                $sealUrl = str_starts_with($sealVal, 'http')
+                                                    ? $sealVal
+                                                    : (str_starts_with($sealVal, 'storage/') || str_starts_with($sealVal, 'uploads/')
+                                                        ? asset($sealVal)
+                                                        : asset('storage/' . $sealVal));
+                                            }
+                                        @endphp
+                                        @if($sealUrl)
+                                            <div
+                                                class="w-16 h-16 rounded-lg border border-gray-200 dark:border-gray-700 p-1.5 bg-white flex items-center justify-center shrink-0">
+                                                <img id="seal-preview"
+                                                     src="{{ $sealUrl }}"
+                                                     alt="مهر و امضا"
                                                      class="max-w-full max-h-full object-contain">
                                             </div>
                                         @else
-                                            <div class="w-16 h-16 rounded-lg border border-gray-200 dark:border-gray-700 p-1.5 bg-white flex items-center justify-center shrink-0">
-                                                <img id="seal-preview" src="" alt="" class="max-w-full max-h-full object-contain hidden">
+                                            <div
+                                                class="w-16 h-16 rounded-lg border border-gray-200 dark:border-gray-700 p-1.5 bg-white flex items-center justify-center shrink-0">
+                                                <img id="seal-preview" src="" alt=""
+                                                     class="max-w-full max-h-full object-contain hidden">
                                             </div>
                                         @endif
                                     </div>
-                                    <p class="text-[11px] text-gray-400 dark:text-gray-500 mt-2">تصویر مهر و امضا با پس‌زمینه شفاف (PNG) پیشنهاد می‌شود. این تصویر در انتهای فاکتورها قابل چاپ خواهد بود.</p>
+                                    @error('identity_seal_signature')
+                                    <p class="text-xs text-rose-500 mt-1.5">{{ $message }}</p>
+                                    @enderror
+                                    <p class="text-[11px] text-gray-400 dark:text-gray-500 mt-2">تصویر مهر و امضا با
+                                        پس‌زمینه شفاف (PNG) پیشنهاد می‌شود. این تصویر در انتهای فاکتورها قابل چاپ خواهد
+                                        بود.</p>
                                 </div>
 
                             </div>
@@ -463,7 +618,10 @@
                     {{-- پایان تب اطلاعات هویتی --}}
 
                     {{-- تب ارتباطات --}}
-                    <div x-show="activeTab === 'contact'" style="display: none;" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 translate-y-4" x-transition:enter-end="opacity-100 translate-y-0" class="space-y-8">
+                    <div x-show="activeTab === 'contact'" style="display: none;"
+                         x-transition:enter="transition ease-out duration-300"
+                         x-transition:enter-start="opacity-0 translate-y-4"
+                         x-transition:enter-end="opacity-100 translate-y-0" class="space-y-8">
                         <div class="{{ $cardClass }}">
                             <div class="{{ $headerClass }}">
                                 <div
@@ -475,7 +633,8 @@
                                 </div>
                                 <div>
                                     <h2 class="text-base font-bold text-gray-900 dark:text-white">اطلاعات تماس</h2>
-                                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">راه‌های ارتباطی نمایش داده شده در
+                                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">راه‌های ارتباطی نمایش
+                                        داده شده در
                                         سایت</p>
                                 </div>
                             </div>
@@ -503,7 +662,10 @@
                     </div> {{-- پایان تب ارتباطات --}}
 
                     {{-- تب کاربران و ثبت نام --}}
-                    <div x-show="activeTab === 'registration'" style="display: none;" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 translate-y-4" x-transition:enter-end="opacity-100 translate-y-0" class="space-y-8">
+                    <div x-show="activeTab === 'registration'" style="display: none;"
+                         x-transition:enter="transition ease-out duration-300"
+                         x-transition:enter-start="opacity-0 translate-y-4"
+                         x-transition:enter-end="opacity-100 translate-y-0" class="space-y-8">
                         <div class="{{ $cardClass }}">
                             <div class="{{ $headerClass }}">
                                 <div
@@ -515,7 +677,8 @@
                                 </div>
                                 <div>
                                     <h2 class="text-base font-bold text-gray-900 dark:text-white">تنظیمات ثبت نام</h2>
-                                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">پیکربندی فرم‌های ثبت‌نام برای نقش‌های
+                                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">پیکربندی فرم‌های ثبت‌نام
+                                        برای نقش‌های
                                         مختلف</p>
                                 </div>
                             </div>
@@ -530,11 +693,13 @@
                                         <h3 class="font-bold text-gray-800 dark:text-gray-200 mb-4">{{ $role->name }}</h3>
                                         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                                             <div>
-                                                <label for="registration_{{ $role->id }}_enabled" class="{{ $labelClass }}">وضعیت
+                                                <label for="registration_{{ $role->id }}_enabled"
+                                                       class="{{ $labelClass }}">وضعیت
                                                     ثبت نام</label>
                                                 <div class="select-wrapper relative">
                                                     <select name="registration[{{ $role->id }}][enabled]"
-                                                            id="registration_{{ $role->id }}_enabled" class="{{ $selectClass }} !pl-10">
+                                                            id="registration_{{ $role->id }}_enabled"
+                                                            class="{{ $selectClass }} !pl-10">
                                                         <option value="0"
                                                                 @if(!($registrationSettings[$role->id]['enabled'] ?? false)) selected @endif>
                                                             غیرفعال
@@ -544,17 +709,24 @@
                                                             فعال
                                                         </option>
                                                     </select>
-                                                    <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center px-3 text-gray-500 dark:text-gray-400">
-                                                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4" /></svg>
+                                                    <div
+                                                        class="pointer-events-none absolute inset-y-0 left-0 flex items-center px-3 text-gray-500 dark:text-gray-400">
+                                                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24"
+                                                             stroke="currentColor">
+                                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                                  stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4"/>
+                                                        </svg>
                                                     </div>
                                                 </div>
                                             </div>
                                             <div>
-                                                <label for="registration_{{ $role->id }}_approval" class="{{ $labelClass }}">نوع
+                                                <label for="registration_{{ $role->id }}_approval"
+                                                       class="{{ $labelClass }}">نوع
                                                     تایید</label>
                                                 <div class="select-wrapper relative">
                                                     <select name="registration[{{ $role->id }}][approval]"
-                                                            id="registration_{{ $role->id }}_approval" class="{{ $selectClass }} !pl-10">
+                                                            id="registration_{{ $role->id }}_approval"
+                                                            class="{{ $selectClass }} !pl-10">
                                                         <option value="manual"
                                                                 @if(($registrationSettings[$role->id]['approval'] ?? 'manual') == 'manual') selected @endif>
                                                             تایید دستی
@@ -564,16 +736,23 @@
                                                             تایید خودکار
                                                         </option>
                                                     </select>
-                                                    <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center px-3 text-gray-500 dark:text-gray-400">
-                                                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4" /></svg>
+                                                    <div
+                                                        class="pointer-events-none absolute inset-y-0 left-0 flex items-center px-3 text-gray-500 dark:text-gray-400">
+                                                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24"
+                                                             stroke="currentColor">
+                                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                                  stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4"/>
+                                                        </svg>
                                                     </div>
                                                 </div>
                                             </div>
                                             <div>
-                                                <label for="registration_{{ $role->id }}_approvers" class="{{ $labelClass }}">نقش‌های
+                                                <label for="registration_{{ $role->id }}_approvers"
+                                                       class="{{ $labelClass }}">نقش‌های
                                                     تایید کننده</label>
                                                 <select multiple name="registration[{{ $role->id }}][approvers][]"
-                                                        id="registration_{{ $role->id }}_approvers" class="{{ $inputClass }}">
+                                                        id="registration_{{ $role->id }}_approvers"
+                                                        class="{{ $inputClass }}">
                                                     @foreach($roles as $approverRole)
                                                         <option value="{{ $approverRole->id }}"
                                                                 @if(in_array($approverRole->id, $registrationSettings[$role->id]['approvers'] ?? [])) selected @endif>
@@ -591,7 +770,10 @@
                     </div> {{-- پایان تب ثبت نام --}}
 
                     {{-- تب هوش مصنوعی --}}
-                    <div x-show="activeTab === 'ai'" style="display: none;" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 translate-y-4" x-transition:enter-end="opacity-100 translate-y-0" class="space-y-8">
+                    <div x-show="activeTab === 'ai'" style="display: none;"
+                         x-transition:enter="transition ease-out duration-300"
+                         x-transition:enter-start="opacity-0 translate-y-4"
+                         x-transition:enter-end="opacity-100 translate-y-0" class="space-y-8">
                         <div class="{{ $cardClass }}">
                             <div class="{{ $headerClass }}">
                                 <div
@@ -604,8 +786,10 @@
                                 <div>
                                     <div class="flex items-center justify-between w-full">
                                         <div>
-                                            <h2 class="text-base font-bold text-gray-900 dark:text-white">تنظیمات هوش مصنوعی</h2>
-                                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">پیکربندی اتصال به سرویس‌های
+                                            <h2 class="text-base font-bold text-gray-900 dark:text-white">تنظیمات هوش
+                                                مصنوعی</h2>
+                                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">پیکربندی اتصال به
+                                                سرویس‌های
                                                 هوش مصنوعی (GapGPT)</p>
                                         </div>
                                         <a href="{{ route('settings.gapgpt-logs.index') }}"
@@ -622,10 +806,12 @@
                             <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div class="md:col-span-2">
                                     <label for="gapgpt_api_key" class="{{ $labelClass }}">کلید دسترسی (API Key)</label>
-                                    <input type="password" class="{{ $inputClass }} dir-ltr text-left" id="gapgpt_api_key"
+                                    <input type="password" class="{{ $inputClass }} dir-ltr text-left"
+                                           id="gapgpt_api_key"
                                            name="gapgpt_api_key" value="{{ $settings['gapgpt_api_key'] ?? '' }}"
                                            placeholder="sk-...">
-                                    <p class="text-xs text-gray-500 mt-1">کلید API دریافتی از پنل GapGPT را اینجا وارد کنید.</p>
+                                    <p class="text-xs text-gray-500 mt-1">کلید API دریافتی از پنل GapGPT را اینجا وارد
+                                        کنید.</p>
                                 </div>
 
                                 <div class="md:col-span-2">
@@ -634,24 +820,28 @@
                                            name="gapgpt_base_url"
                                            value="{{ $settings['gapgpt_base_url'] ?? 'https://api.gapgpt.app' }}"
                                            placeholder="https://api.gapgpt.app">
-                                    <p class="text-xs text-gray-500 mt-1">در صورت نیاز به تغییر آدرس پیش‌فرض API، آن را اینجا وارد
+                                    <p class="text-xs text-gray-500 mt-1">در صورت نیاز به تغییر آدرس پیش‌فرض API، آن را
+                                        اینجا وارد
                                         کنید.</p>
                                 </div>
 
                                 <div>
                                     <label for="gapgpt_default_model" class="{{ $labelClass }}">مدل پیش‌فرض</label>
-                                    <input type="text" class="{{ $inputClass }} dir-ltr text-left" id="gapgpt_default_model"
+                                    <input type="text" class="{{ $inputClass }} dir-ltr text-left"
+                                           id="gapgpt_default_model"
                                            name="gapgpt_default_model"
                                            value="{{ $settings['gapgpt_default_model'] ?? 'gpt-4o-mini' }}"
                                            placeholder="gpt-4o-mini">
-                                    <p class="text-xs text-gray-500 mt-1">مدل زبانی پیش‌فرض برای درخواست‌ها (مثلاً gpt-4o-mini یا
+                                    <p class="text-xs text-gray-500 mt-1">مدل زبانی پیش‌فرض برای درخواست‌ها (مثلاً
+                                        gpt-4o-mini یا
                                         gpt-4).</p>
                                 </div>
 
                                 <div>
                                     <label for="gapgpt_timeout" class="{{ $labelClass }}">تایم‌اوت (ثانیه)</label>
                                     <input type="number" class="{{ $inputClass }} dir-ltr text-left" id="gapgpt_timeout"
-                                           name="gapgpt_timeout" value="{{ $settings['gapgpt_timeout'] ?? '30' }}" placeholder="30">
+                                           name="gapgpt_timeout" value="{{ $settings['gapgpt_timeout'] ?? '30' }}"
+                                           placeholder="30">
                                     <p class="text-xs text-gray-500 mt-1">حداکثر زمان انتظار برای پاسخ (به ثانیه).</p>
                                 </div>
 
@@ -673,7 +863,10 @@
                     </div> {{-- پایان تب هوش مصنوعی --}}
 
                     {{-- تب مالی و پرداخت --}}
-                    <div x-show="activeTab === 'payment'" style="display: none;" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 translate-y-4" x-transition:enter-end="opacity-100 translate-y-0" class="space-y-8">
+                    <div x-show="activeTab === 'payment'" style="display: none;"
+                         x-transition:enter="transition ease-out duration-300"
+                         x-transition:enter-start="opacity-0 translate-y-4"
+                         x-transition:enter-end="opacity-100 translate-y-0" class="space-y-8">
                         @include('settings::partials.payment_settings')
                     </div> {{-- پایان تب مالی --}}
 
@@ -681,7 +874,10 @@
                     @include('settings::partials.widget_settings')
 
                     {{-- تب مدیریت منو کاربری --}}
-                    <div x-show="activeTab === 'menu-manager'" style="display: none;" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 translate-y-4" x-transition:enter-end="opacity-100 translate-y-0" class="space-y-8">
+                    <div x-show="activeTab === 'menu-manager'" style="display: none;"
+                         x-transition:enter="transition ease-out duration-300"
+                         x-transition:enter-start="opacity-0 translate-y-4"
+                         x-transition:enter-end="opacity-100 translate-y-0" class="space-y-8">
                         @include('settings::partials.menu-manager')
                     </div>
 

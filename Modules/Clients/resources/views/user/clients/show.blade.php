@@ -104,7 +104,11 @@
     $clientInvoices = $clientInvoices ?? collect([]);
 
     $allStatuses = ($showServicesTab && class_exists(Status::class)) ? Status::whereIn('type', ['payment', 'invoice'])->get()->keyBy('name') : collect();
-    $orderStatuses = ($showServicesTab && class_exists(Status::class)) ? Status::where('type', 'order')->orderBy('sort_order')->get() : collect();
+    $orderStatuses = $orderStatuses ?? (($showServicesTab && class_exists(Status::class)) ? Status::where('type', 'order')->orderBy('sort_order')->get() : collect([]));
+    $clientOrderStats = $clientOrderStats ?? ['count' => 0, 'active' => 0, 'total' => 0, 'renewal_total' => 0];
+    $clientInvoiceStats = $clientInvoiceStats ?? ['count' => 0, 'total' => 0, 'paid' => 0, 'due' => 0];
+    $clientAccountingStats = $clientAccountingStats ?? ['documents_count' => 0, 'transactions_count' => 0, 'total_turnover' => 0, 'system_docs_count' => 0, 'manual_docs_count' => 0];
+    $statCardClass = "rounded-3xl border p-5 flex items-center gap-5 overflow-hidden transition-all duration-300 hover:shadow-md";
 @endphp
 
 @extends('layouts.user')
@@ -1518,6 +1522,66 @@
             <div x-show="activeTab === 'orders'" x-cloak x-data="{ orderSearch: '', orderStatus: '' }" x-transition:enter="transition ease-out duration-200"
                  x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" class="p-6 sm:p-8">
 
+                {{-- Orders Summary Strip --}}
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+                    <div class="{{ $statCardClass }} bg-white dark:bg-gray-800/60 border-gray-100 dark:border-gray-700/50 shadow-sm backdrop-blur-xl">
+                        <span class="flex items-center justify-center w-12 h-12 rounded-xl bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 shrink-0">
+                            <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
+                            </svg>
+                        </span>
+                        <div class="min-w-0 flex-1">
+                            <span class="text-xs font-bold text-gray-400 uppercase tracking-wide block mb-1 truncate">تعداد کل سفارشات</span>
+                            <div class="flex flex-wrap items-baseline gap-1">
+                                <span class="text-xl xl:text-2xl font-black text-gray-900 dark:text-white tabular-nums">{{ $faNum(number_format($clientOrderStats['count'])) }}</span>
+                                <span class="text-[11px] font-medium text-gray-400 ms-1">سفارش</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="{{ $statCardClass }} bg-emerald-50/60 dark:bg-emerald-500/5 border-emerald-100 dark:border-emerald-500/20 shadow-sm">
+                        <span class="flex items-center justify-center w-12 h-12 rounded-xl bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 shrink-0">
+                            <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                        </span>
+                        <div class="min-w-0 flex-1">
+                            <span class="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wide block mb-1 truncate">سرویس‌های فعال</span>
+                            <div class="flex flex-wrap items-baseline gap-1">
+                                <span class="text-xl xl:text-2xl font-black text-emerald-700 dark:text-emerald-400 tabular-nums">{{ $faNum(number_format($clientOrderStats['active'])) }}</span>
+                                <span class="text-[11px] font-medium text-emerald-500/80 ms-1">سرویس</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="{{ $statCardClass }} bg-white dark:bg-gray-800/60 border-gray-100 dark:border-gray-700/50 shadow-sm backdrop-blur-xl">
+                        <span class="flex items-center justify-center w-12 h-12 rounded-xl bg-gray-100 dark:bg-gray-700/50 text-gray-500 dark:text-gray-400 shrink-0">
+                            <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/>
+                            </svg>
+                        </span>
+                        <div class="min-w-0 flex-1">
+                            <span class="text-xs font-bold text-gray-400 uppercase tracking-wide block mb-1 truncate">ارزش کل سفارشات</span>
+                            <div class="flex flex-wrap items-baseline gap-1">
+                                <span class="text-xl xl:text-2xl font-black text-gray-900 dark:text-white tabular-nums">{{ $faNum(number_format($clientOrderStats['total'])) }}</span>
+                                <span class="text-[11px] font-medium text-gray-400 ms-1">{{ $currencyLabel }}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="{{ $statCardClass }} bg-amber-50/60 dark:bg-amber-500/5 border-amber-100 dark:border-amber-500/20 shadow-sm">
+                        <span class="flex items-center justify-center w-12 h-12 rounded-xl bg-amber-100 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400 shrink-0">
+                            <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                            </svg>
+                        </span>
+                        <div class="min-w-0 flex-1">
+                            <span class="text-xs font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wide block mb-1 truncate">تمدیدهای دوره‌ای</span>
+                            <div class="flex flex-wrap items-baseline gap-1">
+                                <span class="text-xl xl:text-2xl font-black text-amber-700 dark:text-amber-400 tabular-nums">{{ $faNum(number_format($clientOrderStats['renewal_total'])) }}</span>
+                                <span class="text-[11px] font-medium text-amber-500/80 ms-1">{{ $currencyLabel }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 {{-- Filter Bar --}}
                 <div class="bg-white dark:bg-gray-800/60 p-4 rounded-2xl border border-gray-100 dark:border-gray-700/50 shadow-sm mb-6 backdrop-blur-xl">
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1529,7 +1593,7 @@
                         </div>
                         <select x-model="orderStatus" class="w-full rounded-xl border-gray-200 bg-gray-50 dark:bg-gray-900/50 dark:border-gray-700 px-4 py-3 text-sm focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all dark:text-white cursor-pointer">
                             <option value="">همه وضعیت‌ها</option>
-                            @foreach($orderStatuses as $st)
+                            @foreach(($orderStatuses ?? []) as $st)
                                 <option value="{{ $st->name }}">{{ $st->name }}</option>
                             @endforeach
                         </select>
@@ -1746,6 +1810,66 @@
             <div x-show="activeTab === 'invoices'" x-cloak x-data="{ invoiceSearch: '', invoiceStatus: '', selectedInvoices: [], submitMerge() { window.location.href = '{{ Route::has('services.invoices.create') ? route('services.invoices.create', ['type' => 'invoice']) : '#' }}&customer_id={{ $client->id }}&merge_invoices=' + this.selectedInvoices.join(','); } }" x-transition:enter="transition ease-out duration-200"
                  x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" class="p-6 sm:p-8">
 
+                {{-- Invoices Summary Strip --}}
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+                    <div class="{{ $statCardClass }} bg-white dark:bg-gray-800/60 border-gray-100 dark:border-gray-700/50 shadow-sm backdrop-blur-xl">
+                        <span class="flex items-center justify-center w-12 h-12 rounded-xl bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 shrink-0">
+                            <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                            </svg>
+                        </span>
+                        <div class="min-w-0 flex-1">
+                            <span class="text-xs font-bold text-gray-400 uppercase tracking-wide block mb-1 truncate">تعداد فاکتور</span>
+                            <div class="flex flex-wrap items-baseline gap-1">
+                                <span class="text-xl xl:text-2xl font-black text-gray-900 dark:text-white tabular-nums">{{ $faNum(number_format($clientInvoiceStats['count'])) }}</span>
+                                <span class="text-[11px] font-medium text-gray-400 ms-1">فاکتور</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="{{ $statCardClass }} bg-white dark:bg-gray-800/60 border-gray-100 dark:border-gray-700/50 shadow-sm backdrop-blur-xl">
+                        <span class="flex items-center justify-center w-12 h-12 rounded-xl bg-gray-100 dark:bg-gray-700/50 text-gray-500 dark:text-gray-400 shrink-0">
+                            <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/>
+                            </svg>
+                        </span>
+                        <div class="min-w-0 flex-1">
+                            <span class="text-xs font-bold text-gray-400 uppercase tracking-wide block mb-1 truncate">جمع کل مبالغ</span>
+                            <div class="flex flex-wrap items-baseline gap-1">
+                                <span class="text-xl xl:text-2xl font-black text-gray-900 dark:text-white tabular-nums">{{ $faNum(number_format($clientInvoiceStats['total'])) }}</span>
+                                <span class="text-[11px] font-medium text-gray-400 ms-1">{{ $currencyLabel }}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="{{ $statCardClass }} bg-emerald-50/60 dark:bg-emerald-500/5 border-emerald-100 dark:border-emerald-500/20 shadow-sm">
+                        <span class="flex items-center justify-center w-12 h-12 rounded-xl bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 shrink-0">
+                            <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+                            </svg>
+                        </span>
+                        <div class="min-w-0 flex-1">
+                            <span class="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wide block mb-1 truncate">پرداخت‌شده</span>
+                            <div class="flex flex-wrap items-baseline gap-1">
+                                <span class="text-xl xl:text-2xl font-black text-emerald-700 dark:text-emerald-400 tabular-nums">{{ $faNum(number_format($clientInvoiceStats['paid'])) }}</span>
+                                <span class="text-[11px] font-medium text-emerald-500/80 ms-1">{{ $currencyLabel }}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="{{ $statCardClass }} bg-amber-50/60 dark:bg-amber-500/5 border-amber-100 dark:border-amber-500/20 shadow-sm">
+                        <span class="flex items-center justify-center w-12 h-12 rounded-xl bg-amber-100 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400 shrink-0">
+                            <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                        </span>
+                        <div class="min-w-0 flex-1">
+                            <span class="text-xs font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wide block mb-1 truncate">مانده دریافتی</span>
+                            <div class="flex flex-wrap items-baseline gap-1">
+                                <span class="text-xl xl:text-2xl font-black text-amber-700 dark:text-amber-400 tabular-nums">{{ $faNum(number_format($clientInvoiceStats['due'])) }}</span>
+                                <span class="text-[11px] font-medium text-amber-500/80 ms-1">{{ $currencyLabel }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 {{-- Filter Bar --}}
                 <div class="bg-white dark:bg-gray-800/60 p-4 rounded-2xl border border-gray-100 dark:border-gray-700/50 shadow-sm mb-6 backdrop-blur-xl">
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -1931,8 +2055,88 @@
             @if(isset($accountingModule) && $accountingModule && $accountingModule->installed && $accountingModule->active)
                 {{-- ================= Accounting Transactions Tab ================= --}}
                 <div x-show="activeTab === 'transactions'" x-cloak
+                     x-data="{ docSearch: '', docSource: '' }"
                      x-transition:enter="transition ease-out duration-200"
                      x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" class="p-6 sm:p-8">
+
+                    {{-- Accounting Transactions Summary Strip --}}
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+                        <div class="{{ $statCardClass }} bg-white dark:bg-gray-800/60 border-gray-100 dark:border-gray-700/50 shadow-sm backdrop-blur-xl">
+                            <span class="flex items-center justify-center w-12 h-12 rounded-xl bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 shrink-0">
+                                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                </svg>
+                            </span>
+                            <div class="min-w-0 flex-1">
+                                <span class="text-xs font-bold text-gray-400 uppercase tracking-wide block mb-1 truncate">تعداد اسناد مالی</span>
+                                <div class="flex flex-wrap items-baseline gap-1">
+                                    <span class="text-xl xl:text-2xl font-black text-gray-900 dark:text-white tabular-nums">{{ $faNum(number_format($clientAccountingStats['documents_count'])) }}</span>
+                                    <span class="text-[11px] font-medium text-gray-400 ms-1">سند</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="{{ $statCardClass }} bg-white dark:bg-gray-800/60 border-gray-100 dark:border-gray-700/50 shadow-sm backdrop-blur-xl">
+                            <span class="flex items-center justify-center w-12 h-12 rounded-xl bg-gray-100 dark:bg-gray-700/50 text-gray-500 dark:text-gray-400 shrink-0">
+                                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                            </span>
+                            <div class="min-w-0 flex-1">
+                                <span class="text-xs font-bold text-gray-400 uppercase tracking-wide block mb-1 truncate">حجم گردش مالی</span>
+                                <div class="flex flex-wrap items-baseline gap-1">
+                                    <span class="text-xl xl:text-2xl font-black text-gray-900 dark:text-white tabular-nums">{{ $faNum(number_format($clientAccountingStats['total_turnover'])) }}</span>
+                                    <span class="text-[11px] font-medium text-gray-400 ms-1">{{ \Modules\Accounting\App\Services\CurrencyService::getBaseCurrency() }}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="{{ $statCardClass }} bg-emerald-50/60 dark:bg-emerald-500/5 border-emerald-100 dark:border-emerald-500/20 shadow-sm">
+                            <span class="flex items-center justify-center w-12 h-12 rounded-xl bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 shrink-0">
+                                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                                </svg>
+                            </span>
+                            <div class="min-w-0 flex-1">
+                                <span class="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wide block mb-1 truncate">اسناد خودکار و متصل</span>
+                                <div class="flex flex-wrap items-baseline gap-1">
+                                    <span class="text-xl xl:text-2xl font-black text-emerald-700 dark:text-emerald-400 tabular-nums">{{ $faNum(number_format($clientAccountingStats['system_docs_count'])) }}</span>
+                                    <span class="text-[11px] font-medium text-emerald-500/80 ms-1">سند</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="{{ $statCardClass }} bg-amber-50/60 dark:bg-amber-500/5 border-amber-100 dark:border-amber-500/20 shadow-sm">
+                            <span class="flex items-center justify-center w-12 h-12 rounded-xl bg-amber-100 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400 shrink-0">
+                                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                                </svg>
+                            </span>
+                            <div class="min-w-0 flex-1">
+                                <span class="text-xs font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wide block mb-1 truncate">اسناد دستی و متفرقه</span>
+                                <div class="flex flex-wrap items-baseline gap-1">
+                                    <span class="text-xl xl:text-2xl font-black text-amber-700 dark:text-amber-400 tabular-nums">{{ $faNum(number_format($clientAccountingStats['manual_docs_count'])) }}</span>
+                                    <span class="text-[11px] font-medium text-amber-500/80 ms-1">سند</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- Transactions Filter Bar --}}
+                    <div class="bg-white dark:bg-gray-800/60 p-4 rounded-2xl border border-gray-100 dark:border-gray-700/50 shadow-sm mb-6 backdrop-blur-xl">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div class="relative">
+                                <div class="absolute inset-y-0 start-0 ps-4 flex items-center pointer-events-none">
+                                    <svg class="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                                </div>
+                                <input type="text" x-model="docSearch" placeholder="جستجوی شماره سند، شرح یا کد مرجع..." class="w-full rounded-xl border-gray-200 bg-gray-50 dark:bg-gray-900/50 dark:border-gray-700 ps-11 pe-4 py-3 text-sm focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all dark:text-white">
+                            </div>
+                            <select x-model="docSource" class="w-full rounded-xl border-gray-200 bg-gray-50 dark:bg-gray-900/50 dark:border-gray-700 px-4 py-3 text-sm focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all dark:text-white cursor-pointer">
+                                <option value="">همه مبدأها</option>
+                                <option value="services">فاکتور سرویس و خدمات</option>
+                                <option value="booking">نوبت‌دهی</option>
+                                <option value="market">فروشگاه</option>
+                                <option value="manual">ثبت دستی / متفرقه</option>
+                            </select>
+                        </div>
+                    </div>
 
                     @if(isset($accountingDocuments) && $accountingDocuments->count() > 0)
                         {{-- Table --}}
@@ -1951,7 +2155,16 @@
                                     </thead>
                                     <tbody class="divide-y divide-gray-50 dark:divide-gray-700/40">
                                     @foreach($accountingDocuments as $document)
-                                        <tr class="group hover:bg-gray-50 dark:hover:bg-gray-700/20 transition-colors duration-200">
+                                        @php
+                                            $moduleKey = $document->sourceDocument?->module ?? 'manual';
+                                            $snapshot = $document->sourceDocument?->snapshot_data ?? [];
+                                            $refNum = $snapshot['invoice_number'] ?? $snapshot['order_id'] ?? $snapshot['appointment_id'] ?? '';
+                                            $searchableText = strtolower($document->document_number . ' ' . $document->description . ' ' . $refNum);
+                                        @endphp
+                                        <tr data-search="{{ $searchableText }}"
+                                            data-source="{{ $moduleKey }}"
+                                            x-show="(!docSearch || $el.dataset.search.includes(docSearch.toLowerCase())) && (!docSource || $el.dataset.source === docSource)"
+                                            class="group hover:bg-gray-50 dark:hover:bg-gray-700/20 transition-colors duration-200">
                                             <td class="px-6 py-4">
                                                 <a href="{{ route('admin.accounting.documents.show', $document->id) }}" class="font-bold text-indigo-600 dark:text-indigo-400 text-base tabular-nums hover:underline block">
                                                     {{ $faNum($document->document_number) }}

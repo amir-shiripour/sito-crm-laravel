@@ -44,6 +44,21 @@ class MenuCustomizationService
     }
 
     /**
+     * Check if item counters on menu groups are enabled.
+     * Defaults to true if not explicitly configured.
+     */
+    public function isGroupCounterEnabled(): bool
+    {
+        return Cache::remember('user_menu_group_counter_enabled', 3600, function () {
+            if (!Schema::hasTable('settings')) {
+                return true;
+            }
+            $setting = \Modules\Settings\Entities\Setting::where('key', 'user_menu_group_counter')->first();
+            return $setting !== null ? (bool) $setting->value : true;
+        });
+    }
+
+    /**
      * Apply overrides on raw menu data for a specific user.
      *
      * @param array $menuData Array with keys: 'items', 'groups', 'settings'

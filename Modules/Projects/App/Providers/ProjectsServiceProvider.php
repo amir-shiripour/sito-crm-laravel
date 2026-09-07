@@ -5,6 +5,7 @@ namespace Modules\Projects\App\Providers;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
+use Modules\Projects\App\Console\CheckOverdueTasksCommand;
 use Modules\Projects\App\Http\Models\Project;
 use Modules\Projects\App\Http\Models\ProjectTask;
 use Modules\Projects\App\Observers\ProjectObserver;
@@ -34,13 +35,8 @@ class ProjectsServiceProvider extends ServiceProvider
 
         if ($this->app->runningInConsole()) {
             $this->commands([
-                \Modules\Projects\App\Console\CheckOverdueTasksCommand::class,
+                CheckOverdueTasksCommand::class,
             ]);
-
-            $this->app->booted(function () {
-                $schedule = $this->app->make(\Illuminate\Console\Scheduling\Schedule::class);
-                $schedule->command('projects:check-overdue-tasks')->everyMinute();
-            });
         }
     }
 

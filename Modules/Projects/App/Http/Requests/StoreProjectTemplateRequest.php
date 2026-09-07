@@ -8,7 +8,20 @@ class StoreProjectTemplateRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return auth()->check();
+        $user = auth()->user();
+        if (!$user) {
+            return false;
+        }
+
+        if ($user->hasAnyRole(['super-admin', 'superadmin'])) {
+            return true;
+        }
+
+        if ($this->isMethod('POST')) {
+            return $user->can('projects.templates.create');
+        }
+
+        return $user->can('projects.templates.edit');
     }
 
     public function rules(): array

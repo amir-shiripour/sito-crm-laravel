@@ -12,31 +12,31 @@ class ServicePolicy
 
     public function viewAny(User $u): bool
     {
-        return $u->can('services.view');
+        return $u->can('services.view') || $u->can('services.manage');
     }
 
     public function view(User $u, Service $s): bool
     {
-        return $u->can('services.view');
+        return $u->can('services.view') || $u->can('services.manage');
     }
 
     public function create(User $u): bool
     {
-        return $u->can('services.create');
+        return $u->can('services.create') || $u->can('services.manage');
     }
 
     public function update(User $u, Service $s): bool
     {
-        return $u->can('services.edit');
+        return $u->can('services.edit') || $u->can('services.manage');
     }
 
     public function delete(User $u, Service $s): bool
     {
-        return $u->can('services.delete');
+        return $u->can('services.delete') || $u->can('services.manage');
     }
 
     public function duplicate(User $u, Service $s): bool
     {
-        return $u->can('services.duplicate');
+        return $u->can('services.duplicate') || $u->can('services.manage');
     }
 }

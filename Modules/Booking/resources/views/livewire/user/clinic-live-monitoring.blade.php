@@ -94,7 +94,7 @@
                 <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">{{ $lp }}</label>
                 <select wire:model.live="selectedProviderId" 
                         class="w-full text-xs rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 px-3 py-2 text-gray-800 dark:text-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
-                    @if(auth()->user()?->can('booking.appointments.view.all') || auth()->user()?->hasAnyRole(['super-admin', 'admin']))
+                    @if(app(\Modules\Booking\Services\ClinicMonitoringService::class)->canViewAllAppointments(auth()->user()))
                         <option value="">همه {{ $lps }}</option>
                     @endif
                     @foreach($providers as $provider)

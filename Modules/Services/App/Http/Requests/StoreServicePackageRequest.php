@@ -8,7 +8,20 @@ class StoreServicePackageRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return true;
+        $user = $this->user();
+        if (!$user) {
+            return false;
+        }
+
+        if ($user->hasRole(['super-admin', 'admin']) || $user->can('services.manage')) {
+            return true;
+        }
+
+        if ($this->isMethod('POST')) {
+            return $user->can('services.create');
+        }
+
+        return $user->can('services.edit');
     }
 
     public function rules(): array

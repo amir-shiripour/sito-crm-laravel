@@ -215,6 +215,9 @@
                  x-data="{
                      showCreateModal: false,
                      showEditModal: false,
+                     isReadOnly: false,
+                     createSubmitting: false,
+                     editSubmitting: false,
                      currencyUnit: '{{ $currencyUnit }}',
                      createType: '{{ array_key_first($availablePaymentMethods) }}',
                      createSubItemLabel: '',
@@ -226,9 +229,11 @@
                      editData: { id: '', amount: '', type: 'manual', status: 'PAID', gateway_ref: '', notes: '', paid_at_jalali: '{{ \Morilog\Jalali\Jalalian::now()->format('Y/m/d') }}' },
                      init() {
                          this.$watch('showCreateModal', val => {
+                             if (val) this.createSubmitting = false;
                              document.body.classList.toggle('overflow-hidden', val || this.showEditModal);
                          });
                          this.$watch('showEditModal', val => {
+                             if (val) this.editSubmitting = false;
                              document.body.classList.toggle('overflow-hidden', val || this.showCreateModal);
                          });
                      },
@@ -382,6 +387,8 @@
                               meta: meta,
                               paid_at_jalali: '{{ \Morilog\Jalali\Jalalian::now()->format('Y/m/d') }}'
                           };
+                          this.isReadOnly = (payment.status === 'PAID');
+                          this.editSubmitting = false;
                           this.editAmountDisplay = this.formatNumber(displayAmt);
                           this.showEditModal = true;
 
@@ -511,12 +518,21 @@
                                     @can('booking.payments.manage')
                                         <td class="px-6 py-4 text-center">
                                             <div class="flex items-center justify-center gap-2">
-                                                <button type="button"
-                                                        @click="openEdit({{ json_encode($payment) }})"
-                                                        class="p-1.5 rounded-lg text-gray-600 hover:text-indigo-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-indigo-400 dark:hover:bg-gray-700 transition"
-                                                        title="ویرایش پرداخت">
-                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
-                                                </button>
+                                                @if($payment->status === \Modules\Booking\Entities\BookingPayment::STATUS_PAID)
+                                                    <button type="button"
+                                                            @click="openEdit({{ json_encode($payment) }})"
+                                                            class="p-1.5 rounded-lg text-gray-600 hover:text-indigo-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-indigo-400 dark:hover:bg-gray-700 transition"
+                                                            title="مشاهده جزئیات و رسید پرداخت">
+                                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                                                    </button>
+                                                @else
+                                                    <button type="button"
+                                                            @click="openEdit({{ json_encode($payment) }})"
+                                                            class="p-1.5 rounded-lg text-gray-600 hover:text-indigo-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-indigo-400 dark:hover:bg-gray-700 transition"
+                                                            title="بررسی و ویرایش پرداخت">
+                                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                                                    </button>
+                                                @endif
 
                                                 @if($payment->status !== \Modules\Booking\Entities\BookingPayment::STATUS_CANCELLED)
                                                     <form method="POST" action="{{ route('user.booking.appointments.payments.destroy', [$appointment, $payment]) }}"
@@ -560,7 +576,9 @@
                             </button>
                         </div>
 
-                        <form method="POST" action="{{ route('user.booking.appointments.payments.store', $appointment) }}" class="space-y-4">
+                        <form method="POST" action="{{ route('user.booking.appointments.payments.store', $appointment) }}"
+                              class="space-y-4"
+                              @submit="if(createSubmitting) { $event.preventDefault(); return false; } const amt = parseFloat(unformatNumber(createAmountDisplay)); if(isNaN(amt) || amt <= 0) { alert('لطفاً مبلغ معتبری وارد کنید.'); $event.preventDefault(); return false; } createSubmitting = true;">
                             @csrf
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div>
@@ -642,8 +660,14 @@
                                     انصراف
                                 </button>
                                 <button type="submit"
-                                        class="px-5 py-2.5 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 shadow-md shadow-emerald-500/20 transition">
-                                    ثبت پرداخت
+                                        :disabled="createSubmitting"
+                                        :class="{ 'opacity-60 cursor-not-allowed': createSubmitting }"
+                                        class="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 shadow-md shadow-emerald-500/20 transition">
+                                    <svg x-show="createSubmitting" class="animate-spin -ml-1 mr-1.5 h-4 w-4 text-white inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                    <span x-text="createSubmitting ? 'در حال ثبت...' : 'ثبت پرداخت'">ثبت پرداخت</span>
                                 </button>
                             </div>
                         </form>
@@ -658,15 +682,29 @@
                     <div class="bg-white dark:bg-gray-800 rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-gray-100 dark:border-gray-700 relative animate-in fade-in zoom-in-95 duration-150">
                         <div class="flex items-center justify-between pb-4 mb-4 border-b border-gray-100 dark:border-gray-700">
                             <h3 class="text-base font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-                                <svg class="w-5 h-5 text-indigo-600 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
-                                ویرایش پرداخت
+                                <template x-if="isReadOnly">
+                                    <svg class="w-5 h-5 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                                </template>
+                                <template x-if="!isReadOnly">
+                                    <svg class="w-5 h-5 text-indigo-600 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                                </template>
+                                <span x-text="isReadOnly ? 'مشاهده جزئیات و رسید پرداخت (تایید شده)' : 'بررسی و تایید پرداخت'"></span>
                             </h3>
                             <button @click="showEditModal = false" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                             </button>
                         </div>
 
-                        <form method="POST" :action="`{{ url('/user/booking/appointments/' . $appointment->id . '/payments') }}/${editData.id}`" class="space-y-4">
+                        <template x-if="isReadOnly">
+                            <div class="mb-4 p-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-xl text-xs text-amber-800 dark:text-amber-300 font-medium flex items-center gap-2">
+                                <svg class="w-4 h-4 flex-shrink-0 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                <span>این پرداخت قبلاً تایید و نهایی شده است و مشخصات آن قفل می‌باشد. در صورت لزوم می‌توانید پرداخت را از جدول لغو نمایید.</span>
+                            </div>
+                        </template>
+
+                        <form method="POST" :action="`{{ url('/user/booking/appointments/' . $appointment->id . '/payments') }}/${editData.id}`"
+                              class="space-y-4"
+                              @submit="if(isReadOnly) { $event.preventDefault(); return false; } if(editSubmitting) { $event.preventDefault(); return false; } const amt = parseFloat(unformatNumber(editAmountDisplay)); if(isNaN(amt) || amt <= 0) { alert('لطفاً مبلغ معتبری وارد کنید.'); $event.preventDefault(); return false; } editSubmitting = true;">
                             @csrf
                             @method('PATCH')
 
@@ -722,14 +760,15 @@
                                     <input type="text"
                                            x-model="editAmountDisplay"
                                            @input="editAmountDisplay = formatNumber($event.target.value)"
+                                           :disabled="isReadOnly"
                                            required
-                                           class="w-full rounded-xl border border-gray-200 bg-gray-50 dark:bg-gray-900/90 dark:border-gray-700 px-4 py-2.5 text-sm text-gray-900 dark:text-gray-100 focus:border-indigo-500 focus:bg-white dark:focus:bg-gray-900 focus:ring-2 focus:ring-indigo-500/20 dark:focus:ring-indigo-500/40 transition-colors">
+                                           class="w-full rounded-xl border border-gray-200 bg-gray-50 dark:bg-gray-900/90 dark:border-gray-700 px-4 py-2.5 text-sm text-gray-900 dark:text-gray-100 focus:border-indigo-500 focus:bg-white dark:focus:bg-gray-900 focus:ring-2 focus:ring-indigo-500/20 dark:focus:ring-indigo-500/40 transition-colors disabled:opacity-60 disabled:cursor-not-allowed">
                                     <input type="hidden" name="amount" :value="unformatNumber(editAmountDisplay)">
                                 </div>
                                 <div>
                                     <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">روش پرداخت *</label>
-                                    <select name="type" x-model="editType" required
-                                            class="w-full rounded-xl border border-gray-200 bg-gray-50 dark:bg-gray-900/90 dark:border-gray-700 px-4 py-2.5 text-sm text-gray-900 dark:text-gray-100 focus:border-indigo-500 focus:bg-white dark:focus:bg-gray-900 focus:ring-2 focus:ring-indigo-500/20 dark:focus:ring-indigo-500/40 transition-colors">
+                                    <select name="type" x-model="editType" :disabled="isReadOnly" required
+                                            class="w-full rounded-xl border border-gray-200 bg-gray-50 dark:bg-gray-900/90 dark:border-gray-700 px-4 py-2.5 text-sm text-gray-900 dark:text-gray-100 focus:border-indigo-500 focus:bg-white dark:focus:bg-gray-900 focus:ring-2 focus:ring-indigo-500/20 dark:focus:ring-indigo-500/40 transition-colors disabled:opacity-60 disabled:cursor-not-allowed">
                                         @foreach($availablePaymentMethods as $key => $label)
                                             <option value="{{ $key }}" class="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">{{ $label }}</option>
                                         @endforeach
@@ -741,8 +780,8 @@
                             <template x-if="subItems[editType] && subItems[editType].length > 0">
                                 <div>
                                     <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">گزینه / حساب پرداخت *</label>
-                                    <select x-model="editSubItemLabel" required
-                                            class="w-full rounded-xl border border-gray-200 bg-gray-50 dark:bg-gray-900/90 dark:border-gray-700 px-4 py-2.5 text-sm text-gray-900 dark:text-gray-100 focus:border-indigo-500 focus:bg-white dark:focus:bg-gray-900 focus:ring-2 focus:ring-indigo-500/20 dark:focus:ring-indigo-500/40 transition-colors">
+                                    <select x-model="editSubItemLabel" :disabled="isReadOnly" required
+                                            class="w-full rounded-xl border border-gray-200 bg-gray-50 dark:bg-gray-900/90 dark:border-gray-700 px-4 py-2.5 text-sm text-gray-900 dark:text-gray-100 focus:border-indigo-500 focus:bg-white dark:focus:bg-gray-900 focus:ring-2 focus:ring-indigo-500/20 dark:focus:ring-indigo-500/40 transition-colors disabled:opacity-60 disabled:cursor-not-allowed">
                                         <option value="" class="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">-- انتخاب کنید --</option>
                                         <template x-for="item in subItems[editType]" :key="item.id">
                                             <option :value="item.label" :selected="editSubItemLabel === item.label" x-text="item.label" class="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"></option>
@@ -755,8 +794,8 @@
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div>
                                     <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">وضعیت پرداخت *</label>
-                                    <select name="status" x-model="editData.status" required
-                                            class="w-full rounded-xl border border-gray-200 bg-gray-50 dark:bg-gray-900/90 dark:border-gray-700 px-4 py-2.5 text-sm text-gray-900 dark:text-gray-100 focus:border-indigo-500 focus:bg-white dark:focus:bg-gray-900 focus:ring-2 focus:ring-indigo-500/20 dark:focus:ring-indigo-500/40 transition-colors">
+                                    <select name="status" x-model="editData.status" :disabled="isReadOnly" required
+                                            class="w-full rounded-xl border border-gray-200 bg-gray-50 dark:bg-gray-900/90 dark:border-gray-700 px-4 py-2.5 text-sm text-gray-900 dark:text-gray-100 focus:border-indigo-500 focus:bg-white dark:focus:bg-gray-900 focus:ring-2 focus:ring-indigo-500/20 dark:focus:ring-indigo-500/40 transition-colors disabled:opacity-60 disabled:cursor-not-allowed">
                                         <option value="PAID" class="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">پرداخت شده</option>
                                         <option value="PENDING" class="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">در انتظار پرداخت</option>
                                         <option value="FAILED" class="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">ناموفق</option>
@@ -769,35 +808,43 @@
                                     <input type="text"
                                            name="paid_at_jalali"
                                            x-model="editData.paid_at_jalali"
+                                           :disabled="isReadOnly"
                                            data-jdp
                                            data-jdp-only-date
                                            required
-                                           class="w-full rounded-xl border border-gray-200 bg-gray-50 dark:bg-gray-900/90 dark:border-gray-700 px-4 py-2.5 text-sm text-gray-900 dark:text-gray-100 focus:border-indigo-500 focus:bg-white dark:focus:bg-gray-900 focus:ring-2 focus:ring-indigo-500/20 dark:focus:ring-indigo-500/40 transition-colors">
+                                           class="w-full rounded-xl border border-gray-200 bg-gray-50 dark:bg-gray-900/90 dark:border-gray-700 px-4 py-2.5 text-sm text-gray-900 dark:text-gray-100 focus:border-indigo-500 focus:bg-white dark:focus:bg-gray-900 focus:ring-2 focus:ring-indigo-500/20 dark:focus:ring-indigo-500/40 transition-colors disabled:opacity-60 disabled:cursor-not-allowed">
                                 </div>
                             </div>
 
                             <div class="grid grid-cols-1 gap-4">
                                 <div>
                                     <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">کد پیگیری / شناسه مرجع</label>
-                                    <input type="text" name="gateway_ref" x-model="editData.gateway_ref"
-                                           class="w-full rounded-xl border border-gray-200 bg-gray-50 dark:bg-gray-900/90 dark:border-gray-700 px-4 py-2.5 text-sm text-gray-900 dark:text-gray-100 focus:border-indigo-500 focus:bg-white dark:focus:bg-gray-900 focus:ring-2 focus:ring-indigo-500/20 dark:focus:ring-indigo-500/40 transition-colors">
+                                    <input type="text" name="gateway_ref" x-model="editData.gateway_ref" :disabled="isReadOnly"
+                                           class="w-full rounded-xl border border-gray-200 bg-gray-50 dark:bg-gray-900/90 dark:border-gray-700 px-4 py-2.5 text-sm text-gray-900 dark:text-gray-100 focus:border-indigo-500 focus:bg-white dark:focus:bg-gray-900 focus:ring-2 focus:ring-indigo-500/20 dark:focus:ring-indigo-500/40 transition-colors disabled:opacity-60 disabled:cursor-not-allowed">
                                 </div>
                             </div>
 
                             <div>
                                 <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">توضیحات و یادداشت ادمین</label>
-                                <textarea name="notes" x-model="editData.notes" rows="2"
-                                          class="w-full rounded-xl border border-gray-200 bg-gray-50 dark:bg-gray-900/90 dark:border-gray-700 px-4 py-2.5 text-sm text-gray-900 dark:text-gray-100 focus:border-indigo-500 focus:bg-white dark:focus:bg-gray-900 focus:ring-2 focus:ring-indigo-500/20 dark:focus:ring-indigo-500/40 transition-colors"></textarea>
+                                <textarea name="notes" x-model="editData.notes" rows="2" :disabled="isReadOnly"
+                                          class="w-full rounded-xl border border-gray-200 bg-gray-50 dark:bg-gray-900/90 dark:border-gray-700 px-4 py-2.5 text-sm text-gray-900 dark:text-gray-100 focus:border-indigo-500 focus:bg-white dark:focus:bg-gray-900 focus:ring-2 focus:ring-indigo-500/20 dark:focus:ring-indigo-500/40 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"></textarea>
                             </div>
 
                             <div class="flex items-center justify-end gap-3 pt-4 border-t border-gray-100 dark:border-gray-700">
                                 <button type="button" @click="showEditModal = false"
                                         class="px-4 py-2.5 rounded-xl bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200 text-xs font-bold hover:bg-gray-200 dark:hover:bg-gray-600 transition">
-                                    انصراف
+                                    <span x-text="isReadOnly ? 'بستن' : 'انصراف'"></span>
                                 </button>
                                 <button type="submit"
-                                        class="px-5 py-2.5 rounded-xl bg-indigo-600 text-white text-xs font-bold hover:bg-indigo-700 shadow-md shadow-indigo-500/20 transition">
-                                    ذخیره تغییرات
+                                        x-show="!isReadOnly"
+                                        :disabled="editSubmitting"
+                                        :class="{ 'opacity-60 cursor-not-allowed': editSubmitting }"
+                                        class="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 text-white text-xs font-bold hover:bg-indigo-700 shadow-md shadow-indigo-500/20 transition">
+                                    <svg x-show="editSubmitting" class="animate-spin -ml-1 mr-1.5 h-4 w-4 text-white inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                    <span x-text="editSubmitting ? 'در حال ذخیره...' : 'ذخیره تغییرات'"></span>
                                 </button>
                             </div>
                         </form>

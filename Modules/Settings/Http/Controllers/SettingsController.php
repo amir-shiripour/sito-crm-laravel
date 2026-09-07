@@ -2,22 +2,29 @@
 
 namespace Modules\Settings\Http\Controllers;
 
+use App\Services\JalaliHolidayService;
+use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Modules\Booking\Entities\BookingCategory;
+use Modules\ContentForge\App\Models\ContentEntity;
 use Modules\Properties\Entities\PropertyCategory;
 use Modules\Properties\Entities\PropertyStatus;
 use Modules\Settings\Entities\ApiKey;
 use Modules\Settings\Entities\Setting;
 use App\Services\GapGPTService;
+use App\Traits\FileUploadTrait;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Nwidart\Modules\Facades\Module as NModule;
+use Throwable;
 
 class SettingsController extends Controller
 {
+    use FileUploadTrait;
     public function index()
     {
         $settingsCollection = Setting::all()->pluck('value', 'key');
@@ -153,8 +160,8 @@ class SettingsController extends Controller
         // واکشی پویای موجودیت‌های محتوا جهت انتخاب قالب داینامیک
         $isContentForgeActive = NModule::has('ContentForge') && NModule::isEnabled('ContentForge');
         $contentEntities = collect();
-        if ($isContentForgeActive && class_exists(\Modules\ContentForge\App\Models\ContentEntity::class) && Schema::hasTable('content_entities')) {
-            $contentEntities = \Modules\ContentForge\App\Models\ContentEntity::where('is_active', true)->get();
+        if ($isContentForgeActive && class_exists(ContentEntity::class) && Schema::hasTable('content_entities')) {
+            $contentEntities = ContentEntity::where('is_active', true)->get();
         }
 
         return view('settings::index', compact(
@@ -172,20 +179,28 @@ class SettingsController extends Controller
             'bookingCategories'
         ));
     }
+
     public function update(Request $request)
     {
         $request->validate([
             'identity_seal_signature' => 'nullable|image|mimes:png,jpg,jpeg,webp|max:5120',
+            'app_logo' => 'nullable|image|mimes:png,jpg,jpeg,webp,svg|max:5120',
         ], [
             'identity_seal_signature.image' => 'فایل انتخاب‌شده برای مهر و امضا باید یک تصویر معتبر باشد.',
             'identity_seal_signature.mimes' => 'فرمت تصویر مهر و امضا باید یکی از png, jpg, jpeg, webp باشد.',
             'identity_seal_signature.max' => 'حجم تصویر مهر و امضا نباید بیشتر از ۵ مگابایت باشد.',
+            'app_logo.image' => 'فایل انتخاب‌شده برای لوگو باید یک تصویر معتبر باشد.',
+            'app_logo.mimes' => 'فرمت تصویر لوگو باید یکی از png, jpg, jpeg, webp, svg باشد.',
+            'app_logo.max' => 'حجم تصویر لوگو نباید بیشتر از ۵ مگابایت باشد.',
         ]);
 
         $activeTab = $request->input('active_tab');
         $data = $request->except(['_token', 'active_tab']);
         $this->handleIdentitySealUpload($request);
         unset($data['identity_seal_signature']);
+
+        $this->handleAppLogoUpload($request);
+        unset($data['app_logo']);
 
         $nullableArrayKeys = [
             'installment_types',
@@ -270,7 +285,7 @@ class SettingsController extends Controller
                             $accItem['owner_name'] = $owner;
                             $accItem['name'] = $owner;
                             if (isset($accItem['is_active'])) {
-                                $accItem['is_active'] = (bool) $accItem['is_active'];
+                                $accItem['is_active'] = (bool)$accItem['is_active'];
                             } else {
                                 $accItem['is_active'] = true;
                             }
@@ -301,48 +316,67 @@ class SettingsController extends Controller
 
     private function handleIdentitySealUpload(Request $request): void
     {
-        $key = 'identity_seal_signature';
-        Log::info('handleIdentitySealUpload: Method called.');
+        $this->handleSettingFileUpload($request, 'identity_seal_signature');
+    }
 
+    private function handleAppLogoUpload(Request $request): void
+    {
+        $this->handleSettingFileUpload($request, 'app_logo');
+    }
+
+    private function handleSettingFileUpload(Request $request, string $key): void
+    {
         if (!$request->hasFile($key)) {
-            Log::info('handleIdentitySealUpload: No file found for key: ' . $key);
             return;
         }
-        Log::info('handleIdentitySealUpload: File found for key: ' . $key);
 
         $file = $request->file($key);
 
         if (!$file->isValid()) {
-            Log::error('handleIdentitySealUpload: File is not valid.', ['file_error' => $file->getErrorMessage()]);
+            Log::error("handleSettingFileUpload: File for {$key} is not valid.", ['file_error' => $file->getErrorMessage()]);
             return;
         }
-        Log::info('handleIdentitySealUpload: File is valid.');
 
         try {
-            $extension = $file->getClientOriginalExtension() ?: $file->extension() ?: 'png';
-            $filename = time() . '_' . Str::random(12) . '.' . $extension;
-            $destinationPath = public_path('uploads/settings');
-
-            Log::info('handleIdentitySealUpload: Attempting to move file.', ['filename' => $filename, 'destination' => $destinationPath]);
-            $file->move($destinationPath, $filename);
-
-            $newPath = 'uploads/settings/' . $filename;
-            Log::info('handleIdentitySealUpload: File moved successfully.', ['path' => $newPath]);
-
+            // Delete old file
             $oldPath = Setting::where('key', $key)->value('value');
-            if ($oldPath && file_exists(public_path($oldPath))) {
-                @unlink(public_path($oldPath));
-                Log::info('handleIdentitySealUpload: Old file deleted.', ['path' => $oldPath]);
-            }
+            $this->deleteOldSettingFile($oldPath);
+
+            // Upload and optimize file using FileUploadTrait
+            $storedPath = $this->uploadFile($file, 'settings', 'public');
+            $newPath = 'storage/' . $storedPath;
 
             Setting::updateOrCreate(['key' => $key], ['value' => $newPath]);
-            Log::info('handleIdentitySealUpload: Database updated successfully.');
+            Log::info("handleSettingFileUpload: File for {$key} uploaded and optimized successfully.", ['path' => $newPath]);
 
-        } catch (\Exception $e) {
-            Log::error('handleIdentitySealUpload: An exception occurred during file upload.', [
+        } catch (Exception $e) {
+            Log::error("handleSettingFileUpload: An exception occurred during upload for {$key}.", [
                 'message' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
+        }
+    }
+
+    private function deleteOldSettingFile(?string $path): void
+    {
+        if (empty($path)) {
+            return;
+        }
+
+        try {
+            if (str_starts_with($path, 'storage/')) {
+                $storageRelative = Str::after($path, 'storage/');
+                if (Storage::disk('public')->exists($storageRelative)) {
+                    Storage::disk('public')->delete($storageRelative);
+                }
+            }
+
+            $fullPublicPath = public_path(ltrim($path, '/\\'));
+            if (file_exists($fullPublicPath) && is_file($fullPublicPath)) {
+                @unlink($fullPublicPath);
+            }
+        } catch (Exception $e) {
+            Log::warning('deleteOldSettingFile: Error deleting file.', ['path' => $path, 'error' => $e->getMessage()]);
         }
     }
 
@@ -351,7 +385,7 @@ class SettingsController extends Controller
         $errors = [];
         $toNum = function ($val) {
             if ($val === null || $val === '') return null;
-            return is_numeric($val) ? (float) $val : null;
+            return is_numeric($val) ? (float)$val : null;
         };
 
         $isInvalidNumeric = function ($val) {
@@ -412,7 +446,7 @@ class SettingsController extends Controller
         $config = [
             'gapgpt_api_key' => $request->gapgpt_api_key,
             'gapgpt_base_url' => $request->gapgpt_base_url,
-            'gapgpt_timeout'  => 10,
+            'gapgpt_timeout' => 10,
         ];
 
         $service = new GapGPTService($config);
@@ -422,7 +456,7 @@ class SettingsController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'اتصال با موفقیت برقرار شد. تعداد مدل‌های یافت شده: ' . count($models['data']),
-                'models'  => array_slice($models['data'], 0, 5),
+                'models' => array_slice($models['data'], 0, 5),
             ]);
         }
 
@@ -432,13 +466,13 @@ class SettingsController extends Controller
         ], 400);
     }
 
-    public function syncHolidays(Request $request, \App\Services\JalaliHolidayService $holidayService)
+    public function syncHolidays(Request $request, JalaliHolidayService $holidayService)
     {
         try {
             $result = $holidayService->syncCurrentAndNextYears();
             $yearsStr = implode(' و ', array_keys($result['years']));
             return redirect()->back()->with('success', "مناسبت‌ها و تعطیلات سال‌های {$yearsStr} با موفقیت در پایگاه داده محلی به‌روزرسانی شد. (مجموع کل: {$result['total_events']} مورد)");
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             return redirect()->back()->with('error', 'خطا در به‌روزرسانی داده‌های مناسبت‌ها: ' . $e->getMessage());
         }
     }

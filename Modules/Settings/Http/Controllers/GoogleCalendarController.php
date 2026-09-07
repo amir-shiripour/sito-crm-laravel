@@ -73,8 +73,8 @@ class GoogleCalendarController extends Controller
         }
 
         return redirect()->route('settings.index')
-                ->with('success', "حساب گوگل ({$token->email}) با موفقیت به سیستم متصل گردید.")
-                ->withFragment('widgets');
+            ->with('success', "حساب گوگل ({$token->email}) با موفقیت به سیستم متصل گردید.")
+            ->withFragment('widgets');
     }
 
     /**
@@ -101,8 +101,8 @@ class GoogleCalendarController extends Controller
 
         $calendars = $this->googleService->listCalendars($token);
         return response()->json([
-            'success'      => true,
-            'calendars'    => $calendars,
+            'success' => true,
+            'calendars' => $calendars,
             'selected_ids' => $token->calendar_ids ?: ['primary'],
         ]);
     }
@@ -140,8 +140,8 @@ class GoogleCalendarController extends Controller
             'ical_file' => 'required|file|max:20480', // تا ۲۰ مگابایت
         ], [
             'ical_file.required' => 'لطفاً یک فایل iCal (.ics / .ical / .zip) انتخاب کنید.',
-            'ical_file.file'     => 'فایل انتخاب‌شده نامعتبر است.',
-            'ical_file.max'      => 'حجم فایل نباید بیشتر از ۲۰ مگابایت باشد.',
+            'ical_file.file' => 'فایل انتخاب‌شده نامعتبر است.',
+            'ical_file.max' => 'حجم فایل نباید بیشتر از ۲۰ مگابایت باشد.',
         ]);
 
         $file = $request->file('ical_file');

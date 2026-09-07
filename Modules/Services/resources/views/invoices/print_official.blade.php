@@ -1,6 +1,6 @@
 @php
     use Carbon\Carbon;
-    use Morilog\Jalali\Jalalian;
+    use Modules\Clients\Entities\ClientForm;use Morilog\Jalali\Jalalian;
 
     if (!isset($settings)) {
         $settings = \Illuminate\Support\Facades\DB::table('settings')->pluck('value', 'key')->all();
@@ -88,6 +88,20 @@
 
     $sellerCustomFields = $sellerInfo['custom_fields'] ?? [];
 
+    $stampOfficialWidth = !empty($settings['services_stamp_official_width']) ? (int) $settings['services_stamp_official_width'] : null;
+    $stampOfficialHeight = !empty($settings['services_stamp_official_height']) ? (int) $settings['services_stamp_official_height'] : null;
+
+    $stampOfficialImgStyle = 'max-width: 100%; object-fit: contain; mix-blend-mode: multiply;';
+    if ($stampOfficialWidth && $stampOfficialHeight) {
+        $stampOfficialImgStyle .= " width: {$stampOfficialWidth}px; height: {$stampOfficialHeight}px;";
+    } elseif ($stampOfficialWidth) {
+        $stampOfficialImgStyle .= " width: {$stampOfficialWidth}px; height: auto;";
+    } elseif ($stampOfficialHeight) {
+        $stampOfficialImgStyle .= " height: {$stampOfficialHeight}px; width: auto;";
+    } else {
+        $stampOfficialImgStyle .= " max-height: 40px;";
+    }
+
     $sellerFields = array_values(array_filter([
         ['label' => 'نام شخص حقیقی/حقوقی', 'value' => $sellerInfo['name'], 'span' => 4, 'numeric' => false],
         ['label' => 'شماره اقتصادی', 'value' => $sellerInfo['economic_number'], 'span' => 2, 'numeric' => true],
@@ -123,8 +137,8 @@
         'case_number' => 'شماره پرونده',
         'address' => 'نشانی',
     ];
-    $activeClientForm = class_exists(\Modules\Clients\Entities\ClientForm::class)
-        ? \Modules\Clients\Entities\ClientForm::active()
+    $activeClientForm = class_exists(ClientForm::class)
+        ? ClientForm::active()
         : null;
 
     foreach ($savedBuyerFieldIds as $fid) {
@@ -266,7 +280,7 @@
                 box-shadow: none !important;
                 width: 100% !important;
                 min-height: auto !important;
-                padding: {{ $orientation === 'landscape' ? '4mm 6mm' : '5mm 8mm' }} !important;
+                padding: {{ $orientation === 'landscape' ? '4mm 6mm' : '5mm 8mm' }}  !important;
             }
 
             .no-print {
@@ -286,7 +300,7 @@
             }
 
             .table-cell-border {
-                padding: {{ $orientation === 'landscape' ? '1.5px 3px' : '2px 4px' }} !important;
+                padding: {{ $orientation === 'landscape' ? '1.5px 3px' : '2px 4px' }}  !important;
             }
         }
 
@@ -368,7 +382,8 @@
         <div class="flex justify-between items-start mb-2">
             <div class="w-1/4">
                 @if($appLogoDataUri)
-                    <img src="{{ $appLogoDataUri }}" alt="{{ $siteName }}" style="max-height: 40px; max-width: 140px; object-fit: contain;">
+                    <img src="{{ $appLogoDataUri }}" alt="{{ $siteName }}"
+                         style="max-height: 40px; max-width: 140px; object-fit: contain;">
                 @endif
             </div>
             <div class="w-2/4 header-title text-center pt-1">
@@ -377,11 +392,25 @@
                 @else
                     صورتحساب فروش کالا و خدمات
                 @endif
+                @php
+                    $invoicePackages = collect($invoice->items)->map(function($it) {
+                        return $it->meta['_packageTitle'] ?? null;
+                    })->filter()->unique()->values();
+                    if ($invoicePackages->isEmpty() && !empty($invoice->meta['packages']) && is_array($invoice->meta['packages'])) {
+                        $invoicePackages = collect($invoice->meta['packages'])->filter()->unique()->values();
+                    }
+                @endphp
+                @if($invoicePackages->isNotEmpty())
+                    <div class="text-[9.5px] font-bold text-amber-800 mt-0.5">
+                        (پکیج: {{ $invoicePackages->implode(' - ') }})
+                    </div>
+                @endif
             </div>
             <div class="w-1/4 border border-official rounded p-1.5 bg-gray-50 text-left space-y-1 text-[9.5px]">
                 <div class="flex items-center justify-between border-b border-gray-200 pb-1 mb-1">
                     <span class="text-gray-500 font-medium">شماره سریال:</span>
-                    <span class="text-xs font-bold">{{ $faNum($invoice->invoice_number ?: $invoice->proforma_invoice_number) }}</span>
+                    <span
+                        class="text-xs font-bold">{{ $faNum($invoice->invoice_number ?: $invoice->proforma_invoice_number) }}</span>
                 </div>
                 <div class="flex items-center justify-between">
                     <span class="text-gray-500 font-medium">تاریخ صدور:</span>
@@ -396,7 +425,8 @@
                 <div class="flex items-center justify-between pt-1 border-t border-gray-200 mt-1">
                     <span class="text-gray-500 font-medium">وضعیت:</span>
                     <div class="space-x-1 space-x-reverse">
-                        <span class="status-official-tag" style="background-color: {{ $statusColor }}15; color: {{ $statusColor }}; border-color: {{ $statusColor }}55;">
+                        <span class="status-official-tag"
+                              style="background-color: {{ $statusColor }}15; color: {{ $statusColor }}; border-color: {{ $statusColor }}55;">
                             {{ $statusName }}
                         </span>
                     </div>
@@ -406,7 +436,9 @@
 
         @if($hasSellerBlock)
             <div class="border border-official rounded mb-2">
-                <div class="bg-gray-100 border-b border-official text-center font-bold py-1 text-[10.5px]">مشخصات فروشنده</div>
+                <div class="bg-gray-100 border-b border-official text-center font-bold py-1 text-[10.5px]">مشخصات
+                    فروشنده
+                </div>
                 <div class="p-2 grid grid-cols-4 gap-y-1.5 gap-x-3 text-[10px]">
                     @foreach($sellerFields as $field)
                         <div class="col-span-{{ $field['span'] }}">
@@ -421,7 +453,8 @@
 
         {{-- Buyer Info --}}
         <div class="border border-official rounded mb-2">
-            <div class="bg-gray-100 border-b border-official text-center font-bold py-1 text-[10.5px]">مشخصات خریدار</div>
+            <div class="bg-gray-100 border-b border-official text-center font-bold py-1 text-[10.5px]">مشخصات خریدار
+            </div>
             <div class="p-2 grid grid-cols-4 gap-1.5 text-[10px]">
                 @if($buyerNameField)
                     <div class="col-span-2"><span class="text-gray-600">نام شخص حقیقی/حقوقی:</span> <span
@@ -470,8 +503,22 @@
                         if (($taxMode ?? 'invoice') === 'item') {
                             $rowTotal += $item->tax_amount;
                         }
+                        $itemMeta = is_array($item->meta) ? $item->meta : (json_decode($item->meta, true) ?: []);
+                        $currentPkgId = $itemMeta['_packageGroupId'] ?? (!empty($itemMeta['_packageTitle']) ? $itemMeta['_packageTitle'] : null);
+                        $prevItem = $index > 0 ? $invoice->items[$index - 1] : null;
+                        $prevMeta = $prevItem ? (is_array($prevItem->meta) ? $prevItem->meta : (json_decode($prevItem->meta, true) ?: [])) : [];
+                        $prevPkgId = $prevMeta['_packageGroupId'] ?? (!empty($prevMeta['_packageTitle']) ? $prevMeta['_packageTitle'] : null);
+                        $isFirstInPackage = !empty($currentPkgId) && ($currentPkgId !== $prevPkgId);
+                        $isInPackage = !empty($currentPkgId);
                     @endphp
-                    <tr class="avoid-break">
+                    @if($isFirstInPackage)
+                        <tr class="avoid-break" style="background-color: #fef3c7; -webkit-print-color-adjust: exact; print-color-adjust: exact;">
+                            <td colspan="{{ (($taxMode ?? 'invoice') === 'item') ? 8 : 7 }}" class="table-cell-border text-right px-3 py-1.5 font-bold text-[9.5px] text-amber-950">
+                                <span> اقلام {{ $itemMeta['_packageTitle'] ?? 'پکیج' }}</span>
+                            </td>
+                        </tr>
+                    @endif
+                    <tr class="avoid-break" @if($isInPackage) style="background-color: #fffdf7;" @endif>
                         <td class="table-cell-border">{{ $faNum($index + 1) }}</td>
                         <td class="table-cell-border text-right">
                             <span
@@ -586,12 +633,15 @@
                 @endif
                 @if($invoice->discount_amount > 0)
                     <tr class="bg-gray-100 font-bold">
-                        <td colspan="{{ $footColspan }}" class="table-cell-border text-left text-red-600">مجموع تخفیف‌ها:</td>
+                        <td colspan="{{ $footColspan }}" class="table-cell-border text-left text-red-600">مجموع
+                            تخفیف‌ها:
+                        </td>
                         <td class="table-cell-border text-red-600">{{ $faNum(number_format($invoice->discount_amount)) }}</td>
                     </tr>
                 @endif
                 <tr class="bg-gray-100 font-bold text-[12px]">
-                    <td colspan="{{ $footColspan }}" class="table-cell-border text-left text-indigo-600">مبلغ نهایی ({{ $currencyLabel }}
+                    <td colspan="{{ $footColspan }}" class="table-cell-border text-left text-indigo-600">مبلغ نهایی
+                        ({{ $currencyLabel }}
                         ):
                     </td>
                     <td class="table-cell-border text-indigo-600">{{ $faNum(number_format($total)) }}</td>
@@ -642,22 +692,30 @@
             </div>
         @endif
 
+        @php
+            $officialBoxMinHeight = $stampOfficialHeight ? max(40, $stampOfficialHeight) : 40;
+            $officialRowMinHeight = max(65, $officialBoxMinHeight + 25);
+        @endphp
         <div class="border border-official rounded p-2 mt-2 official-signature-block avoid-break">
-            <div class="flex justify-between items-stretch text-center" style="min-height: 65px;">
+            <div class="flex justify-between items-stretch text-center"
+                 style="min-height: {{ $officialRowMinHeight }}px;">
                 <div class="w-1/2 flex flex-col justify-between items-center px-2">
                     <p class="font-bold text-[10.5px] border-b border-gray-200 pb-1 w-full">مهر و امضای فروشنده</p>
-                    <div class="flex-1 flex items-center justify-center py-1 w-full" style="min-height: 40px;">
+                    <div class="flex-1 flex items-center justify-center py-1 w-full"
+                         style="min-height: {{ $officialBoxMinHeight }}px;">
                         @if($stampSignatureDataUri)
                             <img src="{{ $stampSignatureDataUri }}" alt="مهر و امضا"
-                                 style="max-height: 40px; max-width: 100%; object-fit: contain; mix-blend-mode: multiply;">
+                                 style="{{ $stampOfficialImgStyle }}">
                         @endif
                     </div>
                     <p class="text-[9.5px] font-bold text-gray-700 pt-0.5 border-t border-dashed border-gray-300 w-full">{{ $sellerInfo['name'] }}</p>
                 </div>
-                <div class="w-1/2 flex flex-col justify-between items-center px-2 border-r border-dashed border-gray-400">
+                <div
+                    class="w-1/2 flex flex-col justify-between items-center px-2 border-r border-dashed border-gray-400">
                     <p class="font-bold text-[10.5px] border-b border-gray-200 pb-1 w-full">مهر و امضای خریدار</p>
-                    <div class="flex-1 w-full" style="min-height: 40px;"></div>
-                    <p class="text-[9.5px] font-bold text-gray-700 pt-0.5 border-t border-dashed border-gray-300 w-full">تأیید و امضاء</p>
+                    <div class="flex-1 w-full" style="min-height: {{ $officialBoxMinHeight }}px;"></div>
+                    <p class="text-[9.5px] font-bold text-gray-700 pt-0.5 border-t border-dashed border-gray-300 w-full">
+                        تأیید و امضاء</p>
                 </div>
             </div>
         </div>

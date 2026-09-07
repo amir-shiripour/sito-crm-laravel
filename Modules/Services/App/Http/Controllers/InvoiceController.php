@@ -8,7 +8,10 @@ use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Modules\Accounting\App\Models\AccountingSetting;
 use Modules\Accounting\App\Services\AccountingEngine;
+use Modules\Accounting\App\Services\ChequeService;
+use Modules\Accounting\Entities\Cheque;
 use Modules\Clients\Entities\Client;
 use Modules\Market\App\Models\MarketOrderStatus;
 use Modules\Market\App\Services\StockService;
@@ -25,6 +28,7 @@ use Modules\Services\App\Http\Models\Status;
 use Modules\Services\App\Http\Requests\StoreInvoiceRequest;
 use Modules\Settings\Entities\Setting;
 use Modules\Wallet\App\Enums\TransactionType;
+use Modules\Wallet\App\Models\Wallet;
 use Modules\Wallet\App\Services\WalletService;
 use Nwidart\Modules\Facades\Module;
 use Spatie\Browsershot\Browsershot;
@@ -43,8 +47,12 @@ class InvoiceController extends Controller
     {
         $this->authorize('viewAny', Invoice::class);
 
+        $user = $request->user();
+        $canViewAll = $user->can('services.invoices.view.all');
+
         $query = Invoice::with('customer', 'status', 'service')
             ->whereNotNull('invoice_number')
+            ->when(!$canViewAll, fn($q) => $q->where('created_by', $user->id))
             ->when(
                 $request->search,
                 fn($q, $s) => $q
@@ -68,6 +76,7 @@ class InvoiceController extends Controller
         // ── Real totals across ALL matching invoices (not just current page) ──
         $totalsQuery = Invoice::query()
             ->whereNotNull('invoice_number')
+            ->when(!$canViewAll, fn($q) => $q->where('created_by', $user->id))
             ->when(
                 $request->search,
                 fn($q, $s) => $q
@@ -108,8 +117,12 @@ class InvoiceController extends Controller
     {
         $this->authorize('viewAny', Invoice::class);
 
+        $user = $request->user();
+        $canViewAll = $user->can('services.invoices.view.all');
+
         $query = Invoice::with('customer', 'status', 'service')
             ->whereNull('invoice_number')
+            ->when(!$canViewAll, fn($q) => $q->where('created_by', $user->id))
             ->when(
                 $request->search,
                 fn($q, $s) => $q
@@ -166,8 +179,8 @@ class InvoiceController extends Controller
         $toJalali = function ($date) {
             if (!$date) return '';
             try {
-                if (class_exists(\Morilog\Jalali\Jalalian::class)) {
-                    return \Morilog\Jalali\Jalalian::fromDateTime($date)->format('Y/m/d');
+                if (class_exists(Jalalian::class)) {
+                    return Jalalian::fromDateTime($date)->format('Y/m/d');
                 }
             } catch (\Throwable $e) {}
             return substr((string)$date, 0, 10);
@@ -446,6 +459,12 @@ class InvoiceController extends Controller
         [$roundedGrandTotal, $roundingMeta] = $this->applyRounding($grandTotal, $settings);
         $currency = $settings['currency'] ?? $settings['payment_currency'] ?? 'toman';
 
+        $packageTitles = collect($preparedItems)->pluck('meta._packageTitle')->filter()->unique()->values()->all();
+        if (!empty($packageTitles)) {
+            $data['meta'] = is_array($data['meta'] ?? null) ? $data['meta'] : [];
+            $data['meta']['packages'] = $packageTitles;
+        }
+
         $invoiceData = $this->buildInvoiceData(
             $data, $request->user()->id,
             $subtotal, $totalDiscount, $totalTax, $roundedGrandTotal,
@@ -662,6 +681,13 @@ class InvoiceController extends Controller
             $existingMeta['client_selected_fields'] = $cleanedSelectedFields;
         }
 
+        $packageTitles = collect($preparedItems)->pluck('meta._packageTitle')->filter()->unique()->values()->all();
+        if (!empty($packageTitles)) {
+            $existingMeta['packages'] = $packageTitles;
+        } else {
+            unset($existingMeta['packages']);
+        }
+
         $statusId = $invoice->status_id;
         if (!$invoice->proforma_invoice_number && (int)round($roundedGrandTotal) <= 0) {
             $paidStatus = Status::where('name', 'پرداخت شده')->first()
@@ -764,7 +790,7 @@ class InvoiceController extends Controller
 
     public function createPayment(Invoice $invoice)
     {
-        $this->authorize('update', $invoice);
+        $this->authorize('pay', $invoice);
 
         if ($invoice->isMerged()) {
             return redirect()->route('services.invoices.show', $invoice)->with('error', 'امکان ثبت پرداخت برای فاکتور ادغام شده وجود ندارد.');
@@ -785,7 +811,7 @@ class InvoiceController extends Controller
         $customerCheques = [];
         if (Module::has('Accounting') && Module::isEnabled('Accounting')) {
             if ($invoice->customer_id) {
-                $customerCheques = \Modules\Accounting\Entities\Cheque::where('client_id', $invoice->customer_id)
+                $customerCheques = Cheque::where('client_id', $invoice->customer_id)
                     ->where('type', 'receivable')
                     ->where('status', 'pending')
                     ->get()
@@ -807,7 +833,7 @@ class InvoiceController extends Controller
                     })
                     ->values()
                     ->map(function ($cheque) use ($conversionFactor) {
-                        $cheque->due_date_jalali = \Morilog\Jalali\Jalalian::fromCarbon($cheque->due_date)->format('Y/m/d');
+                        $cheque->due_date_jalali = Jalalian::fromCarbon($cheque->due_date)->format('Y/m/d');
                         $cheque->display_amount = $cheque->amount * $conversionFactor;
                         return $cheque;
                     });
@@ -817,13 +843,13 @@ class InvoiceController extends Controller
         $customerWallet = null;
         if (Module::has('Wallet') && Module::isEnabled('Wallet')) {
             if ($invoice->customer_id) {
-                $clientClass = (new \Modules\Clients\Entities\Client())->getMorphClass();
-                $customerWallet = \Modules\Wallet\App\Models\Wallet::where('holder_type', $clientClass)
+                $clientClass = (new Client())->getMorphClass();
+                $customerWallet = Wallet::where('holder_type', $clientClass)
                     ->where('holder_id', $invoice->customer_id)
                     ->first();
 
                 if (!$customerWallet && $invoice->customer) {
-                    $customerWallet = \Modules\Wallet\App\Models\Wallet::where('holder_type', get_class($invoice->customer))
+                    $customerWallet = Wallet::where('holder_type', get_class($invoice->customer))
                         ->where('holder_id', $invoice->customer->id)
                         ->first();
                 }
@@ -842,7 +868,7 @@ class InvoiceController extends Controller
 
     public function storePayment(Request $request, Invoice $invoice)
     {
-        $this->authorize('update', $invoice);
+        $this->authorize('pay', $invoice);
 
         if ($invoice->isMerged()) {
             return redirect()->route('services.invoices.show', $invoice)->with('error', 'امکان ثبت پرداخت برای فاکتور ادغام شده وجود ندارد.');
@@ -930,7 +956,7 @@ class InvoiceController extends Controller
 
         $chequesTotal = 0;
         if (!empty($chequeIds) && Module::has('Accounting') && Module::isEnabled('Accounting')) {
-            $chequesTotal = (int)\Modules\Accounting\Entities\Cheque::whereIn('id', $chequeIds)
+            $chequesTotal = (int)Cheque::whereIn('id', $chequeIds)
                 ->where('type', 'receivable')
                 ->where('status', 'pending')
                 ->sum('amount');
@@ -951,7 +977,7 @@ class InvoiceController extends Controller
 
         $checkSetting = true;
         if (Module::has('Accounting') && Module::isEnabled('Accounting')) {
-            $checkSetting = \Modules\Accounting\App\Models\AccountingSetting::get('general.check_cheque_due_dates', true);
+            $checkSetting = AccountingSetting::get('general.check_cheque_due_dates', true);
         }
 
         $lastPayment = null;
@@ -973,13 +999,13 @@ class InvoiceController extends Controller
                     $customerWallet = null;
                     if (Module::has('Wallet') && Module::isEnabled('Wallet')) {
                         if ($invoice->customer_id) {
-                            $clientClass = (new \Modules\Clients\Entities\Client())->getMorphClass();
-                            $customerWallet = \Modules\Wallet\App\Models\Wallet::where('holder_type', $clientClass)
+                            $clientClass = (new Client())->getMorphClass();
+                            $customerWallet = Wallet::where('holder_type', $clientClass)
                                 ->where('holder_id', $invoice->customer_id)
                                 ->first();
 
                             if (!$customerWallet && $invoice->customer) {
-                                $customerWallet = \Modules\Wallet\App\Models\Wallet::where('holder_type', get_class($invoice->customer))
+                                $customerWallet = Wallet::where('holder_type', get_class($invoice->customer))
                                     ->where('holder_id', $invoice->customer->id)
                                     ->first();
                             }
@@ -1034,12 +1060,11 @@ class InvoiceController extends Controller
                     }
                 }
 
-                // 2. Process Cheque Payments if provided
                 $remainingDue = $invoice->total - $invoice->calculatePaidAmount();
 
                 if (!empty($chequeIds) && $remainingDue > 0) {
                     if (Module::has('Accounting') && Module::isEnabled('Accounting')) {
-                        $cheques = \Modules\Accounting\Entities\Cheque::whereIn('id', $chequeIds)
+                        $cheques = Cheque::whereIn('id', $chequeIds)
                             ->where('type', 'receivable')
                             ->where('status', 'pending')
                             ->get();
@@ -1064,7 +1089,7 @@ class InvoiceController extends Controller
 
                             $lastPayment = $chequePayment;
 
-                            app(\Modules\Accounting\App\Services\ChequeService::class)->attachToInvoice($cheque, $invoice->id);
+                            app(ChequeService::class)->attachToInvoice($cheque, $invoice->id);
 
                             $remainingDue -= $chequeAmountToPay;
                         }
@@ -1072,7 +1097,6 @@ class InvoiceController extends Controller
                 }
 
                 // 3. Process Direct/Manual Payment Items
-                // Continuously track remainingDue without resetting (since pending cheques are already counted in $remainingDue)
 
                 foreach ($paymentItems as $item) {
                     if ($remainingDue <= 0) break;
@@ -1138,11 +1162,10 @@ class InvoiceController extends Controller
             return back()->withInput()->with('error', 'خطا در ثبت پرداخت: ' . $e->getMessage());
         }
 
-        // شلیک رویدادهای فاکتور به جای پرداخت
-        if (class_exists(\Modules\Workflows\Services\WorkflowEngine::class) && $lastPayment) {
+        if (class_exists(WorkflowEngine::class) && $lastPayment) {
             try {
                 $eventKey = $invoice->isPaid() ? 'invoice_paid' : 'invoice_unpaid';
-                app(\Modules\Workflows\Services\WorkflowEngine::class)->start($eventKey, 'INVOICE', $invoice->id, [
+                app(WorkflowEngine::class)->start($eventKey, 'INVOICE', $invoice->id, [
                     'amount' => $lastPayment->amount,
                     'is_paid' => $invoice->isPaid(),
                     'is_overdue' => $invoice->isOverdue(),
@@ -1160,7 +1183,7 @@ class InvoiceController extends Controller
 
     public function cancelPayment(Request $request, Invoice $invoice, Payment $payment)
     {
-        $this->authorize('update', $invoice);
+        $this->authorize('cancelPayment', $invoice);
 
         if ($payment->invoice_id !== $invoice->id) {
             return back()->with('error', 'این پرداخت متعلق به این فاکتور نیست.');
@@ -1200,10 +1223,10 @@ class InvoiceController extends Controller
             return back()->with('error', 'خطا در لغو پرداخت: ' . $e->getMessage());
         }
 
-        if (class_exists(\Modules\Workflows\Services\WorkflowEngine::class)) {
+        if (class_exists(WorkflowEngine::class)) {
             try {
                 $eventKey = $invoice->isPaid() ? 'invoice_paid' : 'invoice_unpaid';
-                app(\Modules\Workflows\Services\WorkflowEngine::class)->start($eventKey, 'INVOICE', $invoice->id, [
+                app(WorkflowEngine::class)->start($eventKey, 'INVOICE', $invoice->id, [
                     'amount' => $payment->amount,
                     'is_paid' => $invoice->isPaid(),
                     'is_overdue' => $invoice->isOverdue(),
@@ -1309,7 +1332,7 @@ class InvoiceController extends Controller
 
     public function cancel(Invoice $invoice)
     {
-        $this->authorize('update', $invoice);
+        $this->authorize('cancel', $invoice);
 
         $cancelledStatus = Status::where('type', 'payment')
             ->where('name', 'لغو شده')
@@ -1399,7 +1422,7 @@ class InvoiceController extends Controller
         $viewName = $printMode === 'official' ? 'services::invoices.print_official' : 'services::invoices.print';
         $taxMode = $settings['services_tax_mode'] ?? 'invoice';
 
-        return view($viewName, compact('invoice', 'currency', 'sellerInfo', 'paymentStatuses', 'siteName', 'appLogo', 'taxMode'));
+        return view($viewName, compact('invoice', 'currency', 'sellerInfo', 'paymentStatuses', 'siteName', 'appLogo', 'taxMode', 'settings'));
     }
 
     public function downloadPdf(Invoice $invoice)
@@ -1419,7 +1442,7 @@ class InvoiceController extends Controller
         $viewName = $printMode === 'official' ? 'services::invoices.print_official' : 'services::invoices.print';
         $taxMode = $settings['services_tax_mode'] ?? 'invoice';
 
-        $html = view($viewName, compact('invoice', 'currency', 'sellerInfo', 'paymentStatuses', 'siteName', 'appLogo', 'taxMode'))->render();
+        $html = view($viewName, compact('invoice', 'currency', 'sellerInfo', 'paymentStatuses', 'siteName', 'appLogo', 'taxMode', 'settings'))->render();
         $browsershot = Browsershot::html($html);
 
         if (PHP_OS_FAMILY === 'Windows') {
@@ -1449,7 +1472,7 @@ class InvoiceController extends Controller
 
     public function pay(Request $request, Invoice $invoice)
     {
-        $this->authorize('update', $invoice);
+        $this->authorize('pay', $invoice);
 
         $request->validate([
             'payment_mode' => 'required|in:cash,installment',
@@ -1499,7 +1522,7 @@ class InvoiceController extends Controller
 
     public function convertToInvoice(Request $request, Invoice $invoice)
     {
-        $this->authorize('update', $invoice);
+        $this->authorize('convertToInvoice', $invoice);
 
         if ($invoice->invoice_number) {
             return back()->with('error', 'این پیش‌فاکتور قبلاً به فاکتور تبدیل شده است.');

@@ -1,6 +1,10 @@
 @php
-    use Modules\Clients\Entities\ClientForm;use Modules\Clients\Entities\ClientSetting;use Modules\Services\App\Http\Models\Status;
-    use Modules\Settings\Entities\Setting;use Morilog\Jalali\Jalalian;
+    use Modules\Clients\Entities\ClientForm;
+    use Modules\Clients\Entities\ClientSetting;
+    use Modules\DomainManager\Entities\DomainRecord;
+    use Modules\Services\App\Http\Models\Status;
+    use Modules\Settings\Entities\Setting;
+    use Morilog\Jalali\Jalalian;
     use Carbon\Carbon;
 
     if(!isset($settings)) {
@@ -15,7 +19,7 @@
 @php
     $currencyLabel = $currency === 'rial' ? 'ریال' : 'تومان';
     $relatedInvoices = collect();
-    if (method_exists($order, 'invoices')) {
+    if (method_exists($order, 'invoices') && ($order->invoice_id || $order->id)) {
         try {
             $relatedInvoices = $order->invoices()->with('status')->get();
         } catch (Throwable $e) {
@@ -269,8 +273,8 @@
                             d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                 </span>
                 جزئیات سفارش
-                <sزpan
-                    class="text-indigo-600 dark:text-indigo-400 dir-ltr">{{ $order->order_number }}</sزpan>
+                <span
+                    class="text-indigo-600 dark:text-indigo-400 dir-ltr">{{ $order->order_number }}</span>
             </h1>
             <div class="flex items-center flex-wrap gap-3">
                 <a href="{{ request('from') === 'client' ? route('user.clients.show', [$order->customer_id ?? ($order->invoice ? $order->invoice->customer_id : 1)]) . '#orders' : route('services.orders.index') }}"
@@ -546,6 +550,41 @@
                     </div>
                 @endif
             </div>
+        @else
+            <div class="{{ $cardClass }}">
+                <div
+                    class="p-6 border-b border-gray-100 dark:border-gray-700/50 bg-gradient-to-l from-amber-50/50 to-transparent dark:from-amber-500/10 flex items-center justify-between flex-wrap gap-3">
+                    <h3 class="text-lg font-black text-amber-700 dark:text-amber-400 flex items-center gap-3">
+                        <div
+                            class="p-2 bg-amber-100 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400 rounded-lg">
+                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                            </svg>
+                        </div>
+                        فاکتورهای مرتبط
+                    </h3>
+                </div>
+
+                <div class="p-8 md:p-12 flex flex-col items-center justify-center text-center">
+                    <div
+                        class="w-16 h-16 rounded-2xl bg-amber-50 dark:bg-amber-500/10 text-amber-500 dark:text-amber-400 flex items-center justify-center mb-4 border border-amber-100 dark:border-amber-500/20 shadow-xs">
+                        <svg class="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.6">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01"/>
+                        </svg>
+                    </div>
+                    <span
+                        class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold bg-amber-50/80 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300 border border-amber-200/80 dark:border-amber-800/40 shadow-xs">
+                        <span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+                        فاکتوری برای این سفارش موجود نیست
+                    </span>
+                    <p class="text-xs text-gray-400 dark:text-gray-500 mt-2">
+                        هیچ فاکتور یا پیش‌فاکتور مرتبطی به این سفارش متصل نشده است.
+                    </p>
+                </div>
+            </div>
         @endif
 
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -570,8 +609,19 @@
                             <div
                                 class="bg-gray-50 dark:bg-gray-900/40 p-5 rounded-2xl border border-gray-100 dark:border-gray-800">
                                 <span class="block text-xs font-bold text-gray-400 mb-2">نام سرویس</span>
-                                <span
-                                    class="font-black text-gray-900 dark:text-white text-lg">{{ $order->service?->name ?? $order->notes ?? 'ردیف دستی' }}</span>
+                                <div class="flex items-center gap-2 flex-wrap">
+                                    <span
+                                        class="font-black text-gray-900 dark:text-white text-lg">{{ $order->service?->name ?? $order->notes ?? 'ردیف دستی' }}</span>
+                                    @if(!empty($invoiceItem?->meta['_packageTitle']))
+                                        <span
+                                            class="inline-flex items-center gap-1 text-[11px] font-bold text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-500/10 border border-amber-300 dark:border-amber-500/20 px-2.5 py-1 rounded-lg">
+                                            <svg class="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
+                                            </svg>
+                                            پکیج: {{ $invoiceItem->meta['_packageTitle'] }}
+                                        </span>
+                                    @endif
+                                </div>
                             </div>
 
                             <div
@@ -634,7 +684,7 @@
 
                 {{-- DomainManager Service Details Widget (Decoupled with Module & Category Check) --}}
                 @php
-                    $isDomainService = ($order->service?->category?->slug === 'domain') || (class_exists(\Modules\DomainManager\Entities\DomainRecord::class) && \Modules\DomainManager\Entities\DomainRecord::where('service_order_id', $order->id)->exists());
+                    $isDomainService = ($order->service?->category?->slug === 'domain') || (class_exists(DomainRecord::class) && DomainRecord::where('service_order_id', $order->id)->exists());
                 @endphp
                 @if(\Nwidart\Modules\Facades\Module::has('DomainManager') && \Nwidart\Modules\Facades\Module::isEnabled('DomainManager') && $isDomainService)
                     @include('domainmanager::partials.order-domain-card', ['order' => $order])
@@ -863,7 +913,7 @@
                             </ol>
                         </div>
                     </div>
-                    @endif
+                @endif
             </div>
         </div>
     </div>
@@ -897,7 +947,7 @@
                     },
                     formatRenewalPrice(e) {
                         if (this.renewalPriceType === 'auto') return;
-                        let num = e.target.value.replace(/[^\d]/g, '');
+                        let num = e.target.value.replace(/\D/g, '');
                         if (num) {
                             this.renewalPrice = Number(num).toLocaleString('en-US');
                         } else {

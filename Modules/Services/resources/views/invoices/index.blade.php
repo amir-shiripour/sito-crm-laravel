@@ -1,5 +1,5 @@
 @php
-    use Modules\Services\App\Http\Models\Invoice;
+    use Carbon\Carbon;use Modules\Services\App\Http\Models\Invoice;
     use Morilog\Jalali\Jalalian;
     use Modules\Services\App\Http\Models\Status;
 @endphp
@@ -12,10 +12,10 @@
 
     $toJalali = function ($date) {
         if (!$date) return null;
-        if ($date instanceof \Carbon\Carbon && $date->year < 1900) {
+        if ($date instanceof Carbon && $date->year < 1900) {
             return new Jalalian($date->year, $date->month, $date->day, $date->hour, $date->minute, $date->second);
         }
-        if ($date instanceof \Carbon\Carbon) {
+        if ($date instanceof Carbon) {
             return Jalalian::fromCarbon($date);
         }
         return $date;
@@ -147,7 +147,6 @@
             </div>
         </div>
 
-        {{-- Filter bar (تنظیم برای رزولوشن عریض) --}}
         <form method="GET"
               class="bg-white dark:bg-gray-800/60 p-5 rounded-3xl border border-gray-100 dark:border-gray-700/50 shadow-sm backdrop-blur-xl">
             <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-12 gap-5">
@@ -370,21 +369,6 @@
                                                 </svg>
                                             </a>
                                         @endif
-                                    @endcan
-                                    @can('delete', $invoice)
-                                        <form method="POST" action="{{ route('services.invoices.destroy', $invoice) }}"
-                                              onsubmit="return confirm('فاکتور حذف شود؟')" class="inline">
-                                            @csrf @method('DELETE')
-                                            <button type="submit"
-                                                    class="p-2.5 rounded-xl text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10 transition-all hover:scale-110"
-                                                    title="حذف">
-                                                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24"
-                                                     stroke="currentColor" stroke-width="2">
-                                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                                          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                                                </svg>
-                                            </button>
-                                        </form>
                                     @endcan
                                     <a href="{{ route('services.invoices.print', $invoice) }}"
                                        class="p-2.5 rounded-xl text-gray-400 hover:text-sky-600 hover:bg-sky-50 dark:hover:bg-sky-500/10 transition-all hover:scale-110"

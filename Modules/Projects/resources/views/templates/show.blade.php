@@ -88,6 +88,7 @@
             </div>
 
             <div class="flex items-center gap-2.5 shrink-0">
+                @if(auth()->user()?->can('projects.templates.edit'))
                 <a href="{{ route('projects.templates.edit', $template) }}"
                    class="px-4 py-2.5 rounded-2xl bg-amber-500 hover:bg-amber-600 text-white text-xs sm:text-sm font-bold shadow-md shadow-amber-500/20 transition-all flex items-center gap-1.5">
                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -96,6 +97,7 @@
                     </svg>
                     ویرایش الگو
                 </a>
+                @endif
                 <a href="{{ route('projects.templates.index') }}"
                    class="px-4 py-2.5 rounded-2xl bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 text-xs sm:text-sm font-bold transition-all">
                     بازگشت
