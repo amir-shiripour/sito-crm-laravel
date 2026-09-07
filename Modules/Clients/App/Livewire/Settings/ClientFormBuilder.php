@@ -24,7 +24,7 @@ class ClientFormBuilder extends Component
     public bool $is_active = true;
 
     public array $schema = ['fields' => []];
-    public array $systemFieldIds = ['full_name', 'phone', 'email', 'national_code', 'notes', 'status_id', 'password', 'booking_waitlist'];
+    public array $systemFieldIds = ['username', 'full_name', 'phone', 'email', 'national_code', 'case_number', 'notes', 'status_id', 'password', 'booking_waitlist'];
 
     // لیست نقش‌ها برای select-user-by-role
     public array $roles = [];
@@ -90,6 +90,10 @@ class ClientFormBuilder extends Component
         }
 
         foreach ($this->schema['fields'] as &$f) {
+            // مطمئن شو type همیشه ست شده است
+            if (empty($f['type'])) {
+                $f['type'] = 'text';
+            }
             // مطمئن شو required_status_keys همیشه آرایه است
             if (!isset($f['required_status_keys']) || !is_array($f['required_status_keys'])) {
                 $f['required_status_keys'] = [];
@@ -274,6 +278,10 @@ class ClientFormBuilder extends Component
                 }
             } else {
                 $f['is_system'] = false;
+            }
+
+            if (empty($f['type'])) {
+                $f['type'] = 'text';
             }
 
             // نرمال‌سازی required_status_keys → همیشه آرایه از keyهای غیرخالی

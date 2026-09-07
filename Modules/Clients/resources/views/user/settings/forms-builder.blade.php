@@ -265,7 +265,7 @@
 
             @php
                 $systemFieldIds =
-                ['full_name','phone','email','national_code','case_number','notes','status_id','password','booking_waitlist'];
+                ['username','full_name','phone','email','national_code','case_number','notes','status_id','password','booking_waitlist'];
 
                 $systemFields = [];
                 $customFields = [];
@@ -412,7 +412,7 @@
                                         @if(!empty($customFields))
                                             <optgroup label="فیلدهای سفارشی">
                                                 @foreach($customFields as $cfItem)
-                                                    <option value="{{ $cfItem['fid'] }}">{{ $cfItem['field']['label'] ?? $cfItem['fid'] }} ({{ $cfItem['field']['type'] }})</option>
+                                                    <option value="{{ $cfItem['fid'] }}">{{ $cfItem['field']['label'] ?? $cfItem['fid'] }} ({{ $cfItem['field']['type'] ?? 'سفارشی' }})</option>
                                                 @endforeach
                                             </optgroup>
                                         @endif
@@ -852,7 +852,7 @@
 
                                     <span
                                         class="inline-flex items-center px-2 py-0.5 rounded text-xs font-mono font-semibold bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300 uppercase shrink-0">
-                                        {{ $field['type'] }}
+                                        {{ $field['type'] ?? 'text' }}
                                     </span>
                                     <input type="text" wire:model="schema.fields.{{ $i }}.label"
                                            class="bg-transparent border-0 p-0 text-sm font-bold text-gray-900 focus:ring-0 dark:text-white placeholder-gray-400 min-w-0 flex-1"
@@ -956,7 +956,7 @@
                                                placeholder="متن راهنمای داخل فیلد" wire:model="schema.fields.{{ $i }}.placeholder">
                                     </div>
 
-                                    @if(in_array($field['type'], ['text','email','number','date','textarea']))
+                                    @if(in_array($field['type'] ?? 'text', ['text','email','number','date','textarea']))
                                         <div>
                                             <label class="{{ $labelClass }}">Validation Rules</label>
                                             <input type="text" class="{{ $inputClass }} !py-1.5 !text-xs"
@@ -966,7 +966,7 @@
                                 </div>
 
                                 {{-- تنظیمات اختصاصی بر اساس نوع --}}
-                                @if($field['type'] === 'file' || $field['type'] === 'profile-photo')
+                                @if(($field['type'] ?? '') === 'file' || ($field['type'] ?? '') === 'profile-photo')
                                     <div
                                         class="grid grid-cols-1 sm:grid-cols-4 gap-4 p-4 rounded-xl bg-indigo-50/50 border border-indigo-100 dark:bg-indigo-900/20 dark:border-indigo-900/30">
                                         <div>
@@ -990,18 +990,18 @@
                                     </div>
                                 @endif
 
-                                @if($field['type'] === 'select' || $field['type'] === 'radio' || $field['type'] === 'checkbox')
+                                @if(in_array($field['type'] ?? '', ['select', 'radio', 'checkbox']))
                                     <div class="space-y-3"
                                          x-data="{
-                                             type: '{{ $field['type'] }}',
-                                             @if($field['type'] === 'select')
+                                             type: '{{ $field['type'] ?? 'select' }}',
+                                             @if(($field['type'] ?? '') === 'select')
                                              useClientsList: $wire.entangle('schema.fields.{{ $i }}.use_clients_list'),
                                              creatable: $wire.entangle('schema.fields.{{ $i }}.creatable'),
                                              saveGlobally: $wire.entangle('schema.fields.{{ $i }}.save_globally'),
                                              @endif
                                          }">
                                         {{-- گزینه استفاده از لیست clients --}}
-                                        @if($field['type'] === 'select')
+                                        @if(($field['type'] ?? '') === 'select')
                                             <div
                                                 class="flex items-center gap-2 p-3 rounded-lg bg-indigo-50/50 border border-indigo-100 dark:bg-indigo-900/20 dark:border-indigo-900/30">
                                                 <input type="checkbox" id="use-clients-{{ $i }}"
@@ -1014,7 +1014,7 @@
                                             </div>
                                         @endif
 
-                                        @if($field['type'] !== 'checkbox')
+                                        @if(($field['type'] ?? '') !== 'checkbox')
                                             <div class="space-y-2"
                                                  x-show="type === 'radio' || !useClientsList"
                                                  x-data="{
@@ -1146,7 +1146,7 @@
                                         @endif
 
                                         {{-- تنظیمات پیشرفته سلکت --}}
-                                        @if($field['type'] === 'select')
+                                        @if(($field['type'] ?? '') === 'select')
                                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                                 <div
                                                     class="flex items-center gap-2 p-3 rounded-lg bg-gray-50 border border-gray-100 dark:bg-gray-700/30 dark:border-gray-600">
@@ -1196,7 +1196,7 @@
                                     </div>
                                 @endif
 
-                                @if($field['type'] === 'select-province-city')
+                                @if(($field['type'] ?? '') === 'select-province-city')
                                     <div
                                         class="flex items-center gap-2 text-sm text-amber-600 bg-amber-50 p-3 rounded-lg border border-amber-100 dark:bg-amber-900/20 dark:text-amber-300 dark:border-amber-800">
                                         <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1207,7 +1207,7 @@
                                     </div>
                                 @endif
 
-                                @if($field['type'] === 'select-user-by-role')
+                                @if(($field['type'] ?? '') === 'select-user-by-role')
                                     <div
                                         class="grid grid-cols-1 sm:grid-cols-3 gap-4 p-4 rounded-xl bg-gray-50 border border-gray-100 dark:bg-gray-700/30 dark:border-gray-600">
                                         <div>

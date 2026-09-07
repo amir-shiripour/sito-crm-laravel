@@ -76,6 +76,19 @@ class ClientForm extends Model implements FormSchemaContract
     public static function systemFieldDefaults(): array
     {
         $defaults = [
+            'username' => [
+                'id'           => 'username',
+                'type'         => 'text',
+                'label'        => 'نام کاربری',
+                'placeholder'  => 'مثلاً: user123',
+                'group'        => 'اطلاعات ورود',
+                'width'        => '1/2',
+                'required'     => false,
+                'quick_create' => false,
+                'client_auth'  => true,
+                'is_system'    => true,
+                'required_status_keys' => [],
+            ],
             'full_name' => [
                 'id'           => 'full_name',
                 'type'         => 'text',
@@ -236,6 +249,10 @@ class ClientForm extends Model implements FormSchemaContract
             if (empty($f['id'])) {
                 $base  = ($f['type'] ?? 'fld') . '_' . substr((string) str()->uuid(), 0, 8);
                 $f['id'] = $base;
+            }
+
+            if (empty($f['type'])) {
+                $f['type'] = 'text';
             }
 
             $fid = $f['id'];
