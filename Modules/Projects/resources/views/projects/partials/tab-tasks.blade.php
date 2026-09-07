@@ -295,10 +295,12 @@
                             </button>
 
                             {{-- Phase Color Indicator & Title --}}
-                            <div class="flex items-center gap-2.5 min-w-0">
+                            <div class="flex items-center gap-2.5 min-w-0"
+                                 @click.stop="togglePhaseSelect({{ $phase->id }})"
+                                 title="کلیک روی نام برای انتخاب فاز">
                                 <span class="w-3.5 h-3.5 rounded-full shrink-0 shadow-xs"
                                       style="background-color: {{ $phase->color ?? '#6366f1' }}"></span>
-                                <h4 class="font-bold text-gray-900 dark:text-white text-sm sm:text-base truncate">
+                                <h4 class="font-bold text-gray-900 dark:text-white text-sm sm:text-base truncate hover:text-indigo-600 transition-colors">
                                     {{ $phase->name }}
                                 </h4>
                             </div>
@@ -802,6 +804,28 @@
                 deselectAll() {
                     this.selectedPhases = [];
                     this.selectedTasks = [];
+                },
+                togglePhaseSelect(id) {
+                    const idx = this.selectedPhases.indexOf(id);
+                    const sIdx = this.selectedPhases.indexOf(String(id));
+                    if (idx > -1) {
+                        this.selectedPhases.splice(idx, 1);
+                    } else if (sIdx > -1) {
+                        this.selectedPhases.splice(sIdx, 1);
+                    } else {
+                        this.selectedPhases.push(id);
+                    }
+                },
+                toggleTaskSelect(id) {
+                    const idx = this.selectedTasks.indexOf(id);
+                    const sIdx = this.selectedTasks.indexOf(String(id));
+                    if (idx > -1) {
+                        this.selectedTasks.splice(idx, 1);
+                    } else if (sIdx > -1) {
+                        this.selectedTasks.splice(sIdx, 1);
+                    } else {
+                        this.selectedTasks.push(id);
+                    }
                 },
                 async deleteSelected() {
                     const phaseCount = this.selectedPhases.length;

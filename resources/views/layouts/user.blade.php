@@ -213,10 +213,12 @@
             closeAllMenus() {
                 this.openedMenuKey = null;
                 this.closedAll = true;
+                this.activeClosedKeys = {};
                 this.sidebarFilter = '';
                 this.mobileOpen = false;
                 try {
                     localStorage.removeItem('openedMenuKey');
+                    localStorage.removeItem('activeClosedKeys');
                 } catch (e) {}
                 window.dispatchEvent(new CustomEvent('close-all-menus'));
             },

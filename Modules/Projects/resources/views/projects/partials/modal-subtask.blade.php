@@ -179,9 +179,9 @@
                                 </div>
 
                                 <template x-for="m in getFilteredMembers()" :key="m.id">
-                                    <label @click.stop="toggleAssignee(m.id)"
-                                           class="w-full text-right px-3 py-2 text-xs rounded-xl hover:bg-indigo-50 dark:hover:bg-indigo-900/20 flex items-center justify-between gap-2.5 cursor-pointer transition-colors"
-                                           :class="isAssigneeSelected(m.id) ? 'bg-indigo-50/70 dark:bg-indigo-950/40 font-bold text-indigo-600 dark:text-indigo-400' : 'text-gray-700 dark:text-gray-300'">
+                                    <div @click.stop="toggleAssignee(m.id)"
+                                         class="w-full text-right px-3 py-2 text-xs rounded-xl hover:bg-indigo-50 dark:hover:bg-indigo-900/20 flex items-center justify-between gap-2.5 cursor-pointer transition-colors select-none"
+                                         :class="isAssigneeSelected(m.id) ? 'bg-indigo-50/70 dark:bg-indigo-950/40 font-bold text-indigo-600 dark:text-indigo-400' : 'text-gray-700 dark:text-gray-300'">
                                         <div class="flex items-center gap-2.5 min-w-0">
                                             <span
                                                 class="w-7 h-7 rounded-lg bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold text-xs shrink-0"
@@ -193,9 +193,8 @@
                                             </div>
                                         </div>
                                         <input type="checkbox" :checked="isAssigneeSelected(m.id)"
-                                               @click.stop="toggleAssignee(m.id)"
-                                               class="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 border-gray-300">
-                                    </label>
+                                               class="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 border-gray-300 pointer-events-none">
+                                    </div>
                                 </template>
 
                                 <div x-show="getFilteredMembers().length === 0"

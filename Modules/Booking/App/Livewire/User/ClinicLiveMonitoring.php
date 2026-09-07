@@ -44,7 +44,7 @@ class ClinicLiveMonitoring extends Component
     public function boot(ClinicMonitoringService $monitoringService): void
     {
         $user = Auth::user();
-        if ($user && ! $monitoringService->canViewAllAppointments($user)) {
+        if ($user && ! $monitoringService->canViewAllAppointments($user) && $monitoringService->userIsProvider($user)) {
             $this->selectedProviderId = (int) $user->id;
         }
     }
@@ -52,7 +52,7 @@ class ClinicLiveMonitoring extends Component
     public function booted(ClinicMonitoringService $monitoringService): void
     {
         $user = Auth::user();
-        if ($user && ! $monitoringService->canViewAllAppointments($user)) {
+        if ($user && ! $monitoringService->canViewAllAppointments($user) && $monitoringService->userIsProvider($user)) {
             $this->selectedProviderId = (int) $user->id;
         }
     }
@@ -91,8 +91,8 @@ class ClinicLiveMonitoring extends Component
             $this->selectedDateJalali = $todayJalali;
         }
 
-        // Scoping: If user cannot view all, lock to own provider ID
-        if (! $monitoringService->canViewAllAppointments($user)) {
+        // Scoping: If user is a restricted provider, lock to own provider ID
+        if (! $monitoringService->canViewAllAppointments($user) && $monitoringService->userIsProvider($user)) {
             $this->selectedProviderId = (int) $user->id;
         } else {
             $sessProv = session('clinic_monitoring_provider_id') ?? session('monitoring_filter_provider');
@@ -120,7 +120,7 @@ class ClinicLiveMonitoring extends Component
         $user = Auth::user();
         $monitoringService = app(ClinicMonitoringService::class);
 
-        if ($user && ! $monitoringService->canViewAllAppointments($user)) {
+        if ($user && ! $monitoringService->canViewAllAppointments($user) && $monitoringService->userIsProvider($user)) {
             $this->selectedProviderId = (int) $user->id;
         } elseif ($val === '' || $val === 'all') {
             $this->selectedProviderId = null;
@@ -208,7 +208,7 @@ class ClinicLiveMonitoring extends Component
         $this->selectedStatus = '';
         $this->searchQuery = '';
 
-        if ($user && ! $monitoringService->isAdminUser($user) && ! $user->can('booking.appointments.view.all')) {
+        if ($user && ! $monitoringService->canViewAllAppointments($user) && $monitoringService->userIsProvider($user)) {
             $this->selectedProviderId = $user->id;
         } else {
             $this->selectedProviderId = null;
@@ -272,8 +272,8 @@ class ClinicLiveMonitoring extends Component
             return;
         }
 
-        // Ownership enforcement for restricted doctors
-        if (! $monitoringService->canViewAllAppointments($user)) {
+        // Ownership enforcement for restricted doctors/providers
+        if (! $monitoringService->canViewAllAppointments($user) && $monitoringService->userIsProvider($user)) {
             if ((int) $appointment->provider_user_id !== (int) $user->id) {
                 $this->toastError = 'شما فقط مجاز به ویرایش نوبت‌های خود هستید.';
                 $this->dispatch('notify', ['type' => 'error', 'text' => $this->toastError]);
@@ -341,7 +341,7 @@ class ClinicLiveMonitoring extends Component
             return;
         }
 
-        if (! $monitoringService->canViewAllAppointments($user)) {
+        if (! $monitoringService->canViewAllAppointments($user) && $monitoringService->userIsProvider($user)) {
             if ((int) $appointment->provider_user_id !== (int) $user->id) {
                 $this->toastError = 'شما فقط مجاز به ویرایش نوبت‌های خود هستید.';
                 $this->dispatch('notify', ['type' => 'error', 'text' => $this->toastError]);
@@ -374,7 +374,7 @@ class ClinicLiveMonitoring extends Component
             return;
         }
 
-        if (! $monitoringService->canViewAllAppointments($user)) {
+        if (! $monitoringService->canViewAllAppointments($user) && $monitoringService->userIsProvider($user)) {
             if ((int) $appointment->provider_user_id !== (int) $user->id) {
                 $this->toastError = 'شما فقط مجاز به ویرایش نوبت‌های خود هستید.';
                 $this->dispatch('notify', ['type' => 'error', 'text' => $this->toastError]);
@@ -417,7 +417,7 @@ class ClinicLiveMonitoring extends Component
             return;
         }
 
-        if (! $monitoringService->canViewAllAppointments($user)) {
+        if (! $monitoringService->canViewAllAppointments($user) && $monitoringService->userIsProvider($user)) {
             if ((int) $appointment->provider_user_id !== (int) $user->id) {
                 $this->toastError = 'شما فقط مجاز به ویرایش نوبت‌های خود هستید.';
                 $this->dispatch('notify', ['type' => 'error', 'text' => $this->toastError]);
@@ -459,7 +459,7 @@ class ClinicLiveMonitoring extends Component
             return;
         }
 
-        if (! $monitoringService->canViewAllAppointments($user)) {
+        if (! $monitoringService->canViewAllAppointments($user) && $monitoringService->userIsProvider($user)) {
             if ((int) $appointment->provider_user_id !== (int) $user->id) {
                 $this->toastError = 'شما فقط مجاز به ویرایش نوبت‌های خود هستید.';
                 $this->dispatch('notify', ['type' => 'error', 'text' => $this->toastError]);

@@ -37,7 +37,7 @@ class CronService
     {
         $timestamp = Cache::get(self::HEARTBEAT_CACHE_KEY);
         $lastPulse = $timestamp ? \Carbon\Carbon::createFromTimestamp($timestamp) : null;
-        
+
         $isActive = false;
         $relativeTime = 'تاکنون تماسی ثبت نشده است';
         $jalaliTime = '-';
@@ -100,7 +100,7 @@ class CronService
             $exists = file_exists($path);
             $isWritable = $exists && is_writable($path);
             $perms = $exists ? substr(sprintf('%o', fileperms($path)), -4) : 'N/A';
-            
+
             if (!$exists || !$isWritable) {
                 $allHealthy = false;
             }
@@ -142,6 +142,16 @@ class CronService
         }
 
         $defaults = [
+            [
+                'module' => 'Projects',
+                'command' => 'projects:check-overdue-tasks',
+                'name' => 'بررسی سررسید پروژه‌ها، گروه‌ها و کارها',
+                'description' => 'بررسی خودکار تاریخ سررسید گروه‌های کاری، چک‌لیست‌ها و تاریخ پایان پروژه‌ها و انتقال به وضعیت تعویق',
+                'expression' => 'everyMinute',
+                'prevent_overlap' => true,
+                'is_active' => true,
+                'is_system' => true,
+            ],
             [
                 'module' => 'Workflows',
                 'command' => 'workflows:process',

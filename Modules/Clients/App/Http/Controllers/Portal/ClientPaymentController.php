@@ -422,10 +422,10 @@ class ClientPaymentController extends Controller
 
             $payment->update([
                 'type' => $method,
-                'status' => \Modules\Booking\Entities\BookingPayment::STATUS_PAID,
+                'status' => \Modules\Booking\Entities\BookingPayment::STATUS_PENDING,
                 'gateway_ref' => $tracking ?: $payment->gateway_ref,
                 'meta' => array_merge($payment->meta ?? [], array_filter($metaData)),
-                'paid_at' => now(),
+                'paid_at' => null,
             ]);
 
             if ($payment->appointment && in_array($payment->appointment->status, [

@@ -13,6 +13,8 @@
         $colCount === 4 => 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4',
         default => 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-' . min($colCount, 5),
     };
+
+    $canChangeStatus = auth()->user()?->can('changeKanbanStatus', $project) ?? false;
 @endphp
 
 <div class="space-y-6" x-data="kanbanBoardManager()">
@@ -28,11 +30,24 @@
                 </svg>
                 برد کانبان کارها (Kanban Board)
             </h3>
-            <p class="text-xs text-gray-400 mt-0.5">کارت‌ها را با کشیدن و رها کردن (Drag & Drop) بین ستون‌های وضعیت
-                جابجا کنید.</p>
+            <p class="text-xs text-gray-400 mt-0.5">
+                @if($canChangeStatus)
+                    کارت‌ها را با کشیدن و رها کردن (Drag & Drop) بین ستون‌های وضعیت جابجا کنید.
+                @else
+                    شما در حالت فقط مشاهده برد کانبان هستید (مجوز تغییر وضعیت کارها غیرفعال است).
+                @endif
+            </p>
         </div>
 
         <div class="flex items-center gap-3">
+            @if(!$canChangeStatus)
+                <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-2xl text-xs font-bold bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 border border-amber-200/60 dark:border-amber-800/40" title="مجوز تغییر وضعیت کارها برای نقش شما در این پروژه فعال نیست">
+                    <svg class="w-3.5 h-3.5 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m0 0v2m0-2h2m-2 0H10m11-3.5a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    فقط مشاهده
+                </span>
+            @endif
             {{-- Member Filter --}}
             <div
                 class="flex items-center gap-1.5 bg-gray-50 dark:bg-gray-900/60 px-3 py-1.5 rounded-2xl border border-gray-200 dark:border-gray-700">
@@ -102,7 +117,7 @@
 
                     @forelse($statusTasks as $task)
                         <div
-                            class="bg-white dark:bg-gray-800 p-4 rounded-2xl border border-gray-200/80 dark:border-gray-700/70 shadow-xs hover:shadow-md hover:border-indigo-200 dark:hover:border-indigo-800/60 transition-all {{ $task->isCanceled() ? 'cursor-not-allowed opacity-75' : 'cursor-grab active:cursor-grabbing' }} space-y-3 group"
+                            class="bg-white dark:bg-gray-800 p-4 rounded-2xl border border-gray-200/80 dark:border-gray-700/70 shadow-xs hover:shadow-md hover:border-indigo-200 dark:hover:border-indigo-800/60 transition-all {{ $task->isCanceled() ? 'cursor-not-allowed opacity-75' : ($canChangeStatus ? 'cursor-grab active:cursor-grabbing' : 'cursor-default') }} space-y-3 group"
                             id="kanban-task-{{ $task->id }}"
                             data-task-id="{{ $task->id }}"
                             data-status-id="{{ $status->id }}"
@@ -110,8 +125,8 @@
                             data-is-canceled="{{ $task->isCanceled() ? '1' : '0' }}"
                             data-is-delayed="{{ $task->isDelayed() ? '1' : '0' }}"
                             data-checklist='@json($task->checklistItems->map(fn($i) => ['id' => $i->id, 'title' => $i->title, 'is_done' => (bool)$i->is_done]))'
-                            draggable="{{ $task->isCanceled() ? 'false' : 'true' }}"
-                            ondragstart="handleKanbanDragStart(event, {{ $task->id }}, {{ $status->id }})"
+                            draggable="{{ (!$task->isCanceled() && $canChangeStatus) ? 'true' : 'false' }}"
+                            ondragstart="{{ $canChangeStatus ? "handleKanbanDragStart(event, {$task->id}, {$status->id})" : "event.preventDefault(); return false;" }}"
                             x-show="memberFilter === 'all' || memberFilter == '{{ $task->assigned_to }}'">
 
                             {{-- Task Title --}}
@@ -372,10 +387,16 @@
             }
         };
 
+        const kanbanCanChangeStatus = @js($canChangeStatus);
         let draggedTaskId = null;
         let originalStatusId = null;
 
         function handleKanbanDragStart(e, taskId, statusId) {
+            if (!kanbanCanChangeStatus) {
+                e.preventDefault();
+                alert('شما دسترسی لازم برای تغییر وضعیت کارها در برد کانبان را ندارید.');
+                return false;
+            }
             const taskEl = document.getElementById('kanban-task-' + taskId);
             if (taskEl && taskEl.getAttribute('data-is-canceled') === '1') {
                 e.preventDefault();
@@ -389,7 +410,7 @@
         }
 
         function handleKanbanDragOver(e, zone) {
-            if (zone.getAttribute('data-is-delayed') === '1') {
+            if (!kanbanCanChangeStatus || zone.getAttribute('data-is-delayed') === '1') {
                 e.preventDefault();
                 e.dataTransfer.dropEffect = 'none';
                 return;
@@ -406,6 +427,13 @@
         function handleKanbanDrop(e, projectId, targetStatusId, zone) {
             e.preventDefault();
             zone.classList.remove('bg-indigo-50/60', 'dark:bg-indigo-950/30', 'ring-2', 'ring-indigo-400/50');
+
+            if (!kanbanCanChangeStatus) {
+                alert('شما دسترسی لازم برای تغییر وضعیت کارها در برد کانبان را ندارید.');
+                draggedTaskId = null;
+                originalStatusId = null;
+                return;
+            }
 
             if (!draggedTaskId || originalStatusId === targetStatusId) {
                 draggedTaskId = null;
@@ -516,7 +544,7 @@
 
         function sendKanbanStatusUpdate(projectId, taskId, targetStatusId, checklistDoneIds = null, zone, taskEl, fromZone) {
             const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-            const payload = {status_id: targetStatusId};
+            const payload = {status_id: targetStatusId, from_kanban: true};
             if (checklistDoneIds !== null) {
                 payload.checklist_done_ids = checklistDoneIds;
             }

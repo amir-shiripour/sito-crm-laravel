@@ -150,7 +150,7 @@ class BookingPaymentWalletService
         }
 
         foreach ($appointment->payments as $payment) {
-            // اگر پرداخت در وضعیت در انتظار پرداخت (PENDING) باشد، خودکار لغو می‌شود
+            // پرداخت‌های در انتظار (PENDING) به صورت خودکار با لغو نوبت، لغو می‌شوند
             if ($payment->status === BookingPayment::STATUS_PENDING) {
                 $payment->update([
                     'status' => BookingPayment::STATUS_CANCELLED,
@@ -158,20 +158,13 @@ class BookingPaymentWalletService
                 continue;
             }
 
-            if ($payment->status !== BookingPayment::STATUS_PAID && $payment->status !== BookingPayment::STATUS_CANCELLED && $payment->status !== BookingPayment::STATUS_FAILED) {
-                continue;
-            }
+            // پرداخت‌های پرداخت‌شده (PAID) هرگز با لغو نوبت لغو نمی‌شوند و وجه آن‌ها در کیف پول باقی می‌ماند
+            if ($payment->status === BookingPayment::STATUS_PAID) {
+                $meta = $payment->meta ?? [];
+                $amountInRials = (float) $payment->amount;
 
-            $meta = $payment->meta ?? [];
-            $amountInRials = (float) $payment->amount;
-
-            $isOnline = in_array($payment->type, ['online', 'zarinpal', 'zibal', 'behpardakht', 'gateway']);
-            $isManualOrTransfer = in_array($payment->type, ['transfer', 'manual', 'pos', 'card']);
-
-            if ($isOnline && $payment->status === BookingPayment::STATUS_PAID && !empty($service?->credit_client_wallet)) {
-                // Online payment: Client paid real money!
-                // Money remains in client wallet.
-                if (empty($meta['wallet_credited_amount'])) {
+                // اگر به هر دلیلی کیف پول قبلاً شارژ نشده بود و سرویس شارژ کیف پول دارد، شارژ انجام می‌شود
+                if (!empty($service?->credit_client_wallet) && empty($meta['wallet_credited_amount']) && empty($meta['wallet_credited']) && $amountInRials > 0) {
                     try {
                         $tx = $this->walletService->deposit(
                             holder: $client,
@@ -182,33 +175,49 @@ class BookingPaymentWalletService
                             meta: ['appointment_id' => $appointment->id, 'payment_id' => $payment->id]
                         );
                         $meta['wallet_credited_amount'] = $amountInRials;
+                        $meta['wallet_credited'] = true;
                         $meta['wallet_deposit_tx_id'] = $tx->id;
                         $payment->update(['meta' => $meta]);
                     } catch (\Exception $e) {
-                        Log::error('Error depositing online cancelled appointment to wallet', ['exception' => $e->getMessage()]);
+                        Log::error('Error depositing appointment payment to wallet on cancellation', ['exception' => $e->getMessage()]);
                     }
                 }
-            } elseif ($isManualOrTransfer) {
-                // If appointment was cancelled because transfer/receipt was rejected by admin:
-                // Deduct any credited wallet amount!
-                $creditedAmount = (float) ($meta['wallet_credited_amount'] ?? 0);
-                if ($creditedAmount > 0 && empty($meta['wallet_deducted_amount'])) {
-                    try {
-                        $tx = $this->walletService->withdraw(
-                            holder: $client,
-                            amount: $creditedAmount,
-                            type: TransactionType::WITHDRAW,
-                            payable: $appointment,
-                            description: "کسر از کیف پول بابت لغو نوبت غیرمعتبر #" . $appointment->id,
-                            meta: ['appointment_id' => $appointment->id, 'payment_id' => $payment->id]
-                        );
-                        $meta['wallet_deducted_amount'] = $creditedAmount;
-                        $meta['wallet_withdraw_tx_id'] = $tx->id;
-                        $payment->update(['meta' => $meta]);
-                    } catch (\Exception $e) {
-                        Log::error('Error withdrawing unconfirmed transfer on appointment cancel', ['exception' => $e->getMessage()]);
-                    }
-                }
+            }
+        }
+    }
+
+    /**
+     * Handle payment hard-delete.
+     */
+    public function handlePaymentDeleted(BookingPayment $payment): void
+    {
+        $client = Client::find($payment->client_id);
+        if (!$client) {
+            return;
+        }
+
+        $meta = $payment->meta ?? [];
+        $creditedAmount = (float) ($meta['wallet_credited_amount'] ?? 0);
+        if ($creditedAmount <= 0 && !empty($meta['wallet_credited'])) {
+            $creditedAmount = (float) $payment->amount;
+        }
+
+        if ($creditedAmount > 0) {
+            try {
+                $this->walletService->withdraw(
+                    holder: $client,
+                    amount: $creditedAmount,
+                    type: TransactionType::WITHDRAW,
+                    payable: null,
+                    description: "کسر از کیف پول به دلیل حذف رکورد پرداخت #" . $payment->id,
+                    meta: [
+                        'payment_id' => $payment->id,
+                        'appointment_id' => $payment->appointment_id,
+                        'action' => 'payment_deleted',
+                    ]
+                );
+            } catch (\Exception $e) {
+                Log::error('Error withdrawing from wallet on payment deletion', ['exception' => $e->getMessage()]);
             }
         }
     }

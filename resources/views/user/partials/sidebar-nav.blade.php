@@ -38,55 +38,57 @@
         });
     };
 
-    // تشخیص گروه فعال در زمان لود اولیه برای حالت دو مرحله‌ای
-    $activeDrilldownOnInit = 'null';
-    $activeDrilldownTitleOnInit = "''";
-    if (!empty($isTwoStepEnabled)) {
-        if (!empty($isCustomEnabled) && !empty($menuBlocks)) {
-            foreach ($menuBlocks as $block) {
-                if ($block['type'] === 'group') {
-                    $gMod = $block['module'];
-                    $isAct = request()->routeIs('user.' . $gMod . '.*')
-                        || request()->routeIs($gMod . '.*')
-                        || ($gMod === 'clients' && (request()->routeIs('user.clients.*') || request()->routeIs('user.settings.clients.*')))
-                        || collect($block['items'])->contains(fn($i) => !empty($i['route']) && request()->routeIs($i['route'] . '*'));
-                    if ($isAct) {
-                        $activeDrilldownOnInit = "'" . $gMod . "'";
-                        $activeDrilldownTitleOnInit = "'" . addslashes($block['title']) . "'";
-                        break;
-                    }
-                } elseif ($block['type'] === 'settings') {
-                    $isAct = request()->routeIs('settings.*') || request()->routeIs('user.settings.*') || request()->routeIs('user.settings.clients.*');
-                    if ($isAct) {
-                        $activeDrilldownOnInit = "'settings'";
-                        $activeDrilldownTitleOnInit = "'" . addslashes($block['title'] ?? 'تنظیمات') . "'";
-                        break;
-                    }
+    // تشخیص گروه فعال در زمان لود اولیه (هم برای منوی معمولی و هم دو مرحله‌ای)
+    $activeGroupKey = null;
+    $activeGroupTitle = '';
+
+    if (!empty($isCustomEnabled) && !empty($menuBlocks)) {
+        foreach ($menuBlocks as $block) {
+            if ($block['type'] === 'group') {
+                $gMod = $block['module'];
+                $isAct = request()->routeIs('user.' . $gMod . '.*')
+                    || request()->routeIs($gMod . '.*')
+                    || ($gMod === 'clients' && (request()->routeIs('user.clients.*') || request()->routeIs('user.settings.clients.*')))
+                    || collect($block['items'] ?? [])->contains(fn($i) => !empty($i['route']) && request()->routeIs($i['route'] . '*'));
+                if ($isAct) {
+                    $activeGroupKey = $gMod;
+                    $activeGroupTitle = $block['title'] ?? '';
+                    break;
                 }
-            }
-        } else {
-            if (request()->routeIs('user.clients.*') || request()->routeIs('clients.*') || request()->routeIs('user.settings.clients.*')) {
-                $activeDrilldownOnInit = "'clients'";
-                $activeDrilldownTitleOnInit = "'" . addslashes($clientsGroupMeta['title'] ?? ('مدیریت '.config('clients.labels.plural', 'مشتریان'))) . "'";
-            } else {
-                foreach ($menuGroups as $group) {
-                    $gMod = $group['module'];
-                    $isAct = request()->routeIs('user.' . $gMod . '.*')
-                        || request()->routeIs($gMod . '.*')
-                        || collect($group['items'])->contains(fn($i) => !empty($i['route']) && request()->routeIs($i['route'] . '*'));
-                    if ($isAct) {
-                        $activeDrilldownOnInit = "'" . $gMod . "'";
-                        $activeDrilldownTitleOnInit = "'" . addslashes($group['title'] ?? $group['module_name'] ?? $gMod) . "'";
-                        break;
-                    }
-                }
-                if ($activeDrilldownOnInit === 'null' && (request()->routeIs('settings.*') || request()->routeIs('user.settings.*') || request()->routeIs('user.settings.clients.*'))) {
-                    $activeDrilldownOnInit = "'settings'";
-                    $activeDrilldownTitleOnInit = "'" . addslashes($settingsGroupMeta['title'] ?? 'تنظیمات سیستم') . "'";
+            } elseif ($block['type'] === 'settings') {
+                $isAct = request()->routeIs('settings.*') || request()->routeIs('user.settings.*') || request()->routeIs('user.settings.clients.*');
+                if ($isAct) {
+                    $activeGroupKey = 'settings';
+                    $activeGroupTitle = $block['title'] ?? 'تنظیمات';
+                    break;
                 }
             }
         }
+    } else {
+        if (request()->routeIs('user.clients.*') || request()->routeIs('clients.*') || request()->routeIs('user.settings.clients.*')) {
+            $activeGroupKey = 'clients';
+            $activeGroupTitle = $clientsGroupMeta['title'] ?? ('مدیریت '.config('clients.labels.plural', 'مشتریان'));
+        } else {
+            foreach ($menuGroups as $group) {
+                $gMod = $group['module'];
+                $isAct = request()->routeIs('user.' . $gMod . '.*')
+                    || request()->routeIs($gMod . '.*')
+                    || collect($group['items'] ?? [])->contains(fn($i) => !empty($i['route']) && request()->routeIs($i['route'] . '*'));
+                if ($isAct) {
+                    $activeGroupKey = $gMod;
+                    $activeGroupTitle = $group['title'] ?? $group['module_name'] ?? $gMod;
+                    break;
+                }
+            }
+            if (!$activeGroupKey && (request()->routeIs('settings.*') || request()->routeIs('user.settings.*') || request()->routeIs('user.settings.clients.*'))) {
+                $activeGroupKey = 'settings';
+                $activeGroupTitle = $settingsGroupMeta['title'] ?? 'تنظیمات سیستم';
+            }
+        }
     }
+
+    $activeDrilldownOnInit = $activeGroupKey ? "'" . $activeGroupKey . "'" : 'null';
+    $activeDrilldownTitleOnInit = $activeGroupKey ? "'" . addslashes($activeGroupTitle) . "'" : "''";
 @endphp
 
 <div x-data="{
@@ -94,7 +96,21 @@
     activeDrilldown: {{ $activeDrilldownOnInit }},
     activeDrilldownTitle: {{ $activeDrilldownTitleOnInit }},
     init() {
-        @if($activeDrilldownOnInit === 'null')
+        @if(!empty($activeGroupKey))
+            // کاربر در صفحه یکی از زیرگروه‌ها قرار دارد: گروه مربوطه باید باز بماند
+            this.closedAll = false;
+            if (this.activeClosedKeys && this.activeClosedKeys['{{ $activeGroupKey }}']) {
+                delete this.activeClosedKeys['{{ $activeGroupKey }}'];
+                try {
+                    localStorage.setItem('activeClosedKeys', JSON.stringify(this.activeClosedKeys));
+                } catch(e) {}
+            }
+            this.openedMenuKey = '{{ $activeGroupKey }}';
+            try {
+                localStorage.setItem('openedMenuKey', '{{ $activeGroupKey }}');
+            } catch(e) {}
+        @else
+            // در صفحات غیرگروهی (مثل پیشخوان یا آیتم‌های تکی): همه گروه‌ها بسته می‌شوند
             try {
                 localStorage.removeItem('openedMenuKey');
             } catch (e) {}

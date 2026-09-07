@@ -226,8 +226,24 @@ class PermissionCatalog
                 'title' => 'سرویس و خدمات',
                 'matchers' => ['services.view', 'services.manage', 'services.create', 'services.edit', 'services.delete', 'services.duplicate', 'services.settings.'],
             ],
+            'projects_templates' => [
+                'title' => 'پروژه‌ها: الگوهای فاز و کار (Templates)',
+                'matchers' => ['projects.templates.'],
+            ],
+            'projects_categories' => [
+                'title' => 'پروژه‌ها: دسته‌بندی‌ها',
+                'matchers' => ['projects.categories.'],
+            ],
+            'projects_status_builder' => [
+                'title' => 'پروژه‌ها: وضعیت‌ساز',
+                'matchers' => ['projects.status-builder.'],
+            ],
+            'projects_settings' => [
+                'title' => 'پروژه‌ها: تنظیمات و نقش‌ها',
+                'matchers' => ['projects.settings.'],
+            ],
             'projects' => [
-                'title' => 'پروژه‌ها (Projects)',
+                'title' => 'پروژه‌ها (عملیات اصلی)',
                 'matchers' => ['projects.'],
             ],
             'services_orders' => [
@@ -610,15 +626,25 @@ class PermissionCatalog
             'services.delete' => 'حذف خدمت',
             'services.duplicate' => 'تکثیر/کپی خدمت',
 
-            // Projects
+            // Projects: Core
             'projects.view' => 'مشاهده پروژه‌ها',
             'projects.create' => 'ایجاد پروژه جدید',
-            'projects.edit' => 'ویرایش پروژه',
-            'projects.delete' => 'حذف پروژه',
-            'projects.manage' => 'مدیریت کامل پروژه‌ها',
-            'projects.categories.manage' => 'مدیریت دسته‌بندی‌های پروژه',
-            'projects.settings.manage' => 'مدیریت تنظیمات پروژه‌ها',
-            'projects.status-builder.manage' => 'مدیریت وضعیت‌های پروژه',
+            'projects.edit' => 'ویرایش مشخصات پایه پروژه',
+            'projects.delete' => 'حذف کامل پروژه',
+            'projects.cancel' => 'لغو پروژه',
+            'projects.manage' => 'مدیریت کامل پروژه‌ها (دسترسی ارشد)',
+
+            // Projects: Templates
+            'projects.templates.view' => 'مشاهده منو و لیست الگوهای پروژه',
+            'projects.templates.create' => 'ایجاد الگوی جدید برای پروژه',
+            'projects.templates.edit' => 'ویرایش ساختار و مشخصات الگوها',
+            'projects.templates.delete' => 'حذف الگوهای آماده',
+            'projects.templates.manage' => 'مدیریت کامل الگوها (درون‌ریزی و خروجی)',
+
+            // Projects: Categories, Status Builder & Settings
+            'projects.categories.manage' => 'مدیریت دسته‌بندی‌های پروژه‌ها',
+            'projects.status-builder.manage' => 'مدیریت وضعیت‌های کار و پروژه',
+            'projects.settings.manage' => 'مدیریت تنظیمات عمومی و نقش‌های پروژه‌ها',
 
             'services.orders.view' => 'مشاهده سفارشات خدمات',
             'services.orders.view.all' => 'مشاهده همه سفارشات خدمات',

@@ -23,13 +23,19 @@
             return $faNum($date instanceof \DateTimeInterface ? $date->format('Y/m/d') : (string)$date);
         }
     };
+
+    $canViewKanban = auth()->user()?->can('viewKanban', $project) ?? false;
 @endphp
 
 @section('content')
     <div class="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6"
          x-data="{
-             currentTab: (new URLSearchParams(window.location.search).get('tab')) || '{{ session('tab', $tab ?? 'dashboard') }}' || 'dashboard',
+             canViewKanban: @js($canViewKanban),
+             currentTab: ((new URLSearchParams(window.location.search).get('tab')) === 'kanban' && !@js($canViewKanban)) ? 'dashboard' : ((new URLSearchParams(window.location.search).get('tab')) || '{{ session('tab', $tab ?? 'dashboard') }}' || 'dashboard'),
              setTab(tab) {
+                 if (tab === 'kanban' && !this.canViewKanban) {
+                     tab = 'dashboard';
+                 }
                  this.currentTab = tab;
                  const url = new URL(window.location);
                  url.searchParams.set('tab', tab);
@@ -39,7 +45,10 @@
          }"
          x-init="
              const urlParams = new URLSearchParams(window.location.search);
-             const initialTab = urlParams.get('tab') || '{{ session('tab', $tab ?? 'dashboard') }}' || 'dashboard';
+             let initialTab = urlParams.get('tab') || '{{ session('tab', $tab ?? 'dashboard') }}' || 'dashboard';
+             if (initialTab === 'kanban' && !canViewKanban) {
+                 initialTab = 'dashboard';
+             }
              currentTab = initialTab;
              const url = new URL(window.location);
              url.searchParams.set('tab', initialTab);
@@ -253,15 +262,17 @@
             </button>
 
             {{-- Tab 3: Kanban Board --}}
-            <button @click="setTab('kanban')"
-                    :class="currentTab === 'kanban' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/30' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700/50'"
-                    class="flex items-center gap-2 px-5 py-3 rounded-2xl text-xs sm:text-sm font-bold transition-all whitespace-nowrap cursor-pointer">
-                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                          d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"/>
-                </svg>
-                برد کانبان
-            </button>
+            @can('viewKanban', $project)
+                <button @click="setTab('kanban')"
+                        :class="currentTab === 'kanban' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/30' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700/50'"
+                        class="flex items-center gap-2 px-5 py-3 rounded-2xl text-xs sm:text-sm font-bold transition-all whitespace-nowrap cursor-pointer">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"/>
+                    </svg>
+                    برد کانبان
+                </button>
+            @endcan
 
             {{-- Tab 4: Messages --}}
             @can('viewMessages', $project)
@@ -327,10 +338,13 @@
                 @include('projects::projects.partials.tab-tasks')
             </div>
 
-            <div x-show="currentTab === 'kanban'" x-cloak x-transition:enter="transition ease-out duration-150"
-                 x-transition:enter-start="opacity-0 translate-y-2" x-transition:enter-end="opacity-100 translate-y-0">
-                @include('projects::projects.partials.tab-kanban')
-            </div>
+            @can('viewKanban', $project)
+                <div x-show="currentTab === 'kanban'" x-cloak x-transition:enter="transition ease-out duration-150"
+                     x-transition:enter-start="opacity-0 translate-y-2"
+                     x-transition:enter-end="opacity-100 translate-y-0">
+                    @include('projects::projects.partials.tab-kanban')
+                </div>
+            @endcan
 
             @can('viewMessages', $project)
                 <div x-show="currentTab === 'messages'" x-cloak x-transition:enter="transition ease-out duration-150"
@@ -357,7 +371,7 @@
             @endcan
         </div>
 
-        {{-- Subtask (کار) Modal --}}
+        {{-- Subtask Modal --}}
         @include('projects::projects.partials.modal-subtask')
 
         {{-- Apply Template Modal --}}

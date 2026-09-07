@@ -846,6 +846,12 @@ class AppointmentController extends Controller
             abort(403, 'پرداخت متعلق به این نوبت نیست.');
         }
 
+        if ($payment->status === BookingPayment::STATUS_PAID) {
+            return redirect()
+                ->route('user.booking.appointments.show', $appointment)
+                ->with('error', 'پرداخت‌های تایید شده و پرداخت‌شده قابل ویرایش نیستند و فقط امکان لغو آن‌ها وجود دارد.');
+        }
+
         if ($request->has('amount')) {
             $cleaned = preg_replace('/[^\d.]/', '', (string) $request->input('amount'));
             $request->merge(['amount' => $cleaned]);

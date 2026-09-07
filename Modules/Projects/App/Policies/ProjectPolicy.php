@@ -111,6 +111,18 @@ class ProjectPolicy
         return $project->userHasPermission($user->id, 'tasks.change_status');
     }
 
+    public function viewKanban(User $user, Project $project): bool
+    {
+        return $project->userHasPermission($user->id, 'kanban.view');
+    }
+
+    public function changeKanbanStatus(User $user, Project $project): bool
+    {
+        return $this->viewKanban($user, $project)
+            && $project->userHasPermission($user->id, 'kanban.change_status')
+            && $project->userHasPermission($user->id, 'tasks.change_status');
+    }
+
     public function cancelTasks(User $user, Project $project): bool
     {
         return $project->userHasPermission($user->id, 'tasks.cancel') || $project->userHasPermission($user->id, 'tasks.edit') || $project->isManager($user->id);

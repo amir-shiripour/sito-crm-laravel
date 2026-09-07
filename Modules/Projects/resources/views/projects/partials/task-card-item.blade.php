@@ -43,15 +43,17 @@
                       id="task-icon-dot-{{ $task->id }}"
                       style="background: {{ $task->status?->color ?? '#6366f1' }}"></span>
             </span>
-                <div class="min-w-0">
-                    <h5 id="task-card-title-{{ $task->id }}"
-                        class="font-bold text-gray-900 dark:text-white text-sm sm:text-base leading-snug truncate {{ $task->status?->isCompleted() ? 'line-through text-gray-400 dark:text-gray-500' : '' }}">
-                        {{ $task->title }}
-                    </h5>
-                    @if($task->description)
-                        <p class="text-xs text-gray-400 mt-0.5 leading-relaxed line-clamp-2">{{ $task->description }}</p>
-                    @endif
-                </div>
+            <div class="min-w-0"
+                 @click.stop="if(typeof toggleTaskSelect === 'function') { toggleTaskSelect({{ $task->id }}); } else { toggleTask('{{ $taskSlug }}'); }"
+                 title="کلیک روی نام برای انتخاب گروه">
+                <h5 id="task-card-title-{{ $task->id }}"
+                    class="font-bold text-gray-900 dark:text-white text-sm sm:text-base leading-snug truncate hover:text-indigo-600 transition-colors {{ $task->status?->isCompleted() ? 'line-through text-gray-400 dark:text-gray-500' : '' }}">
+                    {{ $task->title }}
+                </h5>
+                @if($task->description)
+                    <p class="text-xs text-gray-400 mt-0.5 leading-relaxed line-clamp-2">{{ $task->description }}</p>
+                @endif
+            </div>
         </div>
 
         {{-- Badges & Actions --}}
@@ -70,7 +72,9 @@
 
             {{-- Due Date Pill --}}
             @if($task->due_date)
-                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-700 shadow-xs" title="تاریخ سررسید گروه">
+                <span
+                    class="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-700 shadow-xs"
+                    title="تاریخ سررسید گروه">
                     <svg class="w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path
                             stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                             d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
@@ -283,8 +287,10 @@
                                 <span id="checklist-duedate-badge-{{ $item->id }}"
                                       class="hidden md:inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-md border shrink-0 bg-gray-50 dark:bg-gray-700/40 text-gray-500 dark:text-gray-300 border-gray-200/60 dark:border-gray-600/40"
                                       title="تاریخ سررسید کار">
-                                    <svg class="w-3 h-3 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                                    <svg class="w-3 h-3 text-gray-400" fill="none" viewBox="0 0 24 24"
+                                         stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                              d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
                                     </svg>
                                     {{ function_exists('jdate') ? $faNum(jdate($item->due_date)->format('Y/m/d')) : $item->due_date->format('Y/m/d') }}
                                 </span>
@@ -416,7 +422,8 @@
                             @if($item->due_date)
                                 <div
                                     class="flex items-center gap-2 p-2.5 rounded-xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700/60 min-w-0">
-                                    <span class="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 bg-sky-50 dark:bg-sky-900/40 text-sky-600 dark:text-sky-300">
+                                    <span
+                                        class="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 bg-sky-50 dark:bg-sky-900/40 text-sky-600 dark:text-sky-300">
                                         <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                                   d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>

@@ -135,7 +135,7 @@
                     {{-- Slug / Key (Only when creating) --}}
                     <div>
                         <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
-                            شناسه سیستمی (انگلیسی / Slug)
+                            شناسه سیستمی (Slug)
                             <template x-if="isEditing">
                                 <span class="text-xs text-gray-400 font-normal">(غیرقابل تغییر)</span>
                             </template>
@@ -314,7 +314,13 @@
                                                                                                   d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/></svg>
                                                 @break
                                             @case('template')
-                                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24"
+                                                     stroke="currentColor" stroke-width="2"><path stroke-linecap="round"
+                                                                                                  stroke-linejoin="round"
+                                                                                                  d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline
+                                                        points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line
+                                                        x1="16" y1="17" x2="8" y2="17"/><polyline
+                                                        points="10 9 9 9 8 9"/></svg>
                                                 @break
                                             @case('layers')
                                                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24"
@@ -327,6 +333,13 @@
                                                      stroke="currentColor" stroke-width="2"><path stroke-linecap="round"
                                                                                                   stroke-linejoin="round"
                                                                                                   d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                                @break
+                                            @case('view-boards')
+                                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24"
+                                                     stroke="currentColor" stroke-width="2">
+                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                          d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"/>
+                                                </svg>
                                                 @break
                                             @case('chat')
                                                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24"
@@ -448,193 +461,194 @@
                     icon: 'shield',
                     permissions: [],
                 },
-        availableColors: [
-            {key: 'purple', label: 'بنفش', hex: '#9333ea'},
-            {key: 'indigo', label: 'نیلی', hex: '#4f46e5'},
-            {key: 'blue', label: 'آبی', hex: '#2563eb'},
-            {key: 'emerald', label: 'زمردی', hex: '#059669'},
-            {key: 'teal', label: 'کله‌غازی', hex: '#0d9488'},
-            {key: 'cyan', label: 'فیروزه‌ای', hex: '#0891b2'},
-            {key: 'amber', label: 'کهربایی', hex: '#d97706'},
-            {key: 'orange', label: 'نارنجی', hex: '#ea580c'},
-            {key: 'rose', label: 'رز', hex: '#e11d48'},
-            {key: 'gray', label: 'خاکستری', hex: '#4b5563'},
-        ],
-        availableIcons: [
-            {key: 'crown', label: 'تاج / مدیریت'},
-            {key: 'pencil', label: 'مداد / ویرایشگر'},
-            {key: 'eye', label: 'چشم / ناظر'},
-            {key: 'code', label: 'کد / برنامه‌نویس'},
-            {key: 'palette', label: 'پالت / طراح'},
-            {key: 'bug', label: 'تست / کنترل کیفیت'},
-            {key: 'shield', label: 'سپر / سرپرست'},
-            {key: 'briefcase', label: 'کیف / کارشناس'},
-            {key: 'user', label: 'کاربر / همکار'},
-            {key: 'star', label: 'ستاره / ارشد'},
-        ],
-        getColorClass(color) {
-            const map = {
-                purple: {btn: 'bg-purple-600'},
-                indigo: {btn: 'bg-indigo-600'},
-                blue: {btn: 'bg-blue-600'},
-                emerald: {btn: 'bg-emerald-600'},
-                teal: {btn: 'bg-teal-600'},
-                cyan: {btn: 'bg-cyan-600'},
-                amber: {btn: 'bg-amber-600'},
-                orange: {btn: 'bg-orange-600'},
-                rose: {btn: 'bg-rose-600'},
-                gray: {btn: 'bg-gray-600'},
-            };
-            return map[color] || map.indigo;
-        },
-        openCreate() {
-            this.isEditing = false;
-            this.roleId = null;
-            this.errorMsg = '';
-            this.saving = false;
-            const allKeys = [];
-            for (const catKey in this.availableCategories) {
-                if (this.availableCategories[catKey]?.items) {
-                    allKeys.push(...Object.keys(this.availableCategories[catKey].items));
+                availableColors: [
+                    {key: 'purple', label: 'بنفش', hex: '#9333ea'},
+                    {key: 'indigo', label: 'نیلی', hex: '#4f46e5'},
+                    {key: 'blue', label: 'آبی', hex: '#2563eb'},
+                    {key: 'emerald', label: 'زمردی', hex: '#059669'},
+                    {key: 'teal', label: 'کله‌غازی', hex: '#0d9488'},
+                    {key: 'cyan', label: 'فیروزه‌ای', hex: '#0891b2'},
+                    {key: 'amber', label: 'کهربایی', hex: '#d97706'},
+                    {key: 'orange', label: 'نارنجی', hex: '#ea580c'},
+                    {key: 'rose', label: 'رز', hex: '#e11d48'},
+                    {key: 'gray', label: 'خاکستری', hex: '#4b5563'},
+                ],
+                availableIcons: [
+                    {key: 'crown', label: 'تاج / مدیریت'},
+                    {key: 'pencil', label: 'مداد / ویرایشگر'},
+                    {key: 'eye', label: 'چشم / ناظر'},
+                    {key: 'code', label: 'کد / برنامه‌نویس'},
+                    {key: 'palette', label: 'پالت / طراح'},
+                    {key: 'bug', label: 'تست / کنترل کیفیت'},
+                    {key: 'shield', label: 'سپر / سرپرست'},
+                    {key: 'briefcase', label: 'کیف / کارشناس'},
+                    {key: 'user', label: 'کاربر / همکار'},
+                    {key: 'star', label: 'ستاره / ارشد'},
+                ],
+                getColorClass(color) {
+                    const map = {
+                        purple: {btn: 'bg-purple-600'},
+                        indigo: {btn: 'bg-indigo-600'},
+                        blue: {btn: 'bg-blue-600'},
+                        emerald: {btn: 'bg-emerald-600'},
+                        teal: {btn: 'bg-teal-600'},
+                        cyan: {btn: 'bg-cyan-600'},
+                        amber: {btn: 'bg-amber-600'},
+                        orange: {btn: 'bg-orange-600'},
+                        rose: {btn: 'bg-rose-600'},
+                        gray: {btn: 'bg-gray-600'},
+                    };
+                    return map[color] || map.indigo;
+                },
+                openCreate() {
+                    this.isEditing = false;
+                    this.roleId = null;
+                    this.errorMsg = '';
+                    this.saving = false;
+                    const allKeys = [];
+                    for (const catKey in this.availableCategories) {
+                        if (this.availableCategories[catKey]?.items) {
+                            allKeys.push(...Object.keys(this.availableCategories[catKey].items));
+                        }
+                    }
+                    this.form = {
+                        name: '',
+                        display_name: '',
+                        description: '',
+                        color: 'indigo',
+                        icon: 'shield',
+                        permissions: [...allKeys],
+                    };
+                    this.open = true;
+                },
+                openEdit(role) {
+                    this.isEditing = true;
+                    this.roleId = role.id;
+                    this.errorMsg = '';
+                    this.saving = false;
+                    let rolePerms = [];
+                    if (Array.isArray(role.permissions)) {
+                        rolePerms = [...role.permissions];
+                    } else if (typeof role.permissions === 'string') {
+                        try {
+                            const parsed = JSON.parse(role.permissions);
+                            if (Array.isArray(parsed)) rolePerms = parsed;
+                        } catch (e) {
+                        }
+                    }
+                    this.form = {
+                        name: role.name || '',
+                        display_name: role.display_name || '',
+                        description: role.description || '',
+                        color: role.color || 'indigo',
+                        icon: role.icon || 'shield',
+                        permissions: rolePerms,
+                    };
+                    this.open = true;
+                },
+                close() {
+                    this.open = false;
+                },
+                hasPermission(perm) {
+                    return this.form.permissions.includes(perm);
+                },
+                togglePermission(perm) {
+                    if (this.hasPermission(perm)) {
+                        this.form.permissions = this.form.permissions.filter(p => p !== perm);
+                    } else {
+                        this.form.permissions.push(perm);
+                    }
+                },
+                toggleCategoryByKey(catKey, state) {
+                    const cat = this.availableCategories[catKey];
+                    if (!cat || !cat.items) return;
+                    const keys = Object.keys(cat.items);
+                    if (state) {
+                        keys.forEach(k => {
+                            if (!this.form.permissions.includes(k)) this.form.permissions.push(k);
+                        });
+                    } else {
+                        this.form.permissions = this.form.permissions.filter(p => !keys.includes(p));
+                    }
+                },
+                selectAllPermissions() {
+                    const allKeys = [];
+                    for (const catKey in this.availableCategories) {
+                        if (this.availableCategories[catKey]?.items) {
+                            allKeys.push(...Object.keys(this.availableCategories[catKey].items));
+                        }
+                    }
+                    this.form.permissions = [...allKeys];
+                },
+                async save() {
+                    if (!this.form.display_name.trim()) {
+                        this.errorMsg = 'لطفاً عنوان نمایشی نقش را وارد کنید.';
+                        return;
+                    }
+                    this.saving = true;
+                    this.errorMsg = '';
+
+                    const url = this.isEditing
+                        ? `/user/projects/roles/${this.roleId}`
+                        : `/user/projects/roles`;
+                    const method = this.isEditing ? 'PUT' : 'POST';
+
+                    try {
+                        const token = document.querySelector('meta[name="csrf-token"]')?.content
+                            || document.querySelector('input[name="_token"]')?.value;
+                        const res = await fetch(url, {
+                            method,
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Accept': 'application/json',
+                                'X-CSRF-TOKEN': token,
+                            },
+                            body: JSON.stringify(this.form),
+                        });
+
+                        const data = await res.json();
+                        if (!res.ok) {
+                            this.errorMsg = data.message || data.error || 'خطا در ثبت نقش. لطفاً مجدداً تلاش کنید.';
+                            this.saving = false;
+                            return;
+                        }
+
+                        // Reload back to roles tab
+                        window.location.href = window.location.pathname + '?active_tab=roles';
+                    } catch (err) {
+                        console.error(err);
+                        this.errorMsg = 'خطای ارتباط با سرور.';
+                        this.saving = false;
+                    }
                 }
-            }
-            this.form = {
-                name: '',
-                display_name: '',
-                description: '',
-                color: 'indigo',
-                icon: 'shield',
-                permissions: [...allKeys],
             };
-            this.open = true;
-        },
-        openEdit(role) {
-            this.isEditing = true;
-            this.roleId = role.id;
-            this.errorMsg = '';
-            this.saving = false;
-            let rolePerms = [];
-            if (Array.isArray(role.permissions)) {
-                rolePerms = [...role.permissions];
-            } else if (typeof role.permissions === 'string') {
-                try {
-                    const parsed = JSON.parse(role.permissions);
-                    if (Array.isArray(parsed)) rolePerms = parsed;
-                } catch(e) {}
-            }
-            this.form = {
-                name: role.name || '',
-                display_name: role.display_name || '',
-                description: role.description || '',
-                color: role.color || 'indigo',
-                icon: role.icon || 'shield',
-                permissions: rolePerms,
-            };
-            this.open = true;
-        },
-        close() {
-            this.open = false;
-        },
-        hasPermission(perm) {
-            return this.form.permissions.includes(perm);
-        },
-        togglePermission(perm) {
-            if (this.hasPermission(perm)) {
-                this.form.permissions = this.form.permissions.filter(p => p !== perm);
-            } else {
-                this.form.permissions.push(perm);
-            }
-        },
-        toggleCategoryByKey(catKey, state) {
-            const cat = this.availableCategories[catKey];
-            if (!cat || !cat.items) return;
-            const keys = Object.keys(cat.items);
-            if (state) {
-                keys.forEach(k => {
-                    if (!this.form.permissions.includes(k)) this.form.permissions.push(k);
-                });
-            } else {
-                this.form.permissions = this.form.permissions.filter(p => !keys.includes(p));
-            }
-        },
-        selectAllPermissions() {
-            const allKeys = [];
-            for (const catKey in this.availableCategories) {
-                if (this.availableCategories[catKey]?.items) {
-                    allKeys.push(...Object.keys(this.availableCategories[catKey].items));
-                }
-            }
-            this.form.permissions = [...allKeys];
-        },
-        async save() {
-            if (!this.form.display_name.trim()) {
-                this.errorMsg = 'لطفاً عنوان نمایشی نقش را وارد کنید.';
+        }
+
+        async function deleteProjectRole(roleId, roleTitle) {
+            if (!confirm(`آیا از حذف نقش «${roleTitle}» اطمینان دارید؟ تمام اعضای دارای این نقش به ناظر تغییر خواهند کرد.`)) {
                 return;
             }
-            this.saving = true;
-            this.errorMsg = '';
-
-            const url = this.isEditing
-                ? `/user/projects/roles/${this.roleId}`
-                : `/user/projects/roles`;
-            const method = this.isEditing ? 'PUT' : 'POST';
 
             try {
                 const token = document.querySelector('meta[name="csrf-token"]')?.content
                     || document.querySelector('input[name="_token"]')?.value;
-                const res = await fetch(url, {
-                    method,
+                const res = await fetch(`/user/projects/roles/${roleId}`, {
+                    method: 'DELETE',
                     headers: {
-                        'Content-Type': 'application/json',
                         'Accept': 'application/json',
                         'X-CSRF-TOKEN': token,
-                    },
-                    body: JSON.stringify(this.form),
+                    }
                 });
-
                 const data = await res.json();
-                if (!res.ok) {
-                    this.errorMsg = data.message || data.error || 'خطا در ثبت نقش. لطفاً مجدداً تلاش کنید.';
-                    this.saving = false;
-                    return;
+                if (res.ok) {
+                    window.location.href = window.location.pathname + '?active_tab=roles';
+                } else {
+                    alert(data.error || data.message || 'خطا در حذف نقش');
                 }
-
-                // Reload back to roles tab
-                window.location.href = window.location.pathname + '?active_tab=roles';
             } catch (err) {
                 console.error(err);
-                this.errorMsg = 'خطای ارتباط با سرور.';
-                this.saving = false;
+                alert('خطای ارتباط با سرور');
             }
         }
-    };
-}
-
-async function deleteProjectRole(roleId, roleTitle) {
-    if (!confirm(`آیا از حذف نقش «${roleTitle}» اطمینان دارید؟ تمام اعضای دارای این نقش به ناظر تغییر خواهند کرد.`)) {
-        return;
-    }
-
-    try {
-        const token = document.querySelector('meta[name="csrf-token"]')?.content
-            || document.querySelector('input[name="_token"]')?.value;
-        const res = await fetch(`/user/projects/roles/${roleId}`, {
-            method: 'DELETE',
-            headers: {
-                'Accept': 'application/json',
-                'X-CSRF-TOKEN': token,
-            }
-        });
-        const data = await res.json();
-        if (res.ok) {
-            window.location.href = window.location.pathname + '?active_tab=roles';
-        } else {
-            alert(data.error || data.message || 'خطا در حذف نقش');
-        }
-    } catch (err) {
-        console.error(err);
-        alert('خطای ارتباط با سرور');
-    }
-}
-</script>
+    </script>
 @endpush

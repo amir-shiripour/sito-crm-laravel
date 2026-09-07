@@ -181,11 +181,14 @@
                         {{-- ستون عنوان، ماژول و دستور --}}
                         <div class="flex items-start gap-3 min-w-[280px]">
                             <div class="w-10 h-10 rounded-xl flex-shrink-0 flex items-center justify-center font-black text-xs 
-                                {{ $task->module === 'Booking' ? 'bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-500/20' : 
-                                   ($task->module === 'Workflows' ? 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-500/20' : 
-                                   ($task->module === 'Sms' ? 'bg-sky-50 dark:bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-200 dark:border-sky-500/20' : 
-                                   ($task->module === 'Reminders' ? 'bg-purple-50 dark:bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-200 dark:border-purple-500/20' : 
-                                   'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700'))) }}">
+                                {{ match($task->module) {
+                                    'Booking' => 'bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-500/20',
+                                    'Workflows' => 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-500/20',
+                                    'Sms' => 'bg-sky-50 dark:bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-200 dark:border-sky-500/20',
+                                    'Reminders' => 'bg-purple-50 dark:bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-200 dark:border-purple-500/20',
+                                    'Projects' => 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20',
+                                    default => 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700'
+                                } }}">
                                 {{ substr($task->module ?: 'CR', 0, 2) }}
                             </div>
 

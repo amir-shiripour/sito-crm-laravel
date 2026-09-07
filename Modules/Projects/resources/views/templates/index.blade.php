@@ -1,3 +1,4 @@
+@php use Morilog\Jalali\Jalalian; @endphp
 @extends('layouts.user')
 @section('title', 'الگوهای ساختار فاز و کار (Templates)')
 
@@ -14,8 +15,8 @@
             if (function_exists('jdate')) {
                 return $faNum(jdate($date)->format('Y/m/d'));
             }
-            if (class_exists(\Morilog\Jalali\Jalalian::class)) {
-                return $faNum(\Morilog\Jalali\Jalalian::fromCarbon($date)->format('Y/m/d'));
+            if (class_exists(Jalalian::class)) {
+                return $faNum(Jalalian::fromCarbon($date)->format('Y/m/d'));
             }
             return $faNum($date instanceof \DateTimeInterface ? $date->format('Y/m/d') : (string)$date);
         } catch (\Throwable) {
@@ -25,7 +26,8 @@
 @endphp
 
 @section('content')
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6"
+         x-data="{ uploadModalOpen: false, fileName: '', isDragging: false }">
 
         {{-- Breadcrumb --}}
         <nav class="flex items-center gap-2 text-sm font-medium" aria-label="Breadcrumb">
@@ -75,14 +77,27 @@
                 </div>
             </div>
 
-            <div class="flex items-center gap-3 shrink-0">
-                <a href="{{ route('projects.templates.create') }}"
-                   class="inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs sm:text-sm font-bold shadow-md shadow-indigo-500/20 transition-all">
-                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
-                    </svg>
-                    <span>ایجاد الگوی جدید</span>
-                </a>
+            <div class="flex items-center gap-3 shrink-0 flex-wrap">
+                @if(auth()->user()?->can('projects.templates.manage'))
+                    <button type="button" @click="uploadModalOpen = true"
+                            class="inline-flex items-center gap-2 px-4 py-3 rounded-2xl bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-900/30 dark:hover:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 text-xs sm:text-sm font-bold border border-indigo-200 dark:border-indigo-800/40 transition-all cursor-pointer shadow-xs">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                  d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+                        </svg>
+                        <span>آپلود فایل JSON</span>
+                    </button>
+                @endif
+
+                @if(auth()->user()?->can('projects.templates.create'))
+                    <a href="{{ route('projects.templates.create') }}"
+                       class="inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs sm:text-sm font-bold shadow-md shadow-indigo-500/20 transition-all">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+                        </svg>
+                        <span>ایجاد الگوی جدید</span>
+                    </a>
+                @endif
             </div>
         </div>
 
@@ -236,31 +251,47 @@
                             </span>
 
                             <div class="flex items-center gap-1.5">
-                                <a href="{{ route('projects.templates.edit', $tpl) }}"
-                                   class="p-2 rounded-xl text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/40 transition-colors"
-                                   title="ویرایش الگو">
-                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                                         stroke-width="2">
-                                        <path stroke-linecap="round" stroke-linejoin="round"
-                                              d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-                                    </svg>
-                                </a>
-
-                                <form method="POST" action="{{ route('projects.templates.destroy', $tpl) }}"
-                                      onsubmit="return confirm('آیا از حذف الگوی «{{ $tpl->title }}» اطمینان دارید؟')"
-                                      class="inline">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit"
-                                            class="p-2 rounded-xl text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/40 transition-colors cursor-pointer"
-                                            title="حذف الگو">
+                                @if(auth()->user()?->can('projects.templates.manage'))
+                                    <a href="{{ route('projects.templates.export', $tpl) }}"
+                                       class="p-2 rounded-xl text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/40 transition-colors"
+                                       title="دانلود فایل خروجی JSON الگو">
                                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"
                                              stroke-width="2">
                                             <path stroke-linecap="round" stroke-linejoin="round"
-                                                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                                  d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
                                         </svg>
-                                    </button>
-                                </form>
+                                    </a>
+                                @endif
+
+                                @if(auth()->user()?->can('projects.templates.edit'))
+                                    <a href="{{ route('projects.templates.edit', $tpl) }}"
+                                       class="p-2 rounded-xl text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/40 transition-colors"
+                                       title="ویرایش الگو">
+                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                             stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                  d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                                        </svg>
+                                    </a>
+                                @endif
+
+                                @if(auth()->user()?->can('projects.templates.delete'))
+                                    <form method="POST" action="{{ route('projects.templates.destroy', $tpl) }}"
+                                          onsubmit="return confirm('آیا از حذف الگوی «{{ $tpl->title }}» اطمینان دارید؟')"
+                                          class="inline">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit"
+                                                class="p-2 rounded-xl text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/40 transition-colors cursor-pointer"
+                                                title="حذف الگو">
+                                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                                 stroke-width="2">
+                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                            </svg>
+                                        </button>
+                                    </form>
+                                @endif
                             </div>
                         </div>
                     </div>
@@ -294,5 +325,168 @@
                 </div>
             </div>
         @endif
+
+        {{-- Upload JSON Modal --}}
+        <div x-show="uploadModalOpen"
+             x-cloak
+             @keydown.escape.window="uploadModalOpen = false"
+             class="fixed inset-0 z-50 overflow-y-auto"
+             aria-labelledby="modal-title" role="dialog" aria-modal="true">
+
+            <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+                {{-- Backdrop --}}
+                <div class="fixed inset-0 bg-gray-900/60 backdrop-blur-xs transition-opacity"
+                     @click="uploadModalOpen = false"
+                     x-transition:enter="ease-out duration-300"
+                     x-transition:enter-start="opacity-0"
+                     x-transition:enter-end="opacity-100"
+                     x-transition:leave="ease-in duration-200"
+                     x-transition:leave-start="opacity-100"
+                     x-transition:leave-end="opacity-0"></div>
+
+                <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+
+                {{-- Modal Dialog --}}
+                <div
+                    class="relative inline-block align-bottom bg-white dark:bg-gray-800 rounded-3xl text-right overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full border border-gray-100 dark:border-gray-700/60"
+                    x-transition:enter="ease-out duration-300"
+                    x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+                    x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100"
+                    x-transition:leave="ease-in duration-200"
+                    x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
+                    x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95">
+
+                    <form action="{{ route('projects.templates.import') }}" method="POST" enctype="multipart/form-data">
+                        @csrf
+
+                        {{-- Modal Header --}}
+                        <div
+                            class="p-6 border-b border-gray-100 dark:border-gray-700/60 flex items-center justify-between">
+                            <div class="flex items-center gap-3">
+                                <span
+                                    class="w-11 h-11 rounded-2xl bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shadow-xs">
+                                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                         stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                              d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+                                    </svg>
+                                </span>
+                                <div>
+                                    <h3 class="text-base font-bold text-gray-900 dark:text-white" id="modal-title">
+                                        آپلود و شناسایی فایل JSON الگو
+                                    </h3>
+                                    <p class="text-xs text-gray-400 mt-0.5">
+                                        فایل JSON ساختار الگو را انتخاب کنید تا به صورت خودکار شناسایی و ذخیره شود.
+                                    </p>
+                                </div>
+                            </div>
+
+                            <button type="button" @click="uploadModalOpen = false"
+                                    class="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors">
+                                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                          d="M6 18L18 6M6 6l12 12"/>
+                                </svg>
+                            </button>
+                        </div>
+
+                        {{-- Modal Body --}}
+                        <div class="p-6 space-y-4">
+                            {{-- Dropzone / File Picker --}}
+                            <div>
+                                <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2">
+                                    انتخاب فایل الگو (.json) <span class="text-red-500">*</span>
+                                </label>
+                                <div
+                                    class="relative border-2 border-dashed rounded-2xl p-6 text-center transition-all cursor-pointer"
+                                    :class="isDragging ? 'border-indigo-500 bg-indigo-50/50 dark:bg-indigo-950/20' : 'border-gray-200 dark:border-gray-700 hover:border-indigo-400'"
+                                    @dragover.prevent="isDragging = true"
+                                    @dragleave.prevent="isDragging = false"
+                                    @drop.prevent="isDragging = false; if($event.dataTransfer.files.length) { $refs.fileInput.files = $event.dataTransfer.files; fileName = $event.dataTransfer.files[0].name; }">
+                                    <input type="file" name="template_file" accept=".json,application/json" required
+                                           x-ref="fileInput"
+                                           @change="fileName = $event.target.files.length ? $event.target.files[0].name : ''"
+                                           class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
+
+                                    <div class="space-y-2 pointer-events-none">
+                                        <div
+                                            class="w-12 h-12 mx-auto rounded-2xl bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+                                            <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                                 stroke-width="1.8">
+                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                      d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                            </svg>
+                                        </div>
+                                        <div>
+                                            <p class="text-xs font-bold text-gray-800 dark:text-gray-200">
+                                                <span x-show="!fileName">فایل JSON را به اینجا بکشید یا برای انتخاب کلیک کنید</span>
+                                                <span x-show="fileName"
+                                                      class="text-indigo-600 dark:text-indigo-400 font-black"
+                                                      x-text="fileName"></span>
+                                            </p>
+                                            <p class="text-[11px] text-gray-400 mt-1">
+                                                فرمت‌های مجاز: فقط JSON (حداکثر ۱۰ مگابایت)
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {{-- Optional Custom Title --}}
+                            <div>
+                                <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
+                                    عنوان اختصاصی الگو <span class="text-gray-400 font-normal">(اختیاری - در صورت خالی بودن از فایل خوانده می‌شود)</span>
+                                </label>
+                                <input type="text" name="custom_title"
+                                       placeholder="مثال: الگوی توسعه نرم‌افزار..."
+                                       class="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/50 px-3.5 py-2.5 text-xs text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500">
+                            </div>
+
+                            {{-- Optional Category --}}
+                            <div>
+                                <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
+                                    دسته‌بندی مربوطه <span class="text-gray-400 font-normal">(اختیاری)</span>
+                                </label>
+                                <select name="category_id"
+                                        class="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/50 px-3.5 py-2.5 text-xs text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 cursor-pointer">
+                                    <option value="">انتخاب دسته‌بندی...</option>
+                                    @foreach($categories as $cat)
+                                        <option value="{{ $cat->id }}">{{ $cat->name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+
+                            {{-- Note / Tip Box --}}
+                            <div
+                                class="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200/60 dark:border-amber-800/40 text-[11px] text-amber-800 dark:text-amber-300 flex items-start gap-2">
+                                <svg class="w-4 h-4 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24"
+                                     stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                          d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                                <span>سیستم به صورت خودکار فازها، گروه‌های وظیفه و کارهای ثبت‌شده در فایل JSON را شناسایی کرده و الگو را برای ویرایش و استفاده در پروژه‌ها آماده می‌سازد.</span>
+                            </div>
+                        </div>
+
+                        {{-- Modal Footer --}}
+                        <div
+                            class="p-6 border-t border-gray-100 dark:border-gray-700/60 flex items-center justify-end gap-3 bg-gray-50/50 dark:bg-gray-900/30">
+                            <button type="button" @click="uploadModalOpen = false"
+                                    class="px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 text-xs font-bold hover:bg-gray-100 transition-colors">
+                                انصراف
+                            </button>
+                            <button type="submit"
+                                    class="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-md shadow-indigo-500/20 transition-all flex items-center gap-1.5">
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                     stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+                                </svg>
+                                <span>آپلود و ذخیره الگو</span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
     </div>
 @endsection

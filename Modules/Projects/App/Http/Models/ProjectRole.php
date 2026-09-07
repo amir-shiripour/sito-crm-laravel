@@ -31,7 +31,10 @@ class ProjectRole extends Model
     public function hasPermission(string $permission): bool
     {
         $perms = $this->permissions ?? [];
-        return in_array($permission, $perms, true);
+        if (in_array($permission, $perms, true)) {
+            return true;
+        }
+        return !empty($perms[$permission]);
     }
 
     /**
@@ -108,6 +111,15 @@ class ProjectRole extends Model
                     'tasks.assign' => ['label' => 'تعیین و تغییر مسئول', 'desc' => 'اختصاص کار به اعضای تیم پروژه'],
                     'tasks.change_status' => ['label' => 'تغییر وضعیت / تکمیل کار', 'desc' => 'تیک زدن و تغییر مرحله انجام کار'],
                     'tasks.see_assigned_only' => ['label' => 'محدودیت: فقط کارهای من', 'desc' => 'کاربر تنها کارهایی که مسئول آن است را در لیست مشاهده کند'],
+                ],
+            ],
+            'kanban' => [
+                'title' => 'برد کانبان',
+                'icon' => 'view-boards',
+                'color' => 'indigo',
+                'items' => [
+                    'kanban.view' => ['label' => 'مشاهده برد کانبان', 'desc' => 'دسترسی به مشاهده تب و کارت‌های برد کانبان پروژه'],
+                    'kanban.change_status' => ['label' => 'تغییر وضعیت در برد کانبان', 'desc' => 'امکان کشیدن و رها کردن (Drag & Drop) کارت‌ها بین ستون‌ها جهت تغییر مرحله'],
                 ],
             ],
             'messages' => [
