@@ -72,29 +72,27 @@ class ClinicMonitoringService
             return false;
         }
 
+        // 1. Super-admin & Admin can always view all appointments
         if ($user->hasRole('super-admin') || $user->hasRole('admin')) {
             return true;
         }
 
-        // If user has view.own, they can only view own appointments
-        if ($user->hasPermissionTo('booking.appointments.view.own') && ! $user->hasDirectPermission('booking.appointments.view.all')) {
-            return false;
-        }
-
-        // If user has explicit view.all or manage permissions
+        // 2. Explicit view-all or management permission always allows viewing all appointments
+        // (works for permissions assigned directly or via roles)
         if ($user->can('booking.appointments.view.all')
             || $user->can('booking.manage')
-            || $user->can('booking.appointments.manage')) {
+            || $user->can('booking.appointments.manage')
+            || $user->can('booking.admin')) {
             return true;
         }
 
-        // If user is a configured provider (doctor/specialist), scope by default to their own appointments
-        if ($this->userIsProvider($user)) {
-            return false;
+        // 3. Non-provider staff (e.g. receptionist, secretary, operator, assistant) who have booking access can view all appointments
+        if (! $this->userIsProvider($user)) {
+            return true;
         }
 
-        // Non-provider staff (e.g. receptionist, secretary, operator) who have access to booking can view all appointments
-        return true;
+        // 4. Configured providers (doctors/specialists) without view-all permission only see their own appointments
+        return false;
     }
 
     /**

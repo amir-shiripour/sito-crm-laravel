@@ -97,7 +97,14 @@ class ClinicLiveMonitoring extends Component
         } else {
             $sessProv = session('clinic_monitoring_provider_id') ?? session('monitoring_filter_provider');
             if ($sessProv !== null && $sessProv !== 'all' && $sessProv !== '') {
-                $this->selectedProviderId = (int) $sessProv;
+                $candidateId = (int) $sessProv;
+                // If previously locked to user's own id while not a provider, reset to view all
+                if ($candidateId === (int) $user->id && ! $monitoringService->userIsProvider($user)) {
+                    $this->selectedProviderId = null;
+                    session()->forget(['clinic_monitoring_provider_id', 'monitoring_filter_provider']);
+                } else {
+                    $this->selectedProviderId = $candidateId;
+                }
             } else {
                 $this->selectedProviderId = null;
             }
