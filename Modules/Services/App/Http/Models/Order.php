@@ -7,8 +7,6 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Modules\Clients\Entities\Client;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Modules\DirectAdmin\Entities\DaAccount;
-use Modules\DomainManager\Entities\DomainRecord;
 
 class Order extends Model
 {
@@ -105,13 +103,90 @@ class Order extends Model
         })->latest();
     }
 
+    protected static ?bool $directAdminActiveCache = null;
+    protected static ?bool $domainManagerActiveCache = null;
+
+    /**
+     * Check if DirectAdmin module is installed, physically present and active.
+     */
+    public static function isDirectAdminActive(): bool
+    {
+        if (static::$directAdminActiveCache !== null) {
+            return static::$directAdminActiveCache;
+        }
+
+        if (!class_exists('Modules\DirectAdmin\Entities\DaAccount')) {
+            return static::$directAdminActiveCache = false;
+        }
+
+        if (class_exists(\Nwidart\Modules\Facades\Module::class)) {
+            if (!\Nwidart\Modules\Facades\Module::has('DirectAdmin') || !\Nwidart\Modules\Facades\Module::isEnabled('DirectAdmin')) {
+                return static::$directAdminActiveCache = false;
+            }
+        }
+
+        try {
+            if (class_exists(\App\Models\Module::class) && \Illuminate\Support\Facades\Schema::hasTable('modules')) {
+                $dbMod = \App\Models\Module::where('slug', 'directadmin')->first();
+                if ($dbMod && (!$dbMod->installed || !$dbMod->active)) {
+                    return static::$directAdminActiveCache = false;
+                }
+            }
+        } catch (\Throwable $e) {
+            // ignore
+        }
+
+        return static::$directAdminActiveCache = true;
+    }
+
+    /**
+     * Check if DomainManager module is installed, physically present and active.
+     */
+    public static function isDomainManagerActive(): bool
+    {
+        if (static::$domainManagerActiveCache !== null) {
+            return static::$domainManagerActiveCache;
+        }
+
+        if (!class_exists('Modules\DomainManager\Entities\DomainRecord')) {
+            return static::$domainManagerActiveCache = false;
+        }
+
+        if (class_exists(\Nwidart\Modules\Facades\Module::class)) {
+            if (!\Nwidart\Modules\Facades\Module::has('DomainManager') || !\Nwidart\Modules\Facades\Module::isEnabled('DomainManager')) {
+                return static::$domainManagerActiveCache = false;
+            }
+        }
+
+        try {
+            if (class_exists(\App\Models\Module::class) && \Illuminate\Support\Facades\Schema::hasTable('modules')) {
+                $dbMod = \App\Models\Module::where('slug', 'domainmanager')->first();
+                if ($dbMod && (!$dbMod->installed || !$dbMod->active)) {
+                    return static::$domainManagerActiveCache = false;
+                }
+            }
+        } catch (\Throwable $e) {
+            // ignore
+        }
+
+        return static::$domainManagerActiveCache = true;
+    }
+
     public function hostingAccount()
     {
-        return $this->hasOne(DaAccount::class, 'order_id');
+        if (static::isDirectAdminActive()) {
+            return $this->hasOne('Modules\DirectAdmin\Entities\DaAccount', 'order_id');
+        }
+
+        return $this->hasOne(self::class, 'id', 'id')->whereRaw('1 = 0');
     }
 
     public function domainRecord()
     {
-        return $this->hasOne(DomainRecord::class, 'service_order_id');
+        if (static::isDomainManagerActive()) {
+            return $this->hasOne('Modules\DomainManager\Entities\DomainRecord', 'service_order_id');
+        }
+
+        return $this->hasOne(self::class, 'id', 'id')->whereRaw('1 = 0');
     }
 }

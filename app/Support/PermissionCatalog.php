@@ -637,21 +637,22 @@ class PermissionCatalog
             'projects.edit' => 'ویرایش مشخصات پایه پروژه',
             'projects.delete' => 'حذف کامل پروژه',
             'projects.cancel' => 'لغو پروژه',
-            'projects.manage' => 'مدیریت پروژه‌ها',
-            'projects.templates.view' => 'مشاهده الگوهای پروژه',
-            'projects.templates.create' => 'ایجاد الگوی پروژه',
-            'projects.templates.edit' => 'ویرایش الگوی پروژه',
-            'projects.templates.delete' => 'حذف الگوی پروژه',
-            'projects.templates.manage' => 'مدیریت الگوهای پروژه',
-            'projects.categories.manage' => 'مدیریت دسته‌بندی‌های پروژه',
-            'projects.status-builder.manage' => 'مدیریت وضعیت‌ساز پروژه‌ها',
-            'projects.settings.manage' => 'مدیریت تنظیمات پروژه‌ها',
+            'projects.manage' => 'مدیریت کامل پروژه‌ها (دسترسی ارشد)',
+
+            // Projects: Templates
+            'projects.templates.view' => 'مشاهده منو و لیست الگوهای پروژه',
+            'projects.templates.create' => 'ایجاد الگوی جدید برای پروژه',
+            'projects.templates.edit' => 'ویرایش ساختار و مشخصات الگوها',
+            'projects.templates.delete' => 'حذف الگوهای آماده',
+            'projects.templates.manage' => 'مدیریت کامل الگوها (درون‌ریزی و خروجی)',
+
+            // Projects: Categories, Status Builder & Settings
+            'projects.categories.manage' => 'مدیریت دسته‌بندی‌های پروژه‌ها',
+            'projects.status-builder.manage' => 'مدیریت وضعیت‌های کار و پروژه',
+            'projects.settings.manage' => 'مدیریت تنظیمات عمومی و نقش‌های پروژه‌ها',
 
             'services.orders.view' => 'مشاهده سفارشات خدمات',
             'services.orders.view.all' => 'مشاهده همه سفارشات خدمات',
-            'services.orders.create' => 'ثبت سفارش خدمت جدید',
-            'services.orders.edit' => 'ویرایش سفارش خدمت',
-            'services.orders.delete' => 'حذف سفارش خدمت',
             'services.orders.manage' => 'مدیریت سفارشات خدمات',
 
             'services.invoices.view' => 'مشاهده فاکتورهای خدمات',

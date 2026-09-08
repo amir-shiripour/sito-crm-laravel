@@ -314,22 +314,28 @@
                         <tr class="group bg-white dark:bg-gray-800 hover:bg-indigo-50/50 dark:hover:bg-indigo-500/10 transition-colors duration-300">
                             @php
                                 $catSlug = $order->service?->category?->slug;
-                                $isHostingOrder = ($catSlug === 'hosting') || !empty($order->hostingAccount);
-                                $isDomainOrder = ($catSlug === 'domain') || !empty($order->domainRecord);
+                                $isDaEnabled = $isDaActive ?? Order::isDirectAdminActive();
+                                $isDmEnabled = $isDmActive ?? Order::isDomainManagerActive();
+                                $isHostingOrder = $isDaEnabled && (($catSlug === 'hosting') || !empty($order->hostingAccount));
+                                $isDomainOrder = $isDmEnabled && (($catSlug === 'domain') || !empty($order->domainRecord));
                             @endphp
 
                             {{-- سرویس و مشتری --}}
                             <td class="px-6 py-4 align-middle">
                                 <div class="flex items-center gap-3">
                                     <div
-                                        class="flex-shrink-0 w-11 h-11 rounded-2xl {{ $isHostingOrder ? 'bg-sky-100 dark:bg-sky-500/20 text-sky-600 dark:text-sky-400 border border-sky-200 dark:border-sky-500/30' : 'bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-500/30' }} flex items-center justify-center font-black text-base">
+                                        class="flex-shrink-0 w-11 h-11 rounded-2xl {{ $isHostingOrder ? 'bg-sky-100 dark:bg-sky-500/20 text-sky-600 dark:text-sky-400 border border-sky-200 dark:border-sky-500/30' : ($isDomainOrder ? 'bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-500/30' : 'bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-500/30') }} flex items-center justify-center font-black text-base">
                                         @if($isHostingOrder)
                                             <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                                 <path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2"/>
                                             </svg>
-                                        @else
+                                        @elseif($isDomainOrder)
                                             <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                                 <path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"/>
+                                            </svg>
+                                        @else
+                                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
                                             </svg>
                                         @endif
                                     </div>
@@ -349,23 +355,35 @@
                                             @endif
                                         </div>
 
-                                        @if($order->hostingAccount)
+                                        @if($isDaEnabled && $order->hostingAccount)
                                             <div class="mt-1 flex items-center gap-1.5 text-xs font-bold text-sky-600 dark:text-sky-400">
                                                 <svg class="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                                     <path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2"/>
                                                 </svg>
-                                                <a href="{{ route('user.directadmin.accounts.show', $order->hostingAccount->username) }}" class="hover:underline dir-ltr truncate max-w-[180px]">
-                                                    {{ $order->hostingAccount->username }} ({{ $order->hostingAccount->domain }})
-                                                </a>
+                                                @if(\Illuminate\Support\Facades\Route::has('user.directadmin.accounts.show'))
+                                                    <a href="{{ route('user.directadmin.accounts.show', $order->hostingAccount->username) }}" class="hover:underline dir-ltr truncate max-w-[180px]">
+                                                        {{ $order->hostingAccount->username }} ({{ $order->hostingAccount->domain }})
+                                                    </a>
+                                                @else
+                                                    <span class="dir-ltr truncate max-w-[180px]">
+                                                        {{ $order->hostingAccount->username }} ({{ $order->hostingAccount->domain }})
+                                                    </span>
+                                                @endif
                                             </div>
-                                        @elseif($order->domainRecord)
+                                        @elseif($isDmEnabled && $order->domainRecord)
                                             <div class="mt-1 flex items-center gap-1.5 text-xs font-bold text-indigo-600 dark:text-indigo-400">
                                                 <svg class="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                                     <path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"/>
                                                 </svg>
-                                                <a href="{{ route('user.domainmanager.domains.show', $order->domainRecord->domain_name) }}" class="hover:underline dir-ltr truncate max-w-[180px]">
-                                                    {{ $order->domainRecord->domain_name }}
-                                                </a>
+                                                @if(\Illuminate\Support\Facades\Route::has('user.domainmanager.domains.show'))
+                                                    <a href="{{ route('user.domainmanager.domains.show', $order->domainRecord->domain_name) }}" class="hover:underline dir-ltr truncate max-w-[180px]">
+                                                        {{ $order->domainRecord->domain_name }}
+                                                    </a>
+                                                @else
+                                                    <span class="dir-ltr truncate max-w-[180px]">
+                                                        {{ $order->domainRecord->domain_name }}
+                                                    </span>
+                                                @endif
                                             </div>
                                         @endif
 
