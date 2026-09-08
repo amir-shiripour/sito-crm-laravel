@@ -120,9 +120,21 @@
         showWorkflowTab: {{ $showWorkflowTab ? 'true' : 'false' }},
         init() {
             const hash = window.location.hash.substring(1);
+            const urlParams = new URLSearchParams(window.location.search);
+            let defaultTab = 'general';
+            if (urlParams.has('orders_page')) defaultTab = 'orders';
+            else if (urlParams.has('invoices_page')) defaultTab = 'invoices';
+            else if (urlParams.has('domains_page')) defaultTab = 'domains';
+            else if (urlParams.has('hosting_page') || urlParams.has('directadmin_page')) defaultTab = 'directadmin';
+            else if (urlParams.has('transactions_page')) defaultTab = 'transactions';
+
             const validTabs = ['general','appointments','orders','invoices','domains','directadmin','transactions','wallet'];
             if (this.showWorkflowTab) validTabs.push('workflows');
-            if (validTabs.includes(hash)) this.activeTab = hash;
+            if (validTabs.includes(hash)) {
+                this.activeTab = hash;
+            } else if (defaultTab !== 'general') {
+                this.activeTab = defaultTab;
+            }
         },
         setTab(tab) {
             this.activeTab = tab;
@@ -308,7 +320,7 @@
                     <span
                         :class="activeTab === 'orders' ? 'bg-white/20 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300'"
                         class="inline-flex items-center justify-center min-w-5.5 h-5 px-1.5 rounded-full text-[10px] font-black">
-                    {{ $faNum($clientOrders->count()) }}
+                    {{ $faNum($clientOrderStats['count'] ?? ($clientOrders instanceof \Illuminate\Pagination\AbstractPaginator ? $clientOrders->total() : $clientOrders->count())) }}
                 </span>
                 </button>
 
@@ -324,7 +336,7 @@
                     <span
                         :class="activeTab === 'invoices' ? 'bg-white/20 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300'"
                         class="inline-flex items-center justify-center min-w-5.5 h-5 px-1.5 rounded-full text-[10px] font-black">
-                    {{ $faNum($clientInvoices->count()) }}
+                    {{ $faNum($clientInvoiceStats['count'] ?? ($clientInvoices instanceof \Illuminate\Pagination\AbstractPaginator ? $clientInvoices->total() : $clientInvoices->count())) }}
                     </span>
                 </button>
                 @endif
@@ -1694,7 +1706,11 @@
                                                 ? $order->service->renewal_prices[$order->billing_cycle]
                                                 : ($order->renewal_price ?? 0));
 
-                                        $searchableText = strtolower(($order->service?->name ?? $order->notes ?? 'سرویس') . ' ' . $order->order_number . ' ' . ($order->invoice?->invoice_number ?? '') . ' ' . $statusName);
+                                        $catSlug = $order->service?->category?->slug;
+                                        $isHostingOrder = ($catSlug === 'hosting') || !empty($order->hostingAccount);
+                                        $isDomainOrder = ($catSlug === 'domain') || !empty($order->domainRecord);
+
+                                        $searchableText = strtolower(($order->service?->name ?? $order->notes ?? 'سرویس') . ' ' . $order->order_number . ' ' . ($order->invoice?->invoice_number ?? '') . ' ' . $statusName . ' ' . ($order->hostingAccount?->username ?? '') . ' ' . ($order->hostingAccount?->domain ?? '') . ' ' . ($order->domainRecord?->domain_name ?? ''));
                                     @endphp
 
                                     <tr class="group bg-white dark:bg-gray-800 hover:bg-indigo-50/50 dark:hover:bg-indigo-500/10 transition-colors duration-300"
@@ -1704,12 +1720,69 @@
                                         {{-- سرویس --}}
                                         <td class="px-6 py-4 align-middle">
                                             <div class="flex items-center gap-3">
-                                                <div class="flex-shrink-0 w-11 h-11 rounded-2xl bg-indigo-100 dark:bg-indigo-500/20 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-black text-base border border-indigo-200 dark:border-indigo-500/30">
-                                                    {{ mb_substr($order->service?->name ?? 'د', 0, 1) }}
+                                                <div
+                                                    class="flex-shrink-0 w-11 h-11 rounded-2xl {{ $isHostingOrder ? 'bg-sky-100 dark:bg-sky-500/20 text-sky-600 dark:text-sky-400 border border-sky-200 dark:border-sky-500/30' : ($isDomainOrder ? 'bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-500/30' : 'bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-500/30') }} flex items-center justify-center font-black text-base">
+                                                    @if($isHostingOrder)
+                                                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2"/>
+                                                        </svg>
+                                                    @elseif($isDomainOrder)
+                                                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"/>
+                                                        </svg>
+                                                    @else
+                                                        {{ mb_substr($order->service?->name ?? 'د', 0, 1) }}
+                                                    @endif
                                                 </div>
                                                 <div class="min-w-0">
-                                                    <div class="font-black text-gray-900 dark:text-white text-base truncate">{{ $order->service?->name ?? $order->notes ?? 'ردیف دستی' }}</div>
-                                                    <div class="text-xs font-bold text-gray-400 mt-1 uppercase tabular-nums">{{ $order->order_number }}</div>
+                                                    <div class="flex items-center gap-2 flex-wrap">
+                                                        <span class="font-black text-gray-900 dark:text-white text-base truncate">
+                                                            {{ $order->service?->name ?? $order->notes ?? 'ردیف دستی' }}
+                                                        </span>
+                                                        @if($isHostingOrder)
+                                                            <span class="px-2 py-0.5 rounded-md text-[10px] font-black bg-sky-50 text-sky-700 dark:bg-sky-500/10 dark:text-sky-300 border border-sky-200/60 dark:border-sky-500/20 shrink-0">
+                                                                هاستینگ
+                                                            </span>
+                                                        @elseif($isDomainOrder)
+                                                            <span class="px-2 py-0.5 rounded-md text-[10px] font-black bg-indigo-50 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-500/20 shrink-0">
+                                                                دامنه
+                                                            </span>
+                                                        @endif
+                                                    </div>
+
+                                                    @if($order->hostingAccount)
+                                                        <div class="mt-1 flex items-center gap-1.5 text-xs font-bold text-sky-600 dark:text-sky-400">
+                                                            <svg class="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2"/>
+                                                            </svg>
+                                                            @if(Route::has('user.directadmin.accounts.show'))
+                                                                <a href="{{ route('user.directadmin.accounts.show', $order->hostingAccount->username) }}" class="hover:underline dir-ltr truncate max-w-[180px]">
+                                                                    {{ $order->hostingAccount->username }} ({{ $order->hostingAccount->domain }})
+                                                                </a>
+                                                            @else
+                                                                <span class="dir-ltr truncate max-w-[180px]">
+                                                                    {{ $order->hostingAccount->username }} ({{ $order->hostingAccount->domain }})
+                                                                </span>
+                                                            @endif
+                                                        </div>
+                                                    @elseif($order->domainRecord)
+                                                        <div class="mt-1 flex items-center gap-1.5 text-xs font-bold text-indigo-600 dark:text-indigo-400">
+                                                            <svg class="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"/>
+                                                            </svg>
+                                                            @if(Route::has('user.domainmanager.domains.show'))
+                                                                <a href="{{ route('user.domainmanager.domains.show', $order->domainRecord->domain_name) }}" class="hover:underline dir-ltr truncate max-w-[180px]">
+                                                                    {{ $order->domainRecord->domain_name }}
+                                                                </a>
+                                                            @else
+                                                                <span class="dir-ltr truncate max-w-[180px]">
+                                                                    {{ $order->domainRecord->domain_name }}
+                                                                </span>
+                                                            @endif
+                                                        </div>
+                                                    @endif
+
+                                                    <div class="text-xs font-bold text-gray-400 mt-1 uppercase tabular-nums dir-ltr text-right">{{ $order->order_number }}</div>
                                                 </div>
                                             </div>
                                         </td>
@@ -1791,6 +1864,29 @@
                                 </tbody>
                             </table>
                         </div>
+
+                        {{-- Pagination Footer --}}
+                        @if($clientOrders instanceof \Illuminate\Pagination\AbstractPaginator && $clientOrders->total() > 0)
+                            <div class="px-6 py-4 border-t border-gray-100 dark:border-gray-700/50 bg-gray-50/50 dark:bg-gray-900/20 flex flex-col sm:flex-row items-center justify-between gap-4">
+                                <div class="flex flex-wrap items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
+                                    <span>
+                                        نمایش
+                                        <strong class="text-gray-800 dark:text-gray-200">{{ $faNum($clientOrders->firstItem() ?? 0) }}</strong>
+                                        تا
+                                        <strong class="text-gray-800 dark:text-gray-200">{{ $faNum($clientOrders->lastItem() ?? 0) }}</strong>
+                                        از
+                                        <strong class="text-gray-800 dark:text-gray-200">{{ $faNum($clientOrders->total()) }}</strong>
+                                        سفارش
+                                    </span>
+                                </div>
+
+                                @if($clientOrders->hasPages())
+                                    <div>
+                                        {{ $clientOrders->withQueryString()->fragment('orders')->links('clients::partials.pagination') }}
+                                    </div>
+                                @endif
+                            </div>
+                        @endif
                     </div>
                 @else
                     <div class="flex flex-col items-center justify-center py-20 text-center">
@@ -2022,6 +2118,29 @@
                                 </tbody>
                             </table>
                         </div>
+
+                        {{-- Pagination Footer --}}
+                        @if($clientInvoices instanceof \Illuminate\Pagination\AbstractPaginator && $clientInvoices->total() > 0)
+                            <div class="px-6 py-4 border-t border-gray-100 dark:border-gray-700/50 bg-gray-50/50 dark:bg-gray-900/20 flex flex-col sm:flex-row items-center justify-between gap-4">
+                                <div class="flex flex-wrap items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
+                                    <span>
+                                        نمایش
+                                        <strong class="text-gray-800 dark:text-gray-200">{{ $faNum($clientInvoices->firstItem() ?? 0) }}</strong>
+                                        تا
+                                        <strong class="text-gray-800 dark:text-gray-200">{{ $faNum($clientInvoices->lastItem() ?? 0) }}</strong>
+                                        از
+                                        <strong class="text-gray-800 dark:text-gray-200">{{ $faNum($clientInvoices->total()) }}</strong>
+                                        فاکتور
+                                    </span>
+                                </div>
+
+                                @if($clientInvoices->hasPages())
+                                    <div>
+                                        {{ $clientInvoices->withQueryString()->fragment('invoices')->links('clients::partials.pagination') }}
+                                    </div>
+                                @endif
+                            </div>
+                        @endif
                     </div>
                 @else
                     <div class="flex flex-col items-center justify-center py-20 text-center">

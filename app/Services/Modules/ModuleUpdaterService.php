@@ -56,7 +56,13 @@ class ModuleUpdaterService
                     '--force' => true
                 ]);
 
-                // 6. بازسازی کش سیستم برای شناسایی تغییرات جدید
+                // 6. همگام‌سازی امن مجوزهای ماژول
+                $installerClass = "\\Modules\\{$moduleName}\\Installer";
+                if (class_exists($installerClass) && method_exists($installerClass, 'syncModulePermissions')) {
+                    $installerClass::syncModulePermissions();
+                }
+
+                // 7. بازسازی کش سیستم برای شناسایی تغییرات جدید
                 Artisan::call('optimize:clear');
 
                 return [

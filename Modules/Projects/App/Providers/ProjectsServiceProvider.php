@@ -34,6 +34,7 @@ class ProjectsServiceProvider extends ServiceProvider
         $this->registerViews();
         $this->registerTranslations();
         $this->registerConfig();
+        $this->loadMigrationsFrom(module_path($this->moduleName, 'Database/Migrations'));
 
         if ($this->app->runningInConsole()) {
             $this->commands([
