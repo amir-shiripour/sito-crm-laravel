@@ -6,6 +6,8 @@ use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 use Modules\Projects\App\Console\CheckOverdueTasksCommand;
+use Modules\Projects\App\Console\Commands\ProjectsInstall;
+use Modules\Projects\App\Console\Commands\ProjectsUpdatePermissions;
 use Modules\Projects\App\Http\Models\Project;
 use Modules\Projects\App\Http\Models\ProjectTask;
 use Modules\Projects\App\Observers\ProjectObserver;
@@ -36,6 +38,8 @@ class ProjectsServiceProvider extends ServiceProvider
         if ($this->app->runningInConsole()) {
             $this->commands([
                 CheckOverdueTasksCommand::class,
+                ProjectsInstall::class,
+                ProjectsUpdatePermissions::class,
             ]);
         }
     }
