@@ -25,15 +25,34 @@ class CalendarEvent extends Model
         'end_time',
         'is_all_day',
         'is_public',
+        'recurrence_type',
+        'recurrence_interval',
+        'recurrence_days',
+        'repeat_until',
+        'repeat_count',
         'status',
     ];
 
     protected $casts = [
-        'start_time' => 'datetime',
-        'end_time'   => 'datetime',
-        'is_all_day' => 'boolean',
-        'is_public'  => 'boolean',
+        'start_time'          => 'datetime',
+        'end_time'            => 'datetime',
+        'is_all_day'          => 'boolean',
+        'is_public'           => 'boolean',
+        'recurrence_interval' => 'integer',
+        'recurrence_days'     => 'array',
+        'repeat_until'        => 'date',
+        'repeat_count'        => 'integer',
     ];
+
+    public function exceptions(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(CalendarEventException::class, 'calendar_event_id');
+    }
+
+    public function isRecurring(): bool
+    {
+        return !empty($this->recurrence_type);
+    }
 
     public function user(): BelongsTo
     {

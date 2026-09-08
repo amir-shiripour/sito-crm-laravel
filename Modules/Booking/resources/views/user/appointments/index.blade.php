@@ -1,4 +1,5 @@
 @extends('layouts.user')
+@section('title', 'نوبت‌ها')
 @php
     $clientLabel = config('clients.labels.singular', 'مشتری');
 @endphp
@@ -157,7 +158,8 @@
                         <th class="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">تاریخ نوبت</th>
                         <th class="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">ساعت نوبت</th>
                         <th class="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">مدت</th>
-                        <th class="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300 text-left pl-6">وضعیت</th>
+                        <th class="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300 text-center">وضعیت</th>
+                        <th class="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300 text-center">تاریخ ایجاد</th>
                         <th class="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300 text-left pl-6">عملیات</th>
                     </tr>
                     </thead>
@@ -222,15 +224,29 @@
                                 {{ $durationMinutes !== null ? ($durationMinutes . ' دقیقه') : '-' }}
                             </td>
 
-                            <td class="px-4 py-3 text-left">
-                                <div class="flex flex-col items-start gap-1">
+                            <td class="px-4 py-3 text-center">
+                                <div class="flex flex-col items-center justify-center gap-1">
                                     <span class="inline-flex px-2.5 py-1 rounded-full text-[11px] font-semibold {{ $statusMeta['class'] }}">
                                         {{ $statusMeta['label'] }}
                                     </span>
                                     @if($a->cancel_reason)
-                                        <span class="text-[10px] text-rose-600 dark:text-rose-400 font-medium line-clamp-1 max-w-[140px]" title="{{ $a->cancel_reason }}">
+                                        <span class="text-[10px] text-rose-600 dark:text-rose-400 font-medium line-clamp-1 max-w-[140px] text-center" title="{{ $a->cancel_reason }}">
                                             {{ $a->cancel_reason }}
                                         </span>
+                                    @endif
+                                </div>
+                            </td>
+
+                            <td class="px-4 py-3 text-center">
+                                @php
+                                    $createdTz = $a->created_at ? $a->created_at->copy()->timezone($tz) : null;
+                                    $createdJalali = $createdTz ? \Morilog\Jalali\Jalalian::fromDateTime($createdTz)->format('Y/m/d') : '—';
+                                    $createdTime = $createdTz ? $createdTz->format('H:i') : '';
+                                @endphp
+                                <div class="flex flex-col items-center justify-center">
+                                    <span class="text-gray-900 dark:text-gray-100 text-sm font-medium">{{ $createdJalali }}</span>
+                                    @if($createdTime)
+                                        <span class="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5" dir="ltr">{{ $createdTime }}</span>
                                     @endif
                                 </div>
                             </td>
@@ -252,7 +268,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="8" class="px-4 py-12 text-center text-gray-500 dark:text-gray-400">
+                            <td colspan="9" class="px-4 py-12 text-center text-gray-500 dark:text-gray-400">
                                 <div class="flex flex-col items-center justify-center gap-2">
                                     <svg class="w-10 h-10 text-gray-300 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
                                     <span>هیچ نوبتی یافت نشد.</span>

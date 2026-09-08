@@ -687,7 +687,7 @@ class CalendarEventService
     }
 
     /**
-     * دریافت رویدادهای مستقل ثبت‌شده از طریق تقویم
+     * دریافت رویدادهای مستقل ثبت‌شده از طریق تقویم (شامل رویدادهای عادی و تکرارشونده)
      */
     public function getCustomCalendarEvents(Carbon $from, Carbon $to, User $user): Collection
     {
@@ -696,7 +696,10 @@ class CalendarEventService
         }
 
         try {
-            $events = \App\Models\CalendarEvent::query()
+            $events = collect();
+
+            // ۱. دریافت رویدادهای عادی (بدون تکرار)
+            $regularEvents = \App\Models\CalendarEvent::query()
                 ->with('creator')
                 ->where(function ($q) use ($user) {
                     $q->where('is_public', true)
@@ -704,6 +707,7 @@ class CalendarEventService
                       ->orWhere('created_by', $user->id);
                 })
                 ->where('status', 'active')
+                ->whereNull('recurrence_type')
                 ->where('start_time', '<=', $to)
                 ->where(function ($q) use ($from) {
                     $q->where('end_time', '>=', $from)
@@ -713,58 +717,296 @@ class CalendarEventService
                 ->orderBy('start_time')
                 ->get();
 
-            return $events->map(function ($ev) use ($user) {
-                $startDt    = $ev->start_time;
-                $endDt      = $ev->end_time;
-                $jalaliDate = $startDt ? Jalalian::fromCarbon($startDt) : null;
-                $isAllDay   = (bool)$ev->is_all_day;
-                $isPublic   = $ev->is_public !== null ? (bool)$ev->is_public : true;
+            foreach ($regularEvents as $ev) {
+                $events->push($this->formatCustomEvent($ev, $user));
+            }
 
-                $startMinute = ($startDt && !$isAllDay) ? ($startDt->hour * 60 + $startDt->minute) : 0;
-                $endMinute   = ($endDt && !$isAllDay) ? ($endDt->hour * 60 + $endDt->minute) : ($startMinute + 60);
-                if ($endMinute <= $startMinute) {
-                    $endMinute = $startMinute + 60;
-                }
-                $duration = $isAllDay ? 1440 : max(15, $endMinute - $startMinute);
+            // ۲. دریافت رویدادهای تکرارشونده و بازکردن الگو (Expansion)
+            $recurringParents = \App\Models\CalendarEvent::query()
+                ->with(['creator', 'exceptions'])
+                ->where(function ($q) use ($user) {
+                    $q->where('is_public', true)
+                      ->orWhere('user_id', $user->id)
+                      ->orWhere('created_by', $user->id);
+                })
+                ->where('status', 'active')
+                ->whereNotNull('recurrence_type')
+                ->where('start_time', '<=', $to)
+                ->where(function ($q) use ($from) {
+                    $q->whereNull('repeat_until')
+                      ->orWhere('repeat_until', '>=', $from->toDateString());
+                })
+                ->get();
 
-                $startTimeStr = ($startDt && !$isAllDay) ? $startDt->format('H:i') : '';
-                $endTimeStr   = ($endDt && !$isAllDay) ? $endDt->format('H:i') : '';
-                $timeStr      = $isAllDay ? 'تمام روز' : ($startTimeStr . ($endTimeStr ? ' - ' . $endTimeStr : ''));
+            foreach ($recurringParents as $parent) {
+                $expanded = $this->expandRecurringEvent($parent, $from, $to, $user);
+                $events = $events->concat($expanded);
+            }
 
-                $canEdit = ($ev->created_by === $user->id || $ev->user_id === $user->id || (method_exists($user, 'hasRole') && $user->hasRole('super-admin')));
-
-                return [
-                    'id'               => 'custom_ev_' . $ev->id,
-                    'raw_id'           => $ev->id,
-                    'title'            => $ev->title,
-                    'description'      => $ev->description ?? '',
-                    'location'         => $ev->location ?? '',
-                    'color'            => $ev->color ?: '#4f46e5',
-                    'service_color'    => $ev->color ?: '#4f46e5',
-                    'datetime'         => $startDt ? $startDt->toIso8601String() : null,
-                    'time'             => $timeStr,
-                    'start_time'       => $startTimeStr,
-                    'end_time'         => $endTimeStr,
-                    'start_minute'     => $startMinute,
-                    'end_minute'       => $endMinute,
-                    'duration_minutes' => $duration,
-                    'is_all_day'       => $isAllDay,
-                    'is_public'        => $isPublic,
-                    'creator_name'     => $ev->creator?->name ?? '',
-                    'date_fa'          => $jalaliDate ? $jalaliDate->format('Y/m/d') : '',
-                    'date_en'          => $startDt ? $startDt->format('Y-m-d') : '',
-                    'day'              => $jalaliDate ? $jalaliDate->getDay() : null,
-                    'month'            => $jalaliDate ? $jalaliDate->getMonth() : null,
-                    'year'             => $jalaliDate ? $jalaliDate->getYear() : null,
-                    'source'           => 'custom_events',
-                    'source_label'     => 'رویداد تقویم',
-                    'can_edit'         => $canEdit,
-                    'can_delete'       => $canEdit,
-                ];
-            });
+            return $events->sortBy('datetime')->values();
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::error('CalendarEventService custom_events fetch error: ' . $e->getMessage());
             return collect();
         }
+    }
+
+    /**
+     * قالب‌بندی رویداد عادی تقویم
+     */
+    protected function formatCustomEvent(\App\Models\CalendarEvent $ev, User $user): array
+    {
+        $startDt    = $ev->start_time;
+        $endDt      = $ev->end_time;
+        $jalaliDate = $startDt ? Jalalian::fromCarbon($startDt) : null;
+        $isAllDay   = (bool)$ev->is_all_day;
+        $isPublic   = $ev->is_public !== null ? (bool)$ev->is_public : true;
+
+        $startMinute = ($startDt && !$isAllDay) ? ($startDt->hour * 60 + $startDt->minute) : 0;
+        $endMinute   = ($endDt && !$isAllDay) ? ($endDt->hour * 60 + $endDt->minute) : ($startMinute + 60);
+        if ($endMinute <= $startMinute) {
+            $endMinute = $startMinute + 60;
+        }
+        $duration = $isAllDay ? 1440 : max(15, $endMinute - $startMinute);
+
+        $startTimeStr = ($startDt && !$isAllDay) ? $startDt->format('H:i') : '';
+        $endTimeStr   = ($endDt && !$isAllDay) ? $endDt->format('H:i') : '';
+        $timeStr      = $isAllDay ? 'تمام روز' : ($startTimeStr . ($endTimeStr ? ' - ' . $endTimeStr : ''));
+
+        $canEdit = ($ev->created_by === $user->id || $ev->user_id === $user->id || (method_exists($user, 'hasRole') && $user->hasRole('super-admin')));
+
+        return [
+            'id'               => 'custom_ev_' . $ev->id,
+            'raw_id'           => $ev->id,
+            'title'            => $ev->title,
+            'description'      => $ev->description ?? '',
+            'location'         => $ev->location ?? '',
+            'color'            => $ev->color ?: '#4f46e5',
+            'service_color'    => $ev->color ?: '#4f46e5',
+            'datetime'         => $startDt ? $startDt->toIso8601String() : null,
+            'time'             => $timeStr,
+            'start_time'       => $startTimeStr,
+            'end_time'         => $endTimeStr,
+            'start_minute'     => $startMinute,
+            'end_minute'       => $endMinute,
+            'duration_minutes' => $duration,
+            'is_all_day'       => $isAllDay,
+            'is_public'        => $isPublic,
+            'is_recurring'     => false,
+            'recurrence_type'  => null,
+            'creator_name'     => $ev->creator?->name ?? '',
+            'date_fa'          => $jalaliDate ? $jalaliDate->format('Y/m/d') : '',
+            'date_en'          => $startDt ? $startDt->format('Y-m-d') : '',
+            'day'              => $jalaliDate ? $jalaliDate->getDay() : null,
+            'month'            => $jalaliDate ? $jalaliDate->getMonth() : null,
+            'year'             => $jalaliDate ? $jalaliDate->getYear() : null,
+            'source'           => 'custom_events',
+            'source_label'     => 'رویداد تقویم',
+            'can_edit'         => $canEdit,
+            'can_delete'       => $canEdit,
+        ];
+    }
+
+    /**
+     * بازکردن و گسترش نمونه‌های یک رویداد تکرارشونده در بازه زمانی درخواستی
+     */
+    protected function expandRecurringEvent(\App\Models\CalendarEvent $parent, Carbon $from, Carbon $to, User $user): Collection
+    {
+        $occurrences = collect();
+        $exceptions = $parent->exceptions ? $parent->exceptions->keyBy(fn($item) => Carbon::parse($item->exception_date)->toDateString()) : collect();
+
+        $type     = $parent->recurrence_type;
+        $interval = max(1, (int)($parent->recurrence_interval ?: 1));
+        $days     = is_array($parent->recurrence_days) ? $parent->recurrence_days : [];
+        $until    = $parent->repeat_until ? Carbon::parse($parent->repeat_until)->endOfDay() : null;
+        $maxCount = $parent->repeat_count ? (int)$parent->repeat_count : null;
+
+        // سقف یک ساله برای رویدادهای بی‌نهایت طبق درخواست کاربر
+        $maxCapDate = Carbon::today()->addYear()->endOfDay();
+        if ($until === null || $until->gt($maxCapDate)) {
+            $effectiveUntil = $maxCapDate;
+        } else {
+            $effectiveUntil = $until;
+        }
+
+        $baseStart = $parent->start_time ? $parent->start_time->copy() : Carbon::today();
+        $baseEnd   = $parent->end_time ? $parent->end_time->copy() : null;
+        $durationMinutes = ($baseEnd && $baseStart) ? max(15, $baseEnd->diffInMinutes($baseStart)) : 60;
+
+        $canEdit = ($parent->created_by === $user->id || $parent->user_id === $user->id || (method_exists($user, 'hasRole') && $user->hasRole('super-admin')));
+
+        // اگر نوع هفتگی است و روزی انتخاب نشده، روزِ شروع والد به عنوان روز تکرار انتخاب می‌شود
+        if ($type === 'weekly' && empty($days)) {
+            // شنبه=0 ... جمعه=6
+            $jalaliDow = ($baseStart->dayOfWeek + 1) % 7;
+            $days = [$jalaliDow];
+        }
+
+        $cursor = $baseStart->copy();
+        $generatedCount = 0;
+        $maxIterations = 1000; // جلوگیری از هرگونه حلقه بی‌نهایت
+
+        while ($cursor->lte($to) && $cursor->lte($effectiveUntil) && $maxIterations-- > 0) {
+            if ($maxCount !== null && $generatedCount >= $maxCount) {
+                break;
+            }
+
+            if ($type === 'daily') {
+                $currentDateStr = $cursor->toDateString();
+                $generatedCount++;
+
+                if ($cursor->gte($from) && $cursor->lte($to)) {
+                    $item = $this->buildOccurrenceItem($parent, $cursor, $durationMinutes, $exceptions->get($currentDateStr), $canEdit);
+                    if ($item !== null) {
+                        $occurrences->push($item);
+                    }
+                }
+                $cursor->addDays($interval);
+            } elseif ($type === 'weekly') {
+                // بررسی روزهای هفته در بازه هفتگی جاری
+                // گام هفتگی: شروع هفته از شنبه
+                $startOfWeek = $cursor->copy()->subDays(($cursor->dayOfWeek + 1) % 7)->startOfDay();
+
+                for ($d = 0; $d < 7; $d++) {
+                    $dayCandidate = $startOfWeek->copy()->addDays($d)->setTime($baseStart->hour, $baseStart->minute, $baseStart->second);
+
+                    // قبل از تاریخ اصلی رویداد نباشد
+                    if ($dayCandidate->lt($baseStart->startOfDay())) {
+                        continue;
+                    }
+
+                    $currentDow = ($dayCandidate->dayOfWeek + 1) % 7;
+                    if (in_array($currentDow, $days)) {
+                        if ($dayCandidate->gt($effectiveUntil)) {
+                            break 2;
+                        }
+
+                        $generatedCount++;
+                        if ($maxCount !== null && $generatedCount > $maxCount) {
+                            break 2;
+                        }
+
+                        $cDateStr = $dayCandidate->toDateString();
+                        if ($dayCandidate->gte($from) && $dayCandidate->lte($to)) {
+                            $item = $this->buildOccurrenceItem($parent, $dayCandidate, $durationMinutes, $exceptions->get($cDateStr), $canEdit);
+                            if ($item !== null) {
+                                $occurrences->push($item);
+                            }
+                        }
+                    }
+                }
+
+                $cursor = $startOfWeek->copy()->addWeeks($interval);
+            } elseif ($type === 'monthly') {
+                $currentDateStr = $cursor->toDateString();
+                $generatedCount++;
+
+                if ($cursor->gte($from) && $cursor->lte($to)) {
+                    $item = $this->buildOccurrenceItem($parent, $cursor, $durationMinutes, $exceptions->get($currentDateStr), $canEdit);
+                    if ($item !== null) {
+                        $occurrences->push($item);
+                    }
+                }
+                $cursor->addMonths($interval);
+            } elseif ($type === 'yearly') {
+                $currentDateStr = $cursor->toDateString();
+                $generatedCount++;
+
+                if ($cursor->gte($from) && $cursor->lte($to)) {
+                    $item = $this->buildOccurrenceItem($parent, $cursor, $durationMinutes, $exceptions->get($currentDateStr), $canEdit);
+                    if ($item !== null) {
+                        $occurrences->push($item);
+                    }
+                }
+                $cursor->addYears($interval);
+            } else {
+                break;
+            }
+        }
+
+        return $occurrences;
+    }
+
+    /**
+     * ساخت ساختار استاندارد کارت برای یک نمونه تکرارشونده (با اعمال استثناها)
+     */
+    protected function buildOccurrenceItem(\App\Models\CalendarEvent $parent, Carbon $occurrenceStart, int $durationMinutes, ?\App\Models\CalendarEventException $exception, bool $canEdit): ?array
+    {
+        // اگر استثنا از نوع skip (حذف این نمونه) باشد
+        if ($exception && $exception->action === 'skip') {
+            return null;
+        }
+
+        $isModified = ($exception && $exception->action === 'modified');
+
+        $title       = $isModified && $exception->title !== null ? $exception->title : $parent->title;
+        $description = $isModified && $exception->description !== null ? $exception->description : ($parent->description ?? '');
+        $location    = $isModified && $exception->location !== null ? $exception->location : ($parent->location ?? '');
+        $color       = $isModified && $exception->color !== null ? $exception->color : ($parent->color ?: '#4f46e5');
+        $isAllDay    = $isModified && $exception->is_all_day !== null ? (bool)$exception->is_all_day : (bool)$parent->is_all_day;
+
+        $startDt = $occurrenceStart->copy();
+        if ($isModified && $exception->start_time) {
+            $startDt->setTime($exception->start_time->hour, $exception->start_time->minute, $exception->start_time->second);
+        }
+
+        $endDt = $startDt->copy()->addMinutes($durationMinutes);
+        if ($isModified && $exception->end_time) {
+            $endDt = $startDt->copy()->setTime($exception->end_time->hour, $exception->end_time->minute, $exception->end_time->second);
+            if ($endDt->lte($startDt)) {
+                $endDt = $startDt->copy()->addMinutes(60);
+            }
+        }
+
+        $jalaliDate = Jalalian::fromCarbon($startDt);
+
+        $startMinute = (!$isAllDay) ? ($startDt->hour * 60 + $startDt->minute) : 0;
+        $endMinute   = (!$isAllDay) ? ($endDt->hour * 60 + $endDt->minute) : ($startMinute + 60);
+        if ($endMinute <= $startMinute) {
+            $endMinute = $startMinute + 60;
+        }
+        $duration = $isAllDay ? 1440 : max(15, $endMinute - $startMinute);
+
+        $startTimeStr = (!$isAllDay) ? $startDt->format('H:i') : '';
+        $endTimeStr   = (!$isAllDay) ? $endDt->format('H:i') : '';
+        $timeStr      = $isAllDay ? 'تمام روز' : ($startTimeStr . ($endTimeStr ? ' - ' . $endTimeStr : ''));
+
+        $dateKey = $occurrenceStart->toDateString();
+
+        return [
+            'id'                  => 'custom_ev_' . $parent->id . '_' . $dateKey,
+            'raw_id'              => $parent->id,
+            'occurrence_date'     => $dateKey,
+            'is_recurring'        => true,
+            'recurrence_type'     => $parent->recurrence_type,
+            'recurrence_interval' => $parent->recurrence_interval,
+            'recurrence_days'     => $parent->recurrence_days,
+            'repeat_until'        => $parent->repeat_until ? $parent->repeat_until->format('Y-m-d') : null,
+            'repeat_count'        => $parent->repeat_count,
+            'is_exception'        => $isModified,
+            'title'               => $title,
+            'description'         => $description,
+            'location'            => $location,
+            'color'               => $color,
+            'service_color'       => $color,
+            'datetime'            => $startDt->toIso8601String(),
+            'time'                => $timeStr,
+            'start_time'          => $startTimeStr,
+            'end_time'            => $endTimeStr,
+            'start_minute'        => $startMinute,
+            'end_minute'          => $endMinute,
+            'duration_minutes'    => $duration,
+            'is_all_day'          => $isAllDay,
+            'is_public'           => (bool)$parent->is_public,
+            'creator_name'        => $parent->creator?->name ?? '',
+            'date_fa'             => $jalaliDate ? $jalaliDate->format('Y/m/d') : '',
+            'date_en'             => $startDt->format('Y-m-d'),
+            'day'                 => $jalaliDate ? $jalaliDate->getDay() : null,
+            'month'               => $jalaliDate ? $jalaliDate->getMonth() : null,
+            'year'                => $jalaliDate ? $jalaliDate->getYear() : null,
+            'source'              => 'custom_events',
+            'source_label'        => 'رویداد تکرارشونده',
+            'can_edit'            => $canEdit,
+            'can_delete'          => $canEdit,
+        ];
     }
 }

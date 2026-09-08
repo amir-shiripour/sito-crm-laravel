@@ -14,6 +14,7 @@ class ServicesDatabaseSeeder extends Seeder
     {
         $this->call([
             StatusSeeder::class,
+            ServicesPermissionsSeeder::class,
         ]);
     }
 }

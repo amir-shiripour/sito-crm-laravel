@@ -269,16 +269,22 @@ class CalendarController extends Controller
         }
 
         $validated = $request->validate([
-            'title'       => 'required|string|max:255',
-            'date_fa'     => 'nullable|string',
-            'date_en'     => 'nullable|date',
-            'start_time'  => 'nullable|string',
-            'end_time'    => 'nullable|string',
-            'is_all_day'  => 'nullable|boolean',
-            'is_public'   => 'nullable|boolean',
-            'color'       => 'nullable|string|max:30',
-            'description' => 'nullable|string|max:2000',
-            'location'    => 'nullable|string|max:255',
+            'title'               => 'required|string|max:255',
+            'date_fa'             => 'nullable|string',
+            'date_en'             => 'nullable|date',
+            'start_time'          => 'nullable|string',
+            'end_time'            => 'nullable|string',
+            'is_all_day'          => 'nullable|boolean',
+            'is_public'           => 'nullable|boolean',
+            'color'               => 'nullable|string|max:30',
+            'description'         => 'nullable|string|max:2000',
+            'location'            => 'nullable|string|max:255',
+            'recurrence_type'     => 'nullable|in:daily,weekly,monthly,yearly',
+            'recurrence_interval' => 'nullable|integer|min:1|max:365',
+            'recurrence_days'     => 'nullable|array',
+            'recurrence_days.*'   => 'integer|min:0|max:6',
+            'repeat_until'        => 'nullable|date',
+            'repeat_count'        => 'nullable|integer|min:1|max:999',
         ], [
             'title.required' => 'عنوان رویداد الزامی است.',
             'title.max'      => 'عنوان رویداد حداکثر ۲۵۵ کاراکتر است.',
@@ -293,37 +299,55 @@ class CalendarController extends Controller
             $color = '#4f46e5';
         }
 
+        $recurrenceType = $request->filled('recurrence_type') ? $request->input('recurrence_type') : null;
+        $recurrenceInterval = $recurrenceType ? max(1, (int)$request->input('recurrence_interval', 1)) : 1;
+        $recurrenceDays = ($recurrenceType === 'weekly' && $request->has('recurrence_days')) ? $request->input('recurrence_days') : null;
+
+        $repeatUntil = null;
+        if ($recurrenceType && $request->filled('repeat_until')) {
+            try {
+                $repeatUntil = Carbon::parse($request->input('repeat_until'))->toDateString();
+            } catch (\Throwable $e) {}
+        }
+        $repeatCount = ($recurrenceType && $request->filled('repeat_count')) ? (int)$request->input('repeat_count') : null;
+
         $event = \App\Models\CalendarEvent::create([
-            'user_id'     => $user->id,
-            'created_by'  => $user->id,
-            'title'       => $validated['title'],
-            'description' => $validated['description'] ?? null,
-            'location'    => $validated['location'] ?? null,
-            'color'       => $color,
-            'start_time'  => $startDateTime,
-            'end_time'    => $endDateTime,
-            'is_all_day'  => $isAllDay,
-            'is_public'   => $isPublic,
-            'status'      => 'active',
+            'user_id'             => $user->id,
+            'created_by'          => $user->id,
+            'title'               => $validated['title'],
+            'description'         => $validated['description'] ?? null,
+            'location'            => $validated['location'] ?? null,
+            'color'               => $color,
+            'start_time'          => $startDateTime,
+            'end_time'            => $endDateTime,
+            'is_all_day'          => $isAllDay,
+            'is_public'           => $isPublic,
+            'recurrence_type'     => $recurrenceType,
+            'recurrence_interval' => $recurrenceInterval,
+            'recurrence_days'     => $recurrenceDays,
+            'repeat_until'        => $repeatUntil,
+            'repeat_count'        => $repeatCount,
+            'status'              => 'active',
         ]);
 
         return response()->json([
             'success' => true,
             'message' => 'رویداد با موفقیت در تقویم ثبت شد.',
             'event'   => [
-                'id'        => 'custom_ev_' . $event->id,
-                'raw_id'    => $event->id,
-                'title'     => $event->title,
-                'color'     => $event->color,
-                'is_public' => (bool)$event->is_public,
-                'date_fa'   => $event->jalali_date,
-                'time'      => $event->formatted_time,
+                'id'           => 'custom_ev_' . $event->id,
+                'raw_id'       => $event->id,
+                'title'        => $event->title,
+                'color'        => $event->color,
+                'is_public'    => (bool)$event->is_public,
+                'is_recurring' => $event->isRecurring(),
+                'date_fa'      => $event->jalali_date,
+                'time'         => $event->formatted_time,
             ],
         ]);
     }
 
     /**
-     * ویرایش رویداد تقویم
+     * ویرایش رویداد تقویم (با پشتیبانی از scopeهای: this_only, this_and_following, all)
      */
     public function updateEvent(Request $request, $id): JsonResponse
     {
@@ -339,16 +363,24 @@ class CalendarController extends Controller
         }
 
         $validated = $request->validate([
-            'title'       => 'required|string|max:255',
-            'date_fa'     => 'nullable|string',
-            'date_en'     => 'nullable|date',
-            'start_time'  => 'nullable|string',
-            'end_time'    => 'nullable|string',
-            'is_all_day'  => 'nullable|boolean',
-            'is_public'   => 'nullable|boolean',
-            'color'       => 'nullable|string|max:30',
-            'description' => 'nullable|string|max:2000',
-            'location'    => 'nullable|string|max:255',
+            'title'               => 'required|string|max:255',
+            'date_fa'             => 'nullable|string',
+            'date_en'             => 'nullable|date',
+            'start_time'          => 'nullable|string',
+            'end_time'            => 'nullable|string',
+            'is_all_day'          => 'nullable|boolean',
+            'is_public'           => 'nullable|boolean',
+            'color'               => 'nullable|string|max:30',
+            'description'         => 'nullable|string|max:2000',
+            'location'            => 'nullable|string|max:255',
+            'edit_scope'          => 'nullable|in:this_only,this_and_following,all',
+            'occurrence_date'     => 'nullable|date',
+            'recurrence_type'     => 'nullable|in:daily,weekly,monthly,yearly',
+            'recurrence_interval' => 'nullable|integer|min:1|max:365',
+            'recurrence_days'     => 'nullable|array',
+            'recurrence_days.*'   => 'integer|min:0|max:6',
+            'repeat_until'        => 'nullable|date',
+            'repeat_count'        => 'nullable|integer|min:1|max:999',
         ]);
 
         [$startDateTime, $endDateTime, $isAllDay] = $this->parseEventDateTimes($request);
@@ -359,34 +391,126 @@ class CalendarController extends Controller
             $color = $event->color ?: '#4f46e5';
         }
 
+        $editScope = $request->input('edit_scope', 'all');
+        $occurrenceDate = $request->input('occurrence_date');
+
+        // اگر رویداد تکرارشونده است و فقط همین نمونه ویرایش می‌شود
+        if ($event->isRecurring() && $editScope === 'this_only' && !empty($occurrenceDate)) {
+            \App\Models\CalendarEventException::updateOrCreate(
+                [
+                    'calendar_event_id' => $event->id,
+                    'exception_date'    => $occurrenceDate,
+                ],
+                [
+                    'action'      => 'modified',
+                    'title'       => $validated['title'],
+                    'description' => $validated['description'] ?? null,
+                    'location'    => $validated['location'] ?? null,
+                    'color'       => $color,
+                    'start_time'  => $startDateTime,
+                    'end_time'    => $endDateTime,
+                    'is_all_day'  => $isAllDay,
+                ]
+            );
+
+            return response()->json([
+                'success' => true,
+                'message' => 'تغییرات فقط برای همین رویداد با موفقیت ذخیره شد.',
+            ]);
+        }
+
+        // اگر رویداد تکرارشونده است و ویرایش از این رویداد به بعد است (this_and_following)
+        if ($event->isRecurring() && $editScope === 'this_and_following' && !empty($occurrenceDate)) {
+            $occCarbon = Carbon::parse($occurrenceDate);
+
+            // والد قبلی تا روز قبل از این نمونه پایان می‌یابد
+            $event->update([
+                'repeat_until' => $occCarbon->copy()->subDay()->toDateString(),
+            ]);
+
+            // حذف هرگونه exception بعد از این تاریخ از والد قبلی
+            \App\Models\CalendarEventException::where('calendar_event_id', $event->id)
+                ->where('exception_date', '>=', $occurrenceDate)
+                ->delete();
+
+            // ساخت زنجیره رویداد جدید از تاریخ انتخاب‌شده به بعد
+            $recurrenceType = $request->filled('recurrence_type') ? $request->input('recurrence_type') : $event->recurrence_type;
+            $recurrenceInterval = $request->filled('recurrence_interval') ? (int)$request->input('recurrence_interval') : $event->recurrence_interval;
+            $recurrenceDays = $request->has('recurrence_days') ? $request->input('recurrence_days') : $event->recurrence_days;
+            $repeatUntil = $request->filled('repeat_until') ? Carbon::parse($request->input('repeat_until'))->toDateString() : $event->repeat_until;
+
+            \App\Models\CalendarEvent::create([
+                'user_id'             => $user->id,
+                'created_by'          => $user->id,
+                'title'               => $validated['title'],
+                'description'         => $validated['description'] ?? null,
+                'location'            => $validated['location'] ?? null,
+                'color'               => $color,
+                'start_time'          => $startDateTime,
+                'end_time'            => $endDateTime,
+                'is_all_day'          => $isAllDay,
+                'is_public'           => $isPublic,
+                'recurrence_type'     => $recurrenceType,
+                'recurrence_interval' => $recurrenceInterval,
+                'recurrence_days'     => $recurrenceDays,
+                'repeat_until'        => $repeatUntil,
+                'repeat_count'        => $request->filled('repeat_count') ? (int)$request->input('repeat_count') : $event->repeat_count,
+                'status'              => 'active',
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'تغییرات برای این رویداد و رویدادهای بعدی با موفقیت اعمال شد.',
+            ]);
+        }
+
+        // حالت پیش‌فرض: ویرایش همه (یا رویداد غیرتکراری)
+        $recurrenceType = $request->filled('recurrence_type') ? $request->input('recurrence_type') : null;
+        $recurrenceInterval = $recurrenceType ? max(1, (int)$request->input('recurrence_interval', 1)) : 1;
+        $recurrenceDays = ($recurrenceType === 'weekly' && $request->has('recurrence_days')) ? $request->input('recurrence_days') : null;
+
+        $repeatUntil = null;
+        if ($recurrenceType && $request->filled('repeat_until')) {
+            try {
+                $repeatUntil = Carbon::parse($request->input('repeat_until'))->toDateString();
+            } catch (\Throwable $e) {}
+        }
+        $repeatCount = ($recurrenceType && $request->filled('repeat_count')) ? (int)$request->input('repeat_count') : null;
+
         $event->update([
-            'title'       => $validated['title'],
-            'description' => $validated['description'] ?? null,
-            'location'    => $validated['location'] ?? null,
-            'color'       => $color,
-            'start_time'  => $startDateTime,
-            'end_time'    => $endDateTime,
-            'is_all_day'  => $isAllDay,
-            'is_public'   => $isPublic,
+            'title'               => $validated['title'],
+            'description'         => $validated['description'] ?? null,
+            'location'            => $validated['location'] ?? null,
+            'color'               => $color,
+            'start_time'          => $startDateTime,
+            'end_time'            => $endDateTime,
+            'is_all_day'          => $isAllDay,
+            'is_public'           => $isPublic,
+            'recurrence_type'     => $recurrenceType,
+            'recurrence_interval' => $recurrenceInterval,
+            'recurrence_days'     => $recurrenceDays,
+            'repeat_until'        => $repeatUntil,
+            'repeat_count'        => $repeatCount,
         ]);
 
         return response()->json([
             'success' => true,
             'message' => 'رویداد با موفقیت ویرایش شد.',
             'event'   => [
-                'id'        => 'custom_ev_' . $event->id,
-                'raw_id'    => $event->id,
-                'title'     => $event->title,
-                'color'     => $event->color,
-                'is_public' => (bool)$event->is_public,
-                'date_fa'   => $event->jalali_date,
-                'time'      => $event->formatted_time,
+                'id'           => 'custom_ev_' . $event->id,
+                'raw_id'       => $event->id,
+                'title'        => $event->title,
+                'color'        => $event->color,
+                'is_public'    => (bool)$event->is_public,
+                'is_recurring' => $event->isRecurring(),
+                'date_fa'      => $event->jalali_date,
+                'time'         => $event->formatted_time,
             ],
         ]);
     }
 
     /**
-     * حذف رویداد تقویم
+     * حذف رویداد تقویم (با پشتیبانی از scopeهای: this_only, this_and_following, all)
      */
     public function deleteEvent(Request $request, $id): JsonResponse
     {
@@ -401,6 +525,48 @@ class CalendarController extends Controller
             ], 403);
         }
 
+        $deleteScope = $request->input('delete_scope', 'all');
+        $occurrenceDate = $request->input('occurrence_date');
+
+        if ($event->isRecurring()) {
+            if ($deleteScope === 'this_only' && !empty($occurrenceDate)) {
+                // ثبت استثنا skip برای فقط همین تاریخ
+                \App\Models\CalendarEventException::updateOrCreate(
+                    [
+                        'calendar_event_id' => $event->id,
+                        'exception_date'    => $occurrenceDate,
+                    ],
+                    [
+                        'action' => 'skip',
+                    ]
+                );
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'این رویداد با موفقیت از تقویم حذف شد.',
+                ]);
+            }
+
+            if ($deleteScope === 'this_and_following' && !empty($occurrenceDate)) {
+                $occCarbon = Carbon::parse($occurrenceDate);
+                // محدود کردن والد به قبل از این تاریخ
+                $event->update([
+                    'repeat_until' => $occCarbon->copy()->subDay()->toDateString(),
+                ]);
+
+                // حذف استثناهای بعد از این تاریخ
+                \App\Models\CalendarEventException::where('calendar_event_id', $event->id)
+                    ->where('exception_date', '>=', $occurrenceDate)
+                    ->delete();
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'این رویداد و کلیه رویدادهای بعدی آن با موفقیت حذف شدند.',
+                ]);
+            }
+        }
+
+        // حذف کامل کل رویداد والد و استثناهای آن
         $event->delete();
 
         return response()->json([
