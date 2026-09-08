@@ -303,11 +303,18 @@ class CalendarController extends Controller
         $recurrenceInterval = $recurrenceType ? max(1, (int)$request->input('recurrence_interval', 1)) : 1;
         $recurrenceDays = ($recurrenceType === 'weekly' && $request->has('recurrence_days')) ? $request->input('recurrence_days') : null;
 
+        if ($recurrenceType === 'weekly') {
+            if (empty($recurrenceDays) || !is_array($recurrenceDays)) {
+                $startDow = ($startDateTime->dayOfWeek + 1) % 7;
+                $recurrenceDays = [$startDow];
+            } else {
+                $recurrenceDays = array_values(array_unique(array_map('intval', $recurrenceDays)));
+            }
+        }
+
         $repeatUntil = null;
         if ($recurrenceType && $request->filled('repeat_until')) {
-            try {
-                $repeatUntil = Carbon::parse($request->input('repeat_until'))->toDateString();
-            } catch (\Throwable $e) {}
+            $repeatUntil = $this->parseDateInput($request->input('repeat_until'))?->toDateString();
         }
         $repeatCount = ($recurrenceType && $request->filled('repeat_count')) ? (int)$request->input('repeat_count') : null;
 
@@ -437,7 +444,16 @@ class CalendarController extends Controller
             $recurrenceType = $request->filled('recurrence_type') ? $request->input('recurrence_type') : $event->recurrence_type;
             $recurrenceInterval = $request->filled('recurrence_interval') ? (int)$request->input('recurrence_interval') : $event->recurrence_interval;
             $recurrenceDays = $request->has('recurrence_days') ? $request->input('recurrence_days') : $event->recurrence_days;
-            $repeatUntil = $request->filled('repeat_until') ? Carbon::parse($request->input('repeat_until'))->toDateString() : $event->repeat_until;
+            $repeatUntil = $request->filled('repeat_until') ? $this->parseDateInput($request->input('repeat_until'))?->toDateString() : $event->repeat_until;
+
+            if ($recurrenceType === 'weekly') {
+                if (empty($recurrenceDays) || !is_array($recurrenceDays)) {
+                    $startDow = ($startDateTime->dayOfWeek + 1) % 7;
+                    $recurrenceDays = [$startDow];
+                } else {
+                    $recurrenceDays = array_values(array_unique(array_map('intval', $recurrenceDays)));
+                }
+            }
 
             \App\Models\CalendarEvent::create([
                 'user_id'             => $user->id,
@@ -469,13 +485,34 @@ class CalendarController extends Controller
         $recurrenceInterval = $recurrenceType ? max(1, (int)$request->input('recurrence_interval', 1)) : 1;
         $recurrenceDays = ($recurrenceType === 'weekly' && $request->has('recurrence_days')) ? $request->input('recurrence_days') : null;
 
+        if ($recurrenceType === 'weekly') {
+            if (empty($recurrenceDays) || !is_array($recurrenceDays)) {
+                $startDow = ($startDateTime->dayOfWeek + 1) % 7;
+                $recurrenceDays = [$startDow];
+            } else {
+                $recurrenceDays = array_values(array_unique(array_map('intval', $recurrenceDays)));
+            }
+        }
+
         $repeatUntil = null;
         if ($recurrenceType && $request->filled('repeat_until')) {
-            try {
-                $repeatUntil = Carbon::parse($request->input('repeat_until'))->toDateString();
-            } catch (\Throwable $e) {}
+            $repeatUntil = $this->parseDateInput($request->input('repeat_until'))?->toDateString();
         }
         $repeatCount = ($recurrenceType && $request->filled('repeat_count')) ? (int)$request->input('repeat_count') : null;
+
+        // اگر رویداد تکرارشونده است و کاربر دامنه all را انتخاب کرده است:
+        if ($event->isRecurring() && $editScope === 'all') {
+            // حفظ تاریخ شروع اصلی سری والد با اعمال ساعت و دقیقه جدید
+            $parentStartDate = $event->start_time ? $event->start_time->toDateString() : $startDateTime->toDateString();
+            $newTime = $startDateTime->format('H:i:s');
+            $updatedStartTime = Carbon::parse($parentStartDate . ' ' . $newTime);
+
+            $durationMinutes = max(15, $endDateTime->diffInMinutes($startDateTime));
+            $updatedEndTime = $updatedStartTime->copy()->addMinutes($durationMinutes);
+
+            $startDateTime = $updatedStartTime;
+            $endDateTime   = $updatedEndTime;
+        }
 
         $event->update([
             'title'               => $validated['title'],
@@ -576,6 +613,38 @@ class CalendarController extends Controller
     }
 
     /**
+     * تبدیل هوشمند رشته‌های تاریخ (جلالی یا میلادی) به شیء Carbon
+     */
+    protected function parseDateInput(?string $dateStr): ?Carbon
+    {
+        if (empty($dateStr)) {
+            return null;
+        }
+
+        $raw = $this->normalizeDigits(trim($dateStr));
+
+        // بررسی تاریخ جلالی (مثلاً 1405/08/20 یا 1405-08-20)
+        $parts = preg_split('/[-\/]/', $raw);
+        if (count($parts) === 3) {
+            $p1 = (int)$parts[0];
+            $p2 = (int)$parts[1];
+            $p3 = (int)$parts[2];
+
+            if ($p1 >= 1300 && $p1 <= 1500) {
+                try {
+                    return (new Jalalian($p1, $p2, $p3))->toCarbon();
+                } catch (\Throwable $e) {}
+            }
+        }
+
+        try {
+            return Carbon::parse($raw);
+        } catch (\Throwable $e) {
+            return null;
+        }
+    }
+
+    /**
      * تبدیل ورودی‌های فرم به Carbon DateTimes
      */
     protected function parseEventDateTimes(Request $request): array
@@ -584,22 +653,11 @@ class CalendarController extends Controller
         $dateCarbon = null;
 
         if ($request->filled('date_en')) {
-            try {
-                $dateCarbon = Carbon::parse($request->input('date_en'));
-            } catch (\Throwable $e) {}
+            $dateCarbon = $this->parseDateInput($request->input('date_en'));
         }
 
         if (!$dateCarbon && $request->filled('date_fa')) {
-            try {
-                $raw = $this->normalizeDigits(trim($request->input('date_fa')));
-                $parts = explode('/', str_replace('-', '/', $raw));
-                if (count($parts) === 3) {
-                    $jYear = (int)$parts[0];
-                    $jMonth = (int)$parts[1];
-                    $jDay = (int)$parts[2];
-                    $dateCarbon = (new Jalalian($jYear, $jMonth, $jDay))->toCarbon();
-                }
-            } catch (\Throwable $e) {}
+            $dateCarbon = $this->parseDateInput($request->input('date_fa'));
         }
 
         if (!$dateCarbon) {
