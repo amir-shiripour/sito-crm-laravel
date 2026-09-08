@@ -60,6 +60,7 @@ class GitHubService
             // 3. آپدیت وابستگی‌ها و دیتابیس
             Process::run('composer install --no-dev --optimize-autoloader');
             Process::run('php artisan migrate --force');
+            Process::run('php artisan modules:update-permissions');
             Process::run('php artisan optimize:clear');
             Process::run('php artisan up');
 

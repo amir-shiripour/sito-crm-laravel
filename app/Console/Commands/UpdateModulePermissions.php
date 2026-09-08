@@ -65,7 +65,9 @@ class UpdateModulePermissions extends Command
         
         $installerClass = "\\Modules\\{$moduleName}\\Installer";
         try {
-            if (class_exists($installerClass)) {
+            if (class_exists($installerClass) && method_exists($installerClass, 'syncModulePermissions')) {
+                $installerClass::syncModulePermissions();
+            } elseif (class_exists($installerClass)) {
                 $installer = new $installerClass();
                 // We call install() because it is written safely using firstOrCreate/givePermissionTo.
                 $installer->install();

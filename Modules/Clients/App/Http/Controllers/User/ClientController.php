@@ -12,12 +12,16 @@ use Modules\Accounting\App\Models\SourceDocument;
 use Modules\Accounting\App\Models\Transaction;
 use Modules\Accounting\Entities\Cheque;
 use Modules\Booking\Entities\Appointment;
+use Modules\Booking\Entities\BookingSetting;
+use Modules\Booking\Entities\BookingWaitlist;
 use Modules\Clients\Entities\Client;
 use Modules\Clients\Entities\ClientForm;
 use Modules\Clients\Entities\ClientSetting;
 use Modules\Clients\Entities\ClientStatus;
 use Modules\Clients\App\Http\Requests\StoreClientRequest;
 use Modules\Clients\App\Http\Requests\UpdateClientRequest;
+use Modules\DirectAdmin\Entities\DaAccount;
+use Modules\DomainManager\Entities\DomainRecord;
 use Modules\Services\App\Http\Models\Invoice;
 use Modules\Services\App\Http\Models\Order;
 use Modules\Services\App\Http\Models\Payment;
@@ -177,12 +181,21 @@ class ClientController extends Controller
                     'renewal_total' => (int)(clone $ordersBaseQuery)->where('renewal_price', '>', 0)->sum('renewal_price'),
                 ];
 
+                $orderRelations = ['customer', 'status', 'service.category', 'invoice.payments'];
+                if (class_exists(DaAccount::class)) {
+                    $orderRelations[] = 'hostingAccount';
+                }
+                if (class_exists(DomainRecord::class)) {
+                    $orderRelations[] = 'domainRecord';
+                }
+
                 $clientOrders = (clone $ordersBaseQuery)
-                    ->with(['customer', 'status', 'service', 'invoice.payments'])
+                    ->with($orderRelations)
                     ->orderByDesc('invoice_id')
                     ->orderBy('id', 'asc')
                     ->paginate(15, ['*'], 'orders_page')
-                    ->withQueryString();
+                    ->withQueryString()
+                    ->fragment('orders');
             } catch (Exception $e) {
                 $clientOrders = collect([]);
                 $clientOrderStats = ['count' => 0, 'active' => 0, 'total' => 0, 'renewal_total' => 0];
@@ -212,7 +225,8 @@ class ClientController extends Controller
                     ->with(['customer', 'status', 'service', 'payments'])
                     ->latest()
                     ->paginate(15, ['*'], 'invoices_page')
-                    ->withQueryString();
+                    ->withQueryString()
+                    ->fragment('invoices');
             } catch (Exception $e) {
                 $clientInvoices = collect([]);
                 $clientInvoiceStats = ['count' => 0, 'total' => 0, 'paid' => 0, 'due' => 0];
@@ -355,14 +369,14 @@ class ClientController extends Controller
         // ── Booking Waitlists check ──────────────────────────────────
         $isBookingQueueEnabled = $this->isBookingQueueEnabled();
         $clientWaitlists = collect([]);
-        if ($isBookingQueueEnabled && class_exists(\Modules\Booking\Entities\BookingWaitlist::class)) {
+        if ($isBookingQueueEnabled && class_exists(BookingWaitlist::class)) {
             try {
-                $clientWaitlists = \Modules\Booking\Entities\BookingWaitlist::with(['service', 'provider'])
+                $clientWaitlists = BookingWaitlist::with(['service', 'provider'])
                     ->where('client_id', $client->id)
                     ->whereIn('status', [
-                        \Modules\Booking\Entities\BookingWaitlist::STATUS_WAITING,
-                        \Modules\Booking\Entities\BookingWaitlist::STATUS_NOTIFIED,
-                        \Modules\Booking\Entities\BookingWaitlist::STATUS_IN_PROGRESS
+                        BookingWaitlist::STATUS_WAITING,
+                        BookingWaitlist::STATUS_NOTIFIED,
+                        BookingWaitlist::STATUS_IN_PROGRESS
                     ])
                     ->get()
                     ->sortBy(fn($item) => $item->queue_rank ?? $item->position ?? 0)
@@ -613,7 +627,7 @@ class ClientController extends Controller
             return false;
         }
 
-        if (!class_exists(\Modules\Booking\Entities\BookingWaitlist::class) || !class_exists(\Modules\Booking\Entities\BookingSetting::class) || !\Modules\Booking\Entities\BookingSetting::isQueueEnabled()) {
+        if (!class_exists(BookingWaitlist::class) || !class_exists(BookingSetting::class) || !BookingSetting::isQueueEnabled()) {
             return false;
         }
 
