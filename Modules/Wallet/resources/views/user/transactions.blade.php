@@ -4,7 +4,7 @@
     @php
         use Morilog\Jalali\Jalalian;
 
-        $inputClass = "w-full rounded-xl border-gray-200 bg-gray-50 px-3.5 py-2.5 text-xs text-gray-900 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 transition-all dark:border-gray-700 dark:bg-gray-900/60 dark:text-gray-100 dark:focus:bg-gray-900";
+        $inputClass = "w-full rounded-xl border border-gray-200 bg-gray-50 px-3.5 py-2.5 text-xs text-gray-900 placeholder-gray-400 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 transition-all dark:border-gray-700 dark:bg-gray-900/60 dark:text-gray-100 dark:placeholder-gray-500 dark:focus:bg-gray-900 [&>option]:bg-white [&>option]:text-gray-900 [&>option]:dark:bg-gray-800 [&>option]:dark:text-gray-100";
         $labelClass = "block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5";
 
         $activeFiltersCount = count(array_filter(
@@ -44,8 +44,8 @@
 
                 <div class="flex flex-wrap items-center gap-2.5">
                     <a href="{{ route('user.wallet.index') }}"
-                       class="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold bg-white text-gray-700 border border-gray-200 hover:bg-gray-50 hover:border-gray-300 shadow-xs transition-all dark:bg-gray-800 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-700">
-                        <svg class="w-4 h-4 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
+                       class="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold bg-white hover:bg-gray-50 text-gray-700 hover:text-gray-900 border border-gray-200 hover:border-gray-300 shadow-xs transition-all active:scale-95 dark:bg-gray-700/80 dark:hover:bg-gray-700 dark:border-gray-600 dark:hover:border-gray-500 dark:text-gray-100 dark:hover:text-white">
+                        <svg class="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
                         <span>مدیریت کیف‌ پول‌ها</span>
                     </a>
                 </div>
@@ -84,7 +84,7 @@
                             <span>موجودی فعلی: <strong class="text-emerald-600 dark:text-emerald-400 tabular-nums">{{ number_format((float)$selectedWallet->balance) }} {{ $swCurr }}</strong></span>
                             @if($swPhone)
                                 <span class="text-gray-300 dark:text-gray-600">•</span>
-                                <span class="dir-ltr">{{ $swPhone }}</span>
+                                <span class="dir-ltr text-gray-600 dark:text-gray-300 font-medium">{{ $swPhone }}</span>
                             @endif
                         </div>
                     </div>
@@ -92,8 +92,8 @@
 
                 <div class="flex items-center gap-2 shrink-0">
                     <a href="{{ route('user.wallet.transactions.index') }}"
-                       class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-white text-gray-700 border border-gray-200 hover:bg-gray-50 shadow-2xs dark:bg-gray-800 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-700 transition">
-                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                       class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-white hover:bg-gray-50 text-gray-700 hover:text-gray-900 border border-gray-200 hover:border-gray-300 shadow-2xs dark:bg-gray-700/80 dark:hover:bg-gray-700 dark:border-gray-600 dark:hover:border-gray-500 dark:text-gray-100 dark:hover:text-white transition active:scale-95">
+                        <svg class="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
                         <span>نمایش تمامی تراکنش‌های سیستم</span>
                     </a>
                 </div>
@@ -133,9 +133,9 @@
                     </div>
                     <div class="mt-3 flex items-baseline gap-1.5">
                         <span class="text-2xl font-black text-rose-600 dark:text-rose-400 tabular-nums">-{{ number_format($stats['total_outflow']) }}</span>
-                        <span class="text-xs font-bold text-gray-400">{{ $currencyLabel }}</span>
+                        <span class="text-xs font-bold text-gray-500 dark:text-gray-400">{{ $currencyLabel }}</span>
                     </div>
-                    <span class="mt-1.5 block text-[11px] text-gray-400 dark:text-gray-500">
+                    <span class="mt-1.5 block text-[11px] text-gray-500 dark:text-gray-400">
                         شامل تسویه‌ها، پرداخت فاکتورها و هزینه‌ها
                     </span>
                 </div>
@@ -152,9 +152,9 @@
                         <span class="text-2xl font-black tabular-nums {{ $stats['net_flow'] >= 0 ? 'text-indigo-600 dark:text-indigo-400' : 'text-rose-600 dark:text-rose-400' }}">
                             {{ ($stats['net_flow'] >= 0 ? '+' : '') . number_format($stats['net_flow']) }}
                         </span>
-                        <span class="text-xs font-bold text-gray-400">{{ $currencyLabel }}</span>
+                        <span class="text-xs font-bold text-gray-500 dark:text-gray-400">{{ $currencyLabel }}</span>
                     </div>
-                    <span class="mt-1.5 block text-[11px] text-gray-400 dark:text-gray-500">
+                    <span class="mt-1.5 block text-[11px] text-gray-500 dark:text-gray-400">
                         تفاضل کل ورودی و خروجی در این فیلتر
                     </span>
                 </div>
@@ -169,7 +169,7 @@
                     </div>
                     <div class="mt-3 flex items-baseline gap-1.5">
                         <span class="text-2xl font-black text-gray-900 dark:text-white tabular-nums">{{ number_format($stats['total_count']) }}</span>
-                        <span class="text-xs font-bold text-gray-400">تراکنش</span>
+                        <span class="text-xs font-bold text-gray-500 dark:text-gray-400">تراکنش</span>
                     </div>
                     <div class="mt-1.5 flex items-center gap-2 text-[11px]">
                         <span class="text-emerald-600 dark:text-emerald-400 font-bold">{{ $stats['completed_count'] }} موفق</span>
@@ -195,7 +195,7 @@
                         <input type="text" name="search" value="{{ request('search') }}"
                                placeholder="جستجوی هوشمند (کد پیگیری UUID، نام دارنده، شماره تماس، کد ملی، توضیحات، نام کیف پول)..."
                                class="{{ $inputClass }} pl-9 pr-4 py-2.5 font-medium">
-                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400 dark:text-gray-500">
                             <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                         </div>
                     </div>
@@ -210,7 +210,7 @@
                     {{-- Advanced Filter Toggle Button --}}
                     <button type="button" @click="filterOpen = !filterOpen"
                             class="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-bold border transition-all shrink-0
-                            {{ $isFiltered ? 'bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/50 dark:text-indigo-300 dark:border-indigo-800' : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100 dark:bg-gray-750 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-700' }}">
+                            {{ $isFiltered ? 'bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/50 dark:text-indigo-300 dark:border-indigo-800' : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-700' }}">
                         <svg class="w-4 h-4 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
                         </svg>
@@ -234,45 +234,45 @@
 
             {{-- Quick Filter Presets (Pills) --}}
             <div class="px-5 pb-4 pt-1 border-t border-gray-100 dark:border-gray-700/60 flex items-center gap-2 overflow-x-auto custom-scrollbar">
-                <span class="text-[11px] font-bold text-gray-400 shrink-0 ml-1">دسترسی سریع:</span>
+                <span class="text-[11px] font-bold text-gray-500 dark:text-gray-400 shrink-0 ml-1">دسترسی سریع:</span>
                 
                 <a href="{{ route('user.wallet.transactions.index') }}"
                    class="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0
-                   {{ !request()->hasAny(['flow', 'type', 'status', 'holder_type']) ? 'bg-indigo-600 text-white shadow-xs' : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700/60 dark:text-gray-300 dark:hover:bg-gray-700' }}">
+                   {{ !request()->hasAny(['flow', 'type', 'status', 'holder_type']) ? 'bg-indigo-600 text-white shadow-xs' : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700/60 dark:text-gray-300 dark:hover:bg-gray-700 border border-gray-200/60 dark:border-gray-700' }}">
                     همه تراکنش‌ها
                 </a>
 
                 <a href="{{ route('user.wallet.transactions.index', array_merge(request()->except(['page', 'flow']), ['flow' => 'inflow'])) }}"
                    class="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0
-                   {{ request('flow') === 'inflow' ? 'bg-emerald-600 text-white shadow-xs' : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300 dark:hover:bg-emerald-900/50' }}">
+                   {{ request('flow') === 'inflow' ? 'bg-emerald-600 text-white shadow-xs' : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300 dark:hover:bg-emerald-900/50 border border-emerald-200/60 dark:border-emerald-900/40' }}">
                     <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
                     فقط واریزها (ورودی)
                 </a>
 
                 <a href="{{ route('user.wallet.transactions.index', array_merge(request()->except(['page', 'flow']), ['flow' => 'outflow'])) }}"
                    class="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0
-                   {{ request('flow') === 'outflow' ? 'bg-rose-600 text-white shadow-xs' : 'bg-rose-50 text-rose-700 hover:bg-rose-100 dark:bg-rose-950/40 dark:text-rose-300 dark:hover:bg-rose-900/50' }}">
+                   {{ request('flow') === 'outflow' ? 'bg-rose-600 text-white shadow-xs' : 'bg-rose-50 text-rose-700 hover:bg-rose-100 dark:bg-rose-950/40 dark:text-rose-300 dark:hover:bg-rose-900/50 border border-rose-200/60 dark:border-rose-900/40' }}">
                     <span class="w-1.5 h-1.5 rounded-full bg-rose-400"></span>
                     فقط برداشت‌ها (خروجی)
                 </a>
 
                 <a href="{{ route('user.wallet.transactions.index', array_merge(request()->except(['page', 'status']), ['status' => 'completed'])) }}"
                    class="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0
-                   {{ request('status') === 'completed' ? 'bg-blue-600 text-white shadow-xs' : 'bg-blue-50 text-blue-700 hover:bg-blue-100 dark:bg-blue-950/40 dark:text-blue-300 dark:hover:bg-blue-900/50' }}">
+                   {{ request('status') === 'completed' ? 'bg-blue-600 text-white shadow-xs' : 'bg-blue-50 text-blue-700 hover:bg-blue-100 dark:bg-blue-950/40 dark:text-blue-300 dark:hover:bg-blue-900/50 border border-blue-200/60 dark:border-blue-900/40' }}">
                     <span class="w-1.5 h-1.5 rounded-full bg-blue-400"></span>
                     تراکنش‌های موفق
                 </a>
 
                 <a href="{{ route('user.wallet.transactions.index', array_merge(request()->except(['page', 'holder_type']), ['holder_type' => 'client'])) }}"
                    class="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0
-                   {{ request('holder_type') === 'client' ? 'bg-purple-600 text-white shadow-xs' : 'bg-purple-50 text-purple-700 hover:bg-purple-100 dark:bg-purple-950/40 dark:text-purple-300 dark:hover:bg-purple-900/50' }}">
+                   {{ request('holder_type') === 'client' ? 'bg-purple-600 text-white shadow-xs' : 'bg-purple-50 text-purple-700 hover:bg-purple-100 dark:bg-purple-950/40 dark:text-purple-300 dark:hover:bg-purple-900/50 border border-purple-200/60 dark:border-purple-900/40' }}">
                     <span class="w-1.5 h-1.5 rounded-full bg-purple-400"></span>
                     فقط کلاینت‌ها
                 </a>
 
                 <a href="{{ route('user.wallet.transactions.index', array_merge(request()->except(['page', 'holder_type']), ['holder_type' => 'user'])) }}"
                    class="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0
-                   {{ request('holder_type') === 'user' ? 'bg-amber-600 text-white shadow-xs' : 'bg-amber-50 text-amber-700 hover:bg-amber-100 dark:bg-amber-950/40 dark:text-amber-300 dark:hover:bg-amber-900/50' }}">
+                   {{ request('holder_type') === 'user' ? 'bg-amber-600 text-white shadow-xs' : 'bg-amber-50 text-amber-700 hover:bg-amber-100 dark:bg-amber-950/40 dark:text-amber-300 dark:hover:bg-amber-900/50 border border-amber-200/60 dark:border-amber-900/40' }}">
                     <span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
                     فقط کاربران سیستم
                 </a>
@@ -298,7 +298,7 @@
                                 <input type="text" name="search" value="{{ request('search') }}"
                                        placeholder="کد پیگیری، نام، شماره، توضیحات..."
                                        class="{{ $inputClass }} pl-8">
-                                <svg class="w-4 h-4 text-gray-400 absolute left-2.5 top-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                                <svg class="w-4 h-4 text-gray-400 dark:text-gray-500 absolute left-2.5 top-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
                             </div>
                         </div>
 
@@ -392,7 +392,7 @@
                         <div class="flex items-center gap-2">
                             @if($isFiltered)
                                 <a href="{{ route('user.wallet.transactions.index') }}"
-                                   class="px-4 py-2.5 rounded-xl text-xs font-bold border border-gray-200 text-gray-600 hover:bg-gray-100 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-750 transition">
+                                   class="px-4 py-2.5 rounded-xl text-xs font-bold border border-gray-200 text-gray-600 hover:bg-gray-100 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-700 transition">
                                     پاک کردن فیلترها
                                 </a>
                             @endif
@@ -417,21 +417,21 @@
                     @if(request('search'))
                         <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 shadow-2xs">
                             جستجو: <strong class="text-indigo-600 dark:text-indigo-400">{{ request('search') }}</strong>
-                            <a href="{{ route('user.wallet.transactions.index', request()->except(['page', 'search'])) }}" class="text-gray-400 hover:text-rose-500 mr-1 font-bold">×</a>
+                            <a href="{{ route('user.wallet.transactions.index', request()->except(['page', 'search'])) }}" class="text-gray-400 hover:text-rose-500 dark:text-gray-400 dark:hover:text-rose-400 mr-1 font-bold">×</a>
                         </span>
                     @endif
 
                     @if(request('wallet_id'))
                         <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 shadow-2xs">
                             کیف پول: <strong class="text-indigo-600 dark:text-indigo-400">#{{ request('wallet_id') }}</strong>
-                            <a href="{{ route('user.wallet.transactions.index', request()->except(['page', 'wallet_id'])) }}" class="text-gray-400 hover:text-rose-500 mr-1 font-bold">×</a>
+                            <a href="{{ route('user.wallet.transactions.index', request()->except(['page', 'wallet_id'])) }}" class="text-gray-400 hover:text-rose-500 dark:text-gray-400 dark:hover:text-rose-400 mr-1 font-bold">×</a>
                         </span>
                     @endif
 
                     @if(request('flow'))
                         <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 shadow-2xs">
                             جریان: <strong class="text-indigo-600 dark:text-indigo-400">{{ request('flow') === 'inflow' ? 'واریزی / ورودی' : 'برداشتی / خروجی' }}</strong>
-                            <a href="{{ route('user.wallet.transactions.index', request()->except(['page', 'flow'])) }}" class="text-gray-400 hover:text-rose-500 mr-1 font-bold">×</a>
+                            <a href="{{ route('user.wallet.transactions.index', request()->except(['page', 'flow'])) }}" class="text-gray-400 hover:text-rose-500 dark:text-gray-400 dark:hover:text-rose-400 mr-1 font-bold">×</a>
                         </span>
                     @endif
 
@@ -441,7 +441,7 @@
                         @endphp
                         <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 shadow-2xs">
                             نوع: <strong class="text-indigo-600 dark:text-indigo-400">{{ $matchedType ? $matchedType->label() : request('type') }}</strong>
-                            <a href="{{ route('user.wallet.transactions.index', request()->except(['page', 'type'])) }}" class="text-gray-400 hover:text-rose-500 mr-1 font-bold">×</a>
+                            <a href="{{ route('user.wallet.transactions.index', request()->except(['page', 'type'])) }}" class="text-gray-400 hover:text-rose-500 dark:text-gray-400 dark:hover:text-rose-400 mr-1 font-bold">×</a>
                         </span>
                     @endif
 
@@ -451,28 +451,28 @@
                         @endphp
                         <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 shadow-2xs">
                             وضعیت: <strong class="text-indigo-600 dark:text-indigo-400">{{ $matchedStatus ? $matchedStatus->label() : request('status') }}</strong>
-                            <a href="{{ route('user.wallet.transactions.index', request()->except(['page', 'status'])) }}" class="text-gray-400 hover:text-rose-500 mr-1 font-bold">×</a>
+                            <a href="{{ route('user.wallet.transactions.index', request()->except(['page', 'status'])) }}" class="text-gray-400 hover:text-rose-500 dark:text-gray-400 dark:hover:text-rose-400 mr-1 font-bold">×</a>
                         </span>
                     @endif
 
                     @if(request('holder_type'))
                         <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 shadow-2xs">
                             دارنده: <strong class="text-indigo-600 dark:text-indigo-400">{{ request('holder_type') === 'user' ? 'کاربر سیستم' : 'کلاینت' }}</strong>
-                            <a href="{{ route('user.wallet.transactions.index', request()->except(['page', 'holder_type'])) }}" class="text-gray-400 hover:text-rose-500 mr-1 font-bold">×</a>
+                            <a href="{{ route('user.wallet.transactions.index', request()->except(['page', 'holder_type'])) }}" class="text-gray-400 hover:text-rose-500 dark:text-gray-400 dark:hover:text-rose-400 mr-1 font-bold">×</a>
                         </span>
                     @endif
 
                     @if(request('min_amount'))
                         <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 shadow-2xs">
                             حداقل مبلغ: <strong class="text-indigo-600 dark:text-indigo-400">{{ request('min_amount') }}</strong>
-                            <a href="{{ route('user.wallet.transactions.index', request()->except(['page', 'min_amount'])) }}" class="text-gray-400 hover:text-rose-500 mr-1 font-bold">×</a>
+                            <a href="{{ route('user.wallet.transactions.index', request()->except(['page', 'min_amount'])) }}" class="text-gray-400 hover:text-rose-500 dark:text-gray-400 dark:hover:text-rose-400 mr-1 font-bold">×</a>
                         </span>
                     @endif
 
                     @if(request('max_amount'))
                         <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 shadow-2xs">
                             حداکثر مبلغ: <strong class="text-indigo-600 dark:text-indigo-400">{{ request('max_amount') }}</strong>
-                            <a href="{{ route('user.wallet.transactions.index', request()->except(['page', 'max_amount'])) }}" class="text-gray-400 hover:text-rose-500 mr-1 font-bold">×</a>
+                            <a href="{{ route('user.wallet.transactions.index', request()->except(['page', 'max_amount'])) }}" class="text-gray-400 hover:text-rose-500 dark:text-gray-400 dark:hover:text-rose-400 mr-1 font-bold">×</a>
                         </span>
                     @endif
 
@@ -486,14 +486,14 @@
                         @endphp
                         <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 shadow-2xs">
                             مرتب‌سازی: <strong class="text-indigo-600 dark:text-indigo-400">{{ $sortLabels[request('sort')] ?? request('sort') }}</strong>
-                            <a href="{{ route('user.wallet.transactions.index', request()->except(['page', 'sort'])) }}" class="text-gray-400 hover:text-rose-500 mr-1 font-bold">×</a>
+                            <a href="{{ route('user.wallet.transactions.index', request()->except(['page', 'sort'])) }}" class="text-gray-400 hover:text-rose-500 dark:text-gray-400 dark:hover:text-rose-400 mr-1 font-bold">×</a>
                         </span>
                     @endif
 
                     @if(request('per_page') && request('per_page') != '20')
                         <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 shadow-2xs">
                             نمایش: <strong class="text-indigo-600 dark:text-indigo-400">{{ request('per_page') }} تایی</strong>
-                            <a href="{{ route('user.wallet.transactions.index', request()->except(['page', 'per_page'])) }}" class="text-gray-400 hover:text-rose-500 mr-1 font-bold">×</a>
+                            <a href="{{ route('user.wallet.transactions.index', request()->except(['page', 'per_page'])) }}" class="text-gray-400 hover:text-rose-500 dark:text-gray-400 dark:hover:text-rose-400 mr-1 font-bold">×</a>
                         </span>
                     @endif
                 </div>
@@ -565,7 +565,7 @@
                                     $holderPhone = $isUser ? ($holder->mobile ?? '') : ($holder->phone ?? '');
                                     $txCurr = ($wallet && ($wallet->currency === 'rial' || $wallet->currency === 'IRR')) ? 'ریال' : ($currencyLabel ?? 'تومان');
                                 @endphp
-                                <tr class="hover:bg-gray-50/80 dark:hover:bg-gray-750/40 transition-colors group">
+                                <tr class="hover:bg-gray-50/80 dark:hover:bg-gray-700/40 transition-colors group">
                                     
                                     {{-- 1. UUID / Tracking Code --}}
                                     <td class="px-5 py-4 whitespace-nowrap">
@@ -596,7 +596,7 @@
                                                         </span>
                                                     @endif
                                                 </div>
-                                                <div class="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5 flex items-center gap-1">
+                                                <div class="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5 flex items-center gap-1">
                                                     @if($wallet)
                                                         <a href="{{ route('user.wallet.transactions.index', ['wallet_id' => $wallet->id]) }}" class="hover:text-indigo-600 dark:hover:text-indigo-400">
                                                             {{ $wallet->name ?: $wallet->slug }}
@@ -624,17 +624,17 @@
                                         <div class="inline-flex items-baseline gap-1 font-black text-sm
                                             {{ $isPositive ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400' }}">
                                             <span class="text-base tabular-nums">{{ $isPositive ? '+' : '-' }}{{ number_format((float)$tx->amount) }}</span>
-                                            <span class="text-[11px] font-bold text-gray-400 dark:text-gray-500">{{ $txCurr }}</span>
+                                            <span class="text-[11px] font-bold text-gray-500 dark:text-gray-400">{{ $txCurr }}</span>
                                         </div>
                                     </td>
 
                                     {{-- 5. Balance Flow (Before -> After) --}}
                                     <td class="px-5 py-4 whitespace-nowrap">
                                         <div class="flex items-center gap-1.5 text-xs">
-                                            <span class="text-gray-400 dark:text-gray-500 tabular-nums">{{ number_format((float)$tx->balance_before) }}</span>
-                                            <svg class="w-3.5 h-3.5 text-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 17l-5-5m0 0l5-5m-5 5h12" /></svg>
+                                            <span class="text-gray-500 dark:text-gray-400 tabular-nums">{{ number_format((float)$tx->balance_before) }}</span>
+                                            <svg class="w-3.5 h-3.5 text-gray-400 dark:text-gray-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 17l-5-5m0 0l5-5m-5 5h12" /></svg>
                                             <span class="font-bold text-gray-900 dark:text-white tabular-nums">{{ number_format((float)$tx->balance_after) }}</span>
-                                            <span class="text-[10px] text-gray-400">{{ $txCurr }}</span>
+                                            <span class="text-[10px] text-gray-500 dark:text-gray-400">{{ $txCurr }}</span>
                                         </div>
                                     </td>
 
@@ -656,7 +656,7 @@
                                                 ناموفق
                                             </span>
                                         @else
-                                            <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-gray-100 text-gray-600 border border-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600">
+                                            <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-gray-100 text-gray-600 border border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700">
                                                 لغو شده
                                             </span>
                                         @endif
@@ -698,7 +698,7 @@
             @else
                 {{-- Empty State --}}
                 <div class="py-16 px-6 text-center space-y-4">
-                    <div class="w-16 h-16 mx-auto rounded-3xl bg-gray-100 dark:bg-gray-700/60 text-gray-400 dark:text-gray-500 flex items-center justify-center shadow-inner">
+                    <div class="w-16 h-16 mx-auto rounded-3xl bg-gray-100 dark:bg-gray-700/60 text-gray-400 dark:text-gray-400 flex items-center justify-center shadow-inner">
                         <svg class="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                         </svg>

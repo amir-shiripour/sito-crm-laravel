@@ -6,11 +6,9 @@ use App\Services\Modules\BaseModuleInstaller;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Schema;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionRegistrar;
-use Throwable;
 
 class Installer extends BaseModuleInstaller
 {
@@ -29,9 +27,7 @@ class Installer extends BaseModuleInstaller
     {
         Log::info('Services Installer: Starting custom reset process...');
 
-        $this->cleanupDatabase();
-
-        // 1. Execute the parent reset method
+        // 1. Execute the parent reset method (handles migrate-refresh, seed, etc.)
         parent::reset();
         Log::info('Services Installer: Parent reset completed.');
 
@@ -43,96 +39,18 @@ class Installer extends BaseModuleInstaller
 
     public function install(): void
     {
-        Log::info('Services Installer: Starting install process...');
-        $this->cleanupDatabase();
-
         parent::install();
-
+        Log::info('Services Installer: Starting install process...');
         $this->syncPermissions();
         Log::info('Services Installer: Install process finished.');
     }
 
-    public function uninstall(): void
+    public static function syncModulePermissions(): void
     {
-        parent::uninstall();
-        Log::info('Services Installer: Starting uninstall process...');
-        $this->cleanupDatabase();
-
-        $trackerPath = $this->permissionsTrackerPath();
-        if (!File::exists($trackerPath)) {
-            Log::warning('Services Installer: Permission tracker not found on uninstall. Nothing to remove.');
-            return;
-        }
-
-        $permissions = json_decode(File::get($trackerPath), true) ?: [];
-        if (empty($permissions)) {
-            return;
-        }
-
-        Log::info('Services Installer: Removing all module permissions...');
-        DB::transaction(function () use ($permissions) {
-            $guard = config('auth.defaults.guard', 'web');
-            $perms = Permission::whereIn('name', $permissions)->where('guard_name', $guard)->get();
-            foreach ($perms as $perm) {
-                $perm->roles()->detach();
-                $perm->delete();
-            }
-        });
-
-        File::delete($this->trackerPath());
-        File::delete($trackerPath);
-
-        app(PermissionRegistrar::class)->forgetCachedPermissions();
-        Log::info('Services Installer: Uninstall process finished.');
-    }
-    private function cleanupDatabase(): void
-    {
-        Log::info('Services Installer: Cleaning up existing tables...');
-        Schema::disableForeignKeyConstraints();
-
-        $tables = [
-            'service_invoice_payments',
-            'service_invoice_items',
-            'service_invoices',
-            'service_orders',
-            'services_projects',
-            'services_activity_log',
-            'services_custom_field_values',
-            'services_custom_fields',
-            'services',
-            'service_templates',
-            'services_catalog',
-            'service_categories',
-            'services_statuses',
-        ];
-
-        foreach ($tables as $table) {
-            Schema::dropIfExists($table);
-        }
-
-        Schema::enableForeignKeyConstraints();
-
-        try {
-            $migrationsPath = __DIR__ . '/Database/Migrations';
-            if (File::isDirectory($migrationsPath)) {
-                $files = File::files($migrationsPath);
-                $migrationNames = [];
-                foreach ($files as $file) {
-                    $migrationNames[] = $file->getBasename('.php');
-                }
-                if (!empty($migrationNames)) {
-                    DB::table('migrations')->whereIn('migration', $migrationNames)->delete();
-                    Log::info('Services Installer: Cleared migration records for Services module.');
-                }
-            }
-        } catch (Throwable $e) {
-            Log::warning('Services Installer: Failed to clear migration records: ' . $e->getMessage());
-        }
-
-        Log::info('Services Installer: Database cleanup finished.');
+        (new self())->syncPermissions();
     }
 
-    private function syncPermissions(): void
+    public function syncPermissions(): void
     {
         Log::info('Services Installer: Starting permission sync...');
         $guard = config('auth.defaults.guard', 'web');
@@ -162,7 +80,6 @@ class Installer extends BaseModuleInstaller
         ];
 
         $trackerPath = $this->permissionsTrackerPath();
-        File::ensureDirectoryExists(dirname($trackerPath));
         $trackedPermissions = File::exists($trackerPath) ? json_decode(File::get($trackerPath), true) ?: [] : [];
 
         $permissionsToCreate = array_diff($definedPermissions, $trackedPermissions);
@@ -201,9 +118,43 @@ class Installer extends BaseModuleInstaller
             $role->givePermissionTo($definedPermissions);
         }
 
+        File::ensureDirectoryExists(dirname($trackerPath));
         File::put($trackerPath, json_encode($definedPermissions, JSON_PRETTY_PRINT));
         app(PermissionRegistrar::class)->forgetCachedPermissions();
         Log::info('Services Installer: Permission sync finished.');
+    }
+
+    public function uninstall(): void
+    {
+        parent::uninstall();
+        Log::info('Services Installer: Starting uninstall process...');
+
+        $trackerPath = $this->permissionsTrackerPath();
+        if (!File::exists($trackerPath)) {
+            Log::warning('Services Installer: Permission tracker not found on uninstall. Nothing to remove.');
+            return;
+        }
+
+        $permissions = json_decode(File::get($trackerPath), true) ?: [];
+        if (empty($permissions)) {
+            return;
+        }
+
+        Log::info('Services Installer: Removing all module permissions...');
+        DB::transaction(function () use ($permissions) {
+            $guard = config('auth.defaults.guard', 'web');
+            $perms = Permission::whereIn('name', $permissions)->where('guard_name', $guard)->get();
+            foreach ($perms as $perm) {
+                $perm->roles()->detach();
+                $perm->delete();
+            }
+        });
+
+        File::delete($this->trackerPath());
+        File::delete($trackerPath);
+
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+        Log::info('Services Installer: Uninstall process finished.');
     }
 
     // Helper methods for tracker paths

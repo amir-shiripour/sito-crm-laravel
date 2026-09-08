@@ -153,9 +153,9 @@
                 <span class="text-xl font-bold text-gray-900 dark:text-white tabular-nums">
                     {{ $faNum(number_format($totalDeposits)) }}
                 </span>
-                <span class="text-xs font-medium text-gray-400">{{ $currencyLabel }}</span>
+                <span class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ $currencyLabel }}</span>
             </div>
-            <span class="mt-2 block text-[11px] text-gray-400">واریزهای نقدی، آنلاین و پاداش</span>
+            <span class="mt-2 block text-[11px] text-gray-500 dark:text-gray-400">واریزهای نقدی، آنلاین و پاداش</span>
         </div>
 
         {{-- Card 3: Total Withdrawals --}}
@@ -172,16 +172,16 @@
                 <span class="text-xl font-bold text-gray-900 dark:text-white tabular-nums">
                     {{ $faNum(number_format($totalWithdrawals)) }}
                 </span>
-                <span class="text-xs font-medium text-gray-400">{{ $currencyLabel }}</span>
+                <span class="text-xs font-medium text-gray-500 dark:text-gray-400">{{ $currencyLabel }}</span>
             </div>
-            <span class="mt-2 block text-[11px] text-gray-400">پرداخت سفارشات، نوبت‌ها و کسر دستی</span>
+            <span class="mt-2 block text-[11px] text-gray-500 dark:text-gray-400">پرداخت سفارشات، نوبت‌ها و کسر دستی</span>
         </div>
 
         {{-- Card 4: Quick Actions --}}
         <div class="p-5 rounded-2xl bg-white dark:bg-gray-800/80 border border-gray-200 dark:border-gray-700 shadow-xs flex flex-col justify-between">
             <div class="flex items-center justify-between">
                 <span class="text-xs font-bold text-gray-500 dark:text-gray-400">عملیات سریع کیف پول</span>
-                <span class="text-xs font-bold text-gray-400">{{ $faNum($txCount) }} تراکنش</span>
+                <span class="text-xs font-bold text-gray-500 dark:text-gray-400">{{ $faNum($txCount) }} تراکنش</span>
             </div>
             <div class="mt-3 flex items-center gap-2">
                 @can('wallet.deposit')
@@ -214,7 +214,7 @@
                 </span>
                 <div>
                     <h3 class="text-sm font-bold text-gray-900 dark:text-white">ریز تراکنش‌های کیف پول</h3>
-                    <p class="text-[11px] text-gray-400">تاریخچه کامل شارژ، کسر و پرداخت‌های انجام شده توسط این مشتری</p>
+                    <p class="text-[11px] text-gray-500 dark:text-gray-400">تاریخچه کامل شارژ، کسر و پرداخت‌های انجام شده توسط این مشتری</p>
                 </div>
             </div>
 
@@ -258,12 +258,12 @@
 
                             <td class="px-6 py-4 whitespace-nowrap text-sm font-bold {{ $isPositive ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400' }} tabular-nums">
                                 {{ $isPositive ? '+' : '-' }}{{ $faNum(number_format((float)$tx->amount)) }}
-                                <span class="text-[11px] font-normal text-gray-400 mr-0.5">{{ $currencyLabel }}</span>
+                                <span class="text-[11px] font-normal text-gray-500 dark:text-gray-400 mr-0.5">{{ $currencyLabel }}</span>
                             </td>
 
                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-700 dark:text-gray-300 tabular-nums">
                                 {{ $faNum(number_format((float)$tx->balance_after)) }}
-                                <span class="text-[11px] font-normal text-gray-400 mr-0.5">{{ $currencyLabel }}</span>
+                                <span class="text-[11px] font-normal text-gray-500 dark:text-gray-400 mr-0.5">{{ $currencyLabel }}</span>
                             </td>
 
                             <td class="px-6 py-4 text-xs text-gray-600 dark:text-gray-300 max-w-xs truncate" title="{{ $tx->description }}">
@@ -280,7 +280,7 @@
             </div>
         @else
             <div class="flex flex-col items-center justify-center py-16 text-center">
-                <span class="flex items-center justify-center w-14 h-14 rounded-2xl bg-gray-100 dark:bg-gray-700/60 text-gray-400 mb-3">
+                <span class="flex items-center justify-center w-14 h-14 rounded-2xl bg-gray-100 dark:bg-gray-700/60 text-gray-400 dark:text-gray-400 mb-3">
                     <svg class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
                     </svg>
@@ -321,7 +321,7 @@
                     <div>
                         <h3 class="text-base font-bold text-gray-900 dark:text-white"
                             x-text="clientWalletMode === 'deposit' ? 'شارژ کیف پول کلاینت' : 'کسر موجودی کیف پول کلاینت'"></h3>
-                        <p class="text-xs text-gray-400 dark:text-gray-400 mt-0.5">
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
                             مشتری: <span class="font-bold text-gray-700 dark:text-gray-200">{{ $client->full_name }}</span>
                         </p>
                     </div>
@@ -343,7 +343,7 @@
                 <div>
                     <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
                         <span>مبلغ</span>
-                        <span class="text-gray-400 text-[11px] font-normal">(به {{ $currencyLabel }})</span>
+                        <span class="text-gray-500 dark:text-gray-400 text-[11px] font-normal">(به {{ $currencyLabel }})</span>
                         <span class="text-rose-500">*</span>
                     </label>
 
@@ -354,8 +354,8 @@
                                @input="walletAmount = formatNumber($event.target.value)"
                                placeholder="مثلاً: ۵۰۰,۰۰۰"
                                required
-                               class="w-full rounded-2xl border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/70 px-4 py-2.5 text-base font-bold text-gray-900 dark:text-white placeholder-gray-400 focus:border-indigo-500 focus:bg-white dark:focus:bg-gray-900 focus:outline-none focus:ring-4 focus:ring-indigo-500/10 pl-14">
-                        <span class="absolute left-3.5 top-2.5 text-xs font-bold text-gray-400 dark:text-gray-500">{{ $currencyLabel }}</span>
+                               class="w-full rounded-2xl border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/70 px-4 py-2.5 text-base font-bold text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:border-indigo-500 focus:bg-white dark:focus:bg-gray-900 focus:outline-none focus:ring-4 focus:ring-indigo-500/10 pl-14">
+                        <span class="absolute left-3.5 top-2.5 text-xs font-bold text-gray-500 dark:text-gray-400">{{ $currencyLabel }}</span>
                     </div>
 
                     {{-- Verbal translation --}}
@@ -369,11 +369,11 @@
                         <template x-for="chip in clientQuickChips" :key="chip.value">
                             <button type="button"
                                     @click="addAmount(chip.value)"
-                                    class="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700/60 dark:text-gray-300 dark:hover:bg-gray-700 transition">
+                                    class="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700/60 dark:text-gray-300 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-600 transition">
                                 <span x-text="'+ ' + chip.label"></span>
                             </button>
                         </template>
-                        <button type="button" @click="walletAmount = ''" class="px-2 py-1 rounded-lg text-[10px] font-bold text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+                        <button type="button" @click="walletAmount = ''" class="px-2 py-1 rounded-lg text-[10px] font-bold text-gray-400 hover:text-gray-600 dark:text-gray-400 dark:hover:text-gray-200">
                             پاک کردن
                         </button>
                     </div>
@@ -389,7 +389,7 @@
                            name="description"
                            x-model="walletDescription"
                            placeholder="دلیل تراکنش..."
-                           class="w-full rounded-2xl border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/70 px-4 py-2.5 text-xs text-gray-900 dark:text-white placeholder-gray-400 focus:border-indigo-500 focus:bg-white dark:focus:bg-gray-900 focus:outline-none focus:ring-4 focus:ring-indigo-500/10">
+                           class="w-full rounded-2xl border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/70 px-4 py-2.5 text-xs text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:border-indigo-500 focus:bg-white dark:focus:bg-gray-900 focus:outline-none focus:ring-4 focus:ring-indigo-500/10">
                 </div>
 
                 {{-- Footer --}}

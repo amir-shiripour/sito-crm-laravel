@@ -283,3 +283,68 @@ Quill.js Editor Custom Styles (Professional RTL & Dark Mode)
 .dark .sortable-ghost-item {
     @apply bg-indigo-900/50;
 }
+
+/* =========================================
+   Custom Sleek Scrollbars (Dark Mode & RTL Compatible)
+   ========================================= */
+.custom-modal-scrollbar::-webkit-scrollbar {
+    width: 5px;
+}
+.custom-modal-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+}
+.custom-modal-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(156, 163, 175, 0.4);
+    border-radius: 9999px;
+}
+.custom-modal-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(99, 102, 241, 0.6);
+}
+.dark .custom-modal-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(75, 85, 99, 0.5);
+}
+.dark .custom-modal-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(129, 140, 248, 0.6);
+}
+.custom-modal-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(156, 163, 175, 0.4) transparent;
+}
+.dark .custom-modal-scrollbar {
+    scrollbar-color: rgba(75, 85, 99, 0.5) transparent;
+}
+
+.custom-calendar-scrollbar::-webkit-scrollbar {
+    width: 6px;
+}
+.custom-calendar-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+}
+.custom-calendar-scrollbar::-webkit-scrollbar-track:hover {
+    background: rgba(156, 163, 175, 0.08);
+}
+.custom-calendar-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(156, 163, 175, 0.45);
+    border-radius: 9999px;
+}
+.custom-calendar-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(99, 102, 241, 0.7);
+}
+.dark .custom-calendar-scrollbar::-webkit-scrollbar-track:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+.dark .custom-calendar-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(75, 85, 99, 0.6);
+    border-radius: 9999px;
+}
+.dark .custom-calendar-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(129, 140, 248, 0.75);
+}
+.custom-calendar-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(156, 163, 175, 0.45) transparent;
+}
+.dark .custom-calendar-scrollbar {
+    scrollbar-color: rgba(75, 85, 99, 0.6) transparent;
+}
+

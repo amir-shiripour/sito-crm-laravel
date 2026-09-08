@@ -22,11 +22,75 @@
         backdrop-filter: none !important;
         -webkit-backdrop-filter: none !important;
     }
+    /* استایل اختصاصی و هماهنگ اسکرول‌بار مدال با تم پنل */
+    .custom-modal-scrollbar::-webkit-scrollbar {
+        width: 5px;
+    }
+    .custom-modal-scrollbar::-webkit-scrollbar-track {
+        background: transparent;
+    }
+    .custom-modal-scrollbar::-webkit-scrollbar-thumb {
+        background: rgba(156, 163, 175, 0.4);
+        border-radius: 9999px;
+    }
+    .custom-modal-scrollbar::-webkit-scrollbar-thumb:hover {
+        background: rgba(99, 102, 241, 0.6);
+    }
+    .dark .custom-modal-scrollbar::-webkit-scrollbar-thumb {
+        background: rgba(75, 85, 99, 0.5);
+    }
+    .dark .custom-modal-scrollbar::-webkit-scrollbar-thumb:hover {
+        background: rgba(129, 140, 248, 0.6);
+    }
+    /* فایرفاکس */
+    .custom-modal-scrollbar {
+        scrollbar-width: thin;
+        scrollbar-color: rgba(156, 163, 175, 0.4) transparent;
+    }
+    .dark .custom-modal-scrollbar {
+        scrollbar-color: rgba(75, 85, 99, 0.5) transparent;
+    }
+
+    /* استایل مدرن و هماهنگ اسکرول‌بار جدول زمانی تقویم (نمای هفتگی و روزانه سطح ۲) */
+    .custom-calendar-scrollbar::-webkit-scrollbar {
+        width: 6px;
+    }
+    .custom-calendar-scrollbar::-webkit-scrollbar-track {
+        background: transparent;
+    }
+    .custom-calendar-scrollbar::-webkit-scrollbar-track:hover {
+        background: rgba(156, 163, 175, 0.08);
+    }
+    .custom-calendar-scrollbar::-webkit-scrollbar-thumb {
+        background: rgba(156, 163, 175, 0.45);
+        border-radius: 9999px;
+    }
+    .custom-calendar-scrollbar::-webkit-scrollbar-thumb:hover {
+        background: rgba(99, 102, 241, 0.7);
+    }
+    .dark .custom-calendar-scrollbar::-webkit-scrollbar-track:hover {
+        background: rgba(255, 255, 255, 0.05);
+    }
+    .dark .custom-calendar-scrollbar::-webkit-scrollbar-thumb {
+        background: rgba(75, 85, 99, 0.6);
+        border-radius: 9999px;
+    }
+    .dark .custom-calendar-scrollbar::-webkit-scrollbar-thumb:hover {
+        background: rgba(129, 140, 248, 0.75);
+    }
+    /* فایرفاکس */
+    .custom-calendar-scrollbar {
+        scrollbar-width: thin;
+        scrollbar-color: rgba(156, 163, 175, 0.45) transparent;
+    }
+    .dark .custom-calendar-scrollbar {
+        scrollbar-color: rgba(75, 85, 99, 0.6) transparent;
+    }
 </style>
 
 <div 
     :class="{
-        'fixed inset-0 z-[100] bg-gray-100/95 dark:bg-gray-950/95 backdrop-blur-md p-3 sm:p-5 overflow-y-auto flex flex-col space-y-3': isFocusMode,
+        'fixed inset-0 z-[100] bg-gray-100/95 dark:bg-gray-950/95 backdrop-blur-md p-3 sm:p-5 overflow-y-auto custom-calendar-scrollbar flex flex-col space-y-3': isFocusMode,
         'space-y-4': !isFocusMode
     }"
     x-data="fullCalendarManager()" 
@@ -333,7 +397,16 @@
                                     }"
                                     class="px-2 py-1 rounded-xl text-[10px] sm:text-xs font-bold border truncate hover:brightness-95 dark:hover:brightness-125 transition-all cursor-pointer shadow-sm flex items-center justify-between gap-1 w-full min-w-0"
                                 >
-                                    <span x-text="ev.title" class="truncate"></span>
+                                    <div class="flex items-center gap-1 truncate flex-1 min-w-0">
+                                        <template x-if="ev.is_recurring">
+                                            <span title="رویداد تکرارشونده" class="flex-shrink-0 opacity-75">
+                                                <svg class="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                                </svg>
+                                            </span>
+                                        </template>
+                                        <span x-text="ev.title" class="truncate"></span>
+                                    </div>
                                     <span x-text="ev.time" class="hidden sm:inline-block text-[10px] sm:text-xs opacity-90 mr-1 flex-shrink-0"></span>
                                 </div>
                             </template>
@@ -477,6 +550,13 @@
                             </div>
                         </template>
                     </div>
+
+                    {{-- اسپیسر تطبیق اسکرول‌بار (سمت چپ در RTL جهت انطباق ۱۰۰٪ ستون‌ها با بدنه تقویم) --}}
+                    <div 
+                        x-show="scrollbarWidth > 0" 
+                        :style="{ width: scrollbarWidth + 'px' }" 
+                        class="flex-shrink-0 bg-gray-50/95 dark:bg-gray-900/90 border-r border-gray-200 dark:border-gray-700"
+                    ></div>
                 </div>
 
                 {{-- ۲. ردیف رویدادهای تمام‌روز و مناسبت‌ها (All-Day Section) --}}
@@ -485,9 +565,9 @@
                         <span>تمام‌روز</span>
                     </div>
 
-                    <div class="grid grid-cols-7 flex-1 p-1.5 min-h-[38px] items-center">
+                    <div class="grid grid-cols-7 flex-1 py-1.5 min-h-[38px] items-center">
                         <template x-for="wday in weekDays" :key="'allday_' + wday.key">
-                            <div class="px-1 space-y-1 min-w-0 border-l border-gray-200 dark:border-gray-700 last:border-l-0 h-full flex flex-col justify-center">
+                            <div class="px-1.5 space-y-1 min-w-0 border-l border-gray-200 dark:border-gray-700 last:border-l-0 h-full flex flex-col justify-center">
                                 <template x-for="ev in getDayAllDayEvents(wday)" :key="'ad_' + ev.id">
                                     <div 
                                         @click="showEventDetail(ev)"
@@ -508,22 +588,29 @@
                             </div>
                         </template>
                     </div>
+
+                    {{-- اسپیسر تطبیق اسکرول‌بار --}}
+                    <div 
+                        x-show="scrollbarWidth > 0" 
+                        :style="{ width: scrollbarWidth + 'px' }" 
+                        class="flex-shrink-0 bg-gray-50/60 dark:bg-gray-900/40 border-r border-gray-200 dark:border-gray-700"
+                    ></div>
                 </div>
 
                 {{-- ۳. جدول زمانی ۲۴ ساعته اسکرول‌پذیر (Google Calendar 24h Hourly Time Grid) --}}
                 <div 
                     id="week-time-grid" 
                     :class="isFocusMode ? 'h-[68vh] sm:h-[73vh] max-h-[76vh]' : 'max-h-[640px] sm:max-h-[740px]'"
-                    class="overflow-y-auto relative scroll-smooth bg-white dark:bg-gray-800"
+                    class="overflow-y-auto relative scroll-smooth bg-white dark:bg-gray-800 custom-calendar-scrollbar"
                 >
-                    <div class="flex relative min-h-[1728px] h-[1728px] w-full">
+                    <div class="flex relative min-h-[2016px] h-[2016px] w-full">
                         
-                        {{-- محور زمان (Time Gutter - ارتفاع هر ساعت ۷۲ پیکسل) --}}
+                        {{-- محور زمان (Time Gutter - ارتفاع هر ساعت ۸۴ پیکسل) --}}
                         <div class="w-14 sm:w-16 flex-shrink-0 relative border-l border-gray-200 dark:border-gray-700 bg-gray-50/80 dark:bg-gray-900/60 select-none">
                             <template x-for="hour in 24" :key="'hmark_' + hour">
                                 <div 
                                     class="absolute left-0 right-0 flex items-center justify-center -translate-y-1/2"
-                                    :style="{ top: ((hour - 1) * 72) + 'px' }"
+                                    :style="{ top: ((hour - 1) * 84) + 'px' }"
                                 >
                                     <span 
                                         x-show="hour > 1"
@@ -534,72 +621,84 @@
                             </template>
                         </div>
 
-                        {{-- شبکه ۷ ستون روزهای هفته (Day Columns & Grid) --}}
-                        <div class="grid grid-cols-7 flex-1 relative">
+                        {{-- شبکه محتوا و ۷ ستون روزهای هفته (Day Columns & Grid) --}}
+                        <div class="flex-1 relative h-full">
                             
-                            {{-- خطوط افقی سرتاسری پس‌زمینه (بازه‌های یک‌ساعته ۷۲ پیکسل و نیم‌ساعته ۳۶ پیکسل) --}}
+                            {{-- خطوط افقی سرتاسری پس‌زمینه (بازه‌های یک‌ساعته ۸۴ پیکسل و نیم‌ساعته ۴۲ پیکسل) --}}
                             <div class="absolute inset-0 pointer-events-none flex flex-col">
                                 <template x-for="hour in 24" :key="'gridline_' + hour">
-                                    <div class="h-[72px] min-h-[72px] max-h-[72px] flex-shrink-0 border-b border-gray-200/80 dark:border-gray-700/70 relative">
+                                    <div class="h-[84px] min-h-[84px] max-h-[84px] flex-shrink-0 border-b border-gray-200/80 dark:border-gray-700/70 relative">
                                         {{-- خط‌چین نیم‌ساعت --}}
-                                        <div class="absolute top-[36px] left-0 right-0 border-b border-dashed border-gray-100 dark:border-gray-700/40"></div>
+                                        <div class="absolute top-[42px] left-0 right-0 border-b border-dashed border-gray-100 dark:border-gray-700/40"></div>
                                     </div>
                                 </template>
                             </div>
 
-                            {{-- محتوای هر روز هفته --}}
-                            <template x-for="wday in weekDays" :key="'tcol_' + wday.key">
-                                <div 
-                                    @click="handleWeekGridClick($event, wday)"
-                                    :class="{
-                                        'bg-rose-50/25 dark:bg-rose-950/20': wday.is_today,
-                                        'cursor-pointer': allowEventCreation
-                                    }"
-                                    class="relative h-[1728px] min-h-[1728px] flex-1 min-w-0 border-l border-gray-200 dark:border-gray-700 last:border-l-0"
-                                >
-                                    {{-- خط نشانگر ساعت زنده جاری --}}
-                                    <template x-if="wday.is_today">
-                                        <div 
-                                            :style="{ top: getCurrentTimeIndicatorTop() }"
-                                            class="absolute left-0 right-0 z-20 pointer-events-none flex items-center -translate-y-1/2"
-                                        >
-                                            <span class="w-3 h-3 rounded-full bg-rose-500 -mr-1.5 shadow-sm ring-2 ring-white dark:ring-gray-800"></span>
-                                            <div class="flex-1 border-t-2 border-rose-500 shadow-sm"></div>
-                                        </div>
-                                    </template>
-
-                                    {{-- رویدادهای زمان‌دار این روز (موقعیت‌دهی دقیق و نمایش رویدادهای هم‌پوشان) --}}
-                                    <template x-for="ev in getDayTimedEvents(wday)" :key="'gcal_ev_' + ev.id">
-                                        <div 
-                                            @click.stop="showEventDetail(ev)"
-                                            :style="getEventCardStyle(ev)"
-                                            class="absolute z-10 rounded-lg p-2 transition-all cursor-pointer hover:z-30 hover:shadow-lg flex flex-col justify-between overflow-hidden group select-none border text-right"
-                                        >
-                                            {{-- بخش عنوان و ساعت کارت --}}
-                                            <div class="min-w-0 space-y-0.5 pointer-events-auto">
-                                                <div class="flex items-center justify-between gap-1">
-                                                    <span class="text-[10px] sm:text-[11px] font-bold truncate opacity-95" x-text="ev.time"></span>
-                                                </div>
-
-                                                <h4 class="text-xs sm:text-[13px] font-bold leading-snug line-clamp-2" x-text="ev.title"></h4>
+                            {{-- گرید مستقل ۷ ستون روزهای هفته (بدون تداخل المان‌های مطلق در محاسبه عرض ستون‌ها) --}}
+                            <div class="grid grid-cols-7 h-full w-full relative z-10">
+                                <template x-for="wday in weekDays" :key="'tcol_' + wday.key">
+                                    <div 
+                                        @click="handleWeekGridClick($event, wday)"
+                                        :class="{
+                                            'bg-rose-50/25 dark:bg-rose-950/20': wday.is_today,
+                                            'cursor-pointer': allowEventCreation
+                                        }"
+                                        class="relative h-[2016px] min-h-[2016px] min-w-0 border-l border-gray-200 dark:border-gray-700 last:border-l-0"
+                                    >
+                                        {{-- خط نشانگر ساعت زنده جاری --}}
+                                        <template x-if="wday.is_today">
+                                            <div 
+                                                :style="{ top: getCurrentTimeIndicatorTop() }"
+                                                class="absolute left-0 right-0 z-20 pointer-events-none flex items-center -translate-y-1/2"
+                                            >
+                                                <span class="w-3 h-3 rounded-full bg-rose-500 -mr-1.5 shadow-sm ring-2 ring-white dark:ring-gray-800"></span>
+                                                <div class="flex-1 border-t-2 border-rose-500 shadow-sm"></div>
                                             </div>
+                                        </template>
 
-                                            {{-- جزئیات تکمیلی نوبت / سرویس (اگر ارتفاع کارت اجازه دهد) --}}
-                                            <template x-if="ev.duration_minutes >= 35 && (ev.client_name || ev.provider_name)">
-                                                <div class="text-[10px] opacity-85 pt-1 truncate flex items-center gap-1 border-t border-current/15 mt-1 font-medium">
-                                                    <svg class="w-3 h-3 flex-shrink-0 opacity-75" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                                                    </svg>
-                                                    <span x-text="ev.client_name ? ('مشتری: ' + ev.client_name) : ev.description" class="truncate"></span>
+                                        {{-- رویدادهای زمان‌دار این روز (موقعیت‌دهی دقیق و نمایش رویدادهای هم‌پوشان) --}}
+                                        <template x-for="ev in getDayTimedEvents(wday)" :key="'gcal_ev_' + ev.id">
+                                            <div 
+                                                @click.stop="showEventDetail(ev)"
+                                                :style="getEventCardStyle(ev)"
+                                                class="absolute z-10 rounded-lg p-2 transition-all cursor-pointer hover:z-30 hover:shadow-lg flex flex-col justify-between overflow-hidden group select-none border text-right"
+                                            >
+                                                {{-- بخش عنوان (اولویت اول) و ساعت کارت (اولویت دوم) --}}
+                                                <div class="min-w-0 space-y-1 pointer-events-auto">
+                                                    <div class="flex items-center gap-1">
+                                                        <h4 class="text-xs sm:text-[13px] font-black leading-snug line-clamp-2 truncate flex-1" x-text="ev.title"></h4>
+                                                        <template x-if="ev.is_recurring">
+                                                            <span title="رویداد تکرارشونده" class="flex-shrink-0 opacity-80">
+                                                                <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                                                </svg>
+                                                            </span>
+                                                        </template>
+                                                    </div>
+
+                                                    <div class="flex items-center gap-1 opacity-80 text-[10px] sm:text-[11px] font-medium leading-none">
+                                                        <svg class="w-3 h-3 flex-shrink-0 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                        </svg>
+                                                        <span class="truncate" x-text="ev.time"></span>
+                                                    </div>
                                                 </div>
-                                            </template>
-                                        </div>
-                                    </template>
 
-                                </div>
-                            </template>
-                        </div>
+                                                {{-- جزئیات تکمیلی نوبت / سرویس (اگر ارتفاع کارت اجازه دهد) --}}
+                                                <template x-if="ev.duration_minutes >= 35 && (ev.client_name || ev.provider_name)">
+                                                    <div class="text-[10px] opacity-85 pt-1 truncate flex items-center gap-1 border-t border-current/15 mt-1 font-medium">
+                                                        <svg class="w-3 h-3 flex-shrink-0 opacity-75" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                                        </svg>
+                                                        <span x-text="ev.client_name ? ('مشتری: ' + ev.client_name) : ev.description" class="truncate"></span>
+                                                    </div>
+                                                </template>
+                                            </div>
+                                        </template>
 
+                                    </div>
+                                </template>
+                            </div>
                     </div>
                 </div>
 
@@ -726,6 +825,13 @@
                                 </div>
                             </template>
                         </div>
+
+                        {{-- اسپیسر تطبیق اسکرول‌بار --}}
+                        <div 
+                            x-show="scrollbarWidth > 0" 
+                            :style="{ width: scrollbarWidth + 'px' }" 
+                            class="flex-shrink-0 bg-gray-50/60 dark:bg-gray-900/40 border-r border-gray-200 dark:border-gray-700"
+                        ></div>
                     </div>
                 </template>
 
@@ -733,16 +839,16 @@
                 <div 
                     id="day-time-grid" 
                     :class="isFocusMode ? 'h-[68vh] sm:h-[73vh] max-h-[76vh]' : 'max-h-[640px] sm:max-h-[740px]'"
-                    class="overflow-y-auto relative scroll-smooth bg-white dark:bg-gray-800"
+                    class="overflow-y-auto relative scroll-smooth bg-white dark:bg-gray-800 custom-calendar-scrollbar"
                 >
-                    <div class="flex relative min-h-[1728px] h-[1728px] w-full">
+                    <div class="flex relative min-h-[2016px] h-[2016px] w-full">
                         
-                        {{-- محور زمان (Time Gutter) --}}
+                        {{-- محور زمان (Time Gutter - ارتفاع هر ساعت ۸۴ پیکسل) --}}
                         <div class="w-14 sm:w-16 flex-shrink-0 relative border-l border-gray-200 dark:border-gray-700 bg-gray-50/80 dark:bg-gray-900/60 select-none">
                             <template x-for="hour in 24" :key="'dhmark_' + hour">
                                 <div 
                                     class="absolute left-0 right-0 flex items-center justify-center -translate-y-1/2"
-                                    :style="{ top: ((hour - 1) * 72) + 'px' }"
+                                    :style="{ top: ((hour - 1) * 84) + 'px' }"
                                 >
                                     <span 
                                         x-show="hour > 1"
@@ -756,12 +862,12 @@
                         {{-- ستون تمام‌عرض روز انتخابی --}}
                         <div class="flex-1 relative">
                             
-                            {{-- خطوط افقی سرتاسری پس‌زمینه --}}
+                            {{-- خطوط افقی سرتاسری پس‌زمینه (بازه‌های یک‌ساعته ۸۴ پیکسل و نیم‌ساعته ۴۲ پیکسل) --}}
                             <div class="absolute inset-0 pointer-events-none flex flex-col">
                                 <template x-for="hour in 24" :key="'dgridline_' + hour">
-                                    <div class="h-[72px] min-h-[72px] max-h-[72px] flex-shrink-0 border-b border-gray-200/80 dark:border-gray-700/70 relative">
+                                    <div class="h-[84px] min-h-[84px] max-h-[84px] flex-shrink-0 border-b border-gray-200/80 dark:border-gray-700/70 relative">
                                         {{-- خط‌چین نیم‌ساعت --}}
-                                        <div class="absolute top-[36px] left-0 right-0 border-b border-dashed border-gray-100 dark:border-gray-700/40"></div>
+                                        <div class="absolute top-[42px] left-0 right-0 border-b border-dashed border-gray-100 dark:border-gray-700/40"></div>
                                     </div>
                                 </template>
                             </div>
@@ -772,7 +878,7 @@
                                 :class="{
                                     'cursor-pointer': allowEventCreation
                                 }"
-                                class="relative h-[1728px] min-h-[1728px] w-full"
+                                class="relative h-[2016px] min-h-[2016px] w-full"
                             >
                                 
                                 {{-- خط نشانگر ساعت زنده جاری (در صورتی که روز جاری باشد) --}}
@@ -793,13 +899,25 @@
                                         :style="getEventCardStyle(ev)"
                                         class="absolute z-10 rounded-xl p-2.5 sm:p-3 transition-all cursor-pointer hover:z-30 hover:shadow-lg flex flex-col justify-between overflow-hidden group select-none border text-right"
                                     >
-                                        {{-- بخش عنوان و ساعت --}}
+                                        {{-- بخش عنوان (اولویت اول) و ساعت (اولویت دوم) --}}
                                         <div class="min-w-0 space-y-1 pointer-events-auto">
-                                            <div class="flex items-center justify-between gap-2">
-                                                <span class="text-xs sm:text-sm font-bold truncate opacity-95" x-text="ev.time"></span>
+                                            <div class="flex items-center gap-1.5">
+                                                <h4 class="text-xs sm:text-sm font-black leading-snug line-clamp-2 truncate flex-1" x-text="ev.title"></h4>
+                                                <template x-if="ev.is_recurring">
+                                                    <span title="رویداد تکرارشونده" class="flex-shrink-0 opacity-80">
+                                                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                                        </svg>
+                                                    </span>
+                                                </template>
                                             </div>
 
-                                            <h4 class="text-xs sm:text-sm font-black leading-snug line-clamp-2" x-text="ev.title"></h4>
+                                            <div class="flex items-center gap-1.5 opacity-80 text-[11px] sm:text-xs font-medium leading-none">
+                                                <svg class="w-3.5 h-3.5 flex-shrink-0 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                </svg>
+                                                <span class="truncate" x-text="ev.time"></span>
+                                            </div>
                                         </div>
 
                                         {{-- جزئیات تکمیلی نوبت / سرویس / مشتری --}}
@@ -826,8 +944,8 @@
     </div>
 
     {{-- مدال جزئیات رویداد --}}
-    <div x-show="activeEvent" @click.self="activeEvent = null" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm" x-cloak>
-        <div class="bg-white dark:bg-gray-800 rounded-2xl max-w-lg w-full p-6 border border-gray-200 dark:border-gray-700 shadow-2xl space-y-4">
+    <div x-show="activeEvent" @click.self="activeEvent = null" class="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-sm overflow-hidden" x-cloak>
+        <div class="bg-white dark:bg-gray-800 rounded-2xl max-w-lg w-full max-h-[90vh] p-6 border border-gray-200 dark:border-gray-700 shadow-2xl space-y-4 overflow-y-auto custom-modal-scrollbar">
             <div class="flex items-center justify-between pb-3 border-b border-gray-200 dark:border-gray-700">
                 <div class="flex items-center gap-2">
                     <span 
@@ -850,6 +968,14 @@
                             :class="activeEvent?.is_public ? 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800' : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-600'"
                             x-text="activeEvent?.is_public ? 'عمومی' : 'شخصی'"
                         ></span>
+                    </template>
+                    <template x-if="activeEvent?.is_recurring">
+                        <span class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 flex items-center gap-1">
+                            <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                            </svg>
+                            <span>تکرارشونده</span>
+                        </span>
                     </template>
                     <template x-if="activeEvent?.service_name">
                         <span class="text-[11px] font-bold px-2 py-0.5 rounded-md bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300" x-text="activeEvent?.service_name"></span>
@@ -945,11 +1071,11 @@
     </div>
 
     {{-- مدال ایجاد / ویرایش سریع رویداد به سبک Google Calendar --}}
-    <div x-show="isEventModalOpen" @click.self="closeEventModal()" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm" x-cloak>
-        <div class="bg-white dark:bg-gray-800 rounded-3xl max-w-lg w-full p-6 border border-gray-200 dark:border-gray-700 shadow-2xl space-y-5 transition-all animate-in fade-in zoom-in-95">
+    <div x-show="isEventModalOpen" @click.self="closeEventModal()" class="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-sm overflow-hidden" x-cloak>
+        <div class="bg-white dark:bg-gray-800 rounded-3xl max-w-lg w-full max-h-[90vh] flex flex-col border border-gray-200 dark:border-gray-700 shadow-2xl transition-all animate-in fade-in zoom-in-95 overflow-hidden">
             
-            {{-- هدر مدال --}}
-            <div class="flex items-center justify-between pb-3 border-b border-gray-100 dark:border-gray-700">
+            {{-- هدر مدال (ثابت) --}}
+            <div class="flex items-center justify-between p-5 sm:p-6 pb-4 border-b border-gray-100 dark:border-gray-700 flex-shrink-0">
                 <div class="flex items-center gap-2.5">
                     <div class="w-8 h-8 rounded-xl bg-indigo-50 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
                         <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -967,7 +1093,7 @@
 
             {{-- پیام خطا در صورت وجود --}}
             <template x-if="eventFormError">
-                <div class="p-3 rounded-xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800/60 text-xs font-bold text-red-600 dark:text-red-400 flex items-center gap-2">
+                <div class="mx-5 sm:mx-6 mt-3 p-3 rounded-xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800/60 text-xs font-bold text-red-600 dark:text-red-400 flex items-center gap-2 flex-shrink-0">
                     <svg class="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
@@ -975,8 +1101,9 @@
                 </div>
             </template>
 
-            {{-- فرم رویداد --}}
-            <form @submit.prevent="saveEvent()" class="space-y-4">
+            {{-- فرم رویداد با قابلیت اسکرول اختصاصی و دکمه‌های پاورقی ثابت --}}
+            <form @submit.prevent="saveEvent()" class="flex flex-col flex-1 overflow-hidden min-h-0">
+                <div class="p-5 sm:p-6 space-y-4 overflow-y-auto flex-1 overscroll-contain custom-modal-scrollbar">
                 
                 {{-- ۱. عنوان رویداد (ورودی برجسته) --}}
                 <div>
@@ -1108,7 +1235,138 @@
                     >
                 </div>
 
-                {{-- ۵. توضیحات و یادداشت --}}
+                {{-- ۵. تنظیمات تکرار رویداد (مشابه Google Calendar) --}}
+                <div class="p-4 rounded-2xl bg-indigo-50/40 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-800/40 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <label class="inline-flex items-center gap-2 cursor-pointer select-none">
+                            <input 
+                                type="checkbox" 
+                                x-model="eventForm.is_recurring" 
+                                class="rounded border-indigo-300 text-indigo-600 focus:ring-indigo-500 h-4 w-4"
+                            >
+                            <span class="text-xs font-bold text-indigo-900 dark:text-indigo-200 flex items-center gap-1.5">
+                                <svg class="w-4 h-4 text-indigo-600 dark:text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                </svg>
+                                <span>این رویداد تکرار می‌شود (رویداد دوره‌ای)</span>
+                            </span>
+                        </label>
+                        <span x-show="eventForm.is_recurring" class="text-[10px] text-indigo-600 dark:text-indigo-400 font-semibold bg-indigo-100/70 dark:bg-indigo-900/60 px-2 py-0.5 rounded-full">
+                            Google Calendar Style
+                        </span>
+                    </div>
+
+                    <div x-show="eventForm.is_recurring" x-transition class="space-y-3 pt-2 border-t border-indigo-100/80 dark:border-indigo-800/50">
+                        {{-- نوع دوره تکرار و فواصل زمانی --}}
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-[11px] font-bold text-gray-700 dark:text-gray-300 mb-1">دوره تکرار</label>
+                                <select 
+                                    x-model="eventForm.recurrence_type" 
+                                    class="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs font-bold text-gray-900 dark:text-white shadow-xs focus:ring-2 focus:ring-indigo-500/20"
+                                >
+                                    <option value="daily">روزانه</option>
+                                    <option value="weekly">هفتگی</option>
+                                    <option value="monthly">ماهانه</option>
+                                    <option value="yearly">سالانه</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label class="block text-[11px] font-bold text-gray-700 dark:text-gray-300 mb-1">
+                                    <span>فاصله زمانی تکرار: هر</span>
+                                    <span class="text-indigo-600 dark:text-indigo-400 font-black" x-text="eventForm.recurrence_interval || 1"></span>
+                                    <span x-text="eventForm.recurrence_type === 'daily' ? 'روز یک‌بار' : (eventForm.recurrence_type === 'weekly' ? 'هفته یک‌بار' : (eventForm.recurrence_type === 'monthly' ? 'ماه یک‌بار' : 'سال یک‌بار'))"></span>
+                                </label>
+                                <div class="relative">
+                                    <input 
+                                        type="number" 
+                                        min="1" 
+                                        max="365" 
+                                        x-model.number="eventForm.recurrence_interval" 
+                                        class="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs font-bold text-gray-900 dark:text-white shadow-xs focus:ring-2 focus:ring-indigo-500/20 text-center"
+                                    >
+                                </div>
+                            </div>
+                        </div>
+
+                        {{-- انتخاب روزهای هفته در تکرار هفتگی --}}
+                        <div x-show="eventForm.recurrence_type === 'weekly'" class="space-y-1.5">
+                            <label class="block text-[11px] font-bold text-gray-700 dark:text-gray-300">
+                                تکرار در چه روزهایی از هفته؟ <span class="text-[10px] text-gray-400 font-normal">(در صورت عدم انتخاب، روز رویداد در نظر گرفته می‌شود)</span>
+                            </label>
+                            <div class="flex items-center gap-1.5 flex-wrap">
+                                <template x-for="dayOpt in [
+                                    { dow: 0, label: 'شن' },
+                                    { dow: 1, label: 'یک' },
+                                    { dow: 2, label: 'دو' },
+                                    { dow: 3, label: 'سه' },
+                                    { dow: 4, label: 'چه' },
+                                    { dow: 5, label: 'پن' },
+                                    { dow: 6, label: 'جم' }
+                                ]" :key="dayOpt.dow">
+                                    <button 
+                                        type="button" 
+                                        @click="toggleRecurrenceDay(dayOpt.dow)" 
+                                        :class="hasRecurrenceDay(dayOpt.dow) ? 'bg-indigo-600 text-white shadow-sm ring-2 ring-indigo-600/30 font-black' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 font-bold'"
+                                        class="w-9 h-8 rounded-lg text-xs transition-all flex items-center justify-center cursor-pointer"
+                                        x-text="dayOpt.label"
+                                    ></button>
+                                </template>
+                            </div>
+                        </div>
+
+                        {{-- زمان یا شرایط پایان تکرار --}}
+                        <div class="space-y-2 pt-2 border-t border-indigo-100/60 dark:border-indigo-800/40">
+                            <label class="block text-[11px] font-bold text-gray-700 dark:text-gray-300">شرایط خاتمه تکرار</label>
+                            
+                            <div class="space-y-2">
+                                <label class="flex items-center gap-2 cursor-pointer text-xs font-medium text-gray-700 dark:text-gray-300">
+                                    <input type="radio" value="never" x-model="eventForm.end_type" class="text-indigo-600 focus:ring-indigo-500">
+                                    <span>بدون پایان (حداکثر تا یک سال آینده نمایش داده می‌شود)</span>
+                                </label>
+
+                                <div class="flex items-center gap-3">
+                                    <label class="flex items-center gap-2 cursor-pointer text-xs font-medium text-gray-700 dark:text-gray-300 flex-shrink-0">
+                                        <input type="radio" value="after_count" x-model="eventForm.end_type" class="text-indigo-600 focus:ring-indigo-500">
+                                        <span>پایان پس از:</span>
+                                    </label>
+                                    <div class="flex items-center gap-1.5" x-show="eventForm.end_type === 'after_count'">
+                                        <input 
+                                            type="number" 
+                                            min="1" 
+                                            max="365" 
+                                            x-model.number="eventForm.repeat_count" 
+                                            class="w-20 px-2.5 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs font-bold text-center"
+                                        >
+                                        <span class="text-xs text-gray-500 font-medium">مرتبه تکرار</span>
+                                    </div>
+                                </div>
+
+                                <div class="flex items-center gap-3 flex-wrap">
+                                    <label class="flex items-center gap-2 cursor-pointer text-xs font-medium text-gray-700 dark:text-gray-300 flex-shrink-0">
+                                        <input type="radio" value="until_date" x-model="eventForm.end_type" class="text-indigo-600 focus:ring-indigo-500">
+                                        <span>پایان در تاریخ مشخص:</span>
+                                    </label>
+                                    <div class="relative w-40" x-show="eventForm.end_type === 'until_date'">
+                                        <input 
+                                            type="text" 
+                                            data-jdp 
+                                            data-jdp-only-date
+                                            x-model="eventForm.repeat_until_fa" 
+                                            @change="eventForm.repeat_until_fa = $el.value; syncRepeatUntilEn($el.value)"
+                                            @input="eventForm.repeat_until_fa = $el.value; syncRepeatUntilEn($el.value)"
+                                            placeholder="1405/12/29" 
+                                            class="w-full px-2.5 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs font-bold text-center dir-ltr cursor-pointer"
+                                        >
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- ۶. توضیحات و یادداشت --}}
                 <div>
                     <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">توضیحات و جزئیات رویداد (اختیاری)</label>
                     <textarea 
@@ -1119,8 +1377,10 @@
                     ></textarea>
                 </div>
 
-                {{-- دکمه‌های اقدام --}}
-                <div class="pt-3 border-t border-gray-100 dark:border-gray-700 flex items-center justify-end gap-2">
+                </div>
+
+                {{-- دکمه‌های اقدام (پاورقی ثابت در انتهای مدال) --}}
+                <div class="p-4 sm:p-5 border-t border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/80 flex items-center justify-end gap-2 flex-shrink-0">
                     <button 
                         type="button" 
                         @click="closeEventModal()" 
@@ -1131,7 +1391,7 @@
                     <button 
                         type="submit" 
                         :disabled="isSavingEvent" 
-                        class="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-md shadow-indigo-600/30 hover:shadow-lg transition-all flex items-center gap-1.5 disabled:opacity-50"
+                        class="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-md shadow-indigo-600/30 hover:shadow-lg transition-all flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
                     >
                         <template x-if="isSavingEvent">
                             <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
@@ -1144,6 +1404,90 @@
                 </div>
 
             </form>
+        </div>
+    </div>
+
+    {{-- مدال انتخاب دامنه تغییر/حذف رویداد تکرارشونده (مشابه Google Calendar با ۳ حالت) --}}
+    <div x-show="isScopeModalOpen" @click.self="closeScopeModal()" class="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-sm overflow-hidden" x-cloak>
+        <div class="bg-white dark:bg-gray-800 rounded-3xl max-w-md w-full max-h-[90vh] flex flex-col p-6 border border-gray-200 dark:border-gray-700 shadow-2xl space-y-5 transition-all animate-in fade-in zoom-in-95 overflow-y-auto custom-modal-scrollbar">
+            <div class="flex items-center gap-3">
+                <div 
+                    :class="scopeModalAction === 'delete' ? 'bg-red-50 dark:bg-red-900/40 text-red-600 dark:text-red-400' : 'bg-indigo-50 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400'"
+                    class="w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0"
+                >
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                </div>
+                <div>
+                    <h3 class="text-base font-black text-gray-900 dark:text-white" x-text="scopeModalAction === 'delete' ? 'حذف رویداد تکرارشونده' : 'ویرایش رویداد تکرارشونده'"></h3>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">این رویداد بخشی از یک زنجیره تکرارشونده است. لطفاً دامنه اقدام را انتخاب کنید:</p>
+                </div>
+            </div>
+
+            <div class="space-y-2.5">
+                {{-- گزینه ۱: فقط همین رویداد --}}
+                <label 
+                    @click="selectedScope = 'this_only'" 
+                    :class="selectedScope === 'this_only' ? 'border-indigo-500 bg-indigo-50/50 dark:bg-indigo-950/30 ring-1 ring-indigo-500' : 'border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50'"
+                    class="p-3.5 rounded-2xl border transition-all flex items-start gap-3 cursor-pointer"
+                >
+                    <input type="radio" value="this_only" x-model="selectedScope" class="mt-0.5 text-indigo-600 focus:ring-indigo-500">
+                    <div class="space-y-0.5">
+                        <span class="text-xs font-black text-gray-900 dark:text-white block">فقط همین رویداد</span>
+                        <p class="text-[11px] text-gray-500 dark:text-gray-400 leading-normal">
+                            تغییرات فقط روی این تاریخ خاص اعمال شده و سایر تکرارهای گذشته و آینده بدون تغییر باقی می‌مانند.
+                        </p>
+                    </div>
+                </label>
+
+                {{-- گزینه ۲: این رویداد و رویدادهای بعدی --}}
+                <label 
+                    @click="selectedScope = 'this_and_following'" 
+                    :class="selectedScope === 'this_and_following' ? 'border-indigo-500 bg-indigo-50/50 dark:bg-indigo-950/30 ring-1 ring-indigo-500' : 'border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50'"
+                    class="p-3.5 rounded-2xl border transition-all flex items-start gap-3 cursor-pointer"
+                >
+                    <input type="radio" value="this_and_following" x-model="selectedScope" class="mt-0.5 text-indigo-600 focus:ring-indigo-500">
+                    <div class="space-y-0.5">
+                        <span class="text-xs font-black text-gray-900 dark:text-white block">این رویداد و رویدادهای بعدی</span>
+                        <p class="text-[11px] text-gray-500 dark:text-gray-400 leading-normal">
+                            تکرارهای قبلی در گذشته حفظ می‌شوند و تغییرات از این تاریخ به بعد اعمال خواهد شد.
+                        </p>
+                    </div>
+                </label>
+
+                {{-- گزینه ۳: همه رویدادها --}}
+                <label 
+                    @click="selectedScope = 'all'" 
+                    :class="selectedScope === 'all' ? 'border-indigo-500 bg-indigo-50/50 dark:bg-indigo-950/30 ring-1 ring-indigo-500' : 'border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50'"
+                    class="p-3.5 rounded-2xl border transition-all flex items-start gap-3 cursor-pointer"
+                >
+                    <input type="radio" value="all" x-model="selectedScope" class="mt-0.5 text-indigo-600 focus:ring-indigo-500">
+                    <div class="space-y-0.5">
+                        <span class="text-xs font-black text-gray-900 dark:text-white block">همه رویدادها در این زنجیره</span>
+                        <p class="text-[11px] text-gray-500 dark:text-gray-400 leading-normal">
+                            کل زنجیره این رویداد (شامل گذشته و آینده) با هم ویرایش یا حذف خواهند شد.
+                        </p>
+                    </div>
+                </label>
+            </div>
+
+            <div class="pt-3 border-t border-gray-100 dark:border-gray-700 flex items-center justify-end gap-2">
+                <button 
+                    type="button" 
+                    @click="closeScopeModal()" 
+                    class="px-4 py-2 rounded-xl bg-gray-100 dark:bg-gray-700/80 hover:bg-gray-200 dark:hover:bg-gray-600 text-xs font-bold text-gray-700 dark:text-gray-300 transition-colors"
+                >
+                    انصراف
+                </button>
+                <button 
+                    type="button" 
+                    @click="confirmScopeAction()" 
+                    :class="scopeModalAction === 'delete' ? 'bg-red-600 hover:bg-red-700 shadow-red-600/30' : 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-600/30'"
+                    class="px-5 py-2 rounded-xl text-white text-xs font-bold shadow-md hover:shadow-lg transition-all"
+                    x-text="scopeModalAction === 'delete' ? 'تأیید و حذف' : 'ادامه ویرایش'"
+                ></button>
+            </div>
         </div>
     </div>
 
@@ -1212,6 +1556,7 @@ function fullCalendarManager() {
         selectedDayGregorian: '',
         selectedDayIsToday: false,
         activeEvent: null,
+        scrollbarWidth: 0,
 
         // متغیرهای حالت مدال ایجاد / ویرایش رویداد
         isEventModalOpen: false,
@@ -1219,6 +1564,12 @@ function fullCalendarManager() {
         isEditingEvent: false,
         editEventId: null,
         eventFormError: null,
+
+        // متغیرهای مدیریت دامنه رویدادهای تکرارشونده (Google Calendar Scope)
+        isScopeModalOpen: false,
+        scopeModalAction: 'edit', // 'edit' or 'delete'
+        selectedScope: 'this_only',
+        pendingScopeEvent: null,
         colorPalette: [
             { hex: '#4f46e5', label: 'نیلی کلاسیک' },
             { hex: '#0284c7', label: 'آبی آسمانی' },
@@ -1249,7 +1600,17 @@ function fullCalendarManager() {
             is_public: true,
             color: '#4f46e5',
             location: '',
-            description: ''
+            description: '',
+            is_recurring: false,
+            recurrence_type: 'weekly',
+            recurrence_interval: 1,
+            recurrence_days: [],
+            end_type: 'never',
+            repeat_count: 10,
+            repeat_until_fa: '',
+            repeat_until: '',
+            edit_scope: 'all',
+            occurrence_date: ''
         },
 
         get activeDisplayTitle() {
@@ -1262,6 +1623,7 @@ function fullCalendarManager() {
         toggleFocusMode() {
             this.isFocusMode = !this.isFocusMode;
             this.$nextTick(() => {
+                this.updateScrollbarWidth();
                 if (this.viewMode === 'week') {
                     this.scrollToCurrentTime('week-time-grid');
                 } else if (this.viewMode === 'day') {
@@ -1293,13 +1655,39 @@ function fullCalendarManager() {
 
         initCalendar() {
             this.initJalaliPickers();
+            this.updateScrollbarWidth();
+            window.addEventListener('resize', () => this.updateScrollbarWidth());
             this.$watch('selectedSources', (val) => {
                 try {
                     localStorage.setItem('calendar_selected_sources', JSON.stringify(val));
                 } catch (e) {}
                 this.fetchEvents();
             });
+
+            // قفل کردن اسکرول صفحه اصلی هنگام باز بودن هر یک از مدال‌ها
+            const syncBodyScroll = () => {
+                const anyModalOpen = this.isEventModalOpen || !!this.activeEvent || this.isScopeModalOpen;
+                if (anyModalOpen) {
+                    document.body.classList.add('overflow-hidden');
+                } else {
+                    document.body.classList.remove('overflow-hidden');
+                }
+            };
+
+            this.$watch('isEventModalOpen', () => syncBodyScroll());
+            this.$watch('activeEvent', () => syncBodyScroll());
+            this.$watch('isScopeModalOpen', () => syncBodyScroll());
+
             this.fetchEvents();
+        },
+
+        updateScrollbarWidth() {
+            this.$nextTick(() => {
+                const grid = document.getElementById('week-time-grid') || document.getElementById('day-time-grid');
+                if (grid) {
+                    this.scrollbarWidth = Math.max(0, grid.offsetWidth - grid.clientWidth);
+                }
+            });
         },
 
         changeViewMode(mode) {
@@ -1310,6 +1698,7 @@ function fullCalendarManager() {
                 localStorage.setItem('calendar_view_mode', mode);
             } catch (e) {}
             this.fetchEvents();
+            this.updateScrollbarWidth();
             if (mode === 'week') {
                 this.scrollToCurrentTime('week-time-grid');
             } else if (mode === 'day') {
@@ -1322,6 +1711,7 @@ function fullCalendarManager() {
             try {
                 localStorage.setItem('calendar_display_level', level);
             } catch (e) {}
+            this.updateScrollbarWidth();
             if (level === 'level2') {
                 if (this.viewMode === 'week') {
                     this.scrollToCurrentTime('week-time-grid');
@@ -1425,12 +1815,14 @@ function fullCalendarManager() {
                     this.gregorianTitle = data.gregorian_range || '';
                     this.weekDays = data.days || [];
                     this.eventsList = data.events || [];
+                    this.updateScrollbarWidth();
                     this.scrollToCurrentTime('week-time-grid');
                 } else {
                     this.currentMonthYearTitle = data.month_title || '';
                     this.gregorianTitle = data.gregorian_range || '';
                     this.calendarCells = data.cells || [];
                     this.eventsList = data.events || [];
+                    this.updateScrollbarWidth();
                 }
 
                 if (this.selectedDayNumber) {
@@ -1491,7 +1883,19 @@ function fullCalendarManager() {
                 is_public: defaults.is_public !== undefined ? !!defaults.is_public : true,
                 color: defaults.color || '#4f46e5',
                 location: defaults.location || '',
-                description: defaults.description || ''
+                description: defaults.description || '',
+
+                // فیلدهای تکرار
+                is_recurring: false,
+                recurrence_type: 'weekly',
+                recurrence_interval: 1,
+                recurrence_days: [],
+                end_type: 'never',
+                repeat_count: 10,
+                repeat_until_fa: '',
+                repeat_until: '',
+                edit_scope: 'all',
+                occurrence_date: ''
             };
 
             this.isEventModalOpen = true;
@@ -1501,12 +1905,51 @@ function fullCalendarManager() {
             });
         },
 
+        toggleRecurrenceDay(dow) {
+            if (!Array.isArray(this.eventForm.recurrence_days)) {
+                this.eventForm.recurrence_days = [];
+            }
+            const idx = this.eventForm.recurrence_days.indexOf(dow);
+            if (idx > -1) {
+                this.eventForm.recurrence_days.splice(idx, 1);
+            } else {
+                this.eventForm.recurrence_days.push(dow);
+                this.eventForm.recurrence_days.sort();
+            }
+        },
+
+        hasRecurrenceDay(dow) {
+            return Array.isArray(this.eventForm?.recurrence_days) && this.eventForm.recurrence_days.includes(dow);
+        },
+
+        syncRepeatUntilEn(faDate) {
+            // تاریخ شمسی repeat_until_fa به فرم ارسال می‌شود
+            this.eventForm.repeat_until = faDate;
+        },
+
         openEditEventModal(ev) {
             if (!ev || !ev.can_edit) return;
+
+            // اگر رویداد تکرارشونده است، ابتدا دیالوگ انتخاب دامنه (Google Calendar Scope) باز شود
+            if (ev.is_recurring) {
+                this.pendingScopeEvent = ev;
+                this.scopeModalAction = 'edit';
+                this.selectedScope = 'this_only';
+                this.isScopeModalOpen = true;
+                return;
+            }
+
+            this.launchEditEventForm(ev, 'all');
+        },
+
+        launchEditEventForm(ev, scope = 'all') {
             this.activeEvent = null;
             this.isEditingEvent = true;
             this.editEventId = ev.raw_id;
             this.eventFormError = null;
+
+            const isRec = !!ev.is_recurring;
+            const endType = ev.repeat_count ? 'after_count' : (ev.repeat_until ? 'until_date' : 'never');
 
             this.eventForm = {
                 title: ev.title || '',
@@ -1518,7 +1961,19 @@ function fullCalendarManager() {
                 is_public: ev.is_public !== undefined ? !!ev.is_public : true,
                 color: ev.color || '#4f46e5',
                 location: ev.location || '',
-                description: ev.description || ''
+                description: ev.description || '',
+
+                // تنظیمات تکرار
+                is_recurring: isRec,
+                recurrence_type: ev.recurrence_type || 'weekly',
+                recurrence_interval: ev.recurrence_interval || 1,
+                recurrence_days: Array.isArray(ev.recurrence_days) ? [...ev.recurrence_days] : [],
+                end_type: endType,
+                repeat_count: ev.repeat_count || 10,
+                repeat_until_fa: ev.repeat_until ? ev.repeat_until.replace(/-/g, '/') : '',
+                repeat_until: ev.repeat_until || '',
+                edit_scope: scope,
+                occurrence_date: ev.occurrence_date || ''
             };
 
             this.isEventModalOpen = true;
@@ -1535,6 +1990,26 @@ function fullCalendarManager() {
             this.eventFormError = null;
         },
 
+        closeScopeModal() {
+            this.isScopeModalOpen = false;
+            this.pendingScopeEvent = null;
+        },
+
+        confirmScopeAction() {
+            const ev = this.pendingScopeEvent;
+            const scope = this.selectedScope;
+            const action = this.scopeModalAction;
+            this.closeScopeModal();
+
+            if (!ev) return;
+
+            if (action === 'edit') {
+                this.launchEditEventForm(ev, scope);
+            } else if (action === 'delete') {
+                this.executeDeleteEvent(ev, scope);
+            }
+        },
+
         async saveEvent() {
             if (!this.eventForm.title.trim()) {
                 this.eventFormError = 'لطفاً عنوان رویداد را وارد نمایید.';
@@ -1543,6 +2018,28 @@ function fullCalendarManager() {
 
             this.isSavingEvent = true;
             this.eventFormError = null;
+
+            // تمیزسازی داده‌های ارسالی فرم تکرار
+            const payload = { ...this.eventForm };
+            if (!payload.is_recurring) {
+                payload.recurrence_type = null;
+                payload.recurrence_interval = null;
+                payload.recurrence_days = null;
+                payload.repeat_until = null;
+                payload.repeat_count = null;
+            } else {
+                if (payload.end_type === 'never') {
+                    payload.repeat_until = null;
+                    payload.repeat_count = null;
+                } else if (payload.end_type === 'after_count') {
+                    payload.repeat_until = null;
+                } else if (payload.end_type === 'until_date') {
+                    payload.repeat_count = null;
+                    if (payload.repeat_until_fa) {
+                        payload.repeat_until = payload.repeat_until_fa;
+                    }
+                }
+            }
 
             const url = this.isEditingEvent 
                 ? `{{ url('/user/calendar/events') }}/${this.editEventId}` 
@@ -1559,7 +2056,7 @@ function fullCalendarManager() {
                         'X-Requested-With': 'XMLHttpRequest',
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '{{ csrf_token() }}'
                     },
-                    body: JSON.stringify(this.eventForm)
+                    body: JSON.stringify(payload)
                 });
 
                 const data = await response.json();
@@ -1579,24 +2076,42 @@ function fullCalendarManager() {
             }
         },
 
-        async deleteCurrentEvent() {
+        deleteCurrentEvent() {
             if (!this.activeEvent || !this.activeEvent.raw_id) return;
+
+            // اگر رویداد تکرارشونده است، دیالوگ انتخاب دامنه حذف (Google Calendar Scope) باز شود
+            if (this.activeEvent.is_recurring) {
+                this.pendingScopeEvent = this.activeEvent;
+                this.scopeModalAction = 'delete';
+                this.selectedScope = 'this_only';
+                this.isScopeModalOpen = true;
+                return;
+            }
 
             if (!confirm('آیا از حذف این رویداد از تقویم اطمینان دارید؟')) {
                 return;
             }
 
+            this.executeDeleteEvent(this.activeEvent, 'all');
+        },
+
+        async executeDeleteEvent(ev, scope = 'all') {
             this.isSavingEvent = true;
-            const url = `{{ url('/user/calendar/events') }}/${this.activeEvent.raw_id}`;
+            const url = `{{ url('/user/calendar/events') }}/${ev.raw_id}`;
 
             try {
                 const response = await fetch(url, {
                     method: 'DELETE',
                     headers: {
+                        'Content-Type': 'application/json',
                         'Accept': 'application/json',
                         'X-Requested-With': 'XMLHttpRequest',
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '{{ csrf_token() }}'
-                    }
+                    },
+                    body: JSON.stringify({
+                        delete_scope: scope,
+                        occurrence_date: ev.occurrence_date || ''
+                    })
                 });
 
                 const data = await response.json();
@@ -1619,7 +2134,7 @@ function fullCalendarManager() {
             if (!this.allowEventCreation) return;
             const rect = event.currentTarget.getBoundingClientRect();
             const offsetY = event.clientY - rect.top;
-            const totalMinutes = Math.floor((offsetY / 72) * 60);
+            const totalMinutes = Math.floor((offsetY / 84) * 60);
             const roundedMinutes = Math.floor(totalMinutes / 15) * 15;
             const startH = Math.max(0, Math.min(23, Math.floor(roundedMinutes / 60)));
             const startM = roundedMinutes % 60;
@@ -1643,7 +2158,7 @@ function fullCalendarManager() {
             if (!this.allowEventCreation) return;
             const rect = event.currentTarget.getBoundingClientRect();
             const offsetY = event.clientY - rect.top;
-            const totalMinutes = Math.floor((offsetY / 72) * 60);
+            const totalMinutes = Math.floor((offsetY / 84) * 60);
             const roundedMinutes = Math.floor(totalMinutes / 15) * 15;
             const startH = Math.max(0, Math.min(23, Math.floor(roundedMinutes / 60)));
             const startM = roundedMinutes % 60;
@@ -1657,6 +2172,7 @@ function fullCalendarManager() {
 
             this.openCreateEventModal({
                 date_fa: dateFa,
+                date_en: '',
                 start_time: startTime,
                 end_time: endTime
             });
@@ -1698,7 +2214,7 @@ function fullCalendarManager() {
             }
             if (currentCluster.length) clusters.push(currentCluster);
 
-            const HOUR_HEIGHT = 72;
+            const HOUR_HEIGHT = 84;
             const result = [];
             for (const cluster of clusters) {
                 const columns = [];
@@ -1726,7 +2242,7 @@ function fullCalendarManager() {
                     const widthPct = 100 / totalCols;
                     const rightPct = col * widthPct;
                     const topPx = (ev.start_minute / 60) * HOUR_HEIGHT;
-                    const heightPx = Math.max(32, ((ev.duration_minutes || 60) / 60) * HOUR_HEIGHT);
+                    const heightPx = Math.max(38, ((ev.duration_minutes || 60) / 60) * HOUR_HEIGHT);
 
                     result.push({
                         ...ev,
@@ -1766,7 +2282,7 @@ function fullCalendarManager() {
             }
             if (currentCluster.length) clusters.push(currentCluster);
 
-            const HOUR_HEIGHT = 72;
+            const HOUR_HEIGHT = 84;
 
             const result = [];
             for (const cluster of clusters) {
@@ -1795,7 +2311,7 @@ function fullCalendarManager() {
                     const widthPct = 100 / totalCols;
                     const rightPct = col * widthPct;
                     const topPx = (ev.start_minute / 60) * HOUR_HEIGHT;
-                    const heightPx = Math.max(30, ((ev.duration_minutes || 60) / 60) * HOUR_HEIGHT);
+                    const heightPx = Math.max(36, ((ev.duration_minutes || 60) / 60) * HOUR_HEIGHT);
 
                     result.push({
                         ...ev,
@@ -1995,7 +2511,7 @@ function fullCalendarManager() {
         getCurrentTimeIndicatorTop() {
             const now = new Date();
             const minutes = now.getHours() * 60 + now.getMinutes();
-            const topPx = (minutes / 60) * 72;
+            const topPx = (minutes / 60) * 84;
             return `${topPx}px`;
         },
 
@@ -2006,7 +2522,7 @@ function fullCalendarManager() {
                 if (grid) {
                     const now = new Date();
                     const targetHour = Math.max(0, now.getHours() - 1);
-                    grid.scrollTop = targetHour * 72;
+                    grid.scrollTop = targetHour * 84;
                 }
             });
         }
