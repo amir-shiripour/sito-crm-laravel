@@ -3434,6 +3434,10 @@
                             rG = Math.floor(gT / this.servicesRoundingFactor) * this.servicesRoundingFactor;
                             rD = rG - uG;
                             iR = rD !== 0;
+                        } else if (this.servicesRoundingMode === 'nearest' && this.servicesRoundingFactor > 0) {
+                            rG = Math.round(gT / this.servicesRoundingFactor) * this.servicesRoundingFactor;
+                            rD = rG - uG;
+                            iR = rD !== 0;
                         }
                         return {
                             baseSubtotal: Math.max(0, bS),

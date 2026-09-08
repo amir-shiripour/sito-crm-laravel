@@ -1966,6 +1966,9 @@ class InvoiceController extends Controller
         } elseif ($mode === 'down' && $factor > 0) {
             $finalTotal = (int)(floor($grandTotal / $factor) * $factor);
             $diff = $finalTotal - $unrounded;
+        } elseif ($mode === 'nearest' && $factor > 0) {
+            $finalTotal = (int)(round($grandTotal / $factor) * $factor);
+            $diff = $finalTotal - $unrounded;
         }
 
         $meta = [

@@ -166,7 +166,7 @@ class ServicesSettingsController extends Controller
             'services_invoice_client_fields.*' => 'string|max:191',
             'services_tax_mode' => 'required|in:invoice,item',
             'services_official_invoice_orientation' => 'nullable|in:portrait,landscape',
-            'services_rounding_mode' => 'nullable|in:none,up,down',
+            'services_rounding_mode' => 'nullable|in:none,up,down,nearest',
             'services_rounding_factor' => 'nullable|integer|min:1',
             'services_stamp_standard_width' => 'nullable|integer|min:20|max:800',
             'services_stamp_standard_height' => 'nullable|integer|min:20|max:600',
