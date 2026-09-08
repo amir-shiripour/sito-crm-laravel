@@ -1873,6 +1873,11 @@ function fullCalendarManager() {
 
             const defaultDateFa = `${this.jYear}/${this.jMonth.toString().padStart(2, '0')}/${(this.selectedDayNumber || {{ $todayJalali->getDay() }}).toString().padStart(2, '0')}`;
 
+            let defaultDow = 0;
+            if (defaults.date_en) {
+                try { defaultDow = (new Date(defaults.date_en).getDay() + 1) % 7; } catch(e) {}
+            }
+
             this.eventForm = {
                 title: defaults.title || '',
                 date_fa: defaults.date_fa || defaultDateFa,
@@ -1889,7 +1894,7 @@ function fullCalendarManager() {
                 is_recurring: false,
                 recurrence_type: 'weekly',
                 recurrence_interval: 1,
-                recurrence_days: [],
+                recurrence_days: [defaultDow],
                 end_type: 'never',
                 repeat_count: 10,
                 repeat_until_fa: '',
@@ -1914,7 +1919,6 @@ function fullCalendarManager() {
                 this.eventForm.recurrence_days.splice(idx, 1);
             } else {
                 this.eventForm.recurrence_days.push(dow);
-                this.eventForm.recurrence_days.sort();
             }
         },
 
@@ -1951,12 +1955,34 @@ function fullCalendarManager() {
             const isRec = !!ev.is_recurring;
             const endType = ev.repeat_count ? 'after_count' : (ev.repeat_until ? 'until_date' : 'never');
 
+            let formDateFa = ev.date_fa || '';
+            let formDateEn = ev.date_en || '';
+            let formStartTime = ev.start_time || '09:00';
+            let formEndTime = ev.end_time || '10:00';
+
+            // هنگام ویرایش همه در زنجیره تکرارشونده، تاریخ شروع اولیه و ساعت پایه زنجیره حفظ می‌شود
+            if (scope === 'all' && isRec) {
+                formDateFa = ev.series_start_date_fa || ev.date_fa || '';
+                formDateEn = ev.series_start_date_en || ev.date_en || '';
+                formStartTime = ev.series_start_time || ev.start_time || '09:00';
+                formEndTime = ev.series_end_time || ev.end_time || '10:00';
+            }
+
+            let recDays = Array.isArray(ev.recurrence_days) ? [...ev.recurrence_days] : [];
+            if (recDays.length === 0 && (ev.occurrence_date || formDateEn)) {
+                try {
+                    const d = new Date(ev.occurrence_date || formDateEn);
+                    const dow = (d.getDay() + 1) % 7;
+                    recDays = [dow];
+                } catch(e) {}
+            }
+
             this.eventForm = {
                 title: ev.title || '',
-                date_fa: ev.date_fa || '',
-                date_en: ev.date_en || '',
-                start_time: ev.start_time || '09:00',
-                end_time: ev.end_time || '10:00',
+                date_fa: formDateFa,
+                date_en: formDateEn,
+                start_time: formStartTime,
+                end_time: formEndTime,
                 is_all_day: !!ev.is_all_day,
                 is_public: ev.is_public !== undefined ? !!ev.is_public : true,
                 color: ev.color || '#4f46e5',
@@ -1967,10 +1993,10 @@ function fullCalendarManager() {
                 is_recurring: isRec,
                 recurrence_type: ev.recurrence_type || 'weekly',
                 recurrence_interval: ev.recurrence_interval || 1,
-                recurrence_days: Array.isArray(ev.recurrence_days) ? [...ev.recurrence_days] : [],
+                recurrence_days: recDays,
                 end_type: endType,
                 repeat_count: ev.repeat_count || 10,
-                repeat_until_fa: ev.repeat_until ? ev.repeat_until.replace(/-/g, '/') : '',
+                repeat_until_fa: ev.repeat_until_fa || (ev.repeat_until ? ev.repeat_until.replace(/-/g, '/') : ''),
                 repeat_until: ev.repeat_until || '',
                 edit_scope: scope,
                 occurrence_date: ev.occurrence_date || ''

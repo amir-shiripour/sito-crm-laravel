@@ -816,21 +816,23 @@ class CalendarEventService
 
         $type     = $parent->recurrence_type;
         $interval = max(1, (int)($parent->recurrence_interval ?: 1));
-        $days     = is_array($parent->recurrence_days) ? $parent->recurrence_days : [];
+        $days     = is_array($parent->recurrence_days) ? array_map('intval', $parent->recurrence_days) : [];
         $until    = $parent->repeat_until ? Carbon::parse($parent->repeat_until)->endOfDay() : null;
         $maxCount = $parent->repeat_count ? (int)$parent->repeat_count : null;
 
         // سقف یک ساله برای رویدادهای بی‌نهایت طبق درخواست کاربر
         $maxCapDate = Carbon::today()->addYear()->endOfDay();
-        if ($until === null || $until->gt($maxCapDate)) {
-            $effectiveUntil = $maxCapDate;
-        } else {
-            $effectiveUntil = $until;
-        }
+        $effectiveUntil = ($until === null || $until->gt($maxCapDate)) ? $maxCapDate : $until;
 
+        // استخراج و فریز کردن ساعت، دقیقه، ثانیه و طول مدت رویداد (جلوگیری از هرگونه تغییر ناخواسته Carbon)
         $baseStart = $parent->start_time ? $parent->start_time->copy() : Carbon::today();
         $baseEnd   = $parent->end_time ? $parent->end_time->copy() : null;
         $durationMinutes = ($baseEnd && $baseStart) ? max(15, $baseEnd->diffInMinutes($baseStart)) : 60;
+
+        $startHour   = (int)$baseStart->hour;
+        $startMinute = (int)$baseStart->minute;
+        $startSecond = (int)$baseStart->second;
+        $baseStartDay = $baseStart->copy()->startOfDay(); // کپی مستقل روز شروع بدون دستکاری شیء اصلی
 
         $canEdit = ($parent->created_by === $user->id || $parent->user_id === $user->id || (method_exists($user, 'hasRole') && $user->hasRole('super-admin')));
 
@@ -841,41 +843,45 @@ class CalendarEventService
             $days = [$jalaliDow];
         }
 
-        $cursor = $baseStart->copy();
+        $cursor = $baseStartDay->copy();
         $generatedCount = 0;
-        $maxIterations = 1000; // جلوگیری از هرگونه حلقه بی‌نهایت
+        $maxIterations = 1500; // جلوگیری از هرگونه حلقه بی‌نهایت
 
         while ($cursor->lte($to) && $cursor->lte($effectiveUntil) && $maxIterations-- > 0) {
-            if ($maxCount !== null && $generatedCount >= $maxCount) {
-                break;
-            }
-
             if ($type === 'daily') {
-                $currentDateStr = $cursor->toDateString();
-                $generatedCount++;
+                $currentDate = $cursor->copy()->setTime($startHour, $startMinute, $startSecond);
+                if ($currentDate->gt($effectiveUntil)) {
+                    break;
+                }
 
-                if ($cursor->gte($from) && $cursor->lte($to)) {
-                    $item = $this->buildOccurrenceItem($parent, $cursor, $durationMinutes, $exceptions->get($currentDateStr), $canEdit);
+                $generatedCount++;
+                if ($maxCount !== null && $generatedCount > $maxCount) {
+                    break;
+                }
+
+                $cDateStr = $currentDate->toDateString();
+                if ($currentDate->gte($from) && $currentDate->lte($to)) {
+                    $item = $this->buildOccurrenceItem($parent, $currentDate, $durationMinutes, $exceptions->get($cDateStr), $canEdit);
                     if ($item !== null) {
                         $occurrences->push($item);
                     }
                 }
                 $cursor->addDays($interval);
             } elseif ($type === 'weekly') {
-                // بررسی روزهای هفته در بازه هفتگی جاری
-                // گام هفتگی: شروع هفته از شنبه
-                $startOfWeek = $cursor->copy()->subDays(($cursor->dayOfWeek + 1) % 7)->startOfDay();
+                // بررسی روزهای هفته در بازه هفتگی جاری (شروع هفته تقویم جلالی از شنبه)
+                $diffFromSat = ($cursor->dayOfWeek + 1) % 7;
+                $startOfWeek = $cursor->copy()->subDays($diffFromSat)->startOfDay();
 
                 for ($d = 0; $d < 7; $d++) {
-                    $dayCandidate = $startOfWeek->copy()->addDays($d)->setTime($baseStart->hour, $baseStart->minute, $baseStart->second);
+                    $dayCandidate = $startOfWeek->copy()->addDays($d)->setTime($startHour, $startMinute, $startSecond);
 
                     // قبل از تاریخ اصلی رویداد نباشد
-                    if ($dayCandidate->lt($baseStart->startOfDay())) {
+                    if ($dayCandidate->lt($baseStartDay)) {
                         continue;
                     }
 
                     $currentDow = ($dayCandidate->dayOfWeek + 1) % 7;
-                    if (in_array($currentDow, $days)) {
+                    if (in_array($currentDow, $days, true)) {
                         if ($dayCandidate->gt($effectiveUntil)) {
                             break 2;
                         }
@@ -895,29 +901,75 @@ class CalendarEventService
                     }
                 }
 
-                $cursor = $startOfWeek->copy()->addWeeks($interval);
+                $cursor = $startOfWeek->copy()->addWeeks($interval)->setTime($startHour, $startMinute, $startSecond);
             } elseif ($type === 'monthly') {
-                $currentDateStr = $cursor->toDateString();
-                $generatedCount++;
+                // تکرار ماهانه منطبق بر تقویم جلالی (مثلاً ۱۵ام هر ماه شمسی)
+                $jBase = Jalalian::fromCarbon($baseStart);
+                $baseJDay = $jBase->getDay();
+                $baseJMonth = $jBase->getMonth();
+                $baseJYear = $jBase->getYear();
 
-                if ($cursor->gte($from) && $cursor->lte($to)) {
-                    $item = $this->buildOccurrenceItem($parent, $cursor, $durationMinutes, $exceptions->get($currentDateStr), $canEdit);
+                $totalMonths = ($baseJYear * 12 + $baseJMonth - 1) + ($generatedCount * $interval);
+                $targetYear = intdiv($totalMonths, 12);
+                $targetMonth = ($totalMonths % 12) + 1;
+                $isLeap = (new Jalalian($targetYear, 1, 1))->isLeapYear();
+                $daysInMonth = ($targetMonth <= 6) ? 31 : (($targetMonth <= 11) ? 30 : ($isLeap ? 30 : 29));
+                $targetDay = min($baseJDay, $daysInMonth);
+
+                $jCandidate = new Jalalian($targetYear, $targetMonth, $targetDay, $startHour, $startMinute, $startSecond);
+                $candidate = $jCandidate->toCarbon();
+
+                if ($candidate->gt($effectiveUntil)) {
+                    break;
+                }
+
+                $generatedCount++;
+                if ($maxCount !== null && $generatedCount > $maxCount) {
+                    break;
+                }
+
+                $cDateStr = $candidate->toDateString();
+                if ($candidate->gte($from) && $candidate->lte($to)) {
+                    $item = $this->buildOccurrenceItem($parent, $candidate, $durationMinutes, $exceptions->get($cDateStr), $canEdit);
                     if ($item !== null) {
                         $occurrences->push($item);
                     }
                 }
-                $cursor->addMonths($interval);
+
+                $cursor = $candidate->copy()->addDay();
             } elseif ($type === 'yearly') {
-                $currentDateStr = $cursor->toDateString();
-                $generatedCount++;
+                // تکرار سالانه منطبق بر تقویم جلالی (همان روز و ماه شمسی در سال‌های بعد)
+                $jBase = Jalalian::fromCarbon($baseStart);
+                $baseJDay = $jBase->getDay();
+                $baseJMonth = $jBase->getMonth();
+                $baseJYear = $jBase->getYear();
 
-                if ($cursor->gte($from) && $cursor->lte($to)) {
-                    $item = $this->buildOccurrenceItem($parent, $cursor, $durationMinutes, $exceptions->get($currentDateStr), $canEdit);
+                $targetYear = $baseJYear + ($generatedCount * $interval);
+                $isLeap = (new Jalalian($targetYear, 1, 1))->isLeapYear();
+                $daysInMonth = ($baseJMonth <= 6) ? 31 : (($baseJMonth <= 11) ? 30 : ($isLeap ? 30 : 29));
+                $targetDay = min($baseJDay, $daysInMonth);
+
+                $jCandidate = new Jalalian($targetYear, $baseJMonth, $targetDay, $startHour, $startMinute, $startSecond);
+                $candidate = $jCandidate->toCarbon();
+
+                if ($candidate->gt($effectiveUntil)) {
+                    break;
+                }
+
+                $generatedCount++;
+                if ($maxCount !== null && $generatedCount > $maxCount) {
+                    break;
+                }
+
+                $cDateStr = $candidate->toDateString();
+                if ($candidate->gte($from) && $candidate->lte($to)) {
+                    $item = $this->buildOccurrenceItem($parent, $candidate, $durationMinutes, $exceptions->get($cDateStr), $canEdit);
                     if ($item !== null) {
                         $occurrences->push($item);
                     }
                 }
-                $cursor->addYears($interval);
+
+                $cursor = $candidate->copy()->addDay();
             } else {
                 break;
             }
@@ -973,40 +1025,45 @@ class CalendarEventService
         $dateKey = $occurrenceStart->toDateString();
 
         return [
-            'id'                  => 'custom_ev_' . $parent->id . '_' . $dateKey,
-            'raw_id'              => $parent->id,
-            'occurrence_date'     => $dateKey,
-            'is_recurring'        => true,
-            'recurrence_type'     => $parent->recurrence_type,
-            'recurrence_interval' => $parent->recurrence_interval,
-            'recurrence_days'     => $parent->recurrence_days,
-            'repeat_until'        => $parent->repeat_until ? $parent->repeat_until->format('Y-m-d') : null,
-            'repeat_count'        => $parent->repeat_count,
-            'is_exception'        => $isModified,
-            'title'               => $title,
-            'description'         => $description,
-            'location'            => $location,
-            'color'               => $color,
-            'service_color'       => $color,
-            'datetime'            => $startDt->toIso8601String(),
-            'time'                => $timeStr,
-            'start_time'          => $startTimeStr,
-            'end_time'            => $endTimeStr,
-            'start_minute'        => $startMinute,
-            'end_minute'          => $endMinute,
-            'duration_minutes'    => $duration,
-            'is_all_day'          => $isAllDay,
-            'is_public'           => (bool)$parent->is_public,
-            'creator_name'        => $parent->creator?->name ?? '',
-            'date_fa'             => $jalaliDate ? $jalaliDate->format('Y/m/d') : '',
-            'date_en'             => $startDt->format('Y-m-d'),
-            'day'                 => $jalaliDate ? $jalaliDate->getDay() : null,
-            'month'               => $jalaliDate ? $jalaliDate->getMonth() : null,
-            'year'                => $jalaliDate ? $jalaliDate->getYear() : null,
-            'source'              => 'custom_events',
-            'source_label'        => 'رویداد تکرارشونده',
-            'can_edit'            => $canEdit,
-            'can_delete'          => $canEdit,
+            'id'                   => 'custom_ev_' . $parent->id . '_' . $dateKey,
+            'raw_id'               => $parent->id,
+            'occurrence_date'      => $dateKey,
+            'is_recurring'         => true,
+            'recurrence_type'      => $parent->recurrence_type,
+            'recurrence_interval'  => $parent->recurrence_interval,
+            'recurrence_days'      => $parent->recurrence_days,
+            'repeat_until'         => $parent->repeat_until ? $parent->repeat_until->format('Y-m-d') : null,
+            'repeat_until_fa'      => $parent->repeat_until ? Jalalian::fromCarbon($parent->repeat_until)->format('Y/m/d') : '',
+            'repeat_count'         => $parent->repeat_count,
+            'series_start_date_en' => $parent->start_time ? $parent->start_time->format('Y-m-d') : '',
+            'series_start_date_fa' => $parent->start_time ? Jalalian::fromCarbon($parent->start_time)->format('Y/m/d') : '',
+            'series_start_time'    => (!$parent->is_all_day && $parent->start_time) ? $parent->start_time->format('H:i') : '',
+            'series_end_time'      => (!$parent->is_all_day && $parent->end_time) ? $parent->end_time->format('H:i') : '',
+            'is_exception'         => $isModified,
+            'title'                => $title,
+            'description'          => $description,
+            'location'             => $location,
+            'color'                => $color,
+            'service_color'        => $color,
+            'datetime'             => $startDt->toIso8601String(),
+            'time'                 => $timeStr,
+            'start_time'           => $startTimeStr,
+            'end_time'             => $endTimeStr,
+            'start_minute'         => $startMinute,
+            'end_minute'           => $endMinute,
+            'duration_minutes'     => $duration,
+            'is_all_day'           => $isAllDay,
+            'is_public'            => (bool)$parent->is_public,
+            'creator_name'         => $parent->creator?->name ?? '',
+            'date_fa'              => $jalaliDate ? $jalaliDate->format('Y/m/d') : '',
+            'date_en'              => $startDt->format('Y-m-d'),
+            'day'                  => $jalaliDate ? $jalaliDate->getDay() : null,
+            'month'                => $jalaliDate ? $jalaliDate->getMonth() : null,
+            'year'                 => $jalaliDate ? $jalaliDate->getYear() : null,
+            'source'               => 'custom_events',
+            'source_label'         => 'رویداد تکرارشونده',
+            'can_edit'             => $canEdit,
+            'can_delete'           => $canEdit,
         ];
     }
 }
