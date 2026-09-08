@@ -29,10 +29,21 @@ class OrderController extends Controller
         $user = $request->user();
         $canViewAll = $user->can('services.orders.view.all') || $user->can('services.orders.manage');
 
-        $query = Order::with(['customer', 'status', 'service.category', 'invoice.payments', 'hostingAccount', 'domainRecord'])
+        $isDaActive = Order::isDirectAdminActive();
+        $isDmActive = Order::isDomainManagerActive();
+
+        $withRelations = ['customer', 'status', 'service.category', 'invoice.payments'];
+        if ($isDaActive) {
+            $withRelations[] = 'hostingAccount';
+        }
+        if ($isDmActive) {
+            $withRelations[] = 'domainRecord';
+        }
+
+        $query = Order::with($withRelations)
             ->when(!$canViewAll, fn($q) => $q->where('created_by', $user->id))
-            ->when($request->search, function ($q, $s) {
-                $q->where(function ($sub) use ($s) {
+            ->when($request->search, function ($q, $s) use ($isDaActive, $isDmActive) {
+                $q->where(function ($sub) use ($s, $isDaActive, $isDmActive) {
                     $sub->where('order_number', 'like', "%$s%")
                         ->orWhere('client_name', 'like', "%$s%")
                         ->orWhereHas('service', function ($q) use ($s) {
@@ -46,14 +57,20 @@ class OrderController extends Controller
                             $q->where('full_name', 'like', "%$s%")
                                 ->orWhere('phone', 'like', "%$s%")
                                 ->orWhere('email', 'like', "%$s%");
-                        })
-                        ->orWhereHas('hostingAccount', function ($q) use ($s) {
+                        });
+
+                    if ($isDaActive) {
+                        $sub->orWhereHas('hostingAccount', function ($q) use ($s) {
                             $q->where('username', 'like', "%$s%")
                                 ->orWhere('domain', 'like', "%$s%");
-                        })
-                        ->orWhereHas('domainRecord', function ($q) use ($s) {
+                        });
+                    }
+
+                    if ($isDmActive) {
+                        $sub->orWhereHas('domainRecord', function ($q) use ($s) {
                             $q->where('domain_name', 'like', "%$s%");
                         });
+                    }
                 });
             })
             ->when($request->status_id, function ($q, $v) {
@@ -154,7 +171,7 @@ class OrderController extends Controller
         $customers = Client::orderBy('full_name')->get();
         $currency = Setting::where('key', 'currency')->value('value') ?? 'toman';
 
-        return view('services::orders.index', compact('orders', 'statuses', 'services', 'customers', 'currency'));
+        return view('services::orders.index', compact('orders', 'statuses', 'services', 'customers', 'currency', 'isDaActive', 'isDmActive'));
     }
 
     public function show(Order $order)

@@ -1,7 +1,7 @@
 @php
     use Modules\Clients\Entities\ClientForm;
     use Modules\Clients\Entities\ClientSetting;
-    use Modules\DomainManager\Entities\DomainRecord;
+    use Modules\Services\App\Http\Models\Order;
     use Modules\Services\App\Http\Models\Status;
     use Modules\Settings\Entities\Setting;
     use Morilog\Jalali\Jalalian;
@@ -615,8 +615,10 @@
                                     @if(!empty($invoiceItem?->meta['_packageTitle']))
                                         <span
                                             class="inline-flex items-center gap-1 text-[11px] font-bold text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-500/10 border border-amber-300 dark:border-amber-500/20 px-2.5 py-1 rounded-lg">
-                                            <svg class="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                                <path stroke-linecap="round" stroke-linejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
+                                            <svg class="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" fill="none"
+                                                 viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                      d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
                                             </svg>
                                             پکیج: {{ $invoiceItem->meta['_packageTitle'] }}
                                         </span>
@@ -675,19 +677,23 @@
                 </div>
 
                 {{-- DirectAdmin Hosting Service Provisioning Widget (Decoupled with Module & Category Check) --}}
-                @php
-                    $isHostingService = ($order->service?->category?->slug === 'hosting') || ($order->hostingAccount()->exists());
-                @endphp
-                @if(\Nwidart\Modules\Facades\Module::has('DirectAdmin') && \Nwidart\Modules\Facades\Module::isEnabled('DirectAdmin') && $isHostingService)
-                    @include('directadmin::partials.order-hosting-card', ['order' => $order])
+                @if(Order::isDirectAdminActive() && view()->exists('directadmin::partials.order-hosting-card'))
+                    @php
+                        $isHostingService = ($order->service?->category?->slug === 'hosting') || ($order->hostingAccount()->exists());
+                    @endphp
+                    @if($isHostingService)
+                        @include('directadmin::partials.order-hosting-card', ['order' => $order])
+                    @endif
                 @endif
 
                 {{-- DomainManager Service Details Widget (Decoupled with Module & Category Check) --}}
-                @php
-                    $isDomainService = ($order->service?->category?->slug === 'domain') || (class_exists(DomainRecord::class) && DomainRecord::where('service_order_id', $order->id)->exists());
-                @endphp
-                @if(\Nwidart\Modules\Facades\Module::has('DomainManager') && \Nwidart\Modules\Facades\Module::isEnabled('DomainManager') && $isDomainService)
-                    @include('domainmanager::partials.order-domain-card', ['order' => $order])
+                @if(Order::isDomainManagerActive() && view()->exists('domainmanager::partials.order-domain-card'))
+                    @php
+                        $isDomainService = ($order->service?->category?->slug === 'domain') || ($order->domainRecord()->exists());
+                    @endphp
+                    @if($isDomainService)
+                        @include('domainmanager::partials.order-domain-card', ['order' => $order])
+                    @endif
                 @endif
             </div>
             <div class="space-y-8">

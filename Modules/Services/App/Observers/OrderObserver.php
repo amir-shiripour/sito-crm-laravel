@@ -3,10 +3,7 @@
 namespace Modules\Services\App\Observers;
 
 use Illuminate\Support\Facades\Log;
-use Modules\DirectAdmin\Entities\DaSetting;
-use Modules\DirectAdmin\Services\DirectAdminClient;
 use Modules\Services\App\Http\Models\Order;
-use Nwidart\Modules\Facades\Module;
 use Throwable;
 
 class OrderObserver
@@ -22,13 +19,13 @@ class OrderObserver
         }
 
         // Check if DirectAdmin module is present and enabled
-        if (!class_exists(Module::class) || !Module::has('DirectAdmin') || !Module::isEnabled('DirectAdmin')) {
+        if (!Order::isDirectAdminActive()) {
             return;
         }
 
         try {
             // Check if two-way sync setting is enabled
-            $autoSync = DaSetting::get('auto_sync_order_status', true);
+            $autoSync = \Modules\DirectAdmin\Entities\DaSetting::get('auto_sync_order_status', true);
             if (!$autoSync) {
                 return;
             }
@@ -42,7 +39,7 @@ class OrderObserver
             $order->loadMissing('status');
             $statusName = $order->status?->name ?? '';
 
-            $client = new DirectAdminClient($hostingAccount->server);
+            $client = new \Modules\DirectAdmin\Services\DirectAdminClient($hostingAccount->server);
 
             if (str_contains($statusName, 'غیر') || str_contains($statusName, 'لغو') || str_contains($statusName, 'معلق')) {
                 if (!$hostingAccount->suspended) {

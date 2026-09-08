@@ -1,7 +1,5 @@
 @php
     use Modules\Clients\Entities\Client;
-    use Modules\DirectAdmin\Entities\DaAccount;
-    use Modules\DomainManager\Entities\DomainRecord;
     use Modules\Tasks\Entities\Task;
     use Modules\Workflows\Entities\Workflow;
     use Morilog\Jalali\Jalalian;
@@ -28,10 +26,11 @@
     $followUpsModule     = \App\Models\Module::where('slug', 'followups')->first();
     $bookingModule       = $bookingModule ?? \App\Models\Module::where('slug', 'booking')->first();
     $workflowsModule     = $workflowsModule ?? \App\Models\Module::where('slug', 'workflows')->first();
-    $domainManagerModule = \App\Models\Module::where('slug', 'domainmanager')->first();
-    $directAdminModule   = \App\Models\Module::where('slug', 'directadmin')->first();
     $servicesModule      = \App\Models\Module::where('slug', 'services')->first();
     $walletModule        = $walletModule ?? \App\Models\Module::where('slug', 'wallet')->first();
+
+    $isDirectAdminActive = \Modules\Services\App\Http\Models\Order::isDirectAdminActive();
+    $isDomainManagerActive = \Modules\Services\App\Http\Models\Order::isDomainManagerActive();
 
     $showServicesTab     = $servicesModule && $servicesModule->installed && $servicesModule->active;
     $showWalletTab       = ($walletModule && $walletModule->installed && $walletModule->active)
@@ -47,24 +46,19 @@
                         && isset($availableWorkflows)
                         && $availableWorkflows->isNotEmpty();
 
-    $clientDomainsCount  = \Illuminate\Support\Facades\Schema::hasColumn('domain_records', 'client_id')
-                        ? DomainRecord::where('client_id', $client->id)->count()
+    $clientDomainsCount  = ($isDomainManagerActive && \Illuminate\Support\Facades\Schema::hasColumn('domain_records', 'client_id'))
+                        ? \Modules\DomainManager\Entities\DomainRecord::where('client_id', $client->id)->count()
                         : 0;
 
-    $clientAccountsCount = \Illuminate\Support\Facades\Schema::hasColumn('da_accounts', 'client_id')
-                        ? DaAccount::where('client_id', $client->id)->count()
+    $clientAccountsCount = ($isDirectAdminActive && \Illuminate\Support\Facades\Schema::hasColumn('da_accounts', 'client_id'))
+                        ? \Modules\DirectAdmin\Entities\DaAccount::where('client_id', $client->id)->count()
                         : 0;
 
     $hasDomains          = $clientDomainsCount > 0;
     $hasAccounts         = $clientAccountsCount > 0;
 
-    $showDomainTab       = $domainManagerModule && $domainManagerModule->installed && $domainManagerModule->active
-                        && class_exists(DomainRecord::class)
-                        && $hasDomains;
-
-    $showDirectAdminTab  = $directAdminModule && $directAdminModule->installed && $directAdminModule->active
-                        && class_exists(DaAccount::class)
-                        && $hasAccounts;
+    $showDomainTab       = $isDomainManagerActive && $hasDomains;
+    $showDirectAdminTab  = $isDirectAdminActive && $hasAccounts;
 
     $statusMap = [
         'planned' => ['label' => 'برنامه‌ریزی شده', 'class' => 'bg-blue-50 text-blue-700 border-blue-100 dark:bg-blue-900/40 dark:text-blue-200 dark:border-blue-700'],
@@ -1707,10 +1701,10 @@
                                                 : ($order->renewal_price ?? 0));
 
                                         $catSlug = $order->service?->category?->slug;
-                                        $isHostingOrder = ($catSlug === 'hosting') || !empty($order->hostingAccount);
-                                        $isDomainOrder = ($catSlug === 'domain') || !empty($order->domainRecord);
+                                        $isHostingOrder = $showDirectAdminTab && (($catSlug === 'hosting') || !empty($order->hostingAccount));
+                                        $isDomainOrder = $showDomainTab && (($catSlug === 'domain') || !empty($order->domainRecord));
 
-                                        $searchableText = strtolower(($order->service?->name ?? $order->notes ?? 'سرویس') . ' ' . $order->order_number . ' ' . ($order->invoice?->invoice_number ?? '') . ' ' . $statusName . ' ' . ($order->hostingAccount?->username ?? '') . ' ' . ($order->hostingAccount?->domain ?? '') . ' ' . ($order->domainRecord?->domain_name ?? ''));
+                                        $searchableText = strtolower(($order->service?->name ?? $order->notes ?? 'سرویس') . ' ' . $order->order_number . ' ' . ($order->invoice?->invoice_number ?? '') . ' ' . $statusName . ' ' . ($isHostingOrder ? (($order->hostingAccount?->username ?? '') . ' ' . ($order->hostingAccount?->domain ?? '')) : '') . ' ' . ($isDomainOrder ? ($order->domainRecord?->domain_name ?? '') : ''));
                                     @endphp
 
                                     <tr class="group bg-white dark:bg-gray-800 hover:bg-indigo-50/50 dark:hover:bg-indigo-500/10 transition-colors duration-300"
@@ -1750,7 +1744,7 @@
                                                         @endif
                                                     </div>
 
-                                                    @if($order->hostingAccount)
+                                                    @if($showDirectAdminTab && $order->hostingAccount)
                                                         <div class="mt-1 flex items-center gap-1.5 text-xs font-bold text-sky-600 dark:text-sky-400">
                                                             <svg class="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                                                 <path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2"/>
@@ -1765,7 +1759,7 @@
                                                                 </span>
                                                             @endif
                                                         </div>
-                                                    @elseif($order->domainRecord)
+                                                    @elseif($showDomainTab && $order->domainRecord)
                                                         <div class="mt-1 flex items-center gap-1.5 text-xs font-bold text-indigo-600 dark:text-indigo-400">
                                                             <svg class="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                                                 <path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"/>
@@ -2154,7 +2148,7 @@
             </div>
             @endif
 
-            @if($showDomainTab)
+            @if($showDomainTab && view()->exists('domainmanager::partials.client-domains-tab'))
                 {{-- ================= Domains Tab (DomainManager Module) ================= --}}
                 <div x-show="activeTab === 'domains'" x-cloak
                      x-transition:enter="transition ease-out duration-200"
@@ -2163,7 +2157,7 @@
                 </div>
             @endif
 
-            @if($showDirectAdminTab)
+            @if($showDirectAdminTab && view()->exists('directadmin::partials.client-hosting-tab'))
                 {{-- ================= Hosting Tab (DirectAdmin Module) ================= --}}
                 <div x-show="activeTab === 'directadmin'" x-cloak
                      x-transition:enter="transition ease-out duration-200"

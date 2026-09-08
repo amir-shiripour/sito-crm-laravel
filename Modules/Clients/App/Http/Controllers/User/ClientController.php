@@ -20,8 +20,6 @@ use Modules\Clients\Entities\ClientSetting;
 use Modules\Clients\Entities\ClientStatus;
 use Modules\Clients\App\Http\Requests\StoreClientRequest;
 use Modules\Clients\App\Http\Requests\UpdateClientRequest;
-use Modules\DirectAdmin\Entities\DaAccount;
-use Modules\DomainManager\Entities\DomainRecord;
 use Modules\Services\App\Http\Models\Invoice;
 use Modules\Services\App\Http\Models\Order;
 use Modules\Services\App\Http\Models\Payment;
@@ -182,10 +180,10 @@ class ClientController extends Controller
                 ];
 
                 $orderRelations = ['customer', 'status', 'service.category', 'invoice.payments'];
-                if (class_exists(DaAccount::class)) {
+                if (Order::isDirectAdminActive()) {
                     $orderRelations[] = 'hostingAccount';
                 }
-                if (class_exists(DomainRecord::class)) {
+                if (Order::isDomainManagerActive()) {
                     $orderRelations[] = 'domainRecord';
                 }
 
