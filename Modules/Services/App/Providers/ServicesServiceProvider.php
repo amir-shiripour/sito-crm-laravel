@@ -5,6 +5,8 @@ namespace Modules\Services\App\Providers;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
+use Modules\Services\App\Console\Commands\ServicesInstall;
+use Modules\Services\App\Console\Commands\ServicesUpdatePermissions;
 use Modules\Services\App\Http\Models\Invoice;
 use Modules\Services\App\Http\Models\Service;
 use Modules\Services\App\Http\Models\Order;
@@ -35,6 +37,8 @@ class ServicesServiceProvider extends ServiceProvider
         $this->loadSettingsIntoConfig();
         $this->commands([
             SeedServiceWorkflows::class,
+            ServicesInstall::class,
+            ServicesUpdatePermissions::class,
         ]);
 
         Order::observe(OrderObserver::class);
