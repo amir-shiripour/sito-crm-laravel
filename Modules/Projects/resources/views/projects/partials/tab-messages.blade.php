@@ -1080,88 +1080,108 @@
                 });
             },
 
-            sse: null,
+            messagesPollTimer: null,
+            isMessagesPolling: false,
+            lastPollTime: Math.floor(Date.now() / 1000),
             lastMessageId: {{ $project->messages->isNotEmpty() ? $project->messages->last()->id : 0 }},
 
-            connectSse() {
-                // Close any existing connection
-                if (this.sse) {
-                    this.sse.close();
-                    this.sse = null;
+            startPolling() {
+                if (this.messagesPollTimer) return;
+                this.pollMessages();
+                this.messagesPollTimer = setInterval(() => {
+                    this.pollMessages();
+                }, 3000);
+            },
+
+            stopPolling() {
+                if (this.messagesPollTimer) {
+                    clearInterval(this.messagesPollTimer);
+                    this.messagesPollTimer = null;
                 }
+            },
 
-                const url = `/user/projects/projects/{{ $project->id }}/messages/sse?last_id=${this.lastMessageId}`;
-                this.sse = new EventSource(url);
+            async pollMessages() {
+                if (document.hidden) return; // Don't poll when tab is in background
+                if (this.isMessagesPolling) return; // Prevent overlapping requests
 
-                this.sse.addEventListener('new_message', (e) => {
-                    const msg = JSON.parse(e.data);
-                    // Update lastMessageId
-                    if (msg.id > this.lastMessageId) {
-                        this.lastMessageId = msg.id;
+                this.isMessagesPolling = true;
+                const pollStartTime = Math.floor(Date.now() / 1000);
+
+                try {
+                    const url = `{{ url('user/projects/projects') }}/{{ $project->id }}/messages/sse?last_id=${this.lastMessageId}&since=${this.lastPollTime}`;
+                    const res = await fetch(url, {
+                        headers: {
+                            'Accept': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    });
+
+                    if (res.ok) {
+                        const data = await res.json();
+                        this.lastPollTime = pollStartTime;
+
+                        // Process new messages
+                        if (data.messages && Array.isArray(data.messages)) {
+                            data.messages.forEach(msg => {
+                                if (msg.id > this.lastMessageId) {
+                                    this.lastMessageId = msg.id;
+                                }
+                                if (document.getElementById('message-' + msg.id)) return;
+
+                                this.allMessages = this.allMessages || this.messages || [];
+                                this.allMessages.push({
+                                    id: msg.id,
+                                    user_id: msg.user_id,
+                                    user_name: msg.user_name,
+                                    body: msg.body,
+                                    is_pinned: msg.is_pinned,
+                                    has_reply: !!msg.parent_id,
+                                    is_mine: msg.is_mine,
+                                    mentions_me: false,
+                                });
+
+                                this.appendMessageToDOM(msg);
+                                if (this.showScrollBottom) {
+                                    this.newMessagesCount++;
+                                } else {
+                                    this.scrollToBottom();
+                                }
+                            });
+                        }
+
+                        // Process deletions
+                        if (data.deleted_ids && Array.isArray(data.deleted_ids)) {
+                            data.deleted_ids.forEach(id => {
+                                document.getElementById('message-' + id)?.remove();
+                                if (this.allMessages) {
+                                    this.allMessages = this.allMessages.filter(m => m.id !== id);
+                                }
+                            });
+                        }
+
+                        // Process pin updates
+                        if (data.pin_updates && Array.isArray(data.pin_updates)) {
+                            data.pin_updates.forEach(u => {
+                                const el = document.getElementById('message-' + u.id);
+                                if (el) {
+                                    if (u.is_pinned) {
+                                        el.classList.add('border-amber-300', 'bg-amber-50/50');
+                                    } else {
+                                        el.classList.remove('border-amber-300', 'bg-amber-50/50');
+                                    }
+                                }
+                                if (this.allMessages) {
+                                    const m = this.allMessages.find(m => m.id === u.id);
+                                    if (m) m.is_pinned = u.is_pinned;
+                                }
+                            });
+                        }
                     }
-                    // Don't add if already exists in DOM
-                    if (document.getElementById('message-' + msg.id)) return;
-                    // Add to allMessages reactive array for filtering
-                    this.allMessages = this.allMessages || this.messages || [];
-                    this.allMessages.push({
-                        id: msg.id,
-                        user_id: msg.user_id,
-                        user_name: msg.user_name,
-                        body: msg.body,
-                        is_pinned: msg.is_pinned,
-                        has_reply: !!msg.parent_id,
-                        is_mine: msg.is_mine,
-                        mentions_me: false,
-                    });
-                    // Append to DOM
-                    this.appendMessageToDOM(msg);
-                    if (this.showScrollBottom) {
-                        this.newMessagesCount++;
-                    } else {
-                        this.scrollToBottom();
-                    }
-                });
-
-                this.sse.addEventListener('messages_deleted', (e) => {
-                    const data = JSON.parse(e.data);
-                    data.ids.forEach(id => {
-                        document.getElementById('message-' + id)?.remove();
-                        if (this.allMessages) {
-                            this.allMessages = this.allMessages.filter(m => m.id !== id);
-                        }
-                    });
-                });
-
-                this.sse.addEventListener('pin_updated', (e) => {
-                    const data = JSON.parse(e.data);
-                    data.updates.forEach(u => {
-                        const el = document.getElementById('message-' + u.id);
-                        if (el) {
-                            if (u.is_pinned) {
-                                el.classList.add('border-amber-300', 'bg-amber-50/50');
-                            } else {
-                                el.classList.remove('border-amber-300', 'bg-amber-50/50');
-                            }
-                        }
-                        if (this.allMessages) {
-                            const m = this.allMessages.find(m => m.id === u.id);
-                            if (m) m.is_pinned = u.is_pinned;
-                        }
-                    });
-                });
-
-                this.sse.addEventListener('reconnect', () => {
-                    this.sse.close();
-                    // Reconnect after 1 second
-                    setTimeout(() => this.connectSse(), 1000);
-                });
-
-                this.sse.onerror = () => {
-                    this.sse.close();
-                    this.sse = null;
-                    // Reconnect after 3 seconds on error
-                    setTimeout(() => this.connectSse(), 3000);
-                };
+                } catch (err) {
+                    // Silently ignore network hiccup
+                } finally {
+                    this.isMessagesPolling = false;
+                }
             },
 
             appendMessageToDOM(msg) {
@@ -1332,13 +1352,18 @@
                     if (e.detail === 'messages') {
                         setTimeout(() => this.scrollToBottom(), 50);
                         setTimeout(() => this.scrollToBottom(), 200);
-                        // (Re)start SSE when tab is opened
-                        this.connectSse();
+                        this.startPolling();
                     }
                 });
 
-                // Start SSE on load if already on messages tab
-                this.connectSse();
+                document.addEventListener('visibilitychange', () => {
+                    if (!document.hidden) {
+                        this.pollMessages();
+                    }
+                });
+
+                // Start polling on load
+                this.startPolling();
             }
         };
     }

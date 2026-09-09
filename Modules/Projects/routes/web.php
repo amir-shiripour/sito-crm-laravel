@@ -88,6 +88,7 @@ Route::middleware(['auth', 'verified'])
                 // Tasks
                 Route::prefix('/{project}/tasks')->name('tasks.')->group(function () {
                     Route::get('/sse', [ProjectsTaskSseController::class, 'stream'])->name('sse');
+                    Route::get('/poll', [ProjectsTaskSseController::class, 'poll'])->name('poll');
                     Route::get('/', [ProjectsTaskController::class, 'index'])->name('index');
                     Route::post('/', [ProjectsTaskController::class, 'store'])->name('store');
                     Route::post('/bulk-destroy', [ProjectsTaskController::class, 'bulkDestroy'])->name('bulkDestroy');
@@ -146,6 +147,7 @@ Route::middleware(['auth', 'verified'])
                 // Messages
                 Route::prefix('/{project}/messages')->name('messages.')->group(function () {
                     Route::get('/sse', [ProjectsMessageSseController::class, 'stream'])->name('sse');
+                    Route::get('/poll', [ProjectsMessageSseController::class, 'poll'])->name('poll');
                     Route::get('/', [ProjectsMessageController::class, 'index'])->name('index');
                     Route::post('/', [ProjectsMessageController::class, 'store'])->name('store');
                     Route::delete('/{message}', [ProjectsMessageController::class, 'destroy'])->name('destroy');

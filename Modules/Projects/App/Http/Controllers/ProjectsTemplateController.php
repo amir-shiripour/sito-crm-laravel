@@ -305,9 +305,13 @@ class ProjectsTemplateController extends Controller
                     $rawItemDueDate = is_array($item) ? ($item['due_date'] ?? $item['مهلت'] ?? '') : '';
                     $itemDueDate = $this->formatTemplateDueDate($rawItemDueDate ?: ($srcItem ? ($srcItem->due_date_jalali ?: ($srcItem->due_date ? (function_exists('jdate') ? jdate($srcItem->due_date)->format('Y/m/d') : $srcItem->due_date->format('Y/m/d')) : $taskDueDate)) : $taskDueDate));
 
+                    $itemStatusId = is_array($item) ? ($item['status_id'] ?? null) : null;
+                    $itemStatusId = $itemStatusId ?: ($srcItem ? $srcItem->status_id : null);
+
                     $items[] = [
                         'title' => $itemTitle,
                         'description' => is_array($item) ? trim($item['description'] ?? $item['توضیحات'] ?? '') : '',
+                        'status_id' => $itemStatusId ? (int)$itemStatusId : null,
                         'assigned_to' => (string)$itemAssignee,
                         'due_date' => (string)$itemDueDate,
                     ];
@@ -365,9 +369,13 @@ class ProjectsTemplateController extends Controller
                 $rawItemDueDate = is_array($item) ? ($item['due_date'] ?? $item['مهلت'] ?? '') : '';
                 $itemDueDate = $this->formatTemplateDueDate($rawItemDueDate ?: ($srcItem ? ($srcItem->due_date_jalali ?: ($srcItem->due_date ? (function_exists('jdate') ? jdate($srcItem->due_date)->format('Y/m/d') : $srcItem->due_date->format('Y/m/d')) : $taskDueDate)) : $taskDueDate));
 
+                $itemStatusId = is_array($item) ? ($item['status_id'] ?? null) : null;
+                $itemStatusId = $itemStatusId ?: ($srcItem ? $srcItem->status_id : null);
+
                 $items[] = [
                     'title' => $itemTitle,
                     'description' => is_array($item) ? trim($item['description'] ?? $item['توضیحات'] ?? '') : '',
+                    'status_id' => $itemStatusId ? (int)$itemStatusId : null,
                     'assigned_to' => (string)$itemAssignee,
                     'due_date' => (string)$itemDueDate,
                 ];
@@ -444,6 +452,11 @@ class ProjectsTemplateController extends Controller
                 ?? ProjectStatus::queuedFor('task')?->id
                 ?? ProjectStatus::forType('task')->first()?->id;
 
+            $defaultChecklistStatus = ProjectStatus::defaultFor('checklist')?->id
+                ?? ProjectStatus::inProgressFor('checklist')?->id
+                ?? ProjectStatus::queuedFor('checklist')?->id
+                ?? ProjectStatus::forType('checklist')->first()?->id;
+
             $maxPhaseOrder = (int)$project->phases()->max('sort_order');
             $maxTaskOrder = (int)$project->tasks()->max('sort_order');
 
@@ -505,16 +518,22 @@ class ProjectsTemplateController extends Controller
                             $project->members()->create(['user_id' => $itemAssignee, 'role' => 'editor']);
                         }
 
-                        $task->checklistItems()->create([
+                        $chkStatusId = !empty($itemData['status_id']) ? (int)$itemData['status_id'] : $defaultChecklistStatus;
+
+                        $chkItem = $task->checklistItems()->create([
                             'title' => trim($itemData['title']),
                             'description' => $itemData['description'] ?? null,
-                            'status_id' => !empty($itemData['status_id']) ? $itemData['status_id'] : null,
+                            'status_id' => $chkStatusId,
                             'assigned_to' => $itemAssignee,
                             'due_date' => $itemDueDate,
                             'created_by' => auth()->id(),
                             'is_done' => false,
                             'sort_order' => $iIndex + 1,
                         ]);
+
+                        if ($itemAssignee) {
+                            $chkItem->syncAssignees([$itemAssignee]);
+                        }
                     }
 
                     $task->syncStatusFromChecklist();
@@ -558,16 +577,22 @@ class ProjectsTemplateController extends Controller
                         $project->members()->create(['user_id' => $itemAssignee, 'role' => 'editor']);
                     }
 
-                    $task->checklistItems()->create([
+                    $chkStatusId = !empty($itemData['status_id']) ? (int)$itemData['status_id'] : $defaultChecklistStatus;
+
+                    $chkItem = $task->checklistItems()->create([
                         'title' => trim($itemData['title']),
                         'description' => $itemData['description'] ?? null,
-                        'status_id' => !empty($itemData['status_id']) ? $itemData['status_id'] : null,
+                        'status_id' => $chkStatusId,
                         'assigned_to' => $itemAssignee,
                         'due_date' => $itemDueDate,
                         'created_by' => auth()->id(),
                         'is_done' => false,
                         'sort_order' => $iIndex + 1,
                     ]);
+
+                    if ($itemAssignee) {
+                        $chkItem->syncAssignees([$itemAssignee]);
+                    }
                 }
 
                 $task->syncStatusFromChecklist();
