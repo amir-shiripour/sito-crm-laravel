@@ -1945,11 +1945,26 @@
                 <div
                     class="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl p-4 rounded-2xl border border-gray-200 dark:border-gray-700/50 shadow-lg flex flex-row-reverse items-center justify-between gap-4">
                     <button type="submit"
+                            :disabled="isSubmitting"
+                            :class="isSubmitting ? 'opacity-60 cursor-not-allowed pointer-events-none' : ''"
                             class="flex-1 md:flex-none px-8 py-3.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 text-white font-black shadow-lg shadow-amber-500/30 hover:shadow-amber-500/50 transition-all duration-300 active:scale-95 flex items-center justify-center gap-2">
-                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
-                        </svg>
-                        ذخیره تغییرات
+                        <template x-if="isSubmitting">
+                            <span class="inline-flex items-center gap-2">
+                                <svg class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                                </svg>
+                                <span>در حال ذخیره...</span>
+                            </span>
+                        </template>
+                        <template x-if="!isSubmitting">
+                            <span class="inline-flex items-center gap-2">
+                                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+                                </svg>
+                                <span>ذخیره تغییرات</span>
+                            </span>
+                        </template>
                     </button>
                 </div>
             </div>
@@ -1961,12 +1976,27 @@
                 @csrf
                 <input type="hidden" name="invoice_number" :value="convertInvoiceNumber">
                 <button type="submit"
+                        :disabled="isConverting"
+                        :class="isConverting ? 'opacity-60 cursor-not-allowed pointer-events-none' : ''"
                         class="w-full px-8 py-3.5 rounded-xl bg-linear-to-r from-green-500 to-green-600 text-white font-black shadow-lg shadow-green-500/30 hover:shadow-green-500/50 hover:from-green-400 hover:to-green-500 transition-all duration-300 active:scale-95 flex items-center justify-center gap-2">
-                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                        <path stroke-linecap="round" stroke-linejoin="round"
-                              d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                    </svg>
-                    تبدیل به فاکتور
+                    <template x-if="isConverting">
+                        <span class="inline-flex items-center gap-2">
+                            <svg class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                            </svg>
+                            <span>در حال تبدیل...</span>
+                        </span>
+                    </template>
+                    <template x-if="!isConverting">
+                        <span class="inline-flex items-center gap-2">
+                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                      d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                            <span>تبدیل به فاکتور</span>
+                        </span>
+                    </template>
                 </button>
             </form>
         @endif
@@ -2184,6 +2214,8 @@
 
             function invoiceCreator() {
                 return {
+                    isSubmitting: false,
+                    isConverting: false,
                     issueDate: @json($issueDateValue),
                     dueDate: @json($dueDateValue),
                     notesText: @json(old('notes', $invoice->notes)),
@@ -2249,6 +2281,10 @@
                     modalSelectedAttributes: {},
 
                     onConvertSubmit(e) {
+                        if (this.isConverting) {
+                            e.preventDefault();
+                            return false;
+                        }
                         if (!this.invoiceAuto) {
                             let n = prompt('سیستم روی شماره‌گذاری دستی تنظیم شده است. لطفاً شماره فاکتور جدید را وارد کنید:');
                             if (!n || n.trim() === '') {
@@ -2258,6 +2294,7 @@
                             }
                             this.convertInvoiceNumber = n;
                         }
+                        this.isConverting = true;
                     },
 
                     gregorianToJalali(date) {
@@ -3717,6 +3754,10 @@
                         return v.toString().replace(/[۰-۹]/g, d => p.indexOf(d)).replace(/[٠-٩]/g, d => a.indexOf(d));
                     },
                     onSubmitCheck(e) {
+                        if (this.isSubmitting) {
+                            e.preventDefault();
+                            return false;
+                        }
                         const f = e.target;
                         if (!this.items || this.items.length === 0) {
                             e.preventDefault();
@@ -3755,6 +3796,8 @@
                                 i.value = v;
                             }
                         });
+
+                        this.isSubmitting = true;
                     },
                 };
             }

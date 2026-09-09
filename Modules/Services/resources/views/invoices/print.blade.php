@@ -1,8 +1,8 @@
 @php
-    use Modules\Clients\Entities\ClientForm;use Morilog\Jalali\Jalalian;
+    use Illuminate\Support\Facades\DB as DBAlias;use Modules\Clients\Entities\ClientForm;use Morilog\Jalali\Jalalian;
 
     if (!isset($settings)) {
-        $settings = \Illuminate\Support\Facades\DB::table('settings')->pluck('value', 'key')->all();
+        $settings = DBAlias::table('settings')->pluck('value', 'key')->all();
     }
 
     $isProforma = !$invoice->invoice_number;
@@ -25,7 +25,7 @@
             }
             $str = explode(' ', (string) $date)[0];
             return $faNum(str_replace('-', '/', $str));
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             $str = explode(' ', (string) $date)[0];
             return $faNum(str_replace('-', '/', $str));
         }
@@ -106,7 +106,7 @@
     }
 
     if (!isset($siteName)) {
-        $siteName = $pickSetting(['identity_site_name', 'site_name', 'app_name', 'identity_name']) ?: ($sellerInfo['name'] ?: 'فاکتور');
+        $siteName = $pickSetting(['identity_site_name', 'site_name', 'app_name', 'identity_name']) ?: (($sellerInfo['name'] ?? '') ?: 'فاکتور');
     }
     if (!isset($appLogo)) {
         $appLogo = $pickSetting(['identity_logo', 'site_logo', 'app_logo', 'company_logo']);
@@ -126,7 +126,6 @@
         $stampStandardImgStyle .= " max-height: 3rem;";
     }
 
-    // --- پردازش فیلدهای انتخابی خریدار ---
     $defaultBuyerFieldIds = ['full_name', 'phone', 'email', 'national_code', 'case_number'];
     $savedBuyerFieldIds = array_key_exists('services_invoice_client_fields', $settings)
         ? (json_decode($settings['services_invoice_client_fields'] ?? '[]', true) ?: [])
@@ -409,104 +408,120 @@
             display: inline-block;
         }
 
+        .items-section-title {
+            font-size: 11px;
+            font-weight: 700;
+            color: #374151;
+            margin-top: 0;
+            margin-bottom: 8px;
+        }
+
         .items-table {
             width: 100%;
             border-collapse: collapse;
-            border: 1px solid #e2e8f0;
-            border-radius: 10px;
-            overflow: hidden;
+            border: none;
+            margin-bottom: 24px;
         }
 
-        .items-table thead th {
+        .items-table thead tr {
             background-color: #f8fafc;
-            color: #475569;
-            font-size: 10px;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+
+        .items-table th {
+            padding: 8px 12px;
+            font-size: 10.5px;
             font-weight: 700;
-            padding: 7px 10px;
-            border-bottom: 1px solid #e2e8f0;
+            color: #374151;
+            border: none;
+        }
+
+        .items-table th.col-row {
+            text-align: center;
+            width: 40px;
+        }
+
+        .items-table th.col-desc {
             text-align: right;
         }
 
-        .items-table thead th.col-total {
+        .items-table th.col-qty {
+            text-align: center;
+            width: 60px;
+        }
+
+        .items-table th.col-discount {
+            text-align: center;
+            width: 85px;
+        }
+
+        .items-table th.col-amount {
             text-align: left;
-            width: 160px;
+            width: 140px;
         }
 
-        .items-table tbody tr:nth-child(even) {
-            background-color: #f8fafc;
-        }
-
-        .items-table tbody td, .items-table tfoot td {
-            padding: 7px 10px;
-            border-bottom: 1px solid #e2e8f0;
+        .items-table td {
+            padding: 8px 12px;
             font-size: 10.5px;
-            vertical-align: top;
+            vertical-align: middle;
+            border: none;
         }
 
-        .items-table tbody tr:last-child td {
-            border-bottom: none;
-        }
-
-        .items-table td.col-total {
-            text-align: left;
-            font-weight: 700;
-            color: #0f172a;
-            white-space: nowrap;
-        }
-
-        .items-table .item-title {
-            font-weight: 700;
-            color: #0f172a;
-        }
-
-        .items-table .item-note {
-            font-size: 9.5px;
-            color: #94a3b8;
-            margin-top: 2px;
-        }
-
-        .items-table .item-discount-note {
-            font-size: 9.5px;
-            color: #dc2626;
-            margin-top: 2px;
-        }
-
-        .items-table tr.subfield-row td {
-            background: #fafafa;
-            color: #475569;
+        .items-table td.col-row {
+            text-align: center;
+            color: #6b7280;
             font-size: 10px;
         }
 
-        .items-table tr.subfield-row td.col-total {
-            color: #334155;
+        .items-table td.col-desc {
+            text-align: right;
+            color: #1f2937;
+        }
+
+        .items-table td.col-qty {
+            text-align: center;
+            color: #1f2937;
+        }
+
+        .items-table td.col-discount {
+            text-align: center;
+            color: #1f2937;
+        }
+
+        .items-table td.col-amount {
+            text-align: left;
             font-weight: 700;
+            color: #1f2937;
+            white-space: nowrap;
         }
 
-        .items-table tr.summary-row td {
-            font-size: 11.5px;
-        }
-
-        .pill-badge {
-            display: inline-block;
-            padding: 3px 12px;
-            border-radius: 9999px;
+        .items-table td.col-summary-label {
+            text-align: left;
+            padding-left: 24px;
             font-weight: 700;
-            font-size: 11px;
+            color: #374151;
         }
 
-        .pill-badge.pill-total {
-            background: #d1fae5;
-            color: #065f46;
+        .items-table tr.row-white {
+            background-color: #ffffff !important;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
         }
 
-        .pill-badge.pill-due {
-            background: #fee2e2;
-            color: #991b1b;
+        .items-table tr.row-alt {
+            background-color: #f8fafc !important;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
         }
 
-        .pill-badge.pill-settled {
-            background: #d1fae5;
-            color: #065f46;
+        .items-table .item-title {
+            font-weight: 400;
+            color: #111827;
+        }
+
+        .items-table .item-desc {
+            color: #4b5563;
         }
 
         .avoid-break {
@@ -678,11 +693,6 @@
                             $invoicePackages = collect($invoice->meta['packages'])->filter()->unique()->values();
                         }
                     @endphp
-                    @if($invoicePackages->isNotEmpty())
-                        <div style="font-size: 9.5px; font-weight: bold; color: #b45309; margin-top: 3px;">
-                            <span>پکیج: </span>{{ $invoicePackages->implode(' ، ') }}
-                        </div>
-                    @endif
                 </div>
             </div>
         </header>
@@ -690,11 +700,11 @@
         <div class="parties-grid">
             <div class="party-block">
                 <h2>اطلاعات فروشنده</h2>
-                <p class="party-name">{{ $sellerInfo['name'] ?: '---' }}</p>
-                @if($sellerInfo['address'])
+                <p class="party-name">{{ ($sellerInfo['name'] ?? null) ?: '---' }}</p>
+                @if(!empty($sellerInfo['address']))
                     <p>آدرس: {{ $sellerInfo['address'] }}</p>
                 @endif
-                @if($sellerInfo['phone_fax'])
+                @if(!empty($sellerInfo['phone_fax']))
                     <p>شماره تماس: <span dir="ltr">{{ $faNum($sellerInfo['phone_fax']) }}</span></p>
                 @endif
             </div>
@@ -719,18 +729,21 @@
             </div>
         </div>
 
-        <h3 class="section-title">اقلام صورت حساب</h3>
+        <h3 class="items-section-title">اقلام صورت حساب</h3>
         <table class="items-table mb-8">
             <thead>
             <tr>
-                <th>توضیحات</th>
-                <th class="col-total">مجموع</th>
+                <th class="col-row">ردیف</th>
+                <th class="col-desc">توضیحات</th>
+                <th class="col-qty">تعداد</th>
+                <th class="col-discount">تخفیف</th>
+                <th class="col-amount">مجموع</th>
             </tr>
             </thead>
             <tbody>
-            @foreach($invoice->items as $item)
+            @php $zebraIdx = 0; @endphp
+            @foreach($invoice->items as $index => $item)
                 @php
-                    $savedCustomFields = $item->meta['custom_fields'] ?? [];
                     $itemQty = (float) $item->quantity;
                     $displayQty = fmod($itemQty, 1.0) === 0.0 ? (int) $itemQty : $itemQty;
                     $rowBasePrice = $item->unit_price;
@@ -747,155 +760,287 @@
                     $prevPkgId = $prevMeta['_packageGroupId'] ?? (!empty($prevMeta['_packageTitle']) ? $prevMeta['_packageTitle'] : null);
                     $isFirstInPackage = !empty($currentPkgId) && ($currentPkgId !== $prevPkgId);
                     $isInPackage = !empty($currentPkgId);
+
+                    $savedCustomFields = $itemMeta['custom_fields'] ?? [];
+                    $customFieldsCollection = $item->service ? $item->service->customFields : collect([]);
+                    $customFieldsQuantities = $itemMeta['custom_fields_quantities'] ?? [];
+                    $customFieldsPrices = $itemMeta['custom_fields_prices'] ?? [];
+                    $customFieldsDiscounts = $itemMeta['custom_fields_discounts'] ?? [];
+                    $customFieldsTaxes = $itemMeta['custom_fields_taxes'] ?? [];
+                    $taxApplyCustomFields = !empty($settings['services_tax_apply_custom_fields']);
+
+                    $itemSubRows = [];
+                    if (!empty($savedCustomFields) && is_array($savedCustomFields)) {
+                        foreach ($savedCustomFields as $field_id => $value) {
+                            $fieldDef = $customFieldsCollection->firstWhere('id', $field_id);
+                            if (!$fieldDef) continue;
+
+                            if ($fieldDef->type === 'multiselect' && is_array($value)) {
+                                foreach ($value as $opt) {
+                                    if ($opt === null || trim((string)$opt) === '') continue;
+
+                                    $optQty = is_array($customFieldsQuantities[$field_id] ?? null)
+                                        ? ($customFieldsQuantities[$field_id][$opt] ?? ($customFieldsQuantities[$field_id] ?? 1))
+                                        : ($customFieldsQuantities[$field_id] ?? 1);
+                                    $optQty = (float)$optQty;
+                                    if ($optQty <= 0) $optQty = 1;
+
+                                    $optPrice = null;
+                                    if (isset($customFieldsPrices[$field_id]) && is_array($customFieldsPrices[$field_id]) && isset($customFieldsPrices[$field_id][$opt]) && $customFieldsPrices[$field_id][$opt] !== '') {
+                                        $optPrice = (float)$customFieldsPrices[$field_id][$opt];
+                                    } elseif (isset($customFieldsPrices[$field_id]) && !is_array($customFieldsPrices[$field_id]) && $customFieldsPrices[$field_id] !== '') {
+                                        $optPrice = (float)$customFieldsPrices[$field_id];
+                                    } elseif ($fieldDef->has_pricing) {
+                                        $optPrice = (float)$fieldDef->getOptionPrice($opt, $item->unit_price);
+                                    }
+                                    $hasPricing = ($fieldDef->has_pricing || ($optPrice !== null && (float)$optPrice > 0));
+                                    $optPrice = (float)($optPrice ?? 0);
+
+                                    $optDiscount = 0;
+                                    if (isset($customFieldsDiscounts[$field_id]) && is_array($customFieldsDiscounts[$field_id])) {
+                                        $optDiscount = (float)($customFieldsDiscounts[$field_id][$opt] ?? 0);
+                                    } elseif (isset($customFieldsDiscounts[$field_id])) {
+                                        $optDiscount = (float)$customFieldsDiscounts[$field_id];
+                                    }
+
+                                    $cfTaxAmount = 0;
+                                    $cfTaxPercent = 0;
+                                    if (($taxMode ?? 'invoice') === 'item' && $taxApplyCustomFields) {
+                                        if (isset($customFieldsTaxes[$field_id]) && is_array($customFieldsTaxes[$field_id])) {
+                                            $cfTaxPercent = (float)($customFieldsTaxes[$field_id][$opt] ?? 0);
+                                        } elseif (isset($customFieldsTaxes[$field_id])) {
+                                            $cfTaxPercent = (float)$customFieldsTaxes[$field_id];
+                                        }
+                                        $cfTaxable = max(0, ($optPrice * $optQty) - $optDiscount);
+                                        $cfTaxAmount = $cfTaxable * ($cfTaxPercent / 100);
+                                    }
+
+                                    $cfBase = max(0, ($optPrice * $optQty) - $optDiscount);
+                                    $cfRowTotal = (($taxMode ?? 'invoice') === 'item') ? ($cfBase + $cfTaxAmount) : $cfBase;
+
+                                    $subLabel = $fieldDef->label;
+                                    if (!empty($opt) && $opt !== $fieldDef->label) {
+                                        $subLabel .= ' (' . $opt . ')';
+                                    }
+
+                                    $itemSubRows[] = [
+                                        'label' => $subLabel,
+                                        'value' => (string)$opt,
+                                        'quantity' => $optQty,
+                                        'unit' => 'عدد',
+                                        'unit_price' => $optPrice,
+                                        'discount' => $optDiscount,
+                                        'tax_percent' => $cfTaxPercent,
+                                        'tax_amount' => $cfTaxAmount,
+                                        'total' => $cfRowTotal,
+                                        'has_pricing' => $hasPricing,
+                                    ];
+                                }
+                            } else {
+                                if (is_array($value)) {
+                                    $filteredVal = array_filter($value, fn($v) => $v !== null && trim((string)$v) !== '');
+                                    $displayValue = !empty($filteredVal) ? implode('، ', $filteredVal) : null;
+                                } elseif ($fieldDef->type === 'checkbox') {
+                                    $displayValue = in_array($value, [true, '1', 1], true) ? 'انتخاب شده' : null;
+                                } elseif ($fieldDef->type === 'file') {
+                                    $displayValue = $value ? 'فایل پیوست شده' : null;
+                                } else {
+                                    $displayValue = ($value !== null && trim((string)$value) !== '') ? (string)$value : null;
+                                }
+
+                                if (!$displayValue) continue;
+
+                                $fieldQty = 1;
+                                if (isset($customFieldsQuantities[$field_id]) && !is_array($customFieldsQuantities[$field_id])) {
+                                    $fieldQty = (float)$customFieldsQuantities[$field_id];
+                                } elseif ($fieldDef->type === 'number' && is_numeric($displayValue)) {
+                                    $fieldQty = (float)$displayValue;
+                                }
+                                if ($fieldQty <= 0) $fieldQty = 1;
+
+                                $fieldPrice = null;
+                                if (isset($customFieldsPrices[$field_id]) && !is_array($customFieldsPrices[$field_id]) && $customFieldsPrices[$field_id] !== '') {
+                                    $fieldPrice = (float)$customFieldsPrices[$field_id];
+                                } elseif ($fieldDef->has_pricing) {
+                                    if (in_array($fieldDef->type, ['select', 'radio'])) {
+                                        $fieldPrice = (float)$fieldDef->getOptionPrice($displayValue, $item->unit_price);
+                                    } else {
+                                        $fieldPrice = $fieldDef->pricing_type === 'percentage'
+                                            ? ((float)$item->unit_price * ((float)$fieldDef->pricing_amount / 100))
+                                            : (float)$fieldDef->pricing_amount;
+                                    }
+                                }
+                                $hasPricing = ($fieldDef->has_pricing || ($fieldPrice !== null && (float)$fieldPrice > 0));
+                                $fieldPrice = (float)($fieldPrice ?? 0);
+
+                                $fieldDiscount = 0;
+                                if (isset($customFieldsDiscounts[$field_id]) && !is_array($customFieldsDiscounts[$field_id])) {
+                                    $fieldDiscount = (float)$customFieldsDiscounts[$field_id];
+                                }
+
+                                $cfTaxAmount = 0;
+                                $cfTaxPercent = 0;
+                                if (($taxMode ?? 'invoice') === 'item' && $taxApplyCustomFields) {
+                                    if (isset($customFieldsTaxes[$field_id]) && !is_array($customFieldsTaxes[$field_id])) {
+                                        $cfTaxPercent = (float)$customFieldsTaxes[$field_id];
+                                    }
+                                    $cfTaxable = max(0, ($fieldPrice * $fieldQty) - $fieldDiscount);
+                                    $cfTaxAmount = $cfTaxable * ($cfTaxPercent / 100);
+                                }
+
+                                $cfBase = max(0, ($fieldPrice * $fieldQty) - $fieldDiscount);
+                                $cfRowTotal = (($taxMode ?? 'invoice') === 'item') ? ($cfBase + $cfTaxAmount) : $cfBase;
+
+                                $subLabel = $fieldDef->label;
+                                if (in_array($fieldDef->type, ['select', 'radio']) && !empty($displayValue) && $displayValue !== $fieldDef->label) {
+                                    $subLabel .= ' (' . $displayValue . ')';
+                                }
+
+                                $itemSubRows[] = [
+                                    'label' => $subLabel,
+                                    'value' => $displayValue,
+                                    'quantity' => $fieldQty,
+                                    'unit' => 'عدد',
+                                    'unit_price' => $fieldPrice,
+                                    'discount' => $fieldDiscount,
+                                    'tax_percent' => $cfTaxPercent,
+                                    'tax_amount' => $cfTaxAmount,
+                                    'total' => $cfRowTotal,
+                                    'has_pricing' => $hasPricing,
+                                ];
+                            }
+                        }
+                    }
+
+                    $pricedSubRowsSum = 0;
+                    $subRowsTaxSum = 0;
+                    foreach ($itemSubRows as $r) {
+                        if (!empty($r['has_pricing']) && $r['total'] > 0) {
+                            $pricedSubRowsSum += $r['total'];
+                        }
+                        if (!empty($r['tax_amount']) && $r['tax_amount'] > 0) {
+                            $subRowsTaxSum += $r['tax_amount'];
+                        }
+                    }
+
+                    if ($pricedSubRowsSum > 0) {
+                        $mainRowDisplayTotal = max(0, $rowTotal - $pricedSubRowsSum);
+                    } else {
+                        $mainRowDisplayTotal = $rowTotal;
+                    }
+                    $mainRowTax = max(0, $item->tax_amount - $subRowsTaxSum);
                 @endphp
                 @if($isFirstInPackage)
-                    <tr class="avoid-break" style="background-color: #fef3c7; border-top: 1.5px solid #f59e0b; border-bottom: 1px solid #fcd34d; -webkit-print-color-adjust: exact; print-color-adjust: exact;">
-                        <td colspan="2" style="padding: 6px 10px; font-weight: bold; font-size: 10.5px; color: #92400e;">
+                    <tr class="avoid-break"
+                        style="background-color: #fef3c7; -webkit-print-color-adjust: exact; print-color-adjust: exact;">
+                        <td colspan="5"
+                            style="padding: 6px 12px; font-weight: bold; font-size: 10.5px; color: #92400e;">
                             <span>{{ $itemMeta['_packageTitle'] ?? 'اقلام پکیج' }}</span>
                         </td>
                     </tr>
                 @endif
-                <tr class="avoid-break" @if($isInPackage) style="background-color: #fffdf5;" @endif>
-                    <td @if($isInPackage) style="border-right: 3px solid #f59e0b;" @endif>
-                        <p class="item-title">
-                            {{ $item->custom_service_name ?: ($item->service->name ?? 'ردیف دستی') }}
-                        </p>
+                <tr class="avoid-break {{ ($zebraIdx++ % 2 === 1) ? 'row-alt' : 'row-white' }}">
+                    <td class="col-row">{{ $faNum($index + 1) }}</td>
+                    <td class="col-desc">
+                        <span class="item-title">{{ $item->custom_service_name ?: ($item->service->name ?? 'ردیف دستی') }}</span>
                         @if($item->description && $item->description !== ($item->custom_service_name ?: ($item->service->name ?? '')))
-                            <p class="item-note">{{ $item->description }}</p>
+                            <span class="item-desc"> - {{ $item->description }}</span>
                         @endif
-                        @if(!empty($savedCustomFields))
-                            @php
-                                $customFieldsCollection = $item->service ? $item->service->customFields : collect([]);
-                                $customFieldsQuantities = $item->meta['custom_fields_quantities'] ?? [];
-                                $customFieldsPrices = $item->meta['custom_fields_prices'] ?? [];
-                                $printedFields = [];
-                                foreach($savedCustomFields as $field_id => $value) {
-                                    $fieldDef = $customFieldsCollection->firstWhere('id', $field_id);
-                                    if (!$fieldDef) continue;
-                                    if ($fieldDef->type === 'multiselect' && is_array($value)) {
-                                        $optParts = [];
-                                        foreach($value as $opt) {
-                                            $optQty = is_array($customFieldsQuantities[$field_id] ?? null)
-                                                ? ($customFieldsQuantities[$field_id][$opt] ?? ($customFieldsQuantities[$field_id] ?? 1))
-                                                : ($customFieldsQuantities[$field_id] ?? 1);
-                                            $optPrice = is_array($customFieldsPrices[$field_id] ?? null)
-                                                ? ($customFieldsPrices[$field_id][$opt] ?? null)
-                                                : ($customFieldsPrices[$field_id] ?? null);
-                                            if ($optPrice === null && $fieldDef->has_pricing) {
-                                                $optPrice = $fieldDef->getOptionPrice($opt, $item->unit_price);
-                                            }
-                                            $optTxt = $opt;
-                                            if ($optQty > 1) {
-                                                $optTxt .= ' (' . $faNum($optQty) . ' عدد)';
-                                            }
-                                            if ($fieldDef->has_pricing && (float)$optPrice > 0) {
-                                                $optTxt .= ' [' . $faNum(number_format((float)$optPrice)) . ' ' . $currencyLabel . ']';
-                                            }
-                                            $optParts[] = $optTxt;
-                                        }
-                                        if (!empty($optParts)) {
-                                            $printedFields[] = $fieldDef->label . ': ' . implode('، ', $optParts);
-                                        }
-                                    } else {
-                                        if (is_array($value)) { $displayValue = implode('، ', $value); }
-                                        elseif ($fieldDef->type === 'checkbox') { $displayValue = $value ? 'انتخاب شده' : null; }
-                                        elseif ($fieldDef->type === 'file') { $displayValue = $value ? 'فایل پیوست شده' : null; }
-                                        else { $displayValue = $value ?: null; }
-                                        if ($displayValue) {
-                                            $fieldQty = is_array($customFieldsQuantities[$field_id] ?? null)
-                                                ? ($customFieldsQuantities[$field_id] ?? 1)
-                                                : ($customFieldsQuantities[$field_id] ?? 1);
-                                            $fieldPrice = is_array($customFieldsPrices[$field_id] ?? null) ? null : ($customFieldsPrices[$field_id] ?? null);
-                                            if ($fieldPrice === null && $fieldDef->has_pricing) {
-                                                if (in_array($fieldDef->type, ['select', 'radio'])) {
-                                                    $fieldPrice = $fieldDef->getOptionPrice($displayValue, $item->unit_price);
-                                                } else {
-                                                    $fieldPrice = $fieldDef->pricing_type === 'percentage'
-                                                                    ? ($item->unit_price * ((float)$fieldDef->pricing_amount / 100))
-                                                                    : (float)$fieldDef->pricing_amount;
-                                                }
-                                            }
-                                            $fieldTxt = $fieldDef->label . ': ' . $displayValue;
-                                            if ($fieldQty > 1) {
-                                                $fieldTxt .= ' (' . $faNum($fieldQty) . ' عدد)';
-                                            }
-                                            if ($fieldDef->has_pricing && (float)$fieldPrice > 0) {
-                                                $fieldTxt .= ' [' . $faNum(number_format((float)$fieldPrice)) . ' ' . $currencyLabel . ']';
-                                            }
-                                            $printedFields[] = $fieldTxt;
-                                        }
-                                    }
-                                }
-                            @endphp
-                            @if(count($printedFields) > 0)
-                                <p class="item-note">فیلدهای سفارشی: {{ implode(' | ', $printedFields) }}</p>
-                            @endif
-                        @endif
-                        @if($displayQty != 1)
-                            <p class="item-note">{{ $faNum($displayQty) }} {{ $item->unit ?? 'عدد' }}
-                                × {{ $faNum(number_format($rowBasePrice)) }} {{ $currencyLabel }}</p>
-                        @endif
+                    </td>
+                    <td class="col-qty">
+                        {{ $faNum($displayQty) }}@if($item->unit && $item->unit !== 'عدد') <span style="font-size: 9px; color: #6b7280;">{{ $item->unit }}</span>@endif
+                    </td>
+                    <td class="col-discount">
                         @if($rowDiscount > 0)
-                            <p class="item-discount-note">
-                                شامل {{ $faNum(number_format($rowDiscount)) }} {{ $currencyLabel }} تخفیف</p>
-                        @endif
-                        @if($item->tax_amount > 0)
-                            <p class="item-note">مالیات ردیف ({{ $faNum((float) $item->tax_percent) }}٪):
-                                {{ $faNum(number_format($item->tax_amount)) }} {{ $currencyLabel }}</p>
+                            <span style="color: #dc2626;">{{ $faNum(number_format($rowDiscount)) }}</span>
+                        @else
+                            ۰
                         @endif
                     </td>
-                    <td class="col-total">{{ $faNum(number_format($rowTotal)) }} {{ $currencyLabel }}</td>
+                    <td class="col-amount">{{ $faNum(number_format($mainRowDisplayTotal)) }} {{ $currencyLabel }}</td>
                 </tr>
+                @foreach($itemSubRows as $subIdx => $subRow)
+                    @php
+                        $subQty = (float) $subRow['quantity'];
+                        $subDisplayQty = fmod($subQty, 1.0) === 0.0 ? (int) $subQty : $subQty;
+                    @endphp
+                    <tr class="avoid-break {{ ($zebraIdx++ % 2 === 1) ? 'row-alt' : 'row-white' }}">
+                        <td class="col-row" style="font-size: 9px; color: #9ca3af;">{{ $faNum($index + 1) }}-{{ $faNum($subIdx + 1) }}</td>
+                        <td class="col-desc">
+                            <span class="item-title">{{ $subRow['label'] }}</span>
+                        </td>
+                        <td class="col-qty">
+                            @if($subRow['has_pricing'])
+                                {{ $faNum($subDisplayQty) }}@if(($subRow['unit'] ?? '') && $subRow['unit'] !== 'عدد') <span style="font-size: 9px; color: #6b7280;">{{ $subRow['unit'] }}</span>@endif
+                            @else
+                                —
+                            @endif
+                        </td>
+                        <td class="col-discount">
+                            @if($subRow['discount'] > 0)
+                                <span style="color: #dc2626;">{{ $faNum(number_format($subRow['discount'])) }}</span>
+                            @elseif($subRow['has_pricing'])
+                                ۰
+                            @else
+                                —
+                            @endif
+                        </td>
+                        <td class="col-amount">
+                            @if($subRow['has_pricing'] && $subRow['total'] > 0)
+                                {{ $faNum(number_format($subRow['total'])) }} {{ $currencyLabel }}
+                            @else
+                                —
+                            @endif
+                        </td>
+                    </tr>
+                @endforeach
             @endforeach
-            </tbody>
-            <tfoot>
-            <tr>
-                <td class="text-right">جمع مبالغ پایه</td>
-                <td class="col-total">{{ $faNum(number_format($invoice->subtotal)) }} {{ $currencyLabel }}</td>
-            </tr>
-            @if($invoice->tax_amount > 0)
-                <tr>
-                    <td class="text-right">مالیات
-                        @if((float) $invoice->tax_percent > 0)
-                            ({{ $faNum((float) $invoice->tax_percent) }}٪)
-                        @endif
-                    </td>
-                    <td class="col-total">+ {{ $faNum(number_format($invoice->tax_amount)) }} {{ $currencyLabel }}</td>
+
+            @php
+                $hasTaxOrDiscount = ($invoice->tax_amount > 0) || ($invoice->discount_amount > 0);
+            @endphp
+            @if($hasTaxOrDiscount)
+                <tr class="avoid-break {{ ($zebraIdx++ % 2 === 1) ? 'row-alt' : 'row-white' }}">
+                    <td colspan="4" class="col-summary-label">جمع مبالغ پایه</td>
+                    <td class="col-amount">{{ $faNum(number_format($invoice->subtotal)) }} {{ $currencyLabel }}</td>
                 </tr>
-                <tr>
-                    <td class="text-right">مبلغ با احتساب مالیات</td>
-                    <td class="col-total">{{ $faNum(number_format($invoice->subtotal + $invoice->tax_amount)) }} {{ $currencyLabel }}</td>
-                </tr>
+                @if($invoice->tax_amount > 0)
+                    <tr class="avoid-break {{ ($zebraIdx++ % 2 === 1) ? 'row-alt' : 'row-white' }}">
+                        <td colspan="4" class="col-summary-label">مالیات @if((float) $invoice->tax_percent > 0)({{ $faNum((float) $invoice->tax_percent) }}٪)@endif</td>
+                        <td class="col-amount">+ {{ $faNum(number_format($invoice->tax_amount)) }} {{ $currencyLabel }}</td>
+                    </tr>
+                @endif
+                @if($invoice->discount_amount > 0)
+                    <tr class="avoid-break {{ ($zebraIdx++ % 2 === 1) ? 'row-alt' : 'row-white' }}">
+                        <td colspan="4" class="col-summary-label" style="color: #dc2626;">مجموع تخفیف‌ها</td>
+                        <td class="col-amount" style="color: #dc2626;">− {{ $faNum(number_format($invoice->discount_amount)) }} {{ $currencyLabel }}</td>
+                    </tr>
+                @endif
             @endif
-            @if($invoice->discount_amount > 0)
-                <tr>
-                    <td class="text-right" style="color:#dc2626;">مجموع تخفیف‌ها</td>
-                    <td class="col-total" style="color:#dc2626;">
-                        − {{ $faNum(number_format($invoice->discount_amount)) }} {{ $currencyLabel }}</td>
-                </tr>
-            @endif
+
             @if($paid > 0)
-                <tr>
-                    <td class="text-right" style="color:#059669;">پرداخت شده</td>
-                    <td class="col-total"
-                        style="color:#059669;">{{ $faNum(number_format($paid)) }} {{ $currencyLabel }}</td>
+                <tr class="avoid-break {{ ($zebraIdx++ % 2 === 1) ? 'row-alt' : 'row-white' }}">
+                    <td colspan="4" class="col-summary-label" style="color: #059669;">پرداخت شده</td>
+                    <td class="col-amount" style="color: #059669;">{{ $faNum(number_format($paid)) }} {{ $currencyLabel }}</td>
                 </tr>
             @endif
-            <tr class="summary-row">
-                <td><span class="pill-badge pill-total">جمع فاکتور</span></td>
-                <td class="col-total">{{ $faNum(number_format($total)) }} {{ $currencyLabel }}</td>
+
+            <tr class="avoid-break {{ ($zebraIdx++ % 2 === 1) ? 'row-alt' : 'row-white' }}">
+                <td colspan="4" class="col-summary-label">جمع فاکتور</td>
+                <td class="col-amount">{{ $faNum(number_format($total)) }} {{ $currencyLabel }}</td>
             </tr>
-            <tr class="summary-row">
-                <td>
+
+            <tr class="avoid-break {{ ($zebraIdx++ % 2 === 1) ? 'row-alt' : 'row-white' }}">
+                <td colspan="4" class="col-summary-label">
                     @if($due > 0)
-                        <span class="pill-badge pill-due">مانده</span>
+                        مانده
                     @else
-                        <span class="pill-badge pill-settled">تسویه شده</span>
+                        تسویه شده
                     @endif
                 </td>
-                <td class="col-total">{{ $faNum(number_format($due)) }} {{ $currencyLabel }}</td>
+                <td class="col-amount">{{ $faNum(number_format($due)) }} {{ $currencyLabel }}</td>
             </tr>
-            </tfoot>
+            </tbody>
         </table>
 
         @php
@@ -945,7 +1090,7 @@
                              style="{{ $stampStandardImgStyle }}">
                     @endif
                 </div>
-                <p class="seller-name">{{ $sellerInfo['name'] }}</p>
+                <p class="seller-name">{{ $sellerInfo['name'] ?? '' }}</p>
             </div>
         </div>
     </div>
