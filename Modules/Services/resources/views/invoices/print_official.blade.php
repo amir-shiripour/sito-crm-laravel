@@ -103,17 +103,16 @@
     }
 
     $sellerFields = array_values(array_filter([
-        ['label' => 'نام شخص حقیقی/حقوقی', 'value' => $sellerInfo['name'], 'span' => 4, 'numeric' => false],
-        ['label' => 'شماره اقتصادی', 'value' => $sellerInfo['economic_number'], 'span' => 2, 'numeric' => true],
-        ['label' => 'شناسه ملی', 'value' => $sellerInfo['national_id'], 'span' => 2, 'numeric' => true],
-        ['label' => 'شماره ثبت', 'value' => $sellerInfo['registration_number'], 'span' => 2, 'numeric' => true],
-        ['label' => 'تلفن/نمابر', 'value' => $sellerInfo['phone_fax'], 'span' => 2, 'numeric' => true],
-        ['label' => 'نشانی کامل', 'value' => $sellerInfo['address'], 'span' => 4, 'numeric' => false],
+        ['label' => 'نام شخص حقیقی/حقوقی', 'value' => $sellerInfo['name'] ?? '', 'span' => 4, 'numeric' => false],
+        ['label' => 'شماره اقتصادی', 'value' => $sellerInfo['economic_number'] ?? '', 'span' => 2, 'numeric' => true],
+        ['label' => 'شناسه ملی', 'value' => $sellerInfo['national_id'] ?? '', 'span' => 2, 'numeric' => true],
+        ['label' => 'شماره ثبت', 'value' => $sellerInfo['registration_number'] ?? '', 'span' => 2, 'numeric' => true],
+        ['label' => 'تلفن/نمابر', 'value' => $sellerInfo['phone_fax'] ?? '', 'span' => 2, 'numeric' => true],
+        ['label' => 'نشانی کامل', 'value' => $sellerInfo['address'] ?? '', 'span' => 4, 'numeric' => false],
     ], fn ($f) => !empty(trim((string) $f['value']))));
 
     $hasSellerBlock = !empty($sellerFields) || !empty($sellerCustomFields);
 
-    // --- پردازش فیلدهای انتخابی خریدار ---
     $defaultBuyerFieldIds = ['full_name', 'phone', 'email', 'national_code', 'case_number'];
     $savedBuyerFieldIds = array_key_exists('services_invoice_client_fields', $settings)
         ? (json_decode($settings['services_invoice_client_fields'] ?? '[]', true) ?: [])
@@ -180,7 +179,7 @@
     $ltrFields = ['phone', 'email', 'national_code', 'case_number'];
 
     if (!isset($siteName)) {
-        $siteName = $pickSetting(['identity_site_name', 'site_name', 'app_name', 'identity_name']) ?: ($sellerInfo['name'] ?: 'فاکتور');
+        $siteName = $pickSetting(['identity_site_name', 'site_name', 'app_name', 'identity_name']) ?: (($sellerInfo['name'] ?? '') ?: 'فاکتور');
     }
     if (!isset($appLogo)) {
         $appLogo = $pickSetting(['identity_logo', 'site_logo', 'app_logo', 'company_logo']);
@@ -300,7 +299,7 @@
             }
 
             .table-cell-border {
-                padding: {{ $orientation === 'landscape' ? '1.5px 3px' : '2px 4px' }}  !important;
+                padding: {{ $orientation === 'landscape' ? '1.5px 3px' : '2px 4px' }}   !important;
             }
         }
 
@@ -326,11 +325,11 @@
         }
 
         .subfield-row td {
-            background: #fafafa;
-            border-top: 1px dashed #999 !important;
-            border-bottom: 1px dashed #999 !important;
-            font-size: 9.5px;
+            border-top: 1px dashed #d1d5db !important;
+            border-bottom: 1px dashed #d1d5db !important;
             color: #374151;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
         }
 
         .avoid-break {
@@ -400,11 +399,6 @@
                         $invoicePackages = collect($invoice->meta['packages'])->filter()->unique()->values();
                     }
                 @endphp
-                @if($invoicePackages->isNotEmpty())
-                    <div class="text-[9.5px] font-bold text-amber-800 mt-0.5">
-                        (پکیج: {{ $invoicePackages->implode(' - ') }})
-                    </div>
-                @endif
             </div>
             <div class="w-1/4 border border-official rounded p-1.5 bg-gray-50 text-left space-y-1 text-[9.5px]">
                 <div class="flex items-center justify-between border-b border-gray-200 pb-1 mb-1">
@@ -467,7 +461,7 @@
                         <span class="font-bold"
                               @if(in_array($field['id'], $ltrFields)) dir="ltr" @endif>{{ $faNum($field['value']) }}</span>
                     </div>
-                @endforeach
+                    @endforeach
             </div>
         </div>
 
@@ -510,92 +504,192 @@
                         $prevPkgId = $prevMeta['_packageGroupId'] ?? (!empty($prevMeta['_packageTitle']) ? $prevMeta['_packageTitle'] : null);
                         $isFirstInPackage = !empty($currentPkgId) && ($currentPkgId !== $prevPkgId);
                         $isInPackage = !empty($currentPkgId);
+
+                        $savedCustomFields = $itemMeta['custom_fields'] ?? [];
+                        $customFieldsCollection = $item->service ? $item->service->customFields : collect([]);
+                        $customFieldsQuantities = $itemMeta['custom_fields_quantities'] ?? [];
+                        $customFieldsPrices = $itemMeta['custom_fields_prices'] ?? [];
+                        $customFieldsDiscounts = $itemMeta['custom_fields_discounts'] ?? [];
+                        $customFieldsTaxes = $itemMeta['custom_fields_taxes'] ?? [];
+                        $taxApplyCustomFields = !empty($settings['services_tax_apply_custom_fields']);
+
+                        $itemSubRows = [];
+                        if (!empty($savedCustomFields) && is_array($savedCustomFields)) {
+                            foreach ($savedCustomFields as $field_id => $value) {
+                                $fieldDef = $customFieldsCollection->firstWhere('id', $field_id);
+                                if (!$fieldDef) continue;
+
+                                if ($fieldDef->type === 'multiselect' && is_array($value)) {
+                                    foreach ($value as $opt) {
+                                        if ($opt === null || trim((string)$opt) === '') continue;
+
+                                        $optQty = is_array($customFieldsQuantities[$field_id] ?? null)
+                                            ? ($customFieldsQuantities[$field_id][$opt] ?? ($customFieldsQuantities[$field_id] ?? 1))
+                                            : ($customFieldsQuantities[$field_id] ?? 1);
+                                        $optQty = (float)$optQty;
+                                        if ($optQty <= 0) $optQty = 1;
+
+                                        $optPrice = null;
+                                        if (isset($customFieldsPrices[$field_id]) && is_array($customFieldsPrices[$field_id]) && isset($customFieldsPrices[$field_id][$opt]) && $customFieldsPrices[$field_id][$opt] !== '') {
+                                            $optPrice = (float)$customFieldsPrices[$field_id][$opt];
+                                        } elseif (isset($customFieldsPrices[$field_id]) && !is_array($customFieldsPrices[$field_id]) && $customFieldsPrices[$field_id] !== '') {
+                                            $optPrice = (float)$customFieldsPrices[$field_id];
+                                        } elseif ($fieldDef->has_pricing) {
+                                            $optPrice = (float)$fieldDef->getOptionPrice($opt, $item->unit_price);
+                                        }
+                                        $hasPricing = ($fieldDef->has_pricing || ($optPrice !== null && (float)$optPrice > 0));
+                                        $optPrice = (float)($optPrice ?? 0);
+
+                                        $optDiscount = 0;
+                                        if (isset($customFieldsDiscounts[$field_id]) && is_array($customFieldsDiscounts[$field_id])) {
+                                            $optDiscount = (float)($customFieldsDiscounts[$field_id][$opt] ?? 0);
+                                        } elseif (isset($customFieldsDiscounts[$field_id])) {
+                                            $optDiscount = (float)$customFieldsDiscounts[$field_id];
+                                        }
+
+                                        $cfTaxAmount = 0;
+                                        $cfTaxPercent = 0;
+                                        if (($taxMode ?? 'invoice') === 'item' && $taxApplyCustomFields) {
+                                            if (isset($customFieldsTaxes[$field_id]) && is_array($customFieldsTaxes[$field_id])) {
+                                                $cfTaxPercent = (float)($customFieldsTaxes[$field_id][$opt] ?? 0);
+                                            } elseif (isset($customFieldsTaxes[$field_id])) {
+                                                $cfTaxPercent = (float)$customFieldsTaxes[$field_id];
+                                            }
+                                            $cfTaxable = max(0, ($optPrice * $optQty) - $optDiscount);
+                                            $cfTaxAmount = $cfTaxable * ($cfTaxPercent / 100);
+                                        }
+
+                                        $cfBase = max(0, ($optPrice * $optQty) - $optDiscount);
+                                        $cfRowTotal = (($taxMode ?? 'invoice') === 'item') ? ($cfBase + $cfTaxAmount) : $cfBase;
+
+                                        $subLabel = $fieldDef->label;
+                                        if (!empty($opt) && $opt !== $fieldDef->label) {
+                                            $subLabel .= ' (' . $opt . ')';
+                                        }
+
+                                        $itemSubRows[] = [
+                                            'label' => $subLabel,
+                                            'value' => (string)$opt,
+                                            'quantity' => $optQty,
+                                            'unit' => 'عدد',
+                                            'unit_price' => $optPrice,
+                                            'discount' => $optDiscount,
+                                            'tax_percent' => $cfTaxPercent,
+                                            'tax_amount' => $cfTaxAmount,
+                                            'total' => $cfRowTotal,
+                                            'has_pricing' => $hasPricing,
+                                        ];
+                                    }
+                                } else {
+                                    if (is_array($value)) {
+                                        $filteredVal = array_filter($value, fn($v) => $v !== null && trim((string)$v) !== '');
+                                        $displayValue = !empty($filteredVal) ? implode('، ', $filteredVal) : null;
+                                    } elseif ($fieldDef->type === 'checkbox') {
+                                        $displayValue = in_array($value, [true, '1', 1], true) ? 'انتخاب شده' : null;
+                                    } elseif ($fieldDef->type === 'file') {
+                                        $displayValue = $value ? 'فایل پیوست شده' : null;
+                                    } else {
+                                        $displayValue = ($value !== null && trim((string)$value) !== '') ? (string)$value : null;
+                                    }
+
+                                    if (!$displayValue) continue;
+
+                                    $fieldQty = 1;
+                                    if (isset($customFieldsQuantities[$field_id]) && !is_array($customFieldsQuantities[$field_id])) {
+                                        $fieldQty = (float)$customFieldsQuantities[$field_id];
+                                    } elseif ($fieldDef->type === 'number' && is_numeric($displayValue)) {
+                                        $fieldQty = (float)$displayValue;
+                                    }
+                                    if ($fieldQty <= 0) $fieldQty = 1;
+
+                                    $fieldPrice = null;
+                                    if (isset($customFieldsPrices[$field_id]) && !is_array($customFieldsPrices[$field_id]) && $customFieldsPrices[$field_id] !== '') {
+                                        $fieldPrice = (float)$customFieldsPrices[$field_id];
+                                    } elseif ($fieldDef->has_pricing) {
+                                        if (in_array($fieldDef->type, ['select', 'radio'])) {
+                                            $fieldPrice = (float)$fieldDef->getOptionPrice($displayValue, $item->unit_price);
+                                        } else {
+                                            $fieldPrice = $fieldDef->pricing_type === 'percentage'
+                                                ? ((float)$item->unit_price * ((float)$fieldDef->pricing_amount / 100))
+                                                : (float)$fieldDef->pricing_amount;
+                                        }
+                                    }
+                                    $hasPricing = ($fieldDef->has_pricing || ($fieldPrice !== null && (float)$fieldPrice > 0));
+                                    $fieldPrice = (float)($fieldPrice ?? 0);
+
+                                    $fieldDiscount = 0;
+                                    if (isset($customFieldsDiscounts[$field_id]) && !is_array($customFieldsDiscounts[$field_id])) {
+                                        $fieldDiscount = (float)$customFieldsDiscounts[$field_id];
+                                    }
+
+                                    $cfTaxAmount = 0;
+                                    $cfTaxPercent = 0;
+                                    if (($taxMode ?? 'invoice') === 'item' && $taxApplyCustomFields) {
+                                        if (isset($customFieldsTaxes[$field_id]) && !is_array($customFieldsTaxes[$field_id])) {
+                                            $cfTaxPercent = (float)$customFieldsTaxes[$field_id];
+                                        }
+                                        $cfTaxable = max(0, ($fieldPrice * $fieldQty) - $fieldDiscount);
+                                        $cfTaxAmount = $cfTaxable * ($cfTaxPercent / 100);
+                                    }
+
+                                    $cfBase = max(0, ($fieldPrice * $fieldQty) - $fieldDiscount);
+                                    $cfRowTotal = (($taxMode ?? 'invoice') === 'item') ? ($cfBase + $cfTaxAmount) : $cfBase;
+
+                                    $subLabel = $fieldDef->label;
+                                    if (in_array($fieldDef->type, ['select', 'radio']) && !empty($displayValue) && $displayValue !== $fieldDef->label) {
+                                        $subLabel .= ' (' . $displayValue . ')';
+                                    }
+
+                                    $itemSubRows[] = [
+                                        'label' => $subLabel,
+                                        'value' => $displayValue,
+                                        'quantity' => $fieldQty,
+                                        'unit' => 'عدد',
+                                        'unit_price' => $fieldPrice,
+                                        'discount' => $fieldDiscount,
+                                        'tax_percent' => $cfTaxPercent,
+                                        'tax_amount' => $cfTaxAmount,
+                                        'total' => $cfRowTotal,
+                                        'has_pricing' => $hasPricing,
+                                    ];
+                                }
+                            }
+                        }
+
+                        $pricedSubRowsSum = 0;
+                        $subRowsTaxSum = 0;
+                        foreach ($itemSubRows as $r) {
+                            if (!empty($r['has_pricing']) && $r['total'] > 0) {
+                                $pricedSubRowsSum += $r['total'];
+                            }
+                            if (!empty($r['tax_amount']) && $r['tax_amount'] > 0) {
+                                $subRowsTaxSum += $r['tax_amount'];
+                            }
+                        }
+
+                        if ($pricedSubRowsSum > 0) {
+                            $mainRowDisplayTotal = max(0, $rowTotal - $pricedSubRowsSum);
+                        } else {
+                            $mainRowDisplayTotal = $rowTotal;
+                        }
+                        $mainRowTax = max(0, $item->tax_amount - $subRowsTaxSum);
                     @endphp
                     @if($isFirstInPackage)
-                        <tr class="avoid-break" style="background-color: #fef3c7; -webkit-print-color-adjust: exact; print-color-adjust: exact;">
-                            <td colspan="{{ (($taxMode ?? 'invoice') === 'item') ? 8 : 7 }}" class="table-cell-border text-right px-3 py-1.5 font-bold text-[9.5px] text-amber-950">
+                        <tr class="avoid-break"
+                            style="background-color: #fef3c7; -webkit-print-color-adjust: exact; print-color-adjust: exact;">
+                            <td colspan="{{ (($taxMode ?? 'invoice') === 'item') ? 8 : 7 }}"
+                                class="table-cell-border text-right px-3 py-1.5 font-bold text-[9.5px] text-amber-950">
                                 <span> اقلام {{ $itemMeta['_packageTitle'] ?? 'پکیج' }}</span>
                             </td>
                         </tr>
                     @endif
                     <tr class="avoid-break" @if($isInPackage) style="background-color: #fffdf7;" @endif>
-                        <td class="table-cell-border">{{ $faNum($index + 1) }}</td>
+                        <td class="table-cell-border font-bold">{{ $faNum($index + 1) }}</td>
                         <td class="table-cell-border text-right">
                             <span
                                 class="font-bold">{{ $item->custom_service_name ?: ($item->service->name ?? 'ردیف دستی') }}</span>
                             @if($item->description && $item->description !== ($item->custom_service_name ?: ($item->service->name ?? '')))
-                                <div class="text-gray-500 text-[9px] mt-1">{{ $item->description }}</div>
-                            @endif
-                            @php $savedCustomFields = $item->meta['custom_fields'] ?? []; @endphp
-                            @if(!empty($savedCustomFields))
-                                <div class="text-gray-600 text-[9px] mt-1">
-                                    @php
-                                        $customFieldsCollection = $item->service ? $item->service->customFields : collect([]);
-                                        $customFieldsQuantities = $item->meta['custom_fields_quantities'] ?? [];
-                                        $customFieldsPrices = $item->meta['custom_fields_prices'] ?? [];
-                                        $printedFields = [];
-                                        foreach($savedCustomFields as $field_id => $value) {
-                                            $fieldDef = $customFieldsCollection->firstWhere('id', $field_id);
-                                            if (!$fieldDef) continue;
-                                            if ($fieldDef->type === 'multiselect' && is_array($value)) {
-                                                $optParts = [];
-                                                foreach($value as $opt) {
-                                                    $optQty = is_array($customFieldsQuantities[$field_id] ?? null)
-                                                        ? ($customFieldsQuantities[$field_id][$opt] ?? ($customFieldsQuantities[$field_id] ?? 1))
-                                                        : ($customFieldsQuantities[$field_id] ?? 1);
-                                                    $optPrice = is_array($customFieldsPrices[$field_id] ?? null)
-                                                        ? ($customFieldsPrices[$field_id][$opt] ?? null)
-                                                        : ($customFieldsPrices[$field_id] ?? null);
-                                                    if ($optPrice === null && $fieldDef->has_pricing) {
-                                                        $optPrice = $fieldDef->getOptionPrice($opt, $item->unit_price);
-                                                    }
-                                                    $optTxt = $opt;
-                                                    if ($optQty > 1) {
-                                                        $optTxt .= ' (' . $faNum($optQty) . ' عدد)';
-                                                    }
-                                                    if ($fieldDef->has_pricing && (float)$optPrice > 0) {
-                                                        $optTxt .= ' [' . $faNum(number_format((float)$optPrice)) . ' ' . $currencyLabel . ']';
-                                                    }
-                                                    $optParts[] = $optTxt;
-                                                }
-                                                if (!empty($optParts)) {
-                                                    $printedFields[] = $fieldDef->label . ': ' . implode('، ', $optParts);
-                                                }
-                                            } else {
-                                                if (is_array($value)) { $displayValue = implode('، ', $value); }
-                                                elseif ($fieldDef->type === 'checkbox') { $displayValue = $value ? 'انتخاب شده' : null; }
-                                                elseif ($fieldDef->type === 'file') { $displayValue = $value ? 'فایل پیوست شده' : null; }
-                                                else { $displayValue = $value ?: null; }
-                                                if ($displayValue) {
-                                                    $fieldQty = is_array($customFieldsQuantities[$field_id] ?? null)
-                                                        ? ($customFieldsQuantities[$field_id] ?? 1)
-                                                        : ($customFieldsQuantities[$field_id] ?? 1);
-                                                    $fieldPrice = is_array($customFieldsPrices[$field_id] ?? null) ? null : ($customFieldsPrices[$field_id] ?? null);
-                                                    if ($fieldPrice === null && $fieldDef->has_pricing) {
-                                                        if (in_array($fieldDef->type, ['select', 'radio'])) {
-                                                            $fieldPrice = $fieldDef->getOptionPrice($displayValue, $item->unit_price);
-                                                        } else {
-                                                            $fieldPrice = $fieldDef->pricing_type === 'percentage'
-                                                                            ? ($item->unit_price * ((float)$fieldDef->pricing_amount / 100))
-                                                                            : (float)$fieldDef->pricing_amount;
-                                                        }
-                                                    }
-                                                    $fieldTxt = $fieldDef->label . ': ' . $displayValue;
-                                                    if ($fieldQty > 1) {
-                                                        $fieldTxt .= ' (' . $faNum($fieldQty) . ' عدد)';
-                                                    }
-                                                    if ($fieldDef->has_pricing && (float)$fieldPrice > 0) {
-                                                        $fieldTxt .= ' [' . $faNum(number_format((float)$fieldPrice)) . ' ' . $currencyLabel . ']';
-                                                    }
-                                                    $printedFields[] = $fieldTxt;
-                                                }
-                                            }
-                                        }
-                                    @endphp
-                                    @if(count($printedFields) > 0)
-                                        فیلدهای سفارشی: {{ implode(' | ', $printedFields) }}
-                                    @endif
-                                </div>
+                                <div class="text-gray-500 text-[9px] mt-0.5">{{ $item->description }}</div>
                             @endif
                         </td>
                         <td class="table-cell-border">{{ $faNum($displayQty) }}</td>
@@ -603,10 +697,30 @@
                         <td class="table-cell-border">{{ $faNum(number_format($rowBasePrice)) }}</td>
                         <td class="table-cell-border text-red-600">{{ $rowDiscount > 0 ? $faNum(number_format($rowDiscount)) : '۰' }}</td>
                         @if(($taxMode ?? 'invoice') === 'item')
-                            <td class="table-cell-border text-green-600">{{ $item->tax_amount > 0 ? $faNum(number_format($item->tax_amount)) . ' (' . $faNum((float) $item->tax_percent) . '٪)' : '۰' }}</td>
+                            <td class="table-cell-border text-green-600">{{ $mainRowTax > 0 ? $faNum(number_format($mainRowTax)) . ' (' . $faNum((float) $item->tax_percent) . '٪)' : '۰' }}</td>
                         @endif
-                        <td class="table-cell-border font-bold">{{ $faNum(number_format($rowTotal)) }}</td>
+                        <td class="table-cell-border font-bold">{{ $faNum(number_format($mainRowDisplayTotal)) }}</td>
                     </tr>
+                    @foreach($itemSubRows as $subIdx => $subRow)
+                        @php
+                            $subQty = (float) $subRow['quantity'];
+                            $subDisplayQty = fmod($subQty, 1.0) === 0.0 ? (int) $subQty : $subQty;
+                        @endphp
+                        <tr class="avoid-break subfield-row" @if($isInPackage) style="background-color: #fffdf7;" @endif>
+                            <td class="table-cell-border text-gray-500 text-[9px]">{{ $faNum($index + 1) }}-{{ $faNum($subIdx + 1) }}</td>
+                            <td class="table-cell-border text-center">
+                                <span>{{ $subRow['label'] }}</span>
+                            </td>
+                            <td class="table-cell-border text-gray-700">{{ $subRow['has_pricing'] ? $faNum($subDisplayQty) : '—' }}</td>
+                            <td class="table-cell-border text-gray-500 text-[9px]">{{ $subRow['has_pricing'] ? ($subRow['unit'] ?? 'عدد') : '—' }}</td>
+                            <td class="table-cell-border text-gray-700">{{ ($subRow['has_pricing'] && $subRow['unit_price'] > 0) ? $faNum(number_format($subRow['unit_price'])) : '—' }}</td>
+                            <td class="table-cell-border text-red-600">{{ $subRow['discount'] > 0 ? $faNum(number_format($subRow['discount'])) : ($subRow['has_pricing'] ? '۰' : '—') }}</td>
+                            @if(($taxMode ?? 'invoice') === 'item')
+                                <td class="table-cell-border text-green-600">{{ $subRow['tax_amount'] > 0 ? $faNum(number_format($subRow['tax_amount'])) . ($subRow['tax_percent'] > 0 ? ' (' . $faNum((float)$subRow['tax_percent']) . '٪)' : '') : ($subRow['has_pricing'] ? '۰' : '—') }}</td>
+                            @endif
+                            <td class="table-cell-border font-bold">{{ ($subRow['has_pricing'] && $subRow['total'] > 0) ? $faNum(number_format($subRow['total'])) : '—' }}</td>
+                        </tr>
+                    @endforeach
                 @endforeach
                 </tbody>
                 <tfoot>
@@ -708,7 +822,7 @@
                                  style="{{ $stampOfficialImgStyle }}">
                         @endif
                     </div>
-                    <p class="text-[9.5px] font-bold text-gray-700 pt-0.5 border-t border-dashed border-gray-300 w-full">{{ $sellerInfo['name'] }}</p>
+                    <p class="text-[9.5px] font-bold text-gray-700 pt-0.5 border-t border-dashed border-gray-300 w-full">{{ $sellerInfo['name'] ?? '' }}</p>
                 </div>
                 <div
                     class="w-1/2 flex flex-col justify-between items-center px-2 border-r border-dashed border-gray-400">

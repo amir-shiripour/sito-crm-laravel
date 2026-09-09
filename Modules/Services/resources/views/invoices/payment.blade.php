@@ -554,11 +554,26 @@
                                        placeholder="انتخاب تاریخ...">
                             </div>
                             <button type="submit"
+                                    :disabled="isSubmitting"
+                                    :class="isSubmitting ? 'opacity-60 cursor-not-allowed pointer-events-none' : ''"
                                     class="w-full px-6 py-3.5 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 text-white font-black text-base shadow-lg shadow-emerald-500/25 hover:shadow-emerald-500/40 hover:from-emerald-400 hover:to-emerald-500 transition-all duration-300 active:scale-95 flex items-center justify-center gap-2">
-                                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
-                                </svg>
-                                ثبت نهایی تمامی پرداختی‌ها
+                                <template x-if="isSubmitting">
+                                    <span class="inline-flex items-center gap-2">
+                                        <svg class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                                        </svg>
+                                        <span>در حال ثبت پرداختی...</span>
+                                    </span>
+                                </template>
+                                <template x-if="!isSubmitting">
+                                    <span class="inline-flex items-center gap-2">
+                                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+                                        </svg>
+                                        <span>ثبت نهایی تمامی پرداختی‌ها</span>
+                                    </span>
+                                </template>
                             </button>
                         </div>
                     </div>
@@ -669,6 +684,7 @@
         <script>
             document.addEventListener('alpine:init', () => {
                 Alpine.data('paymentWizard', () => ({
+                    isSubmitting: false,
                     invoiceTotal: {{ $invoiceTotal }},
                     dueAmount: {{ $dueAmount }},
                     walletBalance: {{ isset($customerWallet) ? ((float)$customerWallet->balance * $conversionFactor) : 0 }},
@@ -897,6 +913,11 @@
                     },
 
                     submitForm(event) {
+                        if (this.isSubmitting) {
+                            if (event) event.preventDefault();
+                            return false;
+                        }
+
                         let totalPaid = this.totalPaidInForm;
 
                         if (totalPaid <= 0) {
@@ -909,6 +930,7 @@
                             return;
                         }
 
+                        this.isSubmitting = true;
                         this.$el.submit();
                     },
 

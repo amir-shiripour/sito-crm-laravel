@@ -28,16 +28,14 @@ class StoreInvoiceRequest extends FormRequest
 
         if ($this->input('invoice_type') === 'invoice' && $invoiceAuto) {
             $invNum = $this->input('invoice_number');
-            $invoiceId = $this->route('invoice')?->id;
-            if (!$invNum || Invoice::where('invoice_number', $invNum)->when($invoiceId, fn($q) => $q->where('id', '!=', $invoiceId))->exists()) {
+            if (empty($invNum)) {
                 $this->merge(['invoice_number' => Invoice::generateNumber()]);
             }
         }
 
         if ($this->input('invoice_type') === 'proforma' && $proformaAuto) {
             $proNum = $this->input('proforma_invoice_number');
-            $invoiceId = $this->route('invoice')?->id;
-            if (!$proNum || Invoice::where('proforma_invoice_number', $proNum)->when($invoiceId, fn($q) => $q->where('id', '!=', $invoiceId))->exists()) {
+            if (empty($proNum)) {
                 $this->merge(['proforma_invoice_number' => Invoice::generateProformaNumber()]);
             }
         }
@@ -244,6 +242,14 @@ class StoreInvoiceRequest extends FormRequest
                 }
             }
         });
+    }
+
+    public function messages(): array
+    {
+        return [
+            'invoice_number.unique' => 'این شماره فاکتور قبلاً ثبت شده است یا درخواست تکراری ارسال شده است.',
+            'proforma_invoice_number.unique' => 'این شماره پیش‌فاکتور قبلاً ثبت شده است یا درخواست تکراری ارسال شده است.',
+        ];
     }
 
     public function attributes(): array

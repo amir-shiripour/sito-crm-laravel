@@ -1135,7 +1135,9 @@
 
     @push('scripts')
         <script>
+            let isConvertingInvoice = false;
             function handleConvert(form) {
+                if (isConvertingInvoice) return false;
                 @if(empty($settings['services_invoice_auto_numbering']) && empty($settings['services_invoice_auto']))
                 let num = prompt('سیستم روی شماره‌گذاری دستی تنظیم شده است. لطفاً شماره فاکتور جدید را وارد کنید:');
                 if (!num || num.trim() === '') {
@@ -1144,7 +1146,14 @@
                 }
                 form.querySelector('#convert_invoice_number').value = num;
                 @endif
-                    return true;
+                isConvertingInvoice = true;
+                const btn = form.querySelector('button[type="submit"]');
+                if (btn) {
+                    btn.disabled = true;
+                    btn.classList.add('opacity-60', 'cursor-not-allowed', 'pointer-events-none');
+                    btn.innerHTML = '<svg class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg> <span>در حال تبدیل...</span>';
+                }
+                return true;
             }
 
             document.getElementById('pdf-download-btn')?.addEventListener('click', function () {

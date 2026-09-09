@@ -1788,10 +1788,27 @@
                 <div
                     class="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl p-4 rounded-2xl border border-gray-200 dark:border-gray-700/50 shadow-lg flex flex-row-reverse items-center justify-between gap-4">
                     <button type="submit"
+                            :disabled="isSubmitting"
+                            :class="isSubmitting ? 'opacity-60 cursor-not-allowed pointer-events-none' : ''"
                             class="flex-1 md:flex-none px-8 py-3.5 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-700 text-white font-black shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/50 transition-all duration-300 active:scale-95 flex items-center justify-center gap-2">
-                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
-                        </svg>{{ $isInvoice ? 'ثبت فاکتور' : 'ثبت پیش فاکتور' }}</button>
+                        <template x-if="isSubmitting">
+                            <span class="inline-flex items-center gap-2">
+                                <svg class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                                </svg>
+                                <span>در حال ثبت...</span>
+                            </span>
+                        </template>
+                        <template x-if="!isSubmitting">
+                            <span class="inline-flex items-center gap-2">
+                                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+                                </svg>
+                                <span>{{ $isInvoice ? 'ثبت فاکتور' : 'ثبت پیش فاکتور' }}</span>
+                            </span>
+                        </template>
+                    </button>
                     <a href="{{ route('services.invoices.index') }}"
                        class="px-6 py-3.5 text-sm font-bold text-gray-600 hover:bg-gray-100 rounded-xl dark:text-gray-300 dark:hover:bg-gray-700 transition-colors">انصراف</a>
                 </div>
@@ -2000,6 +2017,7 @@
 
             function invoiceCreator() {
                 return {
+                    isSubmitting: false,
                     issueDate: '',
                     dueDate: '',
                     notesText: '',
@@ -3504,6 +3522,10 @@
                         return toEnglishNum(v);
                     },
                     onSubmitCheck(e) {
+                        if (this.isSubmitting) {
+                            e.preventDefault();
+                            return false;
+                        }
                         const f = e.target;
                         if (!this.items || this.items.length === 0) {
                             e.preventDefault();
@@ -3543,6 +3565,8 @@
                                 i.value = v;
                             }
                         });
+
+                        this.isSubmitting = true;
                     },
                     hasRecurringItems() {
                         return Array.isArray(this.items) && this.items.some(item => {

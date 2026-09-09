@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Modules\Accounting\App\Models\AccountingSetting;
@@ -368,7 +369,7 @@ class InvoiceController extends Controller
                     })();
 
                     $mergedItems[] = [
-                        'id' => uniqid() . rand(1000, 9999),
+                        'id' => uniqid('', true) . rand(1000, 9999),
                         'mode' => $mode,
                         'service_id' => $item->service_id ? (string)$item->service_id : '',
                         'product_id' => isset($meta['product_id']) ? (string)$meta['product_id'] : '',
@@ -427,14 +428,24 @@ class InvoiceController extends Controller
             'marketModuleEnabled' => $this->isMarketModuleEnabled(),
             'mergedItems' => $mergedItems,
             'mergedFromIds' => $mergedFromIds,
-            'packages' => ServicePackage::where('status', 'active')->with('items.service.customFields')->get(),
+            'packages' => ServicePackage::where('status', 'active')
+                ->with('items.service.customFields')->get(),
         ]);
     }
 
     public function store(StoreInvoiceRequest $request)
     {
-        $data = $request->validated();
-        $isProforma = $data['invoice_type'] === 'proforma';
+        $userId = $request->user()?->id ?? 'guest';
+        $lock = Cache::lock("services_invoice_store_user_{$userId}", 10);
+
+        if (!$lock->get()) {
+            return back()->withInput()
+                ->with('error', 'درخواست ثبت فاکتور شما در حال پردازش است. لطفاً چند لحظه صبر کنید و از کلیک مجدد خودداری فرمایید.');
+        }
+
+        try {
+            $data = $request->validated();
+            $isProforma = $data['invoice_type'] === 'proforma';
 
         $settings = Setting::pluck('value', 'key')->toArray();
         $taxMode = $settings['services_tax_mode'] ?? 'invoice';
@@ -561,6 +572,9 @@ class InvoiceController extends Controller
         return redirect()
             ->route('services.invoices.show', $invoice)
             ->with('success', $message);
+        } finally {
+            optional($lock)->release();
+        }
     }
 
     public function show(Invoice $invoice)
@@ -633,7 +647,8 @@ class InvoiceController extends Controller
             'servicesRoundingMode' => $settings['services_rounding_mode'] ?? 'none',
             'servicesRoundingFactor' => (int)($settings['services_rounding_factor'] ?? 1000),
             'marketModuleEnabled' => $this->isMarketModuleEnabled(),
-            'packages' => ServicePackage::where('status', 'active')->with('items.service.customFields')->get(),
+            'packages' => ServicePackage::where('status', 'active')
+                ->with('items.service.customFields')->get(),
         ]);
     }
 
@@ -873,6 +888,14 @@ class InvoiceController extends Controller
         if ($invoice->isMerged()) {
             return redirect()->route('services.invoices.show', $invoice)->with('error', 'امکان ثبت پرداخت برای فاکتور ادغام شده وجود ندارد.');
         }
+
+        $lock = Cache::lock("services_invoice_payment_{$invoice->id}", 10);
+        if (!$lock->get()) {
+            return back()->with('error', 'درخواست ثبت پرداختی برای این فاکتور در حال پردازش است. لطفاً چند لحظه صبر کنید.');
+        }
+
+        try {
+            $invoice->refresh();
 
         $settings = Setting::pluck('value', 'key')->toArray();
         $servicesCurrency = strtolower($invoice->currency ?? $settings['currency'] ?? 'toman');
@@ -1179,6 +1202,9 @@ class InvoiceController extends Controller
         return redirect()
             ->route('services.invoices.show', $invoice)
             ->with('success', 'پرداخت با موفقیت ثبت شد.');
+        } finally {
+            optional($lock)->release();
+        }
     }
 
     public function cancelPayment(Request $request, Invoice $invoice, Payment $payment)
@@ -1524,46 +1550,57 @@ class InvoiceController extends Controller
     {
         $this->authorize('convertToInvoice', $invoice);
 
-        if ($invoice->invoice_number) {
-            return back()->with('error', 'این پیش‌فاکتور قبلاً به فاکتور تبدیل شده است.');
+        $lock = Cache::lock("services_invoice_convert_{$invoice->id}", 10);
+        if (!$lock->get()) {
+            return back()->with('error', 'عملیات تبدیل این پیش‌فاکتور در حال پردازش است.');
         }
 
-        $settings = Setting::pluck('value', 'key')->toArray();
-        $invoiceAuto = !empty($settings['services_invoice_auto_numbering']) || !empty($settings['services_invoice_auto']);
-        $invoiceNumber = $request->invoice_number;
+        try {
+            $invoice->refresh();
 
-        if ($invoiceAuto && !$invoiceNumber) {
-            $invoiceNumber = Invoice::generateNumber();
-        } elseif (!$invoiceNumber) {
-            return back()->with('error', 'شماره فاکتور ارائه نشده و شماره‌گذاری خودکار نیز غیرفعال است.');
-        }
-
-        if (Invoice::where('invoice_number', $invoiceNumber)->exists()) {
-            return back()->with('error', 'این شماره فاکتور قبلاً استفاده شده است.');
-        }
-
-        $invoice->invoice_number = $invoiceNumber;
-        $invoice->converted_at = now();
-
-        $status = Status::where('attributes->converts_to_invoice', true)->first();
-        if ($status) {
-            $invoice->status_id = $status->id;
-        }
-
-        $invoice->save();
-        $this->syncOrdersForInvoice($invoice);
-
-        if (Module::has('Accounting') && Module::isEnabled('Accounting')) {
-            try {
-                app(AccountingEngine::class)->recordFromServiceInvoice($invoice);
-            } catch (Throwable $e) {
-                Log::error('[AccountingEngine] Error recording service invoice on convertToInvoice: ' . $e->getMessage());
+            if ($invoice->invoice_number) {
+                return back()->with('error', 'این پیش‌فاکتور قبلاً به فاکتور تبدیل شده است.');
             }
-        }
 
-        return redirect()
-            ->route('services.invoices.show', $invoice)
-            ->with('success', 'پیش‌فاکتور با موفقیت به فاکتور تبدیل شد.');
+            $settings = Setting::pluck('value', 'key')->toArray();
+            $invoiceAuto = !empty($settings['services_invoice_auto_numbering']) || !empty($settings['services_invoice_auto']);
+            $invoiceNumber = $request->invoice_number;
+
+            if ($invoiceAuto && !$invoiceNumber) {
+                $invoiceNumber = Invoice::generateNumber();
+            } elseif (!$invoiceNumber) {
+                return back()->with('error', 'شماره فاکتور ارائه نشده و شماره‌گذاری خودکار نیز غیرفعال است.');
+            }
+
+            if (Invoice::where('invoice_number', $invoiceNumber)->exists()) {
+                return back()->with('error', 'این شماره فاکتور قبلاً استفاده شده است.');
+            }
+
+            $invoice->invoice_number = $invoiceNumber;
+            $invoice->converted_at = now();
+
+            $status = Status::where('attributes->converts_to_invoice', true)->first();
+            if ($status) {
+                $invoice->status_id = $status->id;
+            }
+
+            $invoice->save();
+            $this->syncOrdersForInvoice($invoice);
+
+            if (Module::has('Accounting') && Module::isEnabled('Accounting')) {
+                try {
+                    app(AccountingEngine::class)->recordFromServiceInvoice($invoice);
+                } catch (Throwable $e) {
+                    Log::error('[AccountingEngine] Error recording service invoice on convertToInvoice: ' . $e->getMessage());
+                }
+            }
+
+            return redirect()
+                ->route('services.invoices.show', $invoice)
+                ->with('success', 'پیش‌فاکتور با موفقیت به فاکتور تبدیل شد.');
+        } finally {
+            optional($lock)->release();
+        }
     }
 
     private function buildItems(array $items, string $taxMode = 'invoice', bool $taxApplyCustomFields = false): array
