@@ -154,12 +154,13 @@
                     <tr>
                         <th class="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">#</th>
                         <th class="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">{{ $clientLabel }}</th>
+                        <th class="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300 text-center">تاریخ ایجاد</th>
                         <th class="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">{{ config('booking.labels.service', 'سرویس') }} / {{ config('booking.labels.provider') }}</th>
                         <th class="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">تاریخ نوبت</th>
                         <th class="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">ساعت نوبت</th>
                         <th class="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">مدت</th>
                         <th class="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300 text-center">وضعیت</th>
-                        <th class="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300 text-center">تاریخ ایجاد</th>
+                        <th class="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300 text-center">ایجاد کننده</th>
                         <th class="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300 text-left pl-6">عملیات</th>
                     </tr>
                     </thead>
@@ -205,6 +206,20 @@
                                 </div>
                             </td>
 
+                            <td class="px-4 py-3 text-center">
+                                @php
+                                    $createdTz = $a->created_at ? $a->created_at->copy()->timezone($tz) : null;
+                                    $createdJalali = $createdTz ? \Morilog\Jalali\Jalalian::fromDateTime($createdTz)->format('Y/m/d') : '—';
+                                    $createdTime = $createdTz ? $createdTz->format('H:i') : '';
+                                @endphp
+                                <div class="flex flex-col items-center justify-center">
+                                    <span class="text-gray-900 dark:text-gray-100 text-sm font-medium">{{ $createdJalali }}</span>
+                                    @if($createdTime)
+                                        <span class="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5" dir="ltr">{{ $createdTime }}</span>
+                                    @endif
+                                </div>
+                            </td>
+
                             <td class="px-4 py-3">
                                 <div class="flex flex-col">
                                     <span class="text-gray-800 dark:text-gray-200 text-sm">{{ optional($a->service)->name }}</span>
@@ -238,17 +253,16 @@
                             </td>
 
                             <td class="px-4 py-3 text-center">
-                                @php
-                                    $createdTz = $a->created_at ? $a->created_at->copy()->timezone($tz) : null;
-                                    $createdJalali = $createdTz ? \Morilog\Jalali\Jalalian::fromDateTime($createdTz)->format('Y/m/d') : '—';
-                                    $createdTime = $createdTz ? $createdTz->format('H:i') : '';
-                                @endphp
-                                <div class="flex flex-col items-center justify-center">
-                                    <span class="text-gray-900 dark:text-gray-100 text-sm font-medium">{{ $createdJalali }}</span>
-                                    @if($createdTime)
-                                        <span class="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5" dir="ltr">{{ $createdTime }}</span>
-                                    @endif
-                                </div>
+                                @if($a->creator)
+                                    <span class="font-medium text-gray-900 dark:text-gray-100 text-sm">{{ $a->creator->name }}</span>
+                                @elseif($a->created_by_type === \Modules\Booking\Entities\Appointment::CREATED_BY_CLIENT_ONLINE)
+                                    <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+                                        <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"/></svg>
+                                        رزرو آنلاین
+                                    </span>
+                                @else
+                                    <span class="text-gray-400 dark:text-gray-500 text-xs">سیستم</span>
+                                @endif
                             </td>
 
                             <td class="px-4 py-3 text-left">
@@ -259,7 +273,7 @@
                                     </a>
                                     @can('booking.appointments.edit')
                                         <a href="{{ route('user.booking.appointments.edit', $a) }}"
-                                           class="px-3 py-1.5 text-xs rounded-lg bg-indigo-50 text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-500/10 dark:text-indigo-300 dark:hover:bg-indigo-500/20 transition">
+                                            class="px-3 py-1.5 text-xs rounded-lg bg-indigo-50 text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-500/10 dark:text-indigo-300 dark:hover:bg-indigo-500/20 transition">
                                             ویرایش
                                         </a>
                                     @endcan
@@ -268,7 +282,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="9" class="px-4 py-12 text-center text-gray-500 dark:text-gray-400">
+                            <td colspan="10" class="px-4 py-12 text-center text-gray-500 dark:text-gray-400">
                                 <div class="flex flex-col items-center justify-center gap-2">
                                     <svg class="w-10 h-10 text-gray-300 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
                                     <span>هیچ نوبتی یافت نشد.</span>
