@@ -9,6 +9,7 @@ use Modules\Services\App\Console\Commands\ServicesInstall;
 use Modules\Services\App\Console\Commands\ServicesUpdatePermissions;
 use Modules\Services\App\Http\Models\Invoice;
 use Modules\Services\App\Http\Models\Service;
+use Modules\Services\App\Http\Models\ServicePackage;
 use Modules\Services\App\Http\Models\Order;
 use Modules\Services\App\Observers\OrderObserver;
 use Modules\Services\App\Policies\InvoicePolicy;
@@ -28,6 +29,7 @@ class ServicesServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Gate::policy(Service::class, ServicePolicy::class);
+        Gate::policy(ServicePackage::class, ServicePolicy::class);
         Gate::policy(Invoice::class, InvoicePolicy::class);
         Gate::policy(Order::class, OrderPolicy::class);
 

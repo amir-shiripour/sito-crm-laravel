@@ -85,7 +85,7 @@
                     :class="selectedValues.includes('__all__')
                         ? 'bg-indigo-50 text-indigo-700 font-bold dark:bg-indigo-900/30 dark:text-indigo-300'
                         : 'text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-700/50'"
-                    @click="toggle('__all__'); $refs.searchInput.focus()"
+                    @click="toggle('__all__'); search = ''; $refs.searchInput.focus()"
                 >
                     <span x-text="allLabel"></span>
                     <span x-show="selectedValues.includes('__all__')" class="absolute inset-y-0 left-2 flex items-center text-indigo-600 dark:text-indigo-400">
@@ -104,7 +104,7 @@
             {{-- گزینه‌ها --}}
             <template x-for="option in filteredOptions" :key="option.value">
                 <li
-                    @click="toggle(option.value); $refs.searchInput.focus()"
+                    @click="toggle(option.value); search = ''; $refs.searchInput.focus()"
                     class="relative cursor-pointer select-none py-2 pl-9 pr-3 text-right text-xs rounded-lg transition-colors group"
                     :class="selectedValues.includes(option.value)
                         ? 'bg-indigo-50 text-indigo-700 font-medium dark:bg-indigo-900/30 dark:text-indigo-300'

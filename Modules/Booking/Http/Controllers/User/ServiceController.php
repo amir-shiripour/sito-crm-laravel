@@ -139,6 +139,7 @@ class ServiceController extends Controller
             'sort_order'  => ['nullable', 'integer', 'min:0'],
 
             'base_price'     => ['required', 'numeric', 'min:0'],
+            'base_price_mode'=> ['nullable', 'in:per_unit,fixed'],
             'discount_price' => ['nullable', 'numeric', 'min:0'],
             'discount_from'  => ['nullable', 'string'],
             'discount_to'    => ['nullable', 'string'],
@@ -168,6 +169,7 @@ class ServiceController extends Controller
             'appointment_form_id'   => ['nullable', 'integer', 'exists:booking_forms,id'],
             'provider_can_customize'=> ['nullable', 'boolean'],
             'custom_schedule_enabled' => ['nullable', 'boolean'],
+            'requires_tooth_selection'=> ['nullable', 'boolean'],
             'buffer_before_minutes' => ['nullable', 'integer', 'min:0', 'max:240'],
             'buffer_after_minutes'  => ['nullable', 'integer', 'min:0', 'max:240'],
             'provider_ids'          => ['nullable', 'array'],
@@ -180,6 +182,8 @@ class ServiceController extends Controller
         }
         $data['category_id'] = !empty($categoryIds) ? $categoryIds[0] : null;
         $data['sort_order'] = isset($data['sort_order']) ? (int) $data['sort_order'] : 0;
+        $data['base_price_mode'] = in_array($request->input('base_price_mode'), ['per_unit', 'fixed']) ? $request->input('base_price_mode') : 'per_unit';
+        $data['requires_tooth_selection'] = (bool) $request->input('requires_tooth_selection', true);
 
         // Provider اجازه تغییر این گزینه را ندارد
         if (! $isAdminUser) {
@@ -393,6 +397,7 @@ class ServiceController extends Controller
             'sort_order'  => ['nullable', 'integer', 'min:0'],
 
             'base_price'     => ['required', 'numeric', 'min:0'],
+            'base_price_mode'=> ['nullable', 'in:per_unit,fixed'],
             'discount_price' => ['nullable', 'numeric', 'min:0'],
             'discount_from'  => ['nullable', 'string'],
             'discount_to'    => ['nullable', 'string'],
@@ -421,6 +426,7 @@ class ServiceController extends Controller
 
             'appointment_form_id'   => ['nullable', 'integer', 'exists:booking_forms,id'],
             'custom_schedule_enabled' => ['nullable', 'boolean'],
+            'requires_tooth_selection'=> ['nullable', 'boolean'],
             'buffer_before_minutes' => ['nullable', 'integer', 'min:0', 'max:240'],
             'buffer_after_minutes'  => ['nullable', 'integer', 'min:0', 'max:240'],
         ];
@@ -442,6 +448,8 @@ class ServiceController extends Controller
         if (array_key_exists('sort_order', $data)) {
             $data['sort_order'] = isset($data['sort_order']) ? (int) $data['sort_order'] : 0;
         }
+        $data['base_price_mode'] = in_array($request->input('base_price_mode'), ['per_unit', 'fixed']) ? $request->input('base_price_mode') : 'per_unit';
+        $data['requires_tooth_selection'] = (bool) $request->input('requires_tooth_selection', true);
 
         $data['discount_from'] = $data['discount_from'] ?: null;
         $data['discount_to']   = $data['discount_to']   ?: null;
@@ -536,6 +544,7 @@ class ServiceController extends Controller
             'tabs.*.sections.*.brands.*.name' => ['nullable', 'string', 'max:255'],
             'tabs.*.sections.*.brands.*.price' => ['nullable', 'numeric', 'min:0'],
             'tabs.*.sections.*.brands.*.is_installment' => ['nullable', 'in:0,1,true,false'],
+            'tabs.*.sections.*.brands.*.brand_uuid' => ['nullable', 'string', 'max:64'],
         ]);
 
         $sanitizedTabs = [];
@@ -548,10 +557,13 @@ class ServiceController extends Controller
 
                 foreach ($section['brands'] ?? [] as $brand) {
                     if (!empty($brand['name']) || isset($brand['price'])) {
+                        $brandUuid = !empty($brand['brand_uuid']) ? trim($brand['brand_uuid']) : (string) \Illuminate\Support\Str::uuid();
                         $brands[] = [
                             'name'  => $brand['name'] ?? '',
                             'price' => $brand['price'] !== null ? (float)$brand['price'] : 0,
-                            'is_installment' => isset($brand['is_installment']) ? (bool)$brand['is_installment'] : false,                        ];
+                            'is_installment' => isset($brand['is_installment']) ? (bool)$brand['is_installment'] : false,
+                            'brand_uuid' => $brandUuid,
+                        ];
                     }
                 }
 

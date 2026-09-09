@@ -266,6 +266,7 @@ class SettingsController extends Controller
         $settings->cure_tooth_numbering_system = $request->input('cure_tooth_numbering_system', 'universal');
         $settings->cure_auto_highlight_teeth = $request->boolean('cure_auto_highlight_teeth');
         $settings->cure_show_tooth_filter = $request->boolean('cure_show_tooth_filter');
+        $settings->cure_dental_chart_enabled = $request->boolean('cure_dental_chart_enabled');
 
         $cureAllowedCategories = $request->input('cure_allowed_categories', []);
         if (is_array($cureAllowedCategories)) {

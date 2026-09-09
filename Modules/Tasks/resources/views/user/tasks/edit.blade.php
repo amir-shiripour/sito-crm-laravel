@@ -41,6 +41,8 @@
                         }
                     }
 
+                    this.search = '';
+
                     if (this.name) {
                         this.$dispatch(this.name + '-changed', this.selectedValues);
                     }

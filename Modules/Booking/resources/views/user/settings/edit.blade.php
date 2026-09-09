@@ -1041,6 +1041,20 @@
                         </div>
                         <div class="p-6 space-y-5">
                             <div>
+                                <label class="{{ $labelClass }}">فعال‌سازی نقشه دندانی در طرح درمان</label>
+                                <div class="relative">
+                                    <select name="cure_dental_chart_enabled" class="{{ $selectClass }}">
+                                        <option value="1" @selected((int)old('cure_dental_chart_enabled', $settings->cure_dental_chart_enabled ?? 1) === 1)>فعال (ویژه کلینیک‌های دندان‌پزشکی)</option>
+                                        <option value="0" @selected((int)old('cure_dental_chart_enabled', $settings->cure_dental_chart_enabled ?? 1) === 0)>غیرفعال (ویژه سایر کلینیک‌ها / بدون نقشه دندان)</option>
+                                    </select>
+                                    <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center px-3 text-gray-500">
+                                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+                                    </div>
+                                </div>
+                                <p class="text-[11px] text-gray-400 mt-2">در صورت غیرفعال بودن، چارت دندان در طرح درمان مخفی شده و ثبت خدمات به صورت عمومی انجام می‌شود.</p>
+                            </div>
+
+                            <div>
                                 <label class="{{ $labelClass }}">سیستم شماره‌گذاری</label>
                                 <div class="relative">
                                     <select name="cure_tooth_numbering_system" class="{{ $selectClass }}">

@@ -304,13 +304,17 @@
                 });
             });
 
-            function getBrandKey(serviceId, tabTitle, sectionTitle, brandName) {
+            function getBrandKey(serviceId, tabTitle, sectionTitle, brandName, brandUuid = null) {
+                if (brandUuid) return `uuid__${String(brandUuid).trim()}`;
                 const clean = (val) => String(val || '').trim().replace(/\s+/g, ' ');
                 return `${clean(serviceId)}__${clean(tabTitle)}__${clean(sectionTitle)}__${clean(brandName)}`;
             }
 
-            function isBrandSelected(item, key) {
-                return item.brand_configs && item.brand_configs[key] && item.brand_configs[key].active;
+            function isBrandSelected(item, key, fallbackKey = null) {
+                if (!item.brand_configs) return false;
+                if (item.brand_configs[key] && item.brand_configs[key].active) return true;
+                if (fallbackKey && item.brand_configs[fallbackKey] && item.brand_configs[fallbackKey].active) return true;
+                return false;
             }
 
             function syncBrandConfig(card, index) {
@@ -671,8 +675,9 @@
 
                                 let brandsHtml = '';
                                 validBrands.forEach(brand => {
-                                    const key = getBrandKey(service.id, tab.title, section.title, brand.name);
-                                    const isChecked = isBrandSelected(item, key);
+                                    const key = getBrandKey(service.id, tab.title, section.title, brand.name, brand.brand_uuid);
+                                    const legacyKey = getBrandKey(service.id, tab.title, section.title, brand.name);
+                                    const isChecked = isBrandSelected(item, key, legacyKey);
                                     if (isChecked) checkedBrands++;
                                     totalBrands++;
 
@@ -692,7 +697,7 @@
                                 </div>`;
                                 });
 
-                                const allChecked = validBrands.every(b => isBrandSelected(item, getBrandKey(service.id, tab.title, section.title, b.name)));
+                                const allChecked = validBrands.every(b => isBrandSelected(item, getBrandKey(service.id, tab.title, section.title, b.name, b.brand_uuid), getBrandKey(service.id, tab.title, section.title, b.name)));
                                 sectionsHtml += `
                             <div class="border border-gray-100 dark:border-gray-700 rounded-xl overflow-hidden mb-2 last:mb-0">
                                 <div class="px-3 py-2 bg-gray-50/70 dark:bg-gray-900/20 flex items-center justify-between">
