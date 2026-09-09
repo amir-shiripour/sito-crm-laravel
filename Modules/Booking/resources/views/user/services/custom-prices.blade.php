@@ -684,6 +684,9 @@
 
                                     <template x-for="(brand, bIdx) in section.brands" :key="bIdx">
                                         <div class="brand-row">
+                                            <input type="hidden"
+                                                   :name="`tabs[${tIdx}][sections][${sIdx}][brands][${bIdx}][brand_uuid]`"
+                                                   :value="brand.brand_uuid" />
                                             <input type="text"
                                                    x-model="brand.name"
                                                    :name="`tabs[${tIdx}][sections][${sIdx}][brands][${bIdx}][name]`"
@@ -794,6 +797,13 @@
     </div>
 
     <script>
+        function generateUuid() {
+            if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+                return crypto.randomUUID();
+            }
+            return 'bu_' + Date.now().toString(36) + '_' + Math.random().toString(36).substr(2, 9);
+        }
+
         function customPricesApp(initialTabs) {
             return {
                 tabs: Array.isArray(initialTabs)
@@ -806,7 +816,8 @@
                                     ? s.brands.map(b => ({
                                         name: b.name ?? '',
                                         price: b.price ? String(b.price) : '',
-                                        is_installment: !!b.is_installment
+                                        is_installment: !!b.is_installment,
+                                        brand_uuid: b.brand_uuid || generateUuid()
                                     }))
                                     : []
                             }))
@@ -867,48 +878,49 @@
                         switch (this.modalType) {
                             case 'دو گزینه‌ای دارد یا ندارد':
                                 defaultBrands = [
-                                    { name: 'دارد', price: '', is_installment: false },
-                                    { name: 'ندارد', price: '', is_installment: false }
+                                    { name: 'دارد', price: '', is_installment: false, brand_uuid: generateUuid() },
+                                    { name: 'ندارد', price: '', is_installment: false, brand_uuid: generateUuid() }
                                 ];
                                 break;
                             case 'به ازای هر واحد':
-                                defaultBrands = [{ name: '۱', price: '', is_installment: false }];
+                                defaultBrands = [{ name: '۱', price: '', is_installment: false, brand_uuid: generateUuid() }];
                                 break;
                             case 'به ازای هر دندان':
                                 defaultBrands = Array.from({length: 7}, (_, i) => ({
                                     name: String(i + 1),
                                     price: '',
-                                    is_installment: false
+                                    is_installment: false,
+                                    brand_uuid: generateUuid()
                                 }));
                                 break;
                             case 'به ازای هر فک':
                                 defaultBrands = [
-                                    { name: 'نیم فک بالا', price: '', is_installment: false },
-                                    { name: 'نیم فک پایین', price: '', is_installment: false },
-                                    { name: 'هر دو فک', price: '', is_installment: false }
+                                    { name: 'نیم فک بالا', price: '', is_installment: false, brand_uuid: generateUuid() },
+                                    { name: 'نیم فک پایین', price: '', is_installment: false, brand_uuid: generateUuid() },
+                                    { name: 'هر دو فک', price: '', is_installment: false, brand_uuid: generateUuid() }
                                 ];
                                 break;
                             case 'به ازای کوادران':
                                 defaultBrands = [
-                                    { name: 'بالا راست', price: '', is_installment: false },
-                                    { name: 'بالا چپ', price: '', is_installment: false },
-                                    { name: 'پایین راست', price: '', is_installment: false },
-                                    { name: 'پایین چپ', price: '', is_installment: false }
+                                    { name: 'بالا راست', price: '', is_installment: false, brand_uuid: generateUuid() },
+                                    { name: 'بالا چپ', price: '', is_installment: false, brand_uuid: generateUuid() },
+                                    { name: 'پایین راست', price: '', is_installment: false, brand_uuid: generateUuid() },
+                                    { name: 'پایین چپ', price: '', is_installment: false, brand_uuid: generateUuid() }
                                 ];
                                 break;
                             case 'چند گزینه‌ای به ازای دندان':
                             case 'چند گزینه‌ای':
                                 defaultBrands = [
-                                    { name: '', price: '', is_installment: false },
-                                    { name: '', price: '', is_installment: false },
-                                    { name: '', price: '', is_installment: false }
+                                    { name: '', price: '', is_installment: false, brand_uuid: generateUuid() },
+                                    { name: '', price: '', is_installment: false, brand_uuid: generateUuid() },
+                                    { name: '', price: '', is_installment: false, brand_uuid: generateUuid() }
                                 ];
                                 break;
                             case 'به ازای واحد دندان‌دار':
-                                defaultBrands = [{ name: 'هر واحد دندان‌دار', price: '', is_installment: false }];
+                                defaultBrands = [{ name: 'هر واحد دندان‌دار', price: '', is_installment: false, brand_uuid: generateUuid() }];
                                 break;
                             default:
-                                defaultBrands = [{ name: '', price: '', is_installment: false }];
+                                defaultBrands = [{ name: '', price: '', is_installment: false, brand_uuid: generateUuid() }];
                         }
                         tab.sections.push({title: this.modalTitle, type: this.modalType, brands: defaultBrands});
                     }
@@ -919,7 +931,7 @@
                     this.tabs[tIdx].sections.splice(sIdx, 1);
                 },
                 addBrand(tIdx, sIdx) {
-                    this.tabs[tIdx].sections[sIdx].brands.push({name: '', price: '', is_installment: false});
+                    this.tabs[tIdx].sections[sIdx].brands.push({name: '', price: '', is_installment: false, brand_uuid: generateUuid()});
                 },
                 removeBrand(tIdx, sIdx, bIdx) {
                     this.tabs[tIdx].sections[sIdx].brands.splice(bIdx, 1);

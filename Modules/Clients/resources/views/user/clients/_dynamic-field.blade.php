@@ -372,6 +372,7 @@
         } else {
             this.selectedValues.push(value);
         }
+        this.search = '';
     },
     remove(value) {
         this.selectedValues = this.selectedValues.filter(v => v !== String(value));

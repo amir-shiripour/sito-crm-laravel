@@ -124,6 +124,7 @@
                             } else {
                                 this.selected.push(id);
                             }
+                            this.search = '';
                         },
                         isSelected(id) {
                             return this.selected.includes(id.toString());
@@ -183,7 +184,7 @@
                             <!-- Options List -->
                             <div class="flex flex-col gap-1">
                                 <template x-for="user in filteredUsers" :key="user.id">
-                                    <div @click.stop="toggle(user.id)" 
+                                    <div @click.stop="toggle(user.id); search = '';" 
                                          class="flex items-center justify-between p-2 rounded-xl text-sm transition-colors cursor-pointer text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-900/30"
                                          :class="isSelected(user.id) ? 'bg-indigo-50/50 dark:bg-indigo-950/20 text-indigo-700 dark:text-indigo-400 font-semibold' : ''">
                                         <div class="flex flex-col">

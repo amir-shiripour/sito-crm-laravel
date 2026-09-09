@@ -445,6 +445,20 @@
             </div>
 
             <div>
+                <label class="{{ $labelClass }}">نوع اعمال قیمت پایه در طرح درمان</label>
+                <div class="relative">
+                    <select name="base_price_mode" class="{{ $selectClass }}">
+                        <option value="per_unit" @selected(old('base_price_mode', $service->base_price_mode ?? 'per_unit') === 'per_unit')>به ازای هر واحد / دندان (ضرب در تعداد)</option>
+                        <option value="fixed" @selected(old('base_price_mode', $service->base_price_mode ?? 'per_unit') === 'fixed')>مبلغ ثابت برای کل خدمت (بدون ضرب در تعداد)</option>
+                    </select>
+                    <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-slate-500">
+                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                    </div>
+                </div>
+                @error('base_price_mode')<div class="{{ $errorClass }}"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg> {{ $message }}</div>@enderror
+            </div>
+
+            <div>
                 <label class="{{ $labelClass }}">قیمت تخفیفی ({{ $currencyLabel }})</label>
                 <div class="relative">
                     <input type="text" name="discount_price" class="{{ $inputClass }} price-format pl-16" value="{{ $effectiveDiscountPrice }}">
@@ -593,6 +607,19 @@
                         <span>در صورت فعال بودن، در مرحله انتخاب اسلات می‌توانید ساعت شروع و پایان را دستی وارد کنید.</span>
                     </div>
                     @error('custom_schedule_enabled')<div class="{{ $errorClass }}"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg> {{ $message }}</div>@enderror
+                </div>
+
+                {{-- نیاز به انتخاب دندان در طرح درمان --}}
+                <div class="pt-4 border-t border-slate-200 dark:border-slate-700/50">
+                    <label class="relative inline-flex items-center cursor-pointer gap-3">
+                        <input type="checkbox" name="requires_tooth_selection" value="1" class="sr-only peer" @checked(old('requires_tooth_selection', $service->requires_tooth_selection ?? true))>
+                        <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-500/20 dark:peer-focus:ring-indigo-800/30 rounded-full peer dark:bg-slate-700 peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:right-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-indigo-600"></div>
+                        <span class="text-sm font-medium text-slate-700 dark:text-slate-200">الزام به انتخاب دندان روی چارت در طرح درمان</span>
+                    </label>
+                    <div class="{{ $helpClass }} mt-2">
+                        <svg class="w-4 h-4 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        <span>برای خدمات عمومی (مثل ویزیت، OPG یا بیهوشی) این گزینه را غیرفعال کنید تا بدون انتخاب دندان به طرح درمان اضافه شود.</span>
+                    </div>
                 </div>
             @endif
 

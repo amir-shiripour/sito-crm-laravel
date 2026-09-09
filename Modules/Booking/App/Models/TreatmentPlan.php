@@ -278,9 +278,13 @@ class TreatmentPlan extends Model
         if (is_array($this->items)) {
             foreach ($this->items as $item) {
                 $itemPrice = (float) ($item['price'] ?? 0);
+                $basePriceVal = (float) ($item['base_price'] ?? 0);
                 $qty = (float) ($item['quantity'] ?? 1);
+                if ($itemPrice == 0 && $basePriceVal > 0) {
+                    $itemPrice = $basePriceVal / max(1, $qty);
+                }
                 $discountVal = (float) ($item['discount'] ?? 0);
-                $itemTotal = (float) ($item['total'] ?? (($itemPrice * $qty) - $discountVal));
+                $itemTotal = (float) ($item['total'] ?? (($itemPrice * $qty) + ($itemPrice != $basePriceVal ? $basePriceVal : 0) - $discountVal));
 
                 $price = $formatMoney($itemPrice);
                 $qtyFormatted = $qty;

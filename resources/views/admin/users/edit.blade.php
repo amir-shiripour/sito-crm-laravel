@@ -84,6 +84,7 @@
                     } else {
                         this.selectedValues.push(value);
                     }
+                    this.search = '';
                 },
 
                 clearValue(value) {
@@ -380,7 +381,7 @@
                                             type="button"
                                             class="relative w-full cursor-pointer select-none py-2 pl-3 pr-9 text-right text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                                             :class="isSelected(opt.value) ? 'font-medium text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-700/50' : 'text-gray-700 dark:text-gray-200'"
-                                            @click.prevent="toggle(opt.value); $refs.roleSearchInput.focus()"
+                                            @click.prevent="toggle(opt.value); search = ''; $refs.roleSearchInput.focus()"
                                         >
                                             <span x-text="opt.label"></span>
                                             <span x-show="isSelected(opt.value)" class="absolute inset-y-0 left-0 flex items-center pl-3 text-indigo-600 dark:text-indigo-400">

@@ -89,6 +89,7 @@
                     } else {
                         this.selectedValues.push(value);
                     }
+                    this.search = '';
                 },
 
                 remove(value) {

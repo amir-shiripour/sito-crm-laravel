@@ -5,6 +5,7 @@ namespace Modules\Services\App\Providers;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
 use Modules\Services\App\Http\Models\Invoice;
 use Modules\Services\App\Http\Models\Service;
+use Modules\Services\App\Http\Models\ServicePackage;
 use Modules\Services\App\Http\Models\Order;
 use Modules\Services\App\Policies\InvoicePolicy;
 use Modules\Services\App\Policies\ServicePolicy;
@@ -20,6 +21,7 @@ class AuthServiceProvider extends ServiceProvider
     protected $policies = [
         Invoice::class => InvoicePolicy::class,
         Service::class => ServicePolicy::class,
+        ServicePackage::class => ServicePolicy::class,
         Order::class => OrderPolicy::class,
     ];
 

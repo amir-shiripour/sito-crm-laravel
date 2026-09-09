@@ -15,7 +15,7 @@ class ServicePolicy
         return $u->can('services.view') || $u->can('services.manage');
     }
 
-    public function view(User $u, Service $s): bool
+    public function view(User $u, mixed $s = null): bool
     {
         return $u->can('services.view') || $u->can('services.manage');
     }
@@ -25,17 +25,17 @@ class ServicePolicy
         return $u->can('services.create') || $u->can('services.manage');
     }
 
-    public function update(User $u, Service $s): bool
+    public function update(User $u, mixed $s = null): bool
     {
         return $u->can('services.edit') || $u->can('services.manage');
     }
 
-    public function delete(User $u, Service $s): bool
+    public function delete(User $u, mixed $s = null): bool
     {
         return $u->can('services.delete') || $u->can('services.manage');
     }
 
-    public function duplicate(User $u, Service $s): bool
+    public function duplicate(User $u, mixed $s = null): bool
     {
         return $u->can('services.duplicate') || $u->can('services.manage');
     }

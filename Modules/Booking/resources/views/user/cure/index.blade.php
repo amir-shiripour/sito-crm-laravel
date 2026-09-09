@@ -849,7 +849,7 @@
             <div class="xl:col-span-2 space-y-5">
 
                 {{-- Dental chart --}}
-                <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
+                <div x-show="settings.cure.dental_chart_enabled" class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
                     <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-gray-700 flex-wrap gap-3">
                         <div class="flex items-center gap-2">
                             <span class="w-2 h-5 rounded-full bg-rose-500 shrink-0"></span>
@@ -938,24 +938,36 @@
                                 <p class="text-sm font-bold text-indigo-800 dark:text-indigo-200" x-text="selectedService?.name ?? ''"></p>
                                 <p class="text-[11px] text-indigo-500 dark:text-indigo-400 mt-0.5" x-text="selectedService?.category_name ?? ''"></p>
                             </div>
-                            <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-indigo-100 dark:bg-indigo-900/30">
-                                <span class="text-sm font-black text-indigo-600 dark:text-indigo-400" x-text="selectedTeeth.length"></span>
-                                <span class="text-[10px] text-indigo-500 dark:text-indigo-400">دندان</span>
-                            </div>
+                            <template x-if="requiresToothForService(selectedService)">
+                                <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-indigo-100 dark:bg-indigo-900/30">
+                                    <span class="text-sm font-black text-indigo-600 dark:text-indigo-400" x-text="selectedTeeth.length"></span>
+                                    <span class="text-[10px] text-indigo-500 dark:text-indigo-400">دندان</span>
+                                </div>
+                            </template>
+                            <template x-if="!requiresToothForService(selectedService)">
+                                <div class="flex items-center gap-2 px-3 py-1 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/50">
+                                    <span class="text-xs font-bold text-emerald-700 dark:text-emerald-300">تعداد واحد:</span>
+                                    <input type="number" min="1" max="1000" x-model.number="generalQuantity" class="w-16 px-2 py-0.5 rounded-lg border border-emerald-300 dark:border-emerald-700 bg-white dark:bg-gray-800 text-center font-black text-sm text-emerald-700 dark:text-emerald-300 focus:outline-none">
+                                </div>
+                            </template>
                         </div>
                         <div class="flex items-center gap-3">
-                            <span class="text-xs font-medium text-gray-500 dark:text-gray-400">تنظیم دقیق هر دندان</span>
-                            <label class="relative inline-flex items-center cursor-pointer">
-                                <input type="checkbox" x-model="showPerToothDetail" class="sr-only peer">
-                                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 dark:peer-focus:ring-indigo-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left:0.5 after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-gradient-to-r peer-checked:from-violet-500 peer-checked:to-indigo-600"></div>
-                            </label>
+                            <template x-if="requiresToothForService(selectedService)">
+                                <div class="flex items-center gap-3">
+                                    <span class="text-xs font-medium text-gray-500 dark:text-gray-400">تنظیم دقیق هر دندان</span>
+                                    <label class="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" x-model="showPerToothDetail" class="sr-only peer">
+                                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 dark:peer-focus:ring-indigo-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left:0.5 after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-gradient-to-r peer-checked:from-violet-500 peer-checked:to-indigo-600"></div>
+                                    </label>
+                                </div>
+                            </template>
                         </div>
                         <button @click="cancelAssignment()" class="w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-all">
                             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
                         </button>
                     </div>
 
-                    <template x-if="selectedTeeth.length === 0">
+                    <template x-if="requiresToothForService(selectedService) && selectedTeeth.length === 0">
                         <div class="flex items-center gap-2 px-5 py-3 bg-rose-50 dark:bg-rose-900/10 border-b border-rose-100 dark:border-rose-900/20">
                             <svg class="w-4 h-4 text-rose-500 shrink-0" fill="currentColor" viewBox="0 0 20 20">
                                 <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
@@ -965,7 +977,7 @@
                     </template>
 
                     {{-- Batch apply --}}
-                    <template x-if="selectedTeeth.length > 0 && (selectedService?.custom_prices?.tabs?.length > 0)">
+                    <template x-if="(!requiresToothForService(selectedService) || selectedTeeth.length > 0) && (selectedService?.custom_prices?.tabs?.length > 0)">
                         <div class="border-b border-gray-100 dark:border-gray-700/50 bg-gray-50/30 dark:bg-gray-800/20">
                             <div class="relative overflow-hidden px-5 py-4 bg-white dark:bg-gray-800 flex items-center gap-4 border-b border-gray-100 dark:border-gray-700/50">
                                 <div class="absolute -right-6 -top-6 w-28 h-28 bg-indigo-400/15 dark:bg-indigo-500/10 rounded-full blur-2xl pointer-events-none"></div>
@@ -1045,12 +1057,14 @@
                                 </template>
                                 <div class="flex items-center justify-between bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-4">
                                     <div>
-                                        <span class="text-sm text-gray-500">مبلغ کل اعمال شده:</span>
-                                        <span class="block text-xl font-black text-emerald-600" x-text="formatPrice((batchManualPrice * selectedTeeth.length) + (selectedService ? Number(selectedService.base_price) || 0 : 0))"></span>
+                                        <span class="text-sm text-gray-500">مبلغ کل این افزودنی:</span>
+                                        <span class="block text-xl font-black text-emerald-600" x-text="formatPrice(assignmentTotal)"></span>
                                     </div>
-                                    <button @click="applyBatchToAll()" class="flex items-center gap-2 px-8 py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-500 text-white font-bold">
-                                        اعمال روی همه دندان‌ها
-                                    </button>
+                                    <template x-if="requiresToothForService(selectedService)">
+                                        <button @click="applyBatchToAll()" class="flex items-center gap-2 px-8 py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-500 text-white font-bold">
+                                            اعمال روی همه دندان‌ها
+                                        </button>
+                                    </template>
                                 </div>
                             </div>
                         </div>
@@ -1173,7 +1187,7 @@
                     </template>
 
                     {{-- WARRANTY / GUARANTEE SECTION --}}
-                    <template x-if="selectedTeeth.length > 0 && settings.cure.warranty_enabled">
+                    <template x-if="(!requiresToothForService(selectedService) || selectedTeeth.length > 0) && settings.cure.warranty_enabled">
                         <div>
                             <div class="step-label">
                                 <svg class="w-3 h-3 text-teal-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -2735,6 +2749,7 @@ snapshots: existingPlan?.snapshots || [],
                 perToothAssignments: [],
                 batchBrandSelections: {},
                 batchManualPrice: 0,
+                generalQuantity: 1,
                 warrantyMonths: 0,
                 warrantyText: '',
 
@@ -2759,6 +2774,7 @@ snapshots: existingPlan?.snapshots || [],
                         tooth_numbering_system:   appSettings?.cure_tooth_numbering_system ?? 'universal',
                         auto_highlight_teeth:     Number(appSettings?.cure_auto_highlight_teeth) === 1,
                         show_tooth_filter:        Number(appSettings?.cure_show_tooth_filter) === 1,
+                        dental_chart_enabled:     appSettings?.cure_dental_chart_enabled !== undefined ? (Number(appSettings.cure_dental_chart_enabled) === 1) : true,
                     },
                     rounding_mode: String(appSettings?.installment_rounding_mode ?? 'none').trim().toLowerCase(),
                     rounding_factor: Number(appSettings?.installment_rounding_factor) || 0,
@@ -2794,7 +2810,8 @@ snapshots: existingPlan?.snapshots || [],
                 manualChequeCalMonth: null,
                 manualChequeCalDays: [],
 
-                makeBrandKey(serviceId, tabTitle, sectionTitle, brandName) {
+                makeBrandKey(serviceId, tabTitle, sectionTitle, brandName, brandUuid = null) {
+                    if (brandUuid) return `uuid__${String(brandUuid).trim()}`;
                     const clean = (v) => String(v || '').trim();
                     return `${clean(serviceId)}__${clean(tabTitle)}__${clean(sectionTitle)}__${clean(brandName)}`;
                 },
@@ -2802,6 +2819,17 @@ snapshots: existingPlan?.snapshots || [],
                 isSingleChoiceType(type) {
                     const singleTypes = ['دو گزینه‌ای دارد یا ندارد', 'به ازای هر واحد', 'به ازای هر دندان', 'به ازای هر فک', 'به ازای کوادران', 'به ازای واحد دندان‌دار'];
                     return singleTypes.includes(type);
+                },
+
+                isGroupPriceType(type) {
+                    const groupTypes = ['به ازای هر فک', 'به ازای کوادران', 'به ازای واحد دندان‌دار'];
+                    return groupTypes.includes(type);
+                },
+
+                requiresToothForService(service) {
+                    if (!service) return true;
+                    if (!this.settings.cure.dental_chart_enabled) return false;
+                    return service.requires_tooth_selection !== false;
                 },
 
                 getEffectiveTierForBrand(plan, brandKey, amount) {
@@ -2961,7 +2989,7 @@ snapshots: existingPlan?.snapshots || [],
 
                         (item.brands || []).forEach(b => {
                             if (!b.is_installment) return;
-                            const key = this.makeBrandKey(item.service.id, b.tabTitle || '', b.sectionTitle || '', b.name);
+                            const key = this.makeBrandKey(item.service.id, b.tabTitle || '', b.sectionTitle || '', b.name, b.brand_uuid);
                             result.push({
                                 key,
                                 serviceId: item.service.id,
@@ -2969,6 +2997,7 @@ snapshots: existingPlan?.snapshots || [],
                                 tabTitle: b.tabTitle || '',
                                 sectionTitle: b.sectionTitle || '',
                                 brandName: b.name,
+                                brand_uuid: b.brand_uuid || null,
                                 price: Number(b.price) || 0,
                                 quantity: item.quantity,
                             });
@@ -3112,6 +3141,10 @@ snapshots: existingPlan?.snapshots || [],
                     return [svc?.name, tabTitle, sectionTitle].filter(Boolean).join(' › ');
                 },
 
+                get discountRatio() {
+                    return this.subtotal > 0 ? (this.finalPayable / this.subtotal) : 1;
+                },
+
                 get installmentBrandBreakdown() {
                     if (!this.selectedInstallmentOption) return [];
                     const opt = this.selectedInstallmentOption;
@@ -3124,7 +3157,8 @@ snapshots: existingPlan?.snapshots || [],
 
                     if (eligibleKeys.size > 0) {
                         planBrands.filter(b => eligibleKeys.has(b.key)).forEach(b => {
-                            const totalPrice = this.getEffectivePrice(opt, b.serviceId, b.tabTitle, b.sectionTitle, b.brandName, b.price) * b.quantity;
+                            const rawPrice = this.getEffectivePrice(opt, b.serviceId, b.tabTitle, b.sectionTitle, b.brandName, b.price) * b.quantity;
+                            const totalPrice = rawPrice * this.discountRatio;
                             if (!resultMap[b.brandName]) {
                                 const tier = this.getEffectiveTierForBrand(opt, b.key, this.finalPayable);
                                 const downPct = tier && tier.down_payments_map && tier.down_payments_map[String(selectedMonths)] !== undefined
@@ -3460,9 +3494,9 @@ snapshots: existingPlan?.snapshots || [],
                         const itemCoveredBrands = [], itemUncoveredBrands = [];
 
                         (item.brands || []).forEach(b => {
-                            const key = this.makeBrandKey(item.service.id, b.tabTitle || '', b.sectionTitle || '', b.name);
+                            const key = this.makeBrandKey(item.service.id, b.tabTitle || '', b.sectionTitle || '', b.name, b.brand_uuid);
                             const isCovered = this.selectedPlanCoveredKeys.has(key);
-                            const totalPrice = (Number(b.price) || 0) * item.quantity;
+                            const totalPrice = (Number(b.price) || 0) * item.quantity * this.discountRatio;
                             if (isCovered) {
                                 itemHasCoveredBrand = true;
                                 itemCoveredBrands.push({ brandName: b.name, price: totalPrice });
@@ -3471,13 +3505,13 @@ snapshots: existingPlan?.snapshots || [],
                             }
                         });
 
-                        const itemBasePrice = (Number(item.base_price) || 0);
+                        const itemBasePrice = (Number(item.base_price) || 0) * this.discountRatio;
 
                         if (itemBasePrice > 0) {
                             if (itemHasCoveredBrand) itemCoveredBrands.push({ brandName: 'قیمت پایه', price: itemBasePrice });
                             else itemUncoveredBrands.push({ brandName: 'قیمت پایه', price: itemBasePrice });
                         } else if (!item.brands || item.brands.length === 0) {
-                            const totalPrice = (Number(item.price) || 0) * item.quantity;
+                            const totalPrice = (Number(item.price) || 0) * item.quantity * this.discountRatio;
                             if (totalPrice > 0) itemUncoveredBrands.push({ brandName: item.service.name, price: totalPrice });
                         }
 
@@ -3496,7 +3530,8 @@ snapshots: existingPlan?.snapshots || [],
                             }
                             coveredMap[b.brandName].price += b.price;
                             const remPrincipal = coveredMap[b.brandName].price - (coveredMap[b.brandName].price * (coveredMap[b.brandName].downPaymentPercent / 100));
-                            coveredMap[b.brandName].feeValue = Math.round(remPrincipal * (coveredMap[b.brandName].feePercent / 100));                        });
+                            coveredMap[b.brandName].feeValue = Math.round(remPrincipal * (coveredMap[b.brandName].feePercent / 100));
+                        });
                         itemUncoveredBrands.forEach(b => {
                             if (!uncoveredMap[b.brandName]) uncoveredMap[b.brandName] = { brandName: b.brandName, price: 0 };
                             uncoveredMap[b.brandName].price += b.price;
@@ -4348,23 +4383,29 @@ snapshots: existingPlan?.snapshots || [],
 
                 recalculateToothPrice(aIdx) {
                     const a = this.perToothAssignments[aIdx];
-                    const basePrice = Number(this.selectedService?.base_price || 0);
                     let total = 0;
                     a.brands = [];
+                    const selectedTeethCount = Math.max(1, this.selectedTeeth.length);
                     (this.selectedService?.custom_prices?.tabs ?? []).forEach((tab, tIdx) => {
                         const sections = tab.sections || [];
                         sections.forEach((section, sIdx) => {
                             const sel = ((a.brandSelections?.[`${tIdx}-${sIdx}`]) || []).map(Number);
+                            const isGroup = this.isGroupPriceType(section?.type);
                             sel.forEach(bIdx => {
                                 const brand = section.brands?.[bIdx];
                                 if (brand) {
-                                    if (brand.price) total += Number(brand.price);
+                                    const fullBrandPrice = Number(brand.price) || 0;
+                                    const toothBrandPrice = isGroup ? (fullBrandPrice / selectedTeethCount) : fullBrandPrice;
+                                    total += toothBrandPrice;
                                     a.brands.push({
                                         name: brand.name,
-                                        price: Number(brand.price) || 0,
+                                        price: toothBrandPrice,
+                                        raw_price: fullBrandPrice,
                                         sectionTitle: section.title,
                                         tabTitle: tab.title,
                                         is_installment: !!brand.is_installment,
+                                        is_group: isGroup,
+                                        brand_uuid: brand.brand_uuid || null,
                                     });
                                 }
                             });
@@ -4401,7 +4442,6 @@ snapshots: existingPlan?.snapshots || [],
                 },
 
                 recalculateBatchPrice() {
-                    const basePrice = Number(this.selectedService?.base_price || 0);
                     let total = 0;
                     (this.selectedService?.custom_prices?.tabs ?? []).forEach((tab, tIdx) => {
                         const sections = tab.sections || [];
@@ -4440,7 +4480,24 @@ snapshots: existingPlan?.snapshots || [],
 
                 get assignmentTotal() {
                     const basePrice = Number(this.selectedService?.base_price || 0);
-                    return this.perToothAssignments.reduce((s, a) => s + (Number(a.price) || 0), 0) + basePrice;
+                    const basePriceMode = this.selectedService?.base_price_mode || 'per_unit';
+                    const isFixed = basePriceMode === 'fixed';
+                    if (!this.requiresToothForService(this.selectedService)) {
+                        const qty = Math.max(1, Number(this.generalQuantity) || 1);
+                        let unitBrandSum = 0;
+                        (this.selectedService?.custom_prices?.tabs ?? []).forEach((tab, tIdx) => {
+                            (tab.sections ?? []).forEach((section, sIdx) => {
+                                const sel = (this.batchBrandSelections[`${tIdx}-${sIdx}`] || []).map(Number);
+                                sel.forEach(bIdx => {
+                                    const brand = section.brands?.[bIdx];
+                                    if (brand) unitBrandSum += Number(brand.price || 0);
+                                });
+                            });
+                        });
+                        return isFixed ? (unitBrandSum * qty + basePrice) : ((unitBrandSum + basePrice) * qty);
+                    }
+                    const teethSum = this.perToothAssignments.reduce((s, a) => s + (Number(a.price) || 0), 0);
+                    return isFixed ? (teethSum + basePrice) : (teethSum + (basePrice * this.selectedTeeth.length));
                 },
                 get groupedPlanItems() {
                     const groups = {};
@@ -4451,21 +4508,20 @@ snapshots: existingPlan?.snapshots || [],
                     return Object.values(groups);
                 },
 
-                get canAdd() { return !this.isReadOnly && this.selectedService !== null && this.selectedTeeth.length > 0; },
+                get canAdd() {
+                    if (this.isReadOnly || this.selectedService === null) return false;
+                    const needsTeeth = this.requiresToothForService(this.selectedService);
+                    if (needsTeeth) {
+                        return this.selectedTeeth.length > 0;
+                    }
+                    return Number(this.generalQuantity) > 0;
+                },
 
                 addToPlan() {
                     if (this.isReadOnly || !this.canAdd) return;
                     const minMonths = Number(this.settings.cure.default_warranty_months) || 0;
                     if (this.settings.cure.warranty_enabled && this.warrantyMonths > 0 && this.warrantyMonths < minMonths) {
                         showToast(`حداقل مدت ضمانت ${minMonths} ماه است`, 'error'); return;
-                    }
-
-                    for (const grp of this.assignmentGroups) {
-                        for (const t of grp.teeth) {
-                            const curBrands = grp.brands?.map(b => b.name).sort().join(',') || '';
-                            const dup = this.planItems.some(item => item.id !== this.editingItemId && item.service.id === this.selectedService.id && item.teeth.includes(t) && (item.brands?.map(b => b.name).sort().join(',') || '') === curBrands);
-                            if (dup) { showToast(`دندان ${this.getToothLabel(t).num} قبلاً با همین مشخصات ثبت شده است`, 'error'); return; }
-                        }
                     }
 
                     if (this.editingItemId) {
@@ -4478,27 +4534,78 @@ snapshots: existingPlan?.snapshots || [],
                         warrantyStr = this.warrantyText || (this.warrantyMonths > 0 ? `${this.warrantyMonths} ماه ضمانت` : null);
                     }
 
-                    const hasTabs = this.selectedService?.custom_prices?.tabs?.length > 0;
-                    const fallbackPrice = hasTabs ? 0 : (Number(this.selectedService?.base_price) || 0);
                     const basePrice = Number(this.selectedService?.base_price) || 0;
+                    const basePriceMode = this.selectedService?.base_price_mode || 'per_unit';
+                    const isFixedBase = basePriceMode === 'fixed';
+                    const needsTeeth = this.requiresToothForService(this.selectedService);
 
-                    this.assignmentGroups.forEach((grp, idx) => {
+                    if (needsTeeth) {
+                        for (const grp of this.assignmentGroups) {
+                            for (const t of grp.teeth) {
+                                const curBrands = grp.brands?.map(b => b.name).sort().join(',') || '';
+                                const dup = this.planItems.some(item => item.service.id === this.selectedService.id && item.teeth.includes(t) && (item.brands?.map(b => b.name).sort().join(',') || '') === curBrands);
+                                if (dup) { showToast(`دندان ${this.getToothLabel(t).num} قبلاً با همین مشخصات ثبت شده است`, 'error'); return; }
+                            }
+                        }
+
+                        this.assignmentGroups.forEach((grp, idx) => {
+                            const itemPrice = isFixedBase ? Number(grp.price) : (Number(grp.price) + basePrice);
+                            const itemBasePrice = (isFixedBase && idx === 0) ? basePrice : 0;
+                            this.planItems.push({
+                                id: Date.now() + Math.random(),
+                                teeth: [...grp.teeth],
+                                service: { id: this.selectedService.id, name: this.selectedService.name, base_price_mode: basePriceMode },
+                                brands: grp.brands?.length > 0 ? grp.brands.map(b => ({ ...b })) : null,
+                                brandSelections: JSON.parse(JSON.stringify(grp.brandSelections || {})),
+                                price: itemPrice,
+                                base_price: itemBasePrice,
+                                quantity: grp.teeth.length,
+                                warranty: warrantyStr,
+                                item_uuid: Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15),
+                            });
+                        });
+                    } else {
+                        const qty = Math.max(1, Number(this.generalQuantity) || 1);
+                        let unitBrandSum = 0;
+                        const selectedBrands = [];
+                        (this.selectedService?.custom_prices?.tabs ?? []).forEach((tab, tIdx) => {
+                            (tab.sections ?? []).forEach((section, sIdx) => {
+                                const sel = (this.batchBrandSelections[`${tIdx}-${sIdx}`] || []).map(Number);
+                                sel.forEach(bIdx => {
+                                    const brand = section.brands?.[bIdx];
+                                    if (brand) {
+                                        unitBrandSum += Number(brand.price || 0);
+                                        selectedBrands.push({
+                                            name: brand.name,
+                                            price: Number(brand.price) || 0,
+                                            sectionTitle: section.title,
+                                            tabTitle: tab.title,
+                                            is_installment: !!brand.is_installment,
+                                            brand_uuid: brand.brand_uuid || null,
+                                        });
+                                    }
+                                });
+                            });
+                        });
+                        const itemPrice = isFixedBase ? unitBrandSum : (unitBrandSum + basePrice);
+                        const itemBasePrice = isFixedBase ? basePrice : 0;
                         this.planItems.push({
                             id: Date.now() + Math.random(),
-                            teeth: [...grp.teeth],
-                            service: { id: this.selectedService.id, name: this.selectedService.name },
-                            brands: grp.brands?.length > 0 ? grp.brands.map(b => ({ ...b })) : null,
-                            brandSelections: JSON.parse(JSON.stringify(grp.brandSelections || {})),
-                            price: Number(grp.price) || 0,
-                            base_price: idx===0 ? basePrice :0,
-                            quantity: grp.teeth.length,
+                            teeth: [],
+                            service: { id: this.selectedService.id, name: this.selectedService.name, base_price_mode: basePriceMode },
+                            brands: selectedBrands.length > 0 ? selectedBrands : null,
+                            brandSelections: JSON.parse(JSON.stringify(this.batchBrandSelections || {})),
+                            price: itemPrice,
+                            base_price: itemBasePrice,
+                            quantity: qty,
                             warranty: warrantyStr,
                             item_uuid: Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15),
                         });
-                    });
+                    }
 
                     this.selectedTeeth = [];
                     this.preset = 'none';
+                    this.generalQuantity = 1;
                     this.cancelAssignment();
                     this.draftSaved = false;
                     showToast('به طرح درمان اضافه شد', 'success');
@@ -4578,13 +4685,13 @@ snapshots: existingPlan?.snapshots || [],
                     let isAnyBrandEligible = false;
 
                     (item.brands || []).forEach(b => {
-                        const key = this.makeBrandKey(item.service.id, b.tabTitle || '', b.sectionTitle || '', b.name);
+                        const key = this.makeBrandKey(item.service.id, b.tabTitle || '', b.sectionTitle || '', b.name, b.brand_uuid);
                         const isEligible = coveredKeys.has(key);
-                        const brandPrice = Number(b.price || 0) * (item.quantity || 1);
+                        const brandPrice = Number(b.price || 0) * (item.quantity || 1) * this.discountRatio;
 
                         if (isEligible) {
                             isAnyBrandEligible = true;
-                            const effPrice = this.getEffectivePrice(opt, item.service.id, b.tabTitle, b.sectionTitle, b.name, b.price) * (item.quantity || 1);
+                            const effPrice = this.getEffectivePrice(opt, item.service.id, b.tabTitle, b.sectionTitle, b.name, b.price) * (item.quantity || 1) * this.discountRatio;
                             const tier = this.getEffectiveTierForBrand(opt, key, this.finalPayable);
                             const effDownPct = tier?.down_payments_map?.[String(selectedMonths)] !== undefined
                                 ? Number(tier.down_payments_map[String(selectedMonths)])
@@ -4598,7 +4705,7 @@ snapshots: existingPlan?.snapshots || [],
                         }
                     });
 
-                    const basePrice = Number(item.base_price || 0);
+                    const basePrice = Number(item.base_price || 0) * this.discountRatio;
                     if (basePrice > 0) {
                         if (isAnyBrandEligible) {
                             const baseKey = this.makeBrandKey(item.service.id, '', '', 'قیمت پایه');

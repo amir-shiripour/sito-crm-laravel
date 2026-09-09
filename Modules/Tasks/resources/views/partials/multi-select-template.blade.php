@@ -75,7 +75,7 @@
                     type="button"
                     class="relative w-full cursor-pointer select-none py-2.5 pl-3 pr-9 text-right text-sm hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors"
                     :class="isSelected('__all__') ? 'text-emerald-700 dark:text-emerald-400 font-semibold bg-emerald-50/50 dark:bg-emerald-900/10' : 'text-gray-700 dark:text-gray-200'"
-                    @click.prevent="toggle('__all__'); $refs.searchInput.focus()"
+                    @click.prevent="toggle('__all__'); search = ''; $refs.searchInput.focus()"
                 >
                     <span x-text="allLabel"></span>
                     <span x-show="isSelected('__all__')" class="absolute inset-y-0 left-0 flex items-center pl-3 text-emerald-600 dark:text-emerald-400">
@@ -97,7 +97,7 @@
                     type="button"
                     class="relative w-full cursor-pointer select-none py-2 pl-3 pr-9 text-right text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                     :class="isSelected(opt.value) ? 'font-medium text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-700/50' : 'text-gray-700 dark:text-gray-200'"
-                    @click.prevent="toggle(opt.value); $refs.searchInput.focus()"
+                    @click.prevent="toggle(opt.value); search = ''; $refs.searchInput.focus()"
                 >
                     <span x-text="opt.label"></span>
                     <span x-show="isSelected(opt.value)" class="absolute inset-y-0 left-0 flex items-center pl-3 text-emerald-600 dark:text-emerald-400">
