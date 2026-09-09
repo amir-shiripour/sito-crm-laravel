@@ -104,18 +104,22 @@
         {{-- Project Master Header Card --}}
         <div
             class="bg-white dark:bg-gray-800/60 rounded-3xl border border-gray-100 dark:border-gray-700/50 shadow-sm overflow-hidden backdrop-blur-xl">
-            <div class="p-6 sm:p-8 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+            <div class="p-6 sm:p-8 flex flex-col lg:flex-row lg:items-center justify-between gap-6 sm:gap-8">
                 {{-- Title & Info --}}
-                <div class="flex items-start gap-5">
+                <div class="flex items-center gap-5 sm:gap-6">
                     <div
-                        class="shrink-0 flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-indigo-700 text-white shadow-lg shadow-indigo-500/30">
-                        <svg class="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                        class="shrink-0 flex items-center justify-center w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-indigo-700 text-white shadow-lg shadow-indigo-500/30">
+                        <svg class="w-7 h-7 sm:w-8 sm:h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
                             <path stroke-linecap="round" stroke-linejoin="round"
                                   d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z"/>
                         </svg>
                     </div>
-                    <div class="min-w-0">
-                        <div class="flex flex-wrap items-center gap-3 mb-2">
+                    <div class="min-w-0 space-y-3">
+                        {{-- Row 1: Title & Badges in one line --}}
+                        <div class="flex flex-wrap items-center gap-3 sm:gap-4">
+                            <h1 class="text-2xl sm:text-3xl font-black text-gray-900 dark:text-white tracking-tight">
+                                {{ $project->title }}
+                            </h1>
                             <span
                                 class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold font-mono border bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-500/10 dark:text-indigo-400 dark:border-indigo-500/20">
                                 {{ $project->code }}
@@ -131,7 +135,7 @@
                             @endif
                             @if($project->client)
                                 <a href="{{ route('user.clients.show', $project->client_id) }}"
-                                   class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-gray-100 hover:bg-gray-200 dark:bg-gray-700/60 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600 transition-colors">
+                                   class="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-bold bg-gray-100 hover:bg-gray-200 dark:bg-gray-700/60 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600 transition-colors">
                                     <svg class="w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24"
                                          stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round"
@@ -143,32 +147,29 @@
                             @endif
                         </div>
 
-                        <div class="flex items-center gap-3">
-                            <h1 class="text-2xl sm:text-4xl font-black text-gray-900 dark:text-white tracking-tight">
-                                {{ $project->title }}
-                            </h1>
-                        </div>
-
+                        {{-- Row 2: Dates with proper spacing --}}
                         <div
-                            class="flex flex-wrap items-center gap-x-6 gap-y-2 mt-3 text-sm text-gray-500 dark:text-gray-400">
+                            class="flex flex-wrap items-center gap-x-8 gap-y-2 text-sm text-gray-500 dark:text-gray-400">
                             @if($project->start_date)
-                                <span class="flex items-center gap-1.5">
-                                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                                         stroke-width="1.5">
+                                <span class="inline-flex items-center gap-2">
+                                    <svg class="w-4 h-4 text-indigo-500 dark:text-indigo-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                         stroke-width="1.8">
                                         <path stroke-linecap="round" stroke-linejoin="round"
                                               d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
                                     </svg>
-                                    تاریخ شروع: {{ $formatJalali($project->start_date) }}
+                                    <span>تاریخ شروع:</span>
+                                    <span class="font-bold text-gray-700 dark:text-gray-300">{{ $formatJalali($project->start_date) }}</span>
                                 </span>
                             @endif
                             @if($project->end_date)
-                                <span class="flex items-center gap-1.5">
-                                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                                         stroke-width="1.5">
+                                <span class="inline-flex items-center gap-2">
+                                    <svg class="w-4 h-4 text-indigo-500 dark:text-indigo-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                         stroke-width="1.8">
                                         <path stroke-linecap="round" stroke-linejoin="round"
                                               d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
                                     </svg>
-                                    تاریخ سررسید: {{ $formatJalali($project->end_date) }}
+                                    <span>تاریخ سررسید:</span>
+                                    <span class="font-bold text-gray-700 dark:text-gray-300">{{ $formatJalali($project->end_date) }}</span>
                                 </span>
                             @endif
                         </div>
@@ -176,7 +177,7 @@
                 </div>
 
                 {{-- Status & Actions --}}
-                <div class="flex flex-wrap items-center gap-2.5 shrink-0">
+                <div class="flex flex-wrap items-center gap-3 sm:gap-3.5 shrink-0">
                     {{-- Status Badge (Automated) --}}
                     @if($project->status)
                         <span id="project-status-badge"
@@ -191,7 +192,7 @@
                     {{-- Edit Button --}}
                     @can('update', $project)
                         <a href="{{ route('projects.projects.edit', $project) }}"
-                           class="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-amber-50 text-amber-700 hover:bg-amber-100 dark:bg-amber-500/10 dark:text-amber-400 dark:hover:bg-amber-500/20 text-xs font-bold transition-all shadow-xs">
+                           class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-50 text-amber-700 hover:bg-amber-100 dark:bg-amber-500/10 dark:text-amber-400 dark:hover:bg-amber-500/20 text-xs font-bold transition-all shadow-xs">
                             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                 <path stroke-linecap="round" stroke-linejoin="round"
                                       d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
@@ -207,7 +208,7 @@
                                   onsubmit="return confirm('آیا از لغو این پروژه اطمینان دارید؟ وضعیت پروژه به «لغو شده» تغییر خواهد کرد.')">
                                 @csrf
                                 <button type="submit"
-                                        class="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-red-50 text-red-700 hover:bg-red-100 dark:bg-red-500/10 dark:text-red-400 dark:hover:bg-red-500/20 text-xs font-bold transition-all shadow-xs cursor-pointer"
+                                        class="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-red-50 text-red-700 hover:bg-red-100 dark:bg-red-500/10 dark:text-red-400 dark:hover:bg-red-500/20 text-xs font-bold transition-all shadow-xs cursor-pointer"
                                         title="لغو پروژه">
                                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"
                                          stroke-width="2">
@@ -222,7 +223,7 @@
 
                     {{-- Back Button --}}
                     <a href="{{ route('projects.projects.index') }}"
-                       class="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 text-xs font-bold transition-all shadow-xs">
+                       class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 text-xs font-bold transition-all shadow-xs">
                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
                         </svg>
@@ -234,7 +235,7 @@
 
         {{-- Tab Navigation Bar --}}
         <div
-            class="flex gap-2 bg-white dark:bg-gray-800/80 p-2 rounded-3xl border border-gray-100 dark:border-gray-700/50 shadow-sm overflow-x-auto">
+            class="flex gap-2.5 bg-white dark:bg-gray-800/80 p-2.5 rounded-3xl border border-gray-100 dark:border-gray-700/50 shadow-sm overflow-x-auto">
             {{-- Tab 1: Dashboard --}}
             <button @click="setTab('dashboard')"
                     :class="currentTab === 'dashboard' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/30' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700/50'"

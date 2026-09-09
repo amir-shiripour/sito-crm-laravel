@@ -259,7 +259,7 @@
                     هنوز گروهی برای رسم نمودار گانت ثبت نشده است.
                 </div>
                 <div id="gantt-canvas-container" class="w-full h-full {{ $project->tasks->isEmpty() ? 'hidden' : '' }}">
-                    <canvas id="ganttChartCanvas"></canvas>
+                    <canvas id="ganttChartCanvas" dir="rtl" style="direction: rtl;"></canvas>
                 </div>
             </div>
         </div>
@@ -286,7 +286,7 @@
                 </div>
                 <div id="kanban-canvas-container"
                      class="w-full h-full {{ $project->tasks->isEmpty() ? 'hidden' : '' }}">
-                    <canvas id="kanbanChartCanvas"></canvas>
+                    <canvas id="kanbanChartCanvas" dir="rtl" style="direction: rtl;"></canvas>
                 </div>
             </div>
         </div>
@@ -421,6 +421,18 @@
             const textColor = isDark ? '#9ca3af' : '#4b5563';
             const textHeadColor = isDark ? '#e5e7eb' : '#1f2937';
             const gridColor = isDark ? '#374151' : '#f3f4f6';
+            const chartFontFamily = "'IRANYekanX', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+
+            if (window.Chart) {
+                window.Chart.defaults.font.family = chartFontFamily;
+                if (window.Chart.defaults.plugins && window.Chart.defaults.plugins.tooltip) {
+                    window.Chart.defaults.plugins.tooltip.rtl = true;
+                    window.Chart.defaults.plugins.tooltip.textDirection = 'rtl';
+                    window.Chart.defaults.plugins.tooltip.titleAlign = 'left';
+                    window.Chart.defaults.plugins.tooltip.bodyAlign = 'right';
+                    window.Chart.defaults.plugins.tooltip.footerAlign = 'left';
+                }
+            }
 
             // 1. Gantt Chart
             const ctxGantt = document.getElementById('ganttChartCanvas');
@@ -466,7 +478,7 @@
                                 max: maxDay + 2,
                                 grid: {color: gridColor},
                                 ticks: {
-                                    font: {family: 'inherit', size: 11},
+                                    font: {family: chartFontFamily, size: 11},
                                     color: textColor,
                                     callback: function (v) {
                                         return 'روز ' + toFaDigits(v);
@@ -475,14 +487,14 @@
                                 title: {
                                     display: true,
                                     text: 'محور زمان (تعداد روز از شروع پروژه)',
-                                    font: {family: 'inherit', size: 11, weight: 'bold'},
+                                    font: {family: chartFontFamily, size: 11, weight: 'bold'},
                                     color: textColor
                                 }
                             },
                             y: {
                                 grid: {display: false},
                                 ticks: {
-                                    font: {family: 'inherit', size: 11, weight: 'bold'},
+                                    font: {family: chartFontFamily, size: 11, weight: 'bold'},
                                     color: textHeadColor
                                 }
                             }
@@ -492,6 +504,9 @@
                             tooltip: {
                                 rtl: true,
                                 textDirection: 'rtl',
+                                titleAlign: 'left',
+                                bodyAlign: 'right',
+                                footerAlign: 'left',
                                 backgroundColor: isDark ? 'rgba(17, 24, 39, 0.95)' : 'rgba(255, 255, 255, 0.98)',
                                 titleColor: isDark ? '#f9fafb' : '#111827',
                                 bodyColor: isDark ? '#d1d5db' : '#374151',
@@ -500,25 +515,25 @@
                                 padding: 12,
                                 boxPadding: 6,
                                 cornerRadius: 14,
-                                titleFont: {family: 'inherit', size: 12, weight: 'bold'},
-                                bodyFont: {family: 'inherit', size: 11, lineHeight: 1.6},
+                                titleFont: {family: chartFontFamily, size: 12, weight: 'bold'},
+                                bodyFont: {family: chartFontFamily, size: 11, lineHeight: 1.6},
                                 displayColors: false,
                                 callbacks: {
                                     title: function (items) {
                                         const idx = items[0].dataIndex;
                                         const gData = window.currentGanttData || [];
-                                        return gData[idx] ? gData[idx].title : '';
+                                        return '\u200F' + (gData[idx] ? gData[idx].title : '') + '\u200F';
                                     },
                                     label: function (context) {
                                         const gData = window.currentGanttData || [];
                                         const task = gData[context.dataIndex];
                                         if (!task) return '';
                                         return [
-                                            '• وضعیت: ' + task.status_name,
-                                            '• مسئول کار: ' + task.assignee_name,
-                                            '• تاریخ شروع: ' + task.start_date_str,
-                                            '• مهلت تحویل: ' + task.due_date_str,
-                                            '• درصد پیشرفت: ' + toFaDigits(task.progress) + '٪'
+                                            '\u200F• وضعیت: ' + task.status_name + '\u200F',
+                                            '\u200F• مسئول کار: ' + (task.assignee_name || 'تعیین نشده') + '\u200F',
+                                            '\u200F• تاریخ شروع: ' + task.start_date_str + '\u200F',
+                                            '\u200F• مهلت تحویل: ' + task.due_date_str + '\u200F',
+                                            '\u200F• درصد پیشرفت: ' + toFaDigits(task.progress) + ' درصد\u200F'
                                         ];
                                     }
                                 }
@@ -567,7 +582,7 @@
                                 ticks: {
                                     stepSize: 1,
                                     precision: 0,
-                                    font: {family: 'inherit', size: 11},
+                                    font: {family: chartFontFamily, size: 11},
                                     color: textColor,
                                     callback: function (v) {
                                         return toFaDigits(v) + ' کار';
@@ -578,7 +593,7 @@
                             x: {
                                 grid: {display: false},
                                 ticks: {
-                                    font: {family: 'inherit', size: 11, weight: 'bold'},
+                                    font: {family: chartFontFamily, size: 11, weight: 'bold'},
                                     color: textHeadColor
                                 }
                             }
@@ -588,6 +603,9 @@
                             tooltip: {
                                 rtl: true,
                                 textDirection: 'rtl',
+                                titleAlign: 'left',
+                                bodyAlign: 'right',
+                                footerAlign: 'left',
                                 backgroundColor: isDark ? 'rgba(17, 24, 39, 0.95)' : 'rgba(255, 255, 255, 0.98)',
                                 titleColor: isDark ? '#f9fafb' : '#111827',
                                 bodyColor: isDark ? '#d1d5db' : '#374151',
@@ -596,14 +614,14 @@
                                 padding: 12,
                                 boxPadding: 6,
                                 cornerRadius: 14,
-                                titleFont: {family: 'inherit', size: 12, weight: 'bold'},
-                                bodyFont: {family: 'inherit', size: 11, lineHeight: 1.6},
+                                titleFont: {family: chartFontFamily, size: 12, weight: 'bold'},
+                                bodyFont: {family: chartFontFamily, size: 11, lineHeight: 1.6},
                                 displayColors: false,
                                 callbacks: {
                                     title: function (items) {
                                         const idx = items[0].dataIndex;
                                         const kData = window.currentKanbanData || [];
-                                        return 'مرحله: ' + (kData[idx] ? kData[idx].name : '');
+                                        return '\u200Fمرحله: ' + (kData[idx] ? kData[idx].name : '') + '\u200F';
                                     },
                                     label: function (context) {
                                         const kData = window.currentKanbanData || [];
@@ -612,9 +630,9 @@
                                         const total = kData.reduce((acc, c) => acc + c.count, 0);
                                         const pct = total > 0 ? Math.round((col.count / total) * 100) : 0;
                                         return [
-                                            '• تعداد وظایف در این ستون: ' + toFaDigits(col.count) + ' کار',
-                                            '• سهم از کل کارها: ' + toFaDigits(pct) + '٪',
-                                            '• چک‌لیست‌های تکمیل شده: ' + toFaDigits(col.done_checklist) + ' از ' + toFaDigits(col.total_checklist)
+                                            '\u200F• تعداد وظایف در این ستون: ' + toFaDigits(col.count) + ' کار\u200F',
+                                            '\u200F• سهم از کل کارها: ' + toFaDigits(pct) + ' درصد\u200F',
+                                            '\u200F• چک‌لیست‌های تکمیل شده: ' + toFaDigits(col.done_checklist || 0) + ' از ' + toFaDigits(col.total_checklist || 0) + '\u200F'
                                         ];
                                     }
                                 }

@@ -45,6 +45,8 @@ class ProjectsMessageController extends Controller
             'attachments' => $request->attachments,
         ]);
 
+        cache()->put('project_last_message_id_' . $project->id, $message->id, 3600);
+
         ProjectActivity::log(
             projectId: $project->id,
             action: 'message.sent',
@@ -73,10 +75,14 @@ class ProjectsMessageController extends Controller
 
         $messageId = $message->id;
         $message->delete();
+
         $deletedKey = 'project_deleted_messages_' . $project->id;
         $existing = cache()->get($deletedKey, []);
-        $existing[] = $messageId;
-        cache()->put($deletedKey, $existing, 300); // 5 minutes
+        $existing[] = ['id' => $messageId, 'time' => time()];
+        if (count($existing) > 50) {
+            $existing = array_slice($existing, -50);
+        }
+        cache()->put($deletedKey, $existing, 600); // 10 minutes
 
         ProjectActivity::log(
             projectId: $project->id,
@@ -105,11 +111,14 @@ class ProjectsMessageController extends Controller
             'pinned_by' => !$isCurrentlyPinned ? auth()->id() : null,
         ]);
 
-        // Notify SSE clients about pin update
+        // Notify clients about pin update
         $pinKey = 'project_pin_updates_' . $project->id;
         $existing = cache()->get($pinKey, []);
-        $existing[] = ['id' => $message->id, 'is_pinned' => !$isCurrentlyPinned];
-        cache()->put($pinKey, $existing, 300);
+        $existing[] = ['id' => $message->id, 'is_pinned' => !$isCurrentlyPinned, 'time' => time()];
+        if (count($existing) > 50) {
+            $existing = array_slice($existing, -50);
+        }
+        cache()->put($pinKey, $existing, 600); // 10 minutes
 
         $pinAction = !$isCurrentlyPinned ? 'message.pinned' : 'message.unpinned';
         ProjectActivity::log(

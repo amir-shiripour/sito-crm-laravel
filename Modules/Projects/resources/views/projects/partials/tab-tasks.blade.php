@@ -1969,47 +1969,62 @@
                 .catch(err => console.error('Item comment delete error:', err));
         }
 
-        // --- Real-time SSE Connection for Tasks and Checklists ---
-        let tasksSse = null;
+        // --- Real-time Polling for Tasks and Checklists ---
         let lastTasksEventId = Math.floor(Date.now());
+        let tasksPollTimer = null;
+        let isTasksPolling = false;
 
-        function connectTasksSse() {
-            if (tasksSse) {
-                tasksSse.close();
-                tasksSse = null;
+        async function pollTasksEvents() {
+            if (document.hidden) return; // Pause when tab is in background
+            if (isTasksPolling) return; // Prevent concurrent requests
+
+            isTasksPolling = true;
+            try {
+                const url = `{{ url('user/projects/projects') }}/{{ $project->id }}/tasks/sse?last_event_id=${lastTasksEventId}`;
+                const response = await fetch(url, {
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.events && Array.isArray(data.events)) {
+                        for (const event of data.events) {
+                            if (event.id && event.id > lastTasksEventId) {
+                                lastTasksEventId = event.id;
+                            }
+                            handleTaskEvent(event);
+                        }
+                    }
+                    if (data.last_event_id && data.last_event_id > lastTasksEventId) {
+                        lastTasksEventId = data.last_event_id;
+                    }
+                }
+            } catch (err) {
+                // Silently handle transient network issues
+            } finally {
+                isTasksPolling = false;
             }
+        }
 
-            const url = `{{ url('user/projects/projects') }}/{{ $project->id }}/tasks/sse?last_event_id=${lastTasksEventId}`;
-            tasksSse = new EventSource(url);
+        function handleTaskEvent(event) {
+            try {
+                const data = event.data || {};
+                if (data.event_id && data.event_id > lastTasksEventId) {
+                    lastTasksEventId = data.event_id;
+                }
 
-            tasksSse.addEventListener('checklist_item_toggled', (e) => {
-                try {
-                    const data = JSON.parse(e.data);
-                    if (data.event_id) lastTasksEventId = data.event_id;
+                if (event.type === 'checklist_item_toggled') {
                     if (window.applyChecklistToggleUpdate) {
                         window.applyChecklistToggleUpdate(data, false);
                     }
-                } catch (err) {
-                    console.error('SSE checklist_item_toggled error:', err);
-                }
-            });
-
-            tasksSse.addEventListener('checklist_updated', (e) => {
-                try {
-                    const data = JSON.parse(e.data);
-                    if (data.event_id) lastTasksEventId = data.event_id;
+                } else if (event.type === 'checklist_updated') {
                     if (!data.is_my_action) {
                         window.location.reload();
                     }
-                } catch (err) {
-                    console.error('SSE checklist_updated error:', err);
-                }
-            });
-
-            tasksSse.addEventListener('task_updated', (e) => {
-                try {
-                    const data = JSON.parse(e.data);
-                    if (data.event_id) lastTasksEventId = data.event_id;
+                } else if (event.type === 'task_updated') {
                     if (!data.is_my_action) {
                         if (data.action === 'status_updated' && data.task_id && data.task_status) {
                             if (window.updateTaskStatusBadgeAndIcon) {
@@ -2022,31 +2037,28 @@
                             window.location.reload();
                         }
                     }
-                } catch (err) {
-                    console.error('SSE task_updated error:', err);
                 }
-            });
-
-            tasksSse.addEventListener('reconnect', (e) => {
-                try {
-                    const data = JSON.parse(e.data);
-                    if (data.last_event_id) lastTasksEventId = data.last_event_id;
-                } catch (err) {
-                }
-                if (tasksSse) tasksSse.close();
-                setTimeout(connectTasksSse, 500);
-            });
-
-            tasksSse.onerror = () => {
-                if (tasksSse) tasksSse.close();
-                setTimeout(connectTasksSse, 3000);
-            };
+            } catch (err) {
+                console.error('Task event handling error:', err);
+            }
         }
 
+        function startTasksPolling() {
+            if (tasksPollTimer) clearInterval(tasksPollTimer);
+            tasksPollTimer = setInterval(pollTasksEvents, 3000);
+        }
+
+        // Pause polling when tab is inactive, resume immediately when active
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden) {
+                pollTasksEvents();
+            }
+        });
+
         if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', connectTasksSse);
+            document.addEventListener('DOMContentLoaded', startTasksPolling);
         } else {
-            connectTasksSse();
+            startTasksPolling();
         }
     </script>
 @endpush
