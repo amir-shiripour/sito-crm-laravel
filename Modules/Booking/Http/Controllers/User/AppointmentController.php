@@ -30,7 +30,7 @@ class AppointmentController extends Controller
         $user = $request->user();
 
         $query = Appointment::query()
-            ->with(['service', 'provider', 'client']);
+            ->with(['service', 'provider', 'client', 'creator.roles']);
 
         // Permission Scope
         if (! $this->isAdminUser($user) && ! $user->can('booking.appointments.view.all')) {

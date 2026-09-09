@@ -18,10 +18,8 @@ Route::prefix('settings')->middleware(['auth'])->group(function () {
     Route::get('/gapgpt-logs', [GapGPTLogController::class, 'index'])->name('settings.gapgpt-logs.index');
     Route::get('/gapgpt-logs/{log}', [GapGPTLogController::class, 'show'])->name('settings.gapgpt-logs.show');
 
-    // روت‌های درگاه پرداخت
+    // روت‌های درگاه پرداخت (تست ادمین)
     Route::post('/payment/request', [PaymentController::class, 'request'])->name('settings.payment.request');
-    Route::match(['get', 'post'], '/payment/verify/{gateway}', [PaymentController::class, 'verify'])->name('settings.payment.verify');
-    Route::get('/payment/redirect/behpardakht', [PaymentController::class, 'redirectBehpardakht'])->name('settings.payment.behpardakht.redirect');
 
     // روت‌های مدیریت کلیدهای API
     Route::post('/api-keys', [ApiKeyController::class, 'store'])->name('settings.api-keys.store');
@@ -65,4 +63,11 @@ Route::get('/external/docs/{token}', [ApiKeyController::class, 'docs'])->name('s
 Route::middleware(['web', 'auth'])->prefix('user')->name('user.')->group(function () {
     Route::get('/settings/payment', [UserPaymentSettingsController::class, 'edit'])->name('settings.payment');
     Route::post('/settings/payment', [UserPaymentSettingsController::class, 'update'])->name('settings.payment.update');
+});
+
+// روت‌های عمومی درگاه پرداخت (کالبک شاپرک و ریدایرکت بانک - قابل دسترس برای همه کاربران، کلاینت‌ها و مهمانان)
+Route::middleware(['web'])->group(function () {
+    Route::match(['get', 'post'], '/settings/payment/verify/{gateway}', [PaymentController::class, 'verify'])->name('settings.payment.verify');
+    Route::get('/settings/payment/redirect/behpardakht', [PaymentController::class, 'redirectBehpardakht'])->name('settings.payment.behpardakht.redirect');
+    Route::get('/payment/redirect/behpardakht', [PaymentController::class, 'redirectBehpardakht'])->name('payment.behpardakht.redirect');
 });

@@ -109,6 +109,11 @@ class Appointment extends Model
         return $this->belongsTo(Client::class, 'client_id');
     }
 
+    public function creator(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by_user_id');
+    }
+
     public function payments(): HasMany
     {
         return $this->hasMany(BookingPayment::class, 'appointment_id');

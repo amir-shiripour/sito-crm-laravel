@@ -328,7 +328,8 @@ class ClientPaymentController extends Controller
         if ($method === 'online') {
             try {
                 $paymentService = app(\Modules\Booking\Services\PaymentService::class);
-                $gateway = $request->input('sub_item'); // e.g. zarinpal, zibal
+                $gateway = $request->input('sub_item'); // e.g. zarinpal, zibal, behpardakht
+                session(['client_payment_return_url' => url()->previous()]);
                 $result = $paymentService->startGateway($payment, $gateway);
                 
                 $url = $result['payment_url'] ?? $result['url'] ?? null;

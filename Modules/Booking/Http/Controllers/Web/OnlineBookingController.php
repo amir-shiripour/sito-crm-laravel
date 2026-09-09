@@ -726,7 +726,13 @@ class OnlineBookingController extends Controller
     public function verifyPayment(Request $request, $gateway, BookingPayment $payment, AppointmentService $appointmentService, PaymentService $paymentService)
     {
         // کدهای پردازشی از کنترلر به سرویس منتقل شد تا کنترلر تمیز و قابل نگهداری باشد
-        $result = $paymentService->verifyGatewayPayment($payment, $gateway, $request->query(), $appointmentService);
+        $result = $paymentService->verifyGatewayPayment($payment, $gateway, $request->all(), $appointmentService);
+
+        // در صورتی که پرداخت از پنل پورتال کلاینت آغاز شده باشد، به صفحه مربوطه در پورتال برگردانده شود
+        $clientReturnUrl = session()->pull('client_payment_return_url');
+        if ($clientReturnUrl && filter_var($clientReturnUrl, FILTER_VALIDATE_URL)) {
+            return redirect()->to($clientReturnUrl)->with($result['success'] ? 'success' : 'error', $result['message']);
+        }
 
         if (!$result['valid']) {
             return redirect()->route('booking.public.index')->with('error', $result['message']);
