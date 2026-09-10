@@ -187,6 +187,9 @@ class ClientAppointmentController extends Controller
         if (($settingsMap['behpardakht_status'] ?? '') === 'active') {
             $onlineGateways[] = ['id' => 'behpardakht', 'label' => 'درگاه بهپرداخت ملت'];
         }
+        if (($settingsMap['sep_status'] ?? '') === 'active') {
+            $onlineGateways[] = ['id' => 'sep', 'label' => 'درگاه سامان کیش (سپ)'];
+        }
 
         // بررسی دوطرفه: ۱. فعال بودن در چک‌باکس‌های "روش‌های پرداخت فعال سیستم" ۲. فعال بودن وضعیت اختصاصی آن روش
         $availablePaymentMethods = [];

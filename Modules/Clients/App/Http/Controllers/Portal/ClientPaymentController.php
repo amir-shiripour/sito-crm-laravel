@@ -218,6 +218,9 @@ class ClientPaymentController extends Controller
             if (($settingsMap['behpardakht_status'] ?? '') === 'active') {
                 $onlineGateways[] = ['id' => 'behpardakht', 'label' => 'درگاه بهپرداخت ملت'];
             }
+            if (($settingsMap['sep_status'] ?? '') === 'active') {
+                $onlineGateways[] = ['id' => 'sep', 'label' => 'درگاه سامان کیش (سپ)'];
+            }
 
             $rawAccounts = is_string($settingsMap['bank_transfer_accounts'] ?? null) 
                 ? (json_decode($settingsMap['bank_transfer_accounts'], true) ?: []) 
@@ -368,6 +371,9 @@ class ClientPaymentController extends Controller
             }
             if (($settingsMap['behpardakht_status'] ?? '') === 'active') {
                 $onlineGateways[] = ['id' => 'behpardakht', 'label' => 'درگاه بهپرداخت ملت'];
+            }
+            if (($settingsMap['sep_status'] ?? '') === 'active') {
+                $onlineGateways[] = ['id' => 'sep', 'label' => 'درگاه سامان کیش (سپ)'];
             }
 
             $rawAccounts = is_string($settingsMap['bank_transfer_accounts'] ?? null) 
@@ -520,7 +526,8 @@ class ClientPaymentController extends Controller
         if ($method === 'online') {
             $hasActiveGateway = ($settingsMap['zarinpal_status'] ?? '') === 'active'
                 || ($settingsMap['zibal_status'] ?? '') === 'active'
-                || ($settingsMap['behpardakht_status'] ?? '') === 'active';
+                || ($settingsMap['behpardakht_status'] ?? '') === 'active'
+                || ($settingsMap['sep_status'] ?? '') === 'active';
             $isMethodValid = in_array('online', $activeMethods) && $hasActiveGateway;
         } elseif ($method === 'pos') {
             $isMethodValid = in_array('pos', $activeMethods) && ($settingsMap['pos_status'] ?? '') === 'active';

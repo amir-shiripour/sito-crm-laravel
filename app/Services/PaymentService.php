@@ -13,6 +13,7 @@ class PaymentService
     protected $terminalId;
     protected $username;
     protected $password;
+    protected $sepTerminalId;
     protected $sandbox;
     protected $callbackUrl;
     protected $currency;
@@ -47,6 +48,9 @@ class PaymentService
             $this->username = $settings['behpardakht_username'] ?? null;
             $this->password = $settings['behpardakht_password'] ?? null;
             $this->callbackUrl = route('settings.payment.verify', ['gateway' => 'behpardakht']);
+        } elseif ($this->gateway === 'sep' || $this->gateway === 'saman') {
+            $this->sepTerminalId = $settings['sep_terminal_id'] ?? null;
+            $this->callbackUrl = route('settings.payment.verify', ['gateway' => 'sep']);
         }
         // Add other gateways here
     }
@@ -73,6 +77,8 @@ class PaymentService
             return $this->requestZibalPayment($amount, $description, $userEmail, $userMobile, $callbackUrl);
         } elseif ($this->gateway === 'behpardakht') {
             return $this->requestBehpardakhtPayment($amount, $description, $userEmail, $userMobile, $callbackUrl);
+        } elseif ($this->gateway === 'sep' || $this->gateway === 'saman') {
+            return $this->requestSepPayment($amount, $description, $userEmail, $userMobile, $callbackUrl);
         }
         // Add other gateways here
         throw new \Exception("Payment gateway {$this->gateway} not supported.");
@@ -90,6 +96,8 @@ class PaymentService
             return $this->requestZibalPaymentRaw($amountInRials, $description, $userEmail, $userMobile, $callbackUrl);
         } elseif ($this->gateway === 'behpardakht') {
             return $this->requestBehpardakhtPaymentRaw($amountInRials, $description, $userEmail, $userMobile, $callbackUrl);
+        } elseif ($this->gateway === 'sep' || $this->gateway === 'saman') {
+            return $this->requestSepPaymentRaw($amountInRials, $description, $userEmail, $userMobile, $callbackUrl);
         }
         throw new \Exception("Payment gateway {$this->gateway} not supported.");
     }
@@ -102,6 +110,8 @@ class PaymentService
             return $this->verifyZibalPayment($data);
         } elseif ($this->gateway === 'behpardakht') {
             return $this->verifyBehpardakhtPayment($data);
+        } elseif ($this->gateway === 'sep' || $this->gateway === 'saman') {
+            return $this->verifySepPayment($data);
         }
         // Add other gateways here
         throw new \Exception("Payment gateway {$this->gateway} not supported.");
@@ -766,6 +776,256 @@ class PaymentService
             case 98: return 'سقف استفاده از رمز ایستا به پایان رسیده است.';
             case 995: return 'تعلق کارت بانکی به مشتری احراز نشد.';
             default: return 'خطای ناشناخته در ارتباط با به‌پرداخت ملت. (کد: ' . $statusCode . ')';
+        }
+    }
+
+    /**
+     * درخواست دریافت توکن پرداخت از درگاه پرداخت الکترونیک سامان کیش (سپ - SEP).
+     */
+    protected function requestSepPayment(float $amount, string $description, string $userEmail = null, string $userMobile = null, string $callbackUrl = null, bool $alreadyInRials = false, ?string $resNum = null)
+    {
+        if (!$this->sepTerminalId) {
+            Log::error('SEP Error: Terminal ID is empty or not set in settings.');
+            throw new \Exception("شماره ترمینال سامان کیش (سپ) در تنظیمات سیستم ثبت نشده است.");
+        }
+
+        $amountInRials = $alreadyInRials ? (int) $amount : $this->getAmountInRials($amount);
+        $resNum = $resNum ?: (string) (time() . rand(100, 999));
+        $effectiveCallbackUrl = $callbackUrl ?? $this->callbackUrl;
+
+        $params = [
+            'action'      => 'token',
+            'TerminalId'  => (string) $this->sepTerminalId,
+            'Amount'      => (int) $amountInRials,
+            'ResNum'      => (string) $resNum,
+            'RedirectUrl' => (string) $effectiveCallbackUrl,
+        ];
+
+        if (!empty($userMobile)) {
+            $mobileClean = preg_replace('/[^0-9]/', '', $userMobile);
+            if (strlen($mobileClean) >= 10) {
+                $params['CellNumber'] = $mobileClean;
+            }
+        }
+
+        Log::info('SEP Token Request Data:', $params);
+
+        try {
+            $response = Http::timeout(30)
+                ->connectTimeout(15)
+                ->withHeaders([
+                    'Accept'       => 'application/json',
+                    'Content-Type' => 'application/json',
+                ])
+                ->post('https://sep.shaparak.ir/onlinepg/onlinepg', $params);
+
+            Log::info('SEP Token Response Status: ' . $response->status());
+            Log::info('SEP Token Response Body: ' . $response->body());
+
+            $result = $response->json();
+
+            // در صورت موفقیت: status == 1 و توکن معتبر برگشت داده می‌شود
+            if (isset($result['status']) && (int) $result['status'] === 1 && !empty($result['token'])) {
+                $token = trim($result['token']);
+                $directPaymentUrl = "https://sep.shaparak.ir/OnlinePG/SendToken?token={$token}";
+                $redirectUrl = route('settings.payment.sep.redirect', ['token' => $token]);
+
+                Log::info('SEP Request Success. Token: ' . $token . ', ResNum: ' . $resNum);
+
+                return [
+                    'success'         => true,
+                    'authority'       => $token,
+                    'token'           => $token,
+                    'order_id'        => $resNum,
+                    'payment_url'     => $directPaymentUrl,
+                    'redirect_url'    => $redirectUrl,
+                    'redirect_method' => 'POST',
+                    'redirect_params' => [
+                        'Token' => $token,
+                    ],
+                    'message'         => 'Payment request successful.'
+                ];
+            } else {
+                $errorCode = $result['errorCode'] ?? ($result['status'] ?? -1);
+                $errorDesc = $result['errorDesc'] ?? $this->getSepErrorMessage($errorCode);
+
+                Log::error('SEP Request Failed. Code: ' . $errorCode . ', Message: ' . $errorDesc);
+
+                return [
+                    'success' => false,
+                    'code'    => (int) $errorCode,
+                    'message' => $errorDesc,
+                ];
+            }
+        } catch (\Exception $e) {
+            Log::error('SEP Request Exception: ' . $e->getMessage());
+            return [
+                'success' => false,
+                'code'    => -52,
+                'message' => 'خطای ارتباط با سرور سامان کیش (سپ): ' . $e->getMessage(),
+            ];
+        }
+    }
+
+    /**
+     * ارسال درخواست با مبلغی که از پیش به ریال محاسبه شده است.
+     */
+    protected function requestSepPaymentRaw(int $amountInRials, string $description, string $userEmail = null, string $userMobile = null, string $callbackUrl = null)
+    {
+        return $this->requestSepPayment($amountInRials, $description, $userEmail, $userMobile, $callbackUrl, true);
+    }
+
+    /**
+     * تایید نهایی تراکنش سامان کیش (VerifyTransaction).
+     */
+    protected function verifySepPayment(array $data)
+    {
+        if (!$this->sepTerminalId) {
+            throw new \Exception("شماره ترمینال سامان کیش (سپ) در تنظیمات سیستم ثبت نشده است.");
+        }
+
+        $refNum = $data['RefNum'] ?? null;
+        $state  = strtoupper((string) ($data['State'] ?? ''));
+        $status = (int) ($data['Status'] ?? -1);
+
+        // بررسی پاسخ اولیه کالبک
+        if ($state !== 'OK' || $status !== 2 || empty($refNum)) {
+            $statusMsg = $this->getSepStatusMessage($status, $state);
+            Log::error('SEP Callback Error: Payment was not successful.', [
+                'State'  => $state,
+                'Status' => $status,
+                'RefNum' => $refNum,
+                'Reason' => $statusMsg,
+            ]);
+
+            return [
+                'success' => false,
+                'code'    => $status,
+                'message' => 'پرداخت ناموفق بود یا توسط کاربر لغو شد: ' . $statusMsg,
+            ];
+        }
+
+        $terminalNumber = (int) ($data['TerminalId'] ?? ($data['MID'] ?? $this->sepTerminalId));
+
+        $verifyPayload = [
+            'RefNum'         => (string) $refNum,
+            'TerminalNumber' => $terminalNumber,
+        ];
+
+        Log::info('SEP Verify Transaction Payload:', $verifyPayload);
+
+        try {
+            $verifyUrl = 'https://sep.shaparak.ir/verifyTxnRandomSessionkey/ipg/VerifyTransaction';
+
+            $response = Http::timeout(30)
+                ->connectTimeout(15)
+                ->withHeaders([
+                    'Accept'       => 'application/json',
+                    'Content-Type' => 'application/json',
+                ])
+                ->post($verifyUrl, $verifyPayload);
+
+            Log::info('SEP Verify Response Status: ' . $response->status());
+            Log::info('SEP Verify Response Body: ' . $response->body());
+
+            $result = $response->json();
+
+            $resultCode = isset($result['ResultCode']) ? (int) $result['ResultCode'] : null;
+
+            // کد 0 = تایید موفق، کد 2 = قبلاً تایید شده (تکراری ولی موفق)
+            if ($resultCode === 0 || $resultCode === 2) {
+                $detail = $result['TransactionDetail'] ?? [];
+
+                return [
+                    'success'          => true,
+                    'ref_id'           => (string) ($detail['RefNum'] ?? $refNum),
+                    'authority'        => (string) ($data['Token'] ?? $refNum),
+                    'rrn'              => (string) ($detail['RRN'] ?? ($data['RRN'] ?? ($data['Rrn'] ?? ''))),
+                    'masked_pan'       => (string) ($detail['MaskedPan'] ?? ($data['SecurePan'] ?? '')),
+                    'original_amount'  => $detail['OrginalAmount'] ?? null,
+                    'affective_amount' => $detail['AffectiveAmount'] ?? null,
+                    'trace_no'         => (string) ($detail['StraceNo'] ?? ($data['TraceNo'] ?? '')),
+                    'result_code'      => $resultCode,
+                    'message'          => $result['ResultDescription'] ?? 'تراکنش با موفقیت تایید شد.',
+                ];
+            } else {
+                $errorDesc = $result['ResultDescription'] ?? $this->getSepVerifyErrorMessage($resultCode);
+                Log::error('SEP Verify Failed. Code: ' . $resultCode . ', Message: ' . $errorDesc);
+
+                return [
+                    'success' => false,
+                    'code'    => $resultCode,
+                    'message' => $errorDesc,
+                ];
+            }
+        } catch (\Exception $e) {
+            Log::error('SEP Verify Exception: ' . $e->getMessage());
+            return [
+                'success' => false,
+                'code'    => -52,
+                'message' => 'خطای ارتباط با سرور سامان کیش (سپ) هنگام تایید: ' . $e->getMessage(),
+            ];
+        }
+    }
+
+    /**
+     * ترجمه کد وضعیت پاسخ کالبک سامان کیش (Status/State).
+     */
+    public function getSepStatusMessage(int $status, string $state = ''): string
+    {
+        switch ($status) {
+            case 1: return 'کاربر از انجام پرداخت انصراف داده است.';
+            case 2: return 'پرداخت با موفقیت انجام شد.';
+            case 3: return 'پرداخت انجام نشد یا ناموفق بود.';
+            case 4: return 'زمان انجام تراکنش به پایان رسیده است (منقضی شده).';
+            case 5: return 'پارامترهای ارسالی نامعتبر است.';
+            case 8: return 'آدرس سرور پذیرنده (IP) معتبر نمی‌باشد.';
+            case 10: return 'توکن ارسال شده یافت نشد.';
+            case 11: return 'با این شماره ترمینال فقط تراکنش‌های توکنی قابل پرداخت هستند.';
+            case 12: return 'شماره ترمینال ارسال شده یافت نشد.';
+            case 21: return 'محدودیت‌های مدل چند حسابی رعایت نشده است.';
+            default:
+                if (!empty($state) && $state !== 'OK') {
+                    return "وضعیت تراکنش: {$state}";
+                }
+                return "وضعیت نامشخص پرداخت سامان (کد وضعیت: {$status})";
+        }
+    }
+
+    /**
+     * ترجمه خطاهای دریافت توکن سامان کیش.
+     */
+    public function getSepErrorMessage($errorCode): string
+    {
+        $code = (int) $errorCode;
+        switch ($code) {
+            case 1: return 'عملیات با موفقیت انجام شد.';
+            case -1: return 'خطا در پردازش اطلاعات ارسالی یا پارامترهای ناقص.';
+            case -2: return 'آدرس آی‌پی پذیرنده معتبر نمی‌باشد.';
+            case -3: return 'ترمینال ارسالی غیرفعال است.';
+            case -4: return 'پذیرنده غیرفعال است.';
+            case -5: return 'خطای داخلی سیستمی در درگاه سامان.';
+            case 5: return 'پارامترهای ارسال شده نامعتبر است.';
+            default: return 'خطای در دریافت توکن سامان کیش. (کد: ' . $errorCode . ')';
+        }
+    }
+
+    /**
+     * ترجمه خطاهای تایید تراکنش سامان کیش (VerifyTransaction).
+     */
+    public function getSepVerifyErrorMessage($resultCode): string
+    {
+        $code = (int) $resultCode;
+        switch ($code) {
+            case 0: return 'تراکنش با موفقیت تایید شد.';
+            case 2: return 'درخواست تکراری می‌باشد (تراکنش قبلاً با موفقیت تایید شده است).';
+            case -2: return 'تراکنش یافت نشد.';
+            case -6: return 'بیش از نیم ساعت از زمان اجرای تراکنش گذشته و منقضی شده است.';
+            case -104: return 'ترمینال ارسالی غیرفعال می‌باشد.';
+            case -105: return 'ترمینال ارسالی در سیستم موجود نمی‌باشد.';
+            case -106: return 'آدرس آی‌پی درخواستی غیرمجاز می‌باشد.';
+            case 5: return 'تراکنش برگشت خورده است.';
+            default: return 'خطا در تایید تراکنش سامان کیش. (کد: ' . $resultCode . ')';
         }
     }
 }

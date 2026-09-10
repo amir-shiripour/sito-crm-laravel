@@ -178,6 +178,10 @@
                                         value="behpardakht" {{ ($settings['default_payment_gateway'] ?? '') == 'behpardakht' ? 'selected' : '' }}>
                                         به‌پرداخت ملت
                                     </option>
+                                    <option
+                                        value="sep" {{ in_array($settings['default_payment_gateway'] ?? '', ['sep', 'saman']) ? 'selected' : '' }}>
+                                        سامان کیش (سپ)
+                                    </option>
                                 </select>
                             </div>
                         </div>
@@ -382,6 +386,68 @@
                                                   d="M13 10V3L4 14h7v7l9-11h-7z"/>
                                         </svg>
                                         تست پرداخت به‌پرداخت ملت
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div
+                            class="bg-gray-50/50 dark:bg-gray-800/50 p-5 rounded-xl border border-gray-100 dark:border-gray-700">
+                            <div
+                                class="flex items-center gap-3 mb-4 border-b border-gray-200 dark:border-gray-700 pb-3">
+                                <div
+                                    class="w-2 h-2 rounded-full {{ in_array($settings['sep_status'] ?? '', ['active']) ? 'bg-emerald-500' : 'bg-gray-300 dark:bg-gray-600' }}"></div>
+                                <h4 class="text-sm font-bold text-gray-900 dark:text-white">درگاه پرداخت الکترونیک سامان کیش (سپ)</h4>
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                <div class="md:col-span-3">
+                                    <label for="sep_status" class="{{ $labelClass }}">وضعیت درگاه</label>
+                                    <select class="{{ $inputClass }} md:w-1/3" id="sep_status"
+                                            name="sep_status">
+                                        <option
+                                            value="inactive" {{ ($settings['sep_status'] ?? 'inactive') == 'inactive' ? 'selected' : '' }}>
+                                            غیرفعال
+                                        </option>
+                                        <option
+                                            value="active" {{ ($settings['sep_status'] ?? '') == 'active' ? 'selected' : '' }}>
+                                            فعال
+                                        </option>
+                                    </select>
+                                </div>
+
+                                <div class="md:col-span-2">
+                                    <label for="sep_terminal_id" class="{{ $labelClass }}">شماره ترمینال
+                                        (Terminal ID)</label>
+                                    <input type="text" class="{{ $inputClass }} dir-ltr text-left"
+                                           id="sep_terminal_id" name="sep_terminal_id"
+                                           value="{{ $settings['sep_terminal_id'] ?? '' }}"
+                                           placeholder="مثال: 12345678">
+                                </div>
+
+                                <div class="md:col-span-3">
+                                    <label for="sep_bank_id" class="{{ $labelClass }}">بانک متصل
+                                        (حسابداری)</label>
+                                    <select name="sep_bank_id" id="sep_bank_id"
+                                            class="{{ $inputClass }} md:w-1/3" @if(!$isAccountingActive) disabled @endif>
+                                        <option value="">انتخاب کنید...</option>
+                                        @foreach($banks as $bank)
+                                            <option
+                                                value="{{ $bank->id }}" {{ ($settings['sep_bank_id'] ?? '') == $bank->id ? 'selected' : '' }}>{{ $bank->name }}</option>
+                                        @endforeach
+                                    </select>
+                                    @if(!$isAccountingActive)
+                                        <p class="text-xs text-red-500 mt-1">ماژول حسابداری غیرفعال است.</p>
+                                    @endif
+                                </div>
+
+                                <div class="md:col-span-3 flex items-center justify-end pt-2">
+                                    <button type="button" id="test-sep-btn"
+                                            class="px-4 py-2 rounded-xl bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 font-medium hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors flex items-center gap-2 text-sm shadow-sm">
+                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                  d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                                        </svg>
+                                        تست پرداخت سامان کیش (سپ)
                                     </button>
                                 </div>
                             </div>
