@@ -105,9 +105,16 @@
             @endforeach
         </div>
 
-        <div class="mt-6">
-            {{ $appointments->links() }}
-        </div>
+        @if($appointments->hasPages())
+            <div class="mt-6 bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div class="text-xs text-gray-500 dark:text-gray-400">
+                    نمایش {{ \Morilog\Jalali\CalendarUtils::convertNumbers($appointments->firstItem()) }} تا {{ \Morilog\Jalali\CalendarUtils::convertNumbers($appointments->lastItem()) }} از مجموع {{ \Morilog\Jalali\CalendarUtils::convertNumbers($appointments->total()) }} مورد
+                </div>
+                <div>
+                    {{ $appointments->withQueryString()->links('clients::partials.pagination') }}
+                </div>
+            </div>
+        @endif
     @endif
 </div>
 @endsection

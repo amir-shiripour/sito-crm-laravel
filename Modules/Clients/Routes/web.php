@@ -12,6 +12,8 @@ use Modules\Clients\App\Http\Controllers\Portal\ClientDashboardController;
 use Modules\Clients\App\Http\Controllers\Portal\ClientAppointmentController;
 use Modules\Clients\App\Http\Controllers\Portal\ClientPaymentController;
 use Modules\Clients\App\Http\Controllers\Portal\ClientProfileController;
+use Modules\Clients\App\Http\Controllers\Portal\ClientInvoiceController;
+use Modules\Clients\App\Http\Controllers\Portal\ClientOrderController;
 use Modules\Clients\App\Livewire\Settings\ClientAuthSettings;
 use Modules\Clients\App\Livewire\Settings\CsvImporter;
 use Modules\Clients\App\Livewire\Settings\CsvExporter;
@@ -150,6 +152,22 @@ Route::prefix('clients')
                 ->name('payments.show');
             Route::post('payments/{id}/process', [ClientPaymentController::class, 'processPayment'])
                 ->name('payments.process');
+
+            // 📄 Service Invoices Routes
+            Route::get('invoices', [ClientInvoiceController::class, 'index'])
+                ->name('invoices.index');
+            Route::get('invoices/{invoice}', [ClientInvoiceController::class, 'show'])
+                ->name('invoices.show');
+            Route::get('invoices/{invoice}/print', [ClientInvoiceController::class, 'print'])
+                ->name('invoices.print');
+            Route::post('invoices/{invoice}/pay', [ClientInvoiceController::class, 'processPayment'])
+                ->name('invoices.pay');
+
+            // 📦 Service Orders Routes
+            Route::get('orders', [ClientOrderController::class, 'index'])
+                ->name('orders.index');
+            Route::get('orders/{order}', [ClientOrderController::class, 'show'])
+                ->name('orders.show');
 
             // 🛍️ Market Orders Routes
             Route::get('market/orders', [ClientPaymentController::class, 'marketOrdersIndex'])

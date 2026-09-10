@@ -416,7 +416,7 @@
                 if (initialVal && this.creatable && !this.options.some(o => o.value == initialVal)) {
                     this.options.push({ value: String(initialVal), label: String(initialVal) });
                 }
-                
+
                 // sync با Livewire
                 this.$watch('selectedValues', (values) => {
                     const arr = Array.isArray(values) ? values : [];
@@ -456,25 +456,25 @@
                         ? 'border-indigo-500 ring-1 ring-indigo-500 bg-white dark:bg-gray-800'
                         : 'border-gray-200 bg-gray-50 dark:bg-gray-900/50 dark:border-gray-700 hover:bg-white dark:hover:bg-gray-800 focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500'"
                      @click="if (!open) { open = true; search = ''; $nextTick(() => $refs.searchInput?.focus()); }">
-                    
+
                     {{-- متن راهنما (زمانی که خالی است) --}}
                     <template x-if="selectedValues.length === 0 && !search && !open">
                         <span class="text-xs text-gray-400 dark:text-gray-500 px-1 pointer-events-none select-none">
                             <span x-text="placeholder"></span>
                         </span>
                     </template>
-                    
+
                     {{-- نمایش مقدار انتخاب شده --}}
                     <template x-if="selectedValues.length > 0 && !open">
                         <span class="text-xs text-gray-900 dark:text-gray-100 truncate flex-1 px-1"
                               x-text="options.find(o => o.value == selectedValues[0])?.label ?? selectedValues[0]"></span>
                     </template>
-                    
+
                     {{-- اینپوت جستجو --}}
                     <input x-show="selectedValues.length === 0 || open" x-ref="searchInput" type="text" x-model="search"
                            class="flex-1 min-w-[60px] border-0 bg-transparent p-0 text-xs text-gray-900 focus:ring-0 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-600 leading-relaxed"
                            placeholder="جستجو...">
-                    
+
                     {{-- دکمه‌ها و آیکون فلش --}}
                     <div class="ml-auto pl-1 text-gray-400 pointer-events-none flex items-center gap-1">
                         <template x-if="selectedValues.length > 0 && !open">
@@ -487,12 +487,12 @@
                         </svg>
                     </div>
                 </div>
-                
+
                 {{-- لیست کشویی --}}
                 <div x-show="open" x-transition:enter="transition ease-out duration-100"
                      x-transition:enter-start="opacity-0 translate-y-1" x-transition:enter-end="opacity-100 translate-y-0"
                      x-transition:leave="transition ease-in duration-75" x-transition:leave-start="opacity-100 translate-y-0"
-                     x-transition:leave-end="opacity-0 translate-y-1" style="display: none;" 
+                     x-transition:leave-end="opacity-0 translate-y-1" style="display: none;"
                      class="absolute z-50 mt-1 w-full overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xl ring-1 ring-black ring-opacity-5 dark:border-gray-700 dark:bg-gray-800 dark:ring-white/10">
                     <ul class="max-h-60 overflow-y-auto p-1 scrollbar-thin scrollbar-thumb-gray-200 dark:scrollbar-thumb-gray-700">
                         <template x-for="option in filteredOptions" :key="option.value">
@@ -505,7 +505,7 @@
                                 </span>
                             </li>
                         </template>
-                        
+
                         {{-- امکان افزودن گزینه جدید در صورتی که creatable فعال باشد و جستجو با هیچ گزینه‌ای مطابق نباشد --}}
                         <template x-if="creatable && search.trim() && !options.some(o => o.label.toLowerCase() === search.trim().toLowerCase())">
                             <li @click="addNewOption(); $refs.searchInput.focus()"
@@ -717,7 +717,7 @@
         $existing = $this->meta[$fid] ?? null;
         $fileUrl = null;
         $isTemporary = false;
-        
+
         if ($existing) {
             if ($existing instanceof \Livewire\Features\SupportFileUploads\TemporaryUploadedFile) {
                 $isTemporary = true;

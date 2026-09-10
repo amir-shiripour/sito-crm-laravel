@@ -526,8 +526,13 @@
 
             {{-- صفحه‌بندی --}}
             @if($clients->hasPages())
-                <div class="px-5 py-3.5 border-t border-gray-100 dark:border-gray-700/80 bg-gray-50/50 dark:bg-gray-900/30">
-                    {{ $clients->links() }}
+                <div class="px-5 py-3.5 border-t border-gray-100 dark:border-gray-700/80 bg-gray-50/50 dark:bg-gray-900/30 flex flex-col sm:flex-row items-center justify-between gap-4">
+                    <div class="text-xs text-gray-500 dark:text-gray-400">
+                        نمایش {{ \Morilog\Jalali\CalendarUtils::convertNumbers($clients->firstItem()) }} تا {{ \Morilog\Jalali\CalendarUtils::convertNumbers($clients->lastItem()) }} از مجموع {{ \Morilog\Jalali\CalendarUtils::convertNumbers($clients->total()) }} مورد
+                    </div>
+                    <div>
+                        {{ $clients->withQueryString()->links('clients::partials.pagination') }}
+                    </div>
                 </div>
             @endif
         </div>
