@@ -156,6 +156,15 @@ class PaymentService
             $authority = $requestData['RefId'] ?? null;
             $resCode   = (string) ($requestData['ResCode'] ?? '-1');
             $status    = ($resCode === '0' || $resCode === '00') ? 'OK' : 'NOK';
+        } elseif ($gateway === 'sep' || $gateway === 'saman') {
+            // سامان کیش: Token / RefNum + State / Status
+            $token     = $requestData['Token'] ?? null;
+            $refNum    = $requestData['RefNum'] ?? null;
+            $resNum    = $requestData['ResNum'] ?? null;
+            $authority = $token ?: ($resNum ?: $refNum);
+            $sepState  = strtoupper((string) ($requestData['State'] ?? ''));
+            $sepStatus = (int) ($requestData['Status'] ?? -1);
+            $status    = ($sepState === 'OK' && $sepStatus === 2 && !empty($refNum)) ? 'OK' : 'NOK';
         } else {
             // زرین‌پال و سایر درگاه‌ها: Authority + Status
             $authority = $requestData['Authority'] ?? null;
@@ -166,8 +175,18 @@ class PaymentService
             return ['valid' => false, 'success' => false, 'message' => 'اطلاعات پرداخت معتبر نیست.'];
         }
 
-        if ($payment->gateway_ref !== (string) $authority) {
-            return ['valid' => false, 'success' => false, 'message' => 'تراکنش نامعتبر است.'];
+        if ($gateway === 'sep' || $gateway === 'saman') {
+            $matched = ($payment->gateway_ref === (string) ($requestData['Token'] ?? ''))
+                    || ($payment->gateway_ref === (string) ($requestData['ResNum'] ?? ''))
+                    || ($payment->gateway_ref === (string) ($requestData['RefNum'] ?? ''))
+                    || ($payment->gateway_ref === (string) $authority);
+            if (!$matched && !empty($payment->gateway_ref)) {
+                return ['valid' => false, 'success' => false, 'message' => 'تراکنش نامعتبر است.'];
+            }
+        } else {
+            if ($payment->gateway_ref !== (string) $authority) {
+                return ['valid' => false, 'success' => false, 'message' => 'تراکنش نامعتبر است.'];
+            }
         }
 
         if ($status === 'NOK') {
@@ -188,6 +207,12 @@ class PaymentService
             } elseif ($gateway === 'behpardakht') {
                 $dataToVerify = array_merge($requestData, [
                     'RefId'  => $authority,
+                    'Amount' => $payment->amount,
+                ]);
+            } elseif ($gateway === 'sep' || $gateway === 'saman') {
+                $dataToVerify = array_merge($requestData, [
+                    'RefNum' => $requestData['RefNum'] ?? null,
+                    'Token'  => $requestData['Token'] ?? $authority,
                     'Amount' => $payment->amount,
                 ]);
             } else {

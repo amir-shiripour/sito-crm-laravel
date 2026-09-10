@@ -70,4 +70,6 @@ Route::middleware(['web'])->group(function () {
     Route::match(['get', 'post'], '/settings/payment/verify/{gateway}', [PaymentController::class, 'verify'])->name('settings.payment.verify');
     Route::get('/settings/payment/redirect/behpardakht', [PaymentController::class, 'redirectBehpardakht'])->name('settings.payment.behpardakht.redirect');
     Route::get('/payment/redirect/behpardakht', [PaymentController::class, 'redirectBehpardakht'])->name('payment.behpardakht.redirect');
+    Route::get('/settings/payment/redirect/sep', [PaymentController::class, 'redirectSep'])->name('settings.payment.sep.redirect');
+    Route::get('/payment/redirect/sep', [PaymentController::class, 'redirectSep'])->name('payment.sep.redirect');
 });

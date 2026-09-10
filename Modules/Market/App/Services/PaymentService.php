@@ -78,8 +78,13 @@ class PaymentService
             if ($orderId) {
                 $order = Order::findOrFail($orderId);
             } else {
-                // Fallback to finding by transaction ID / Authority / trackId / RefId
-                $authority = $request->input('Authority') ?: ($request->input('trackId') ?: $request->input('RefId'));
+                // Fallback to finding by transaction ID / Authority / trackId / RefId / Token / ResNum
+                $authority = $request->input('Authority') 
+                    ?: ($request->input('trackId') 
+                    ?: ($request->input('RefId') 
+                    ?: ($request->input('Token') 
+                    ?: ($request->input('ResNum') 
+                    ?: $request->input('RefNum')))));
                 if (!$authority) {
                     throw new \Exception('شناسه تراکنش یافت نشد.');
                 }
@@ -111,6 +116,12 @@ class PaymentService
                 $verifyData = array_merge($request->all(), [
                     'Amount' => $amount,
                     'RefId'  => $request->input('RefId'),
+                ]);
+            } elseif ($gateway === 'sep' || $gateway === 'saman') {
+                $verifyData = array_merge($request->all(), [
+                    'Amount' => $amount,
+                    'RefNum' => $request->input('RefNum'),
+                    'Token'  => $request->input('Token') ?: $authority,
                 ]);
             }
 

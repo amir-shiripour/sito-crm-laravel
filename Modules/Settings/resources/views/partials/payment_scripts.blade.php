@@ -1338,6 +1338,11 @@
                 testBehpardakhtBtn.addEventListener('click', () => handleTestPayment('behpardakht'));
             }
 
+            const testSepBtn = document.getElementById('test-sep-btn');
+            if (testSepBtn) {
+                testSepBtn.addEventListener('click', () => handleTestPayment('sep'));
+            }
+
             // اجرای رندرهای اولیه
             renderPosDevices();
             renderBankAccounts();

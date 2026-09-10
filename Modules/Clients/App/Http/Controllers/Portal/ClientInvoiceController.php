@@ -164,6 +164,9 @@ class ClientInvoiceController extends Controller
         if (($settingsMap['behpardakht_status'] ?? '') === 'active') {
             $onlineGateways[] = ['id' => 'behpardakht', 'label' => 'درگاه بهپرداخت ملت'];
         }
+        if (($settingsMap['sep_status'] ?? '') === 'active') {
+            $onlineGateways[] = ['id' => 'sep', 'label' => 'درگاه سامان کیش (سپ)'];
+        }
 
         $rawAccounts = is_string($settingsMap['bank_transfer_accounts'] ?? null) 
             ? (json_decode($settingsMap['bank_transfer_accounts'], true) ?: []) 
