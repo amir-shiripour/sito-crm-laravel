@@ -75,12 +75,13 @@
             $activeCards = 2; // تیکت و صورت حساب همیشه هستند
             if ($showBookingFeatures) $activeCards++;
             if ($showMarketFeatures) $activeCards++;
+            if ($showInvoiceFeatures ?? false) $activeCards++;
+            if ($showOrderFeatures ?? false) $activeCards++;
 
-            $gridColsClass = match($activeCards) {
-                4 => 'lg:grid-cols-4',
-                3 => 'lg:grid-cols-3',
-                2 => 'lg:grid-cols-2',
-                default => 'lg:grid-cols-4'
+            $gridColsClass = match(true) {
+                $activeCards >= 4 => 'lg:grid-cols-4',
+                $activeCards === 3 => 'lg:grid-cols-3',
+                default => 'lg:grid-cols-2'
             };
         @endphp
         <div class="grid grid-cols-1 md:grid-cols-2 {{ $gridColsClass }} gap-6">
@@ -94,9 +95,37 @@
                         </div>
                         <span class="text-xs text-gray-400 dark:text-gray-500">فعال و در انتظار</span>
                     </div>
-                    <div class="text-2xl font-bold text-gray-900 dark:text-white mb-1">{{ $activeAppointmentsCount ?? 0 }}</div>
+                    <div class="text-2xl font-bold text-gray-900 dark:text-white mb-1">{{ \Morilog\Jalali\CalendarUtils::convertNumbers($activeAppointmentsCount ?? 0) }}</div>
                     <div class="text-sm text-gray-500 dark:text-gray-400">نوبت های من</div>
                 </div>
+            @endif
+
+            {{-- کارت سفارشات خدمات --}}
+            @if($showOrderFeatures ?? false)
+                <a href="{{ route('client.orders.index') }}" class="group bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700 shadow-sm hover:shadow-md transition-all cursor-pointer block">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="p-3 rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400 group-hover:scale-110 transition-transform">
+                            <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>
+                        </div>
+                        <span class="text-xs text-gray-400 dark:text-gray-500">فعال</span>
+                    </div>
+                    <div class="text-2xl font-bold text-gray-900 dark:text-white mb-1">{{ \Morilog\Jalali\CalendarUtils::convertNumbers($activeOrdersCount ?? 0) }}</div>
+                    <div class="text-sm text-gray-500 dark:text-gray-400 group-hover:text-blue-600 transition-colors">سفارش‌های من &larr;</div>
+                </a>
+            @endif
+
+            {{-- کارت فاکتورهای خدمات --}}
+            @if($showInvoiceFeatures ?? false)
+                <a href="{{ route('client.invoices.index') }}" class="group bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700 shadow-sm hover:shadow-md transition-all cursor-pointer block">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="p-3 rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400 group-hover:scale-110 transition-transform">
+                            <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                        </div>
+                        <span class="text-xs text-gray-400 dark:text-gray-500">پرداخت نشده</span>
+                    </div>
+                    <div class="text-2xl font-bold text-gray-900 dark:text-white mb-1">{{ \Morilog\Jalali\CalendarUtils::convertNumbers($unpaidInvoicesCount ?? 0) }}</div>
+                    <div class="text-sm text-gray-500 dark:text-gray-400 group-hover:text-blue-600 transition-colors">فاکتورهای من &larr;</div>
+                </a>
             @endif
 
             {{-- کارت تیکت‌ها --}}
@@ -107,7 +136,7 @@
                     </div>
                     <span class="text-xs text-gray-400 dark:text-gray-500">در انتظار</span>
                 </div>
-                <div class="text-2xl font-bold text-gray-900 dark:text-white mb-1">0</div>
+                <div class="text-2xl font-bold text-gray-900 dark:text-white mb-1">{{ \Morilog\Jalali\CalendarUtils::convertNumbers(0) }}</div>
                 <div class="text-sm text-gray-500 dark:text-gray-400">تیکت‌های پشتیبانی</div>
             </div>
 
@@ -119,7 +148,7 @@
                     </div>
                     <span class="text-xs text-gray-400 dark:text-gray-500">پرداخت نشده</span>
                 </div>
-                <div class="text-2xl font-bold text-gray-900 dark:text-white mb-1">{{ number_format($unpaidInvoicesSum ?? 0) }} <span class="text-xs font-normal text-gray-400">{{ $bookingCurrencyLabel ?? 'تومان' }}</span></div>
+                <div class="text-2xl font-bold text-gray-900 dark:text-white mb-1">{{ \Morilog\Jalali\CalendarUtils::convertNumbers(number_format($unpaidInvoicesSum ?? 0)) }} <span class="text-xs font-normal text-gray-400">{{ $bookingCurrencyLabel ?? 'تومان' }}</span></div>
                 <div class="text-sm text-gray-500 dark:text-gray-400 group-hover:text-emerald-600 transition-colors">لیست صورت‌حساب‌ها &larr;</div>
             </a>
 
@@ -168,7 +197,6 @@
                         <span class="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-blue-600">ثبت نوبت جدید</span>
                     </a>
                 @endif
-
                 {{-- دکمه فروشگاه (نمایش مشروط) --}}
                 @if($showMarketFeatures)
                     <a href="{{ Route::has('client.market.index') ? route('client.market.index') : '#' }}" class="flex flex-col items-center justify-center gap-3 p-6 rounded-2xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-purple-500 dark:hover:border-purple-500 hover:shadow-md transition-all group">
@@ -186,7 +214,7 @@
                     </a>
                 @endif
 
-                @if(!$showBookingFeatures || !$showMarketFeatures)
+                @if(!$showBookingFeatures && !$showMarketFeatures && !($showInvoiceFeatures ?? false))
                     {{-- آیتم‌های غیرفعال (Placeholder) --}}
                     <div class="flex items-center justify-center p-6 rounded-2xl border border-dashed border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/40 text-gray-400 dark:text-gray-500 text-sm">
                         سایر بخش‌ها...
@@ -226,8 +254,8 @@
                                         </td>
                                         <td class="px-6 py-4 text-gray-700 dark:text-gray-300">
                                             <div class="flex flex-col">
-                                                <span>{{ $appointment->start_at_utc ? jdate($appointment->start_at_utc)->format('Y/m/d') : '---' }}</span>
-                                                <span class="text-xs text-gray-500">{{ $appointment->start_at_utc ? jdate($appointment->start_at_utc)->format('H:i') : '---' }}</span>
+                                                <span>{{ $appointment->start_at_utc ? \Morilog\Jalali\CalendarUtils::convertNumbers(jdate($appointment->start_at_utc)->format('Y/m/d')) : '---' }}</span>
+                                                <span class="text-xs text-gray-500">{{ $appointment->start_at_utc ? \Morilog\Jalali\CalendarUtils::convertNumbers(jdate($appointment->start_at_utc)->format('H:i')) : '---' }}</span>
                                             </div>
                                         </td>
                                         <td class="px-6 py-4">
@@ -293,13 +321,13 @@
                                     <tr class="hover:bg-gray-50/50 dark:hover:bg-gray-700/50 transition-colors cursor-pointer" onclick="window.location.href='{{ route('client.payments.show', ['type' => $payment->type, 'id' => $payment->id]) }}'">
                                         <td class="px-6 py-4 text-gray-900 dark:text-white font-medium">
                                             <div class="flex flex-col">
-                                                <span>{{ number_format($payment->amount_display) }} <span class="text-xs font-normal text-gray-500">{{ $payment->currency_label }}</span></span>
+                                                <span>{{ \Morilog\Jalali\CalendarUtils::convertNumbers(number_format($payment->amount_display)) }} <span class="text-xs font-normal text-gray-500">{{ $payment->currency_label }}</span></span>
                                                 <span class="text-xs text-gray-400 font-normal mt-1">{{ $payment->type_label }}</span>
                                             </div>
                                         </td>
                                         <td class="px-6 py-4 text-gray-700 dark:text-gray-300">
                                             <div class="flex flex-col">
-                                                <span>{{ $payment->date ? jdate($payment->date)->format('Y/m/d') : '---' }}</span>
+                                                <span>{{ $payment->date ? \Morilog\Jalali\CalendarUtils::convertNumbers(jdate($payment->date)->format('Y/m/d')) : '---' }}</span>
                                             </div>
                                         </td>
                                         <td class="px-6 py-4">
@@ -340,6 +368,141 @@
                 </div>
             @endif
 
+            {{-- بخش فاکتورهای اخیر خدمات --}}
+            {{-- بخش فاکتورهای اخیر خدمات --}}
+            @if(($showInvoiceFeatures ?? false) && isset($recentInvoices) && $recentInvoices->isNotEmpty())
+                <div>
+                    <div class="flex items-center justify-between mb-4">
+                        <h2 class="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                            <span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+                            آخرین فاکتورهای شما
+                        </h2>
+                        <a href="{{ route('client.invoices.index') }}" class="text-xs text-blue-600 dark:text-blue-400 hover:underline font-medium">مشاهده همه</a>
+                    </div>
+                    <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden">
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-sm text-right">
+                                <thead class="text-xs text-gray-500 bg-gray-50/50 dark:bg-gray-900/50 dark:text-gray-400 border-b border-gray-100 dark:border-gray-700">
+                                <tr>
+                                    <th class="px-6 py-4 font-medium">شماره و عنوان</th>
+                                    <th class="px-6 py-4 font-medium">مبلغ</th>
+                                    <th class="px-6 py-4 font-medium">وضعیت</th>
+                                    <th class="px-6 py-4 font-medium"></th>
+                                </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
+                                @foreach($recentInvoices as $invoice)
+                                    @php
+                                        $invStatusName = $invoice->status?->name ?? 'نامشخص';
+                                        $isPaid = str_contains($invStatusName, 'پرداخت شده');
+                                        $isPending = str_contains($invStatusName, 'انتظار') || str_contains($invStatusName, 'معوقه');
+                                        $isCanceled = str_contains($invStatusName, 'لغو') || str_contains($invStatusName, 'ادغام');
+
+                                        $invStatusColor = match(true) {
+                                            $isPaid => 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
+                                            $isPending => 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
+                                            $isCanceled => 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
+                                            default => 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
+                                        };
+                                        $serviceName = $invoice->service?->name ?? (optional($invoice->items->first())->item_name ?: 'خدمات ثبتی');
+                                    @endphp
+                                    <tr class="hover:bg-gray-50/50 dark:hover:bg-gray-700/50 transition-colors cursor-pointer" onclick="window.location.href='{{ route('client.invoices.show', $invoice->id) }}'">
+                                        <td class="px-6 py-4 text-gray-700 dark:text-gray-300">
+                                            <div class="flex flex-col">
+                                                <span class="font-medium text-gray-900 dark:text-white">{{ $serviceName }}</span>
+                                                <span class="text-xs text-gray-400">#{{ \Morilog\Jalali\CalendarUtils::convertNumbers($invoice->invoice_number) }}</span>
+                                            </div>
+                                        </td>
+                                        <td class="px-6 py-4 text-gray-700 dark:text-gray-300">
+                                            <div class="flex flex-col">
+                                                <span class="font-bold text-gray-900 dark:text-white">{{ \Morilog\Jalali\CalendarUtils::convertNumbers(number_format($invoice->total)) }} <span class="text-xs font-normal text-gray-500">تومان</span></span>
+                                                @if($isPending && $invoice->paid_amount > 0)
+                                                    <span class="text-xs text-amber-600">مانده: {{ \Morilog\Jalali\CalendarUtils::convertNumbers(number_format(max(0, $invoice->total - $invoice->paid_amount))) }}</span>
+                                                @endif
+                                            </div>
+                                        </td>
+                                        <td class="px-6 py-4">
+                                            <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium {{ $invStatusColor }}">
+                                                {{ $invStatusName }}
+                                            </span>
+                                        </td>
+                                        <td class="px-6 py-4 text-left">
+                                            <svg class="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
+                                        </td>
+                                    </tr>
+                                @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            @endif
+
+            {{-- بخش سفارش‌های خدمات اخیر --}}
+            @if(($showOrderFeatures ?? false) && isset($recentOrders) && $recentOrders->isNotEmpty())
+                <div>
+                    <div class="flex items-center justify-between mb-4">
+                        <h2 class="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                            <span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+                            آخرین سفارش‌های خدمات شما
+                        </h2>
+                        <a href="{{ route('client.orders.index') }}" class="text-xs text-blue-600 dark:text-blue-400 hover:underline font-medium">مشاهده همه</a>
+                    </div>
+                    <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden">
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-sm text-right">
+                                <thead class="text-xs text-gray-500 bg-gray-50/50 dark:bg-gray-900/50 dark:text-gray-400 border-b border-gray-100 dark:border-gray-700">
+                                <tr>
+                                    <th class="px-6 py-4 font-medium">شماره و سرویس</th>
+                                    <th class="px-6 py-4 font-medium">تاریخ ثبت</th>
+                                    <th class="px-6 py-4 font-medium">وضعیت</th>
+                                    <th class="px-6 py-4 font-medium"></th>
+                                </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
+                                @foreach($recentOrders as $order)
+                                    @php
+                                        $ordStatusName = $order->status?->name ?? 'نامشخص';
+                                        $isActive = str_contains($ordStatusName, 'فعال') && !str_contains($ordStatusName, 'غیر');
+                                        $isPending = str_contains($ordStatusName, 'انتظار') || str_contains($ordStatusName, 'بررسی');
+                                        $isCanceled = str_contains($ordStatusName, 'لغو') || str_contains($ordStatusName, 'غیر فعال');
+
+                                        $ordStatusColor = match(true) {
+                                            $isActive => 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
+                                            $isPending => 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
+                                            $isCanceled => 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
+                                            default => 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
+                                        };
+                                    @endphp
+                                    <tr class="hover:bg-gray-50/50 dark:hover:bg-gray-700/50 transition-colors cursor-pointer" onclick="window.location.href='{{ route('client.orders.show', $order->id) }}'">
+                                        <td class="px-6 py-4 text-gray-700 dark:text-gray-300">
+                                            <div class="flex flex-col">
+                                                <span class="font-medium text-gray-900 dark:text-white">{{ optional($order->service)->name ?: 'سفارش خدمات' }}</span>
+                                                <span class="text-xs text-gray-400">#{{ \Morilog\Jalali\CalendarUtils::convertNumbers($order->order_number) }}</span>
+                                            </div>
+                                        </td>
+                                        <td class="px-6 py-4 text-gray-700 dark:text-gray-300">
+                                            <div class="flex flex-col">
+                                                <span>{{ $order->created_at ? \Morilog\Jalali\CalendarUtils::convertNumbers(jdate($order->created_at)->format('Y/m/d')) : '---' }}</span>
+                                            </div>
+                                        </td>
+                                        <td class="px-6 py-4">
+                                            <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium {{ $ordStatusColor }}">
+                                                {{ $ordStatusName }}
+                                            </span>
+                                        </td>
+                                        <td class="px-6 py-4 text-left">
+                                            <svg class="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
+                                        </td>
+                                    </tr>
+                                @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            @endif
+
             {{-- بخش سفارشات اخیر فروشگاه (نمایش مشروط) --}}
             @if($showMarketFeatures && isset($recentMarketOrders) && $recentMarketOrders->isNotEmpty())
                 <div class="lg:col-span-2">
@@ -363,13 +526,13 @@
                                 @foreach($recentMarketOrders as $order)
                                     <tr class="hover:bg-gray-50/50 dark:hover:bg-gray-700/50 transition-colors cursor-pointer" onclick="window.location.href='{{ Route::has('client.market.orders.show') ? route('client.market.orders.show', $order->id) : '#' }}'">
                                         <td class="px-6 py-4 text-gray-900 dark:text-white font-medium">
-                                            #{{ $order->tracking_code ?? $order->id }}
+                                            #{{ \Morilog\Jalali\CalendarUtils::convertNumbers($order->tracking_code ?? $order->id) }}
                                         </td>
-                                        <td class="px-6 py-4 text-gray-700 dark:text-gray-300 font-mono text-xs">
-                                            {{ number_format($order->grand_total ?? 0) }} تومان
+                                        <td class="px-6 py-4 text-gray-700 dark:text-gray-300 text-xs font-bold">
+                                            {{ \Morilog\Jalali\CalendarUtils::convertNumbers(number_format($order->grand_total ?? 0)) }} تومان
                                         </td>
                                         <td class="px-6 py-4 text-gray-700 dark:text-gray-300">
-                                            {{ $order->created_at ? jdate($order->created_at)->format('Y/m/d') : '---' }}
+                                            {{ $order->created_at ? \Morilog\Jalali\CalendarUtils::convertNumbers(jdate($order->created_at)->format('Y/m/d')) : '---' }}
                                         </td>
                                         <td class="px-6 py-4">
                                             @php

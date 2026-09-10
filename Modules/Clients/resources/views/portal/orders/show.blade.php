@@ -144,8 +144,8 @@
                                 </div>
                             </div>
                             <div class="text-left shrink-0">
-                                <div class="text-sm font-bold text-gray-900 dark:text-white font-mono">{{ number_format($item->total_price) }} تومان</div>
-                                <div class="text-xs text-gray-400 mt-0.5">{{ number_format($item->unit_price) }} تومان × {{ $item->quantity }}</div>
+                                <div class="text-sm font-bold text-gray-900 dark:text-white">{{ \Morilog\Jalali\CalendarUtils::convertNumbers(number_format($item->total_price)) }} تومان</div>
+                                <div class="text-xs text-gray-400 mt-0.5">{{ \Morilog\Jalali\CalendarUtils::convertNumbers(number_format($item->unit_price)) }} تومان × {{ \Morilog\Jalali\CalendarUtils::convertNumbers($item->quantity) }}</div>
                             </div>
                         </div>
                     @endforeach
@@ -167,14 +167,14 @@
                     </div>
                     <div>
                         <span class="text-gray-400 block text-xs">شماره تماس</span>
-                        <span class="font-bold text-gray-900 dark:text-white mt-1 block font-mono">
-                            {{ !empty($shipping['recipient_mobile']) ? $shipping['recipient_mobile'] : ($order->client ? $order->client->phone : '---') }}
+                        <span class="font-bold text-gray-900 dark:text-white mt-1 block">
+                            {{ !empty($shipping['recipient_mobile']) ? \Morilog\Jalali\CalendarUtils::convertNumbers($shipping['recipient_mobile']) : ($order->client ? \Morilog\Jalali\CalendarUtils::convertNumbers($order->client->phone) : '---') }}
                         </span>
                     </div>
                     @if(!empty($shipping['recipient_national_code']))
                         <div>
                             <span class="text-gray-400 block text-xs">کد ملی گیرنده</span>
-                            <span class="font-bold text-gray-900 dark:text-white mt-1 block font-mono">{{ $shipping['recipient_national_code'] }}</span>
+                            <span class="font-bold text-gray-900 dark:text-white mt-1 block">{{ \Morilog\Jalali\CalendarUtils::convertNumbers($shipping['recipient_national_code']) }}</span>
                         </div>
                     @endif
                     <div class="sm:col-span-2">
@@ -200,23 +200,23 @@
                 <div class="space-y-3.5 text-sm">
                     <div class="flex justify-between">
                         <span class="text-gray-500">قیمت اقلام سفارش:</span>
-                        <span class="font-medium text-gray-900 dark:text-white font-mono">{{ number_format($order->total_items_price) }} تومان</span>
+                        <span class="font-medium text-gray-900 dark:text-white">{{ \Morilog\Jalali\CalendarUtils::convertNumbers(number_format($order->total_items_price)) }} تومان</span>
                     </div>
                     @if($order->total_shipping_cost > 0)
                         <div class="flex justify-between">
                             <span class="text-gray-500">هزینه ارسال:</span>
-                            <span class="font-medium text-gray-900 dark:text-white font-mono">{{ number_format($order->total_shipping_cost) }} تومان</span>
+                            <span class="font-medium text-gray-900 dark:text-white">{{ \Morilog\Jalali\CalendarUtils::convertNumbers(number_format($order->total_shipping_cost)) }} تومان</span>
                         </div>
                     @endif
                     @if($order->total_discount > 0)
                         <div class="flex justify-between text-emerald-600 dark:text-emerald-400">
                             <span>تخفیف:</span>
-                            <span class="font-mono font-bold">{{ number_format($order->total_discount) }}- تومان</span>
+                            <span class="font-bold">{{ \Morilog\Jalali\CalendarUtils::convertNumbers(number_format($order->total_discount)) }}- تومان</span>
                         </div>
                     @endif
                     <div class="pt-3 border-t border-dashed border-gray-100 dark:border-gray-700 flex justify-between text-base font-black text-gray-900 dark:text-white">
                         <span>مبلغ کل پرداختی:</span>
-                        <span class="text-indigo-600 dark:text-indigo-400 font-mono">{{ number_format($order->grand_total) }} تومان</span>
+                        <span class="text-indigo-600 dark:text-indigo-400">{{ \Morilog\Jalali\CalendarUtils::convertNumbers(number_format($order->grand_total)) }} تومان</span>
                     </div>
                 </div>
             </div>
@@ -236,19 +236,19 @@
                     @if($order->payment_ref_id)
                         <div class="space-y-1">
                             <span class="text-gray-500 block text-xs">کد پیگیری تراکنش (ارجاع):</span>
-                            <span class="font-bold font-mono text-gray-900 dark:text-white block select-all text-xs bg-gray-50 dark:bg-gray-900/50 p-2.5 rounded-xl border border-gray-100 dark:border-gray-700/50 break-all">{{ $order->payment_ref_id }}</span>
+                            <span class="font-bold text-gray-900 dark:text-white block select-all text-xs bg-gray-50 dark:bg-gray-900/50 p-2.5 rounded-xl border border-gray-100 dark:border-gray-700/50 break-all">{{ \Morilog\Jalali\CalendarUtils::convertNumbers($order->payment_ref_id) }}</span>
                         </div>
                     @endif
                     @if($order->transaction_id)
                         <div class="space-y-1">
                             <span class="text-gray-500 block text-xs">کد رهگیری تراکنش:</span>
-                            <span class="font-bold font-mono text-gray-900 dark:text-white block select-all text-xs bg-gray-50 dark:bg-gray-900/50 p-2.5 rounded-xl border border-gray-100 dark:border-gray-700/50 break-all">{{ $order->transaction_id }}</span>
+                            <span class="font-bold text-gray-900 dark:text-white block select-all text-xs bg-gray-50 dark:bg-gray-900/50 p-2.5 rounded-xl border border-gray-100 dark:border-gray-700/50 break-all">{{ \Morilog\Jalali\CalendarUtils::convertNumbers($order->transaction_id) }}</span>
                         </div>
                     @endif
                     @if($order->paid_at)
                         <div class="flex justify-between">
                             <span class="text-gray-500">تاریخ تراکنش:</span>
-                            <span class="font-medium text-gray-900 dark:text-white">{{ jdate($order->paid_at)->format('Y/m/d H:i') }}</span>
+                            <span class="font-medium text-gray-900 dark:text-white">{{ \Morilog\Jalali\CalendarUtils::convertNumbers(jdate($order->paid_at)->format('Y/m/d H:i')) }}</span>
                         </div>
                     @endif
                 </div>

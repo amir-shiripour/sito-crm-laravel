@@ -303,4 +303,18 @@ class Invoice extends Model
 
         return $this;
     }
+
+    public function getPaymentMethodLabelAttribute(): string
+    {
+        $method = $this->payment_method;
+        $gateway = $this->payment_gateway;
+
+        if (empty($method) && $this->relationLoaded('payments') && $this->payments->isNotEmpty()) {
+            $latest = $this->payments->sortByDesc('created_at')->first();
+            $method = $latest?->method;
+            $gateway = $latest?->gateway;
+        }
+
+        return Payment::formatMethodName($method, $gateway);
+    }
 }

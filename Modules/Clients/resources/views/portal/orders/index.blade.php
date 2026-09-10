@@ -38,13 +38,13 @@
                     @forelse($orders as $order)
                         <tr class="hover:bg-gray-50/50 dark:hover:bg-gray-700/50 transition-colors cursor-pointer" onclick="window.location.href='{{ route('client.market.orders.show', $order->id) }}'">
                             <td class="px-6 py-4 text-gray-900 dark:text-white font-medium">
-                                #{{ $order->tracking_code ?: $order->id }}
+                                #{{ \Morilog\Jalali\CalendarUtils::convertNumbers($order->tracking_code ?: $order->id) }}
                             </td>
-                            <td class="px-6 py-4 text-gray-900 dark:text-white font-mono text-xs font-bold">
-                                {{ number_format($order->grand_total ?? 0) }} تومان
+                            <td class="px-6 py-4 text-gray-900 dark:text-white text-xs font-bold">
+                                {{ \Morilog\Jalali\CalendarUtils::convertNumbers(number_format($order->grand_total ?? 0)) }} تومان
                             </td>
                             <td class="px-6 py-4 text-gray-700 dark:text-gray-300">
-                                {{ $order->created_at ? jdate($order->created_at)->format('Y/m/d H:i') : '---' }}
+                                {{ $order->created_at ? \Morilog\Jalali\CalendarUtils::convertNumbers(jdate($order->created_at)->format('Y/m/d H:i')) : '---' }}
                             </td>
                             <td class="px-6 py-4">
                                 @php
@@ -107,8 +107,13 @@
         </div>
 
         @if($orders->hasPages())
-            <div class="px-6 py-4 border-t border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/20">
-                {{ $orders->links() }}
+            <div class="px-6 py-4 border-t border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/20 flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div class="text-xs text-gray-500 dark:text-gray-400">
+                    نمایش {{ \Morilog\Jalali\CalendarUtils::convertNumbers($orders->firstItem()) }} تا {{ \Morilog\Jalali\CalendarUtils::convertNumbers($orders->lastItem()) }} از مجموع {{ \Morilog\Jalali\CalendarUtils::convertNumbers($orders->total()) }} مورد
+                </div>
+                <div>
+                    {{ $orders->withQueryString()->links('clients::partials.pagination') }}
+                </div>
             </div>
         @endif
     </div>
