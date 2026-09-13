@@ -112,26 +112,57 @@
                         };
 
                         $remaining = max(0, $invoice->total - $invoice->paid_amount);
-                        $serviceTitle = $invoice->service?->name ?? (optional($invoice->items->first())->item_name ?: 'خدمات ثبتی');
+                        $serviceTitle = $invoice->service?->name ?? (optional($invoice->items->first())->item_name ?: null);
+                        $linkedOrder = $invoice->linked_order;
                     @endphp
 
                     <div
                         class="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700 shadow-sm hover:shadow-md transition-all flex flex-col justify-between group">
                         <div>
-                            <div class="flex items-center justify-between mb-4">
-                                <span
-                                    class="text-xs font-bold text-gray-400">#{{ CalendarUtils::convertNumbers($invoice->invoice_number) }}</span>
+                            <div class="flex items-center justify-between mb-3">
+                                <span class="text-xs font-bold text-gray-400 flex items-center gap-1.5">
+                                    <svg class="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                    </svg>
+                                    صورت‌حساب مالی
+                                </span>
                                 <span
                                     class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium {{ $statusClass }}">
                                 {{ $statusName }}
                             </span>
                             </div>
 
-                            <h3 class="font-bold text-base text-gray-900 dark:text-white mb-3 line-clamp-1 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                                {{ $serviceTitle }}
+                            <h3 class="font-bold text-base text-gray-900 dark:text-white mb-2 line-clamp-1 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                                شماره فاکتور: #{{ CalendarUtils::convertNumbers($invoice->invoice_number) }}
                             </h3>
 
-                            <div class="space-y-2 text-xs text-gray-500 dark:text-gray-400 mb-6">
+                            @if($linkedOrder)
+                                @php
+                                    $orderServiceTitle = optional($linkedOrder->service)->name;
+                                @endphp
+                                <div class="mb-4">
+                                    <a href="{{ route('client.orders.show', $linkedOrder->id) }}"
+                                       class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-xs font-medium hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors border border-blue-100 dark:border-blue-800/40 max-w-full">
+                                        <svg class="w-3.5 h-3.5 text-blue-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
+                                        </svg>
+                                        <span class="truncate">
+                                            مربوط به سفارش: #{{ CalendarUtils::convertNumbers($linkedOrder->order_number) }}
+                                            @if($orderServiceTitle)
+                                                ({{ $orderServiceTitle }})
+                                            @endif
+                                        </span>
+                                    </a>
+                                </div>
+                            @endif
+
+                            <div class="space-y-2 text-xs text-gray-500 dark:text-gray-400 mb-6 {{ $linkedOrder ? '' : 'mt-4' }}">
+                                @if($serviceTitle)
+                                    <div class="flex items-center justify-between">
+                                        <span>شرح خدمت:</span>
+                                        <span class="font-medium text-gray-700 dark:text-gray-300 truncate max-w-[180px]" title="{{ $serviceTitle }}">{{ $serviceTitle }}</span>
+                                    </div>
+                                @endif
                                 <div class="flex items-center justify-between">
                                     <span>تاریخ صدور:</span>
                                     <span
@@ -156,7 +187,7 @@
                                 <span class="text-xs text-gray-400">مبلغ کل:</span>
                                 <div class="text-lg font-bold text-gray-900 dark:text-white">
                                     {{ CalendarUtils::convertNumbers(number_format($invoice->total)) }} <span
-                                        class="text-xs font-normal text-gray-400">تومان</span>
+                                        class="text-xs font-normal text-gray-400">{{ $invoice->currency_label ?? 'ریال' }}</span>
                                 </div>
                             </div>
 

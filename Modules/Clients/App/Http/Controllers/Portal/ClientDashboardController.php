@@ -45,8 +45,8 @@ class ClientDashboardController extends Controller
             ->sortByDesc('date')
             ->values();
 
-        // مبلغ پرداخت نشده کلی برای نمایش در داشبورد
-        $unpaidInvoicesSum = $allPayments->where('is_pending', true)->sum('amount_display');
+        // مبلغ پرداخت نشده کلی بر مبنای ریال برای نمایش در داشبورد
+        $unpaidInvoicesSum = $allPayments->where('is_pending', true)->sum('amount_in_rials');
         $recentPayments = $allPayments->take(5);
 
         return view('clients::portal.dashboard', [
@@ -128,12 +128,16 @@ class ClientDashboardController extends Controller
                 $displayAmount = ($currencyUnit === 'IRT') ? ($payment->amount / 10) : $payment->amount;
                 $currLabel = ($currencyUnit === 'IRT') ? 'تومان' : 'ریال';
 
+                // Booking payment amounts in database are ALWAYS in Rials (IRR)
+                $amountInRials = (float)$payment->amount;
+
                 return (object)[
                     'id'             => $payment->id,
                     'type'           => 'booking',
                     'type_label'     => 'نوبت‌دهی',
                     'amount'         => $payment->amount,
                     'amount_display' => $displayAmount,
+                    'amount_in_rials'=> $amountInRials,
                     'currency_label' => $currLabel,
                     'status'         => $payment->status,
                     'date'           => $payment->created_at,
@@ -192,13 +196,19 @@ class ClientDashboardController extends Controller
                     $normalizedStatus = $isPaid ? 'PAID' : ($isCanceled ? 'CANCELED' : 'PENDING');
                     $remaining = max(0, $inv->total - $inv->paid_amount);
 
+                    $invCurrency = strtolower($inv->currency ?? \Modules\Settings\Entities\Setting::where('key', 'currency')->value('value') ?? 'rial');
+                    $currLabel = in_array($invCurrency, ['rial', 'irr', 'ریال']) ? 'ریال' : 'تومان';
+                    $rawAmount = $isPending ? ($remaining > 0 ? $remaining : $inv->total) : $inv->total;
+                    $amountInRials = in_array($invCurrency, ['toman', 'tmn', 'تومان']) ? ($rawAmount * 10) : $rawAmount;
+
                     return (object)[
                         'id'             => $inv->id,
                         'type'           => 'service',
                         'type_label'     => 'فاکتور خدمات',
                         'amount'         => $inv->total,
-                        'amount_display' => $isPending ? ($remaining > 0 ? $remaining : $inv->total) : $inv->total,
-                        'currency_label' => 'تومان',
+                        'amount_display' => $rawAmount,
+                        'amount_in_rials'=> $amountInRials,
+                        'currency_label' => $currLabel,
                         'status'         => $normalizedStatus,
                         'date'           => $inv->issue_date ?? $inv->created_at,
                         'is_pending'     => $isPending,
@@ -276,13 +286,19 @@ class ClientDashboardController extends Controller
                 ];
                 $normalizedStatus = $statusMap[strtolower($order->payment_status)] ?? strtoupper($order->payment_status);
 
+                $marketCurrency = strtolower(\Modules\Market\Entities\MarketSetting::getValue('general.currency', 'rial'));
+                $currLabel = in_array($marketCurrency, ['rial', 'irr', 'ریال']) ? 'ریال' : 'تومان';
+                $rawAmount = (float)$order->grand_total;
+                $amountInRials = in_array($marketCurrency, ['toman', 'tmn', 'تومان']) ? ($rawAmount * 10) : $rawAmount;
+
                 return (object)[
                     'id'             => $order->id,
                     'type'           => 'market',
                     'type_label'     => 'فروشگاه',
                     'amount'         => $order->grand_total,
-                    'amount_display' => $order->grand_total,
-                    'currency_label' => 'تومان',
+                    'amount_display' => $rawAmount,
+                    'amount_in_rials'=> $amountInRials,
+                    'currency_label' => $currLabel,
                     'status'         => $normalizedStatus,
                     'date'           => $order->created_at,
                     'is_pending'     => in_array(strtolower($normalizedStatus), ['pending', 'unpaid']),

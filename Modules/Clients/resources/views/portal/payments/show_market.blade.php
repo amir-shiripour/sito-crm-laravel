@@ -122,7 +122,7 @@
                 </div>
                 <div class="bg-gray-50 dark:bg-gray-900/50 rounded-2xl p-4 border border-gray-100 dark:border-gray-700 flex items-center justify-between">
                     <span class="text-sm text-gray-500 dark:text-gray-400">کد پیگیری پرداخت (بانکی):</span>
-                    <span class="font-medium text-gray-900 dark:text-white font-mono">{{ $order->payment_ref_id ?: ($order->transaction_id ?: '---') }}</span>
+                    <span class="font-medium text-gray-900 dark:text-white">{{ $order->payment_ref_id ?: ($order->transaction_id ?: '---') }}</span>
                 </div>
             </div>
         </div>
@@ -148,24 +148,24 @@
         <div class="flex flex-col items-end gap-3 border-t border-gray-100 dark:border-gray-700 pt-6">
             <div class="flex justify-between w-full sm:w-1/2 text-sm">
                 <span class="text-gray-500 dark:text-gray-400">مجموع اقلام:</span>
-                <span class="font-medium text-gray-900 dark:text-white">{{ number_format($order->total_items_price) }} تومان</span>
+                <span class="font-medium text-gray-900 dark:text-white">{{ number_format($order->total_items_price) }} {{ $order->currency_label ?? 'تومان' }}</span>
             </div>
             @if($order->total_shipping_cost > 0)
             <div class="flex justify-between w-full sm:w-1/2 text-sm">
                 <span class="text-gray-500 dark:text-gray-400">هزینه ارسال:</span>
-                <span class="font-medium text-gray-900 dark:text-white">{{ number_format($order->total_shipping_cost) }} تومان</span>
+                <span class="font-medium text-gray-900 dark:text-white">{{ number_format($order->total_shipping_cost) }} {{ $order->currency_label ?? 'تومان' }}</span>
             </div>
             @endif
             @if($order->total_discount > 0)
             <div class="flex justify-between w-full sm:w-1/2 text-sm text-emerald-600 dark:text-emerald-400">
                 <span>تخفیف:</span>
-                <span class="font-medium">{{ number_format($order->total_discount) }} تومان</span>
+                <span class="font-medium">{{ number_format($order->total_discount) }} {{ $order->currency_label ?? 'تومان' }}</span>
             </div>
             @endif
             <div class="w-full sm:w-1/2 border-t border-dashed border-gray-200 dark:border-gray-700 my-1"></div>
             <div class="flex justify-between w-full sm:w-1/2">
                 <span class="text-gray-700 dark:text-gray-300 font-bold">مبلغ نهایی:</span>
-                <span class="font-bold text-xl text-gray-900 dark:text-white">{{ number_format($order->grand_total) }} <span class="text-sm font-normal text-gray-500">تومان</span></span>
+                <span class="font-bold text-xl text-gray-900 dark:text-white">{{ number_format($order->grand_total) }} <span class="text-sm font-normal text-gray-500">{{ $order->currency_label ?? 'تومان' }}</span></span>
             </div>
         </div>
 

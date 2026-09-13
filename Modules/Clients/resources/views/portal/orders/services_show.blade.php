@@ -34,7 +34,88 @@
     };
 
     $orderTotal = $order->total_amount ?: $order->first_payment_amount ?: 0;
+
+    $relatedInvoices = $order->related_invoices;
+    $primaryInvoice = $order->invoice ?? $relatedInvoices->first();
+
+    // Extract custom fields from the order's primary invoice item
+    $displayCustomFields = [];
+    $packageTitle = null;
+    $invoiceItem = null;
+
+    if ($primaryInvoice) {
+        if ($order->service_id) {
+            $invoiceItem = $primaryInvoice->items->where('service_id', $order->service_id)->first();
+        } else {
+            $invoiceItem = $primaryInvoice->items->where('custom_service_name', $order->notes)->first()
+                ?? $primaryInvoice->items->where('description', $order->notes)->first();
+        }
+    }
+
+    if ($invoiceItem) {
+        $packageTitle = $invoiceItem->meta['_packageTitle'] ?? null;
+        if (!empty($invoiceItem->meta['custom_fields']) && $order->service) {
+            $customFieldsData = $invoiceItem->meta['custom_fields'];
+            $customFieldsPrices = $invoiceItem->meta['custom_fields_prices'] ?? [];
+            $basePrice = $invoiceItem->unit_price ?? 0;
+            $serviceCustomFields = $order->service->customFields->keyBy('id');
+
+            foreach ($customFieldsData as $fieldId => $value) {
+                $field = $serviceCustomFields->get($fieldId);
+                if ($field) {
+                    $displayValue = $value;
+                    if ($field->type === 'checkbox') {
+                        $displayValue = in_array($value, [true, '1', 1], true) ? 'بله' : 'خیر';
+                    } elseif ($field->type === 'multiselect' && is_array($value)) {
+                        $displayValue = implode('، ', $value);
+                    } elseif (is_array($value)) {
+                        $displayValue = implode('، ', $value);
+                    }
+
+                    if ($displayValue !== '' && $displayValue !== null && $displayValue !== 'خیر') {
+                        $price = 0;
+                        $hasPricing = $field->has_pricing ?? false;
+                        if ($hasPricing) {
+                            if ($field->type === 'multiselect' && is_array($value)) {
+                                $totalPrice = 0;
+                                foreach ($value as $opt) {
+                                    $optPrice = is_array($customFieldsPrices[$fieldId] ?? null)
+                                        ? ($customFieldsPrices[$fieldId][$opt] ?? null)
+                                        : null;
+                                    if ($optPrice === null) {
+                                        $optPrice = $field->getOptionPrice($opt, $basePrice);
+                                    }
+                                    $totalPrice += (float)$optPrice;
+                                }
+                                $price = $totalPrice;
+                            } else {
+                                if (isset($customFieldsPrices[$fieldId]) && !is_array($customFieldsPrices[$fieldId])) {
+                                    $price = (float)$customFieldsPrices[$fieldId];
+                                } else {
+                                    if (in_array($field->type, ['select', 'radio'])) {
+                                        $price = $field->getOptionPrice($displayValue, $basePrice);
+                                    } else {
+                                        $price = $field->pricing_type === 'percentage'
+                                            ? $basePrice * ((float)($field->pricing_amount ?? 0) / 100)
+                                            : (float)($field->pricing_amount ?? 0);
+                                    }
+                                }
+                            }
+                        }
+
+                        $displayCustomFields[] = [
+                            'label' => $field->label,
+                            'value' => $displayValue,
+                            'has_pricing' => $hasPricing,
+                            'price' => $price,
+                        ];
+                    }
+                }
+            }
+        }
+    }
 @endphp
+
 
 @section('content')
 <div class="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700 max-w-5xl mx-auto">
@@ -58,20 +139,24 @@
         </div>
 
         <div class="flex flex-wrap items-center gap-3">
-            @if($order->invoice_id)
-                <a href="{{ route('client.invoices.show', $order->invoice_id) }}"
+            @php
+                $headerInvoice = $primaryInvoice ?: $relatedInvoices->first();
+            @endphp
+            @if($headerInvoice)
+                <a href="{{ route('client.invoices.show', $headerInvoice->id) }}"
                    class="inline-flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-all text-xs font-bold shadow-md shadow-blue-600/20 active:scale-95">
                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                               d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                     </svg>
                     <span>مشاهده صورت‌حساب</span>
-                    @if($order->invoice?->invoice_number)
+                    @if($headerInvoice->invoice_number)
                         <span class="px-1.5 py-0.5 rounded-md bg-white/20 text-[10px]"
-                              dir="ltr">#{{ \Morilog\Jalali\CalendarUtils::convertNumbers($order->invoice->invoice_number) }}</span>
+                              dir="ltr">#{{ \Morilog\Jalali\CalendarUtils::convertNumbers($headerInvoice->invoice_number) }}</span>
                     @endif
                 </a>
             @endif
+
 
             <a href="{{ route('client.orders.index') }}"
                class="inline-flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl transition-colors text-xs font-medium shadow-sm">
@@ -154,13 +239,14 @@
                     class="bg-gray-50/80 dark:bg-gray-900/40 p-3.5 rounded-2xl border border-gray-100 dark:border-gray-700/60">
                     <span class="text-[11px] font-bold text-gray-400 block mb-1">سررسید بعدی</span>
                     <span
-                        class="font-bold text-xs sm:text-sm text-gray-900 dark:text-white">{{ $order->renewal_date ? \Morilog\Jalali\CalendarUtils::convertNumbers(jdate($order->renewal_date)->format('Y/m/d')) : ($order->billing_cycle === 'one_time' ? 'یکباره' : '---') }}</span>
+                        class="font-bold text-xs sm:text-sm text-gray-900 dark:text-white">{{ $order->effective_renewal_date ? \Morilog\Jalali\CalendarUtils::convertNumbers(jdate($order->effective_renewal_date)->format('Y/m/d')) : ($order->billing_cycle === 'one_time' ? 'یکباره' : '---') }}</span>
                 </div>
+
                 <div
                     class="bg-gray-50/80 dark:bg-gray-900/40 p-3.5 rounded-2xl border border-gray-100 dark:border-gray-700/60">
                     <span class="text-[11px] font-bold text-gray-400 block mb-1">مبلغ سفارش</span>
                     <span class="font-bold text-xs sm:text-sm text-blue-600 dark:text-blue-400">{{ \Morilog\Jalali\CalendarUtils::convertNumbers(number_format($orderTotal)) }} <span
-                            class="text-[10px] font-normal text-gray-500">تومان</span></span>
+                            class="text-[10px] font-normal text-gray-500">{{ $order->currency_label ?? 'ریال' }}</span></span>
                 </div>
             </div>
         </div>
@@ -178,8 +264,14 @@
                         <div
                             class="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-100 dark:border-gray-700">
                             <span class="block text-xs text-gray-400 mb-1">عنوان کامل سرویس</span>
-                            <span
-                                class="font-bold text-sm text-gray-900 dark:text-white">{{ optional($order->service)->name ?: 'سرویس خدمات' }}</span>
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <span class="font-bold text-sm text-gray-900 dark:text-white">{{ optional($order->service)->name ?: 'سرویس خدمات' }}</span>
+                                @if($packageTitle)
+                                    <span class="inline-flex items-center gap-1 text-[10px] font-bold text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-500/10 border border-amber-300 dark:border-amber-500/20 px-2 py-0.5 rounded-md">
+                                        پکیج: {{ $packageTitle }}
+                                    </span>
+                                @endif
+                            </div>
                         </div>
 
                         <div
@@ -189,10 +281,11 @@
                                 class="font-bold text-sm text-gray-900 dark:text-white">{{ optional(optional($order->service)->category)->name ?: 'عمومی' }}</span>
                         </div>
 
+
                         <div
                             class="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-100 dark:border-gray-700">
                             <span class="block text-xs text-gray-400 mb-1">هزینه سفارش</span>
-                            <span class="font-bold text-sm text-gray-900 dark:text-white">{{ \Morilog\Jalali\CalendarUtils::convertNumbers(number_format($orderTotal)) }} تومان</span>
+                            <span class="font-bold text-sm text-gray-900 dark:text-white">{{ \Morilog\Jalali\CalendarUtils::convertNumbers(number_format($orderTotal)) }} {{ $order->currency_label ?? 'ریال' }}</span>
                         </div>
 
                         <div
@@ -202,12 +295,39 @@
                                 @if($order->billing_cycle === 'one_time')
                                     فاقد تمدید (سفارش یکباره)
                                 @else
-                                    {{ \Morilog\Jalali\CalendarUtils::convertNumbers(number_format($order->renewal_price ?: $orderTotal)) }}
-                                    تومان
+                                    {{ \Morilog\Jalali\CalendarUtils::convertNumbers(number_format($order->calculated_renewal_price)) }}
+                                    {{ $order->currency_label ?? 'ریال' }}
                                 @endif
                             </span>
                         </div>
                     </div>
+
+                    @if(!empty($displayCustomFields))
+                        <div class="pt-4 border-t border-gray-200/60 dark:border-gray-700">
+                            <span class="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-3 flex items-center gap-1.5">
+                                <svg class="w-4 h-4 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
+                                </svg>
+                                مشخصات و گزینه‌های انتخابی سفارش
+                            </span>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                @foreach($displayCustomFields as $cf)
+                                    <div class="bg-white dark:bg-gray-800 p-3.5 rounded-xl border border-gray-100 dark:border-gray-700 flex items-center justify-between">
+                                        <span class="text-xs text-gray-500 dark:text-gray-400 font-medium">{{ $cf['label'] }}:</span>
+                                        <div class="flex items-center gap-2">
+                                            <span class="text-xs font-bold text-gray-900 dark:text-white">{{ $cf['value'] }}</span>
+                                            @if($cf['has_pricing'] && $cf['price'] > 0)
+                                                <span class="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 px-1.5 py-0.5 rounded">
+                                                    +{{ \Morilog\Jalali\CalendarUtils::convertNumbers(number_format($cf['price'])) }}
+                                                </span>
+                                            @endif
+                                        </div>
+                                    </div>
+                                @endforeach
+                            </div>
+                        </div>
+                    @endif
+
 
                     @if(optional($order->service)->description)
                         <div class="pt-3 border-t border-gray-200/60 dark:border-gray-700">
@@ -238,39 +358,98 @@
             </div>
 
             <div class="lg:col-span-1 space-y-6">
-                @if($order->invoice_id)
+                @if($relatedInvoices->isNotEmpty())
                     <div
-                        class="p-5 rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-50/60 dark:from-blue-950/30 dark:to-indigo-950/20 border border-blue-100 dark:border-blue-900/40 space-y-4">
+                        class="p-5 rounded-2xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 shadow-sm space-y-4">
                         <div class="flex items-center justify-between">
                             <div class="flex items-center gap-2">
                                 <div
-                                    class="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-sm">
+                                    class="w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 flex items-center justify-center">
                                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                               d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                                     </svg>
                                 </div>
-                                <h3 class="text-xs font-bold text-gray-900 dark:text-white">صورت‌حساب رسمی سفارش</h3>
+                                <h3 class="text-xs font-bold text-gray-900 dark:text-white">صورت‌حساب‌های این سفارش</h3>
                             </div>
-                            <span class="text-[11px] font-bold text-blue-700 dark:text-blue-300"
-                                  dir="ltr">#{{ \Morilog\Jalali\CalendarUtils::convertNumbers($order->invoice?->invoice_number ?? $order->invoice_id) }}</span>
+                            <span class="text-xs text-gray-400 font-medium">
+                                {{ \Morilog\Jalali\CalendarUtils::convertNumbers($relatedInvoices->count()) }} فاکتور
+                            </span>
                         </div>
 
-                        <p class="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">
-                            برای مشاهده فاکتور رسمی، مانده بدهی، سررسید پرداخت‌ها و ثبت فیش واریزی به صفحه صورت‌حساب
-                            مراجعه نمایید.
-                        </p>
+                        <div class="space-y-2.5 divide-y divide-gray-100 dark:divide-gray-700/60">
+                            @foreach($relatedInvoices as $relInv)
+                                @php
+                                    $rStatusName = $relInv->status?->name ?? 'نامشخص';
+                                    $rIsPaid = str_contains($rStatusName, 'پرداخت شده');
+                                    $rIsPending = str_contains($rStatusName, 'انتظار') || str_contains($rStatusName, 'معوقه');
+                                    $rIsCanceled = str_contains($rStatusName, 'لغو') || str_contains($rStatusName, 'ادغام');
 
-                        <a href="{{ route('client.invoices.show', $order->invoice_id) }}"
-                           class="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-md shadow-blue-600/20 transition-all active:scale-95">
-                            <span>مشاهده و تسویه صورت‌حساب</span>
-                            <svg class="w-3.5 h-3.5 rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                      d="M14 5l7 7m0 0l-7 7m7-7H3"/>
-                            </svg>
-                        </a>
+                                    $rStatusClass = match(true) {
+                                        $rIsPaid => 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400',
+                                        $rIsPending => 'bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400',
+                                        $rIsCanceled => 'bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-400',
+                                        default => 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300',
+                                    };
+
+                                    $isPrimary = $relInv->id == $order->invoice_id;
+                                    $isRenewal = !empty($relInv->meta['source_order_id']) && $relInv->id != $order->invoice_id;
+                                @endphp
+                                <div class="pt-2.5 first:pt-0 flex items-center justify-between gap-3 text-xs">
+                                    <div class="min-w-0">
+                                        <div class="flex items-center gap-1.5 flex-wrap">
+                                            <a href="{{ route('client.invoices.show', $relInv->id) }}"
+                                               class="font-bold text-gray-900 dark:text-white hover:text-blue-600 transition-colors"
+                                               dir="ltr">#{{ \Morilog\Jalali\CalendarUtils::convertNumbers($relInv->invoice_number ?: $relInv->proforma_invoice_number) }}</a>
+                                            @if($isRenewal)
+                                                <span class="text-[9.5px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 px-1.5 py-0.5 rounded">
+                                                    تمدید دوره‌ای
+                                                </span>
+                                            @elseif($isPrimary)
+                                                <span class="text-[9.5px] font-bold text-gray-500 bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded">
+                                                    فاکتور اولیه
+                                                </span>
+                                            @endif
+                                        </div>
+                                        <div class="text-[11px] text-gray-400 mt-0.5">
+                                            <span>{{ \Morilog\Jalali\CalendarUtils::convertNumbers(number_format($relInv->total)) }} {{ $relInv->currency_label ?? 'ریال' }}</span>
+                                            @if($relInv->issue_date)
+                                                <span> • {{ \Morilog\Jalali\CalendarUtils::convertNumbers(jdate($relInv->issue_date)->format('Y/m/d')) }}</span>
+                                            @endif
+                                        </div>
+                                    </div>
+
+                                    <div class="flex items-center gap-2 shrink-0">
+                                        <span class="inline-block px-2 py-0.5 rounded-md text-[10px] font-bold {{ $rStatusClass }}">
+                                            {{ $rStatusName }}
+                                        </span>
+                                        <a href="{{ route('client.invoices.show', $relInv->id) }}"
+                                           class="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                                           title="مشاهده فاکتور">
+                                            <svg class="w-4 h-4 rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
+                                            </svg>
+                                        </a>
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+
+                        @php
+                            $pendingInvoice = $relatedInvoices->first(fn($i) => str_contains($i->status?->name ?? '', 'انتظار') || str_contains($i->status?->name ?? '', 'معوقه'));
+                        @endphp
+                        @if($pendingInvoice)
+                            <a href="{{ route('client.invoices.show', $pendingInvoice->id) }}"
+                               class="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-md shadow-blue-600/20 transition-all active:scale-95">
+                                <span>پرداخت فاکتور در انتظار (#{{ \Morilog\Jalali\CalendarUtils::convertNumbers($pendingInvoice->invoice_number) }})</span>
+                                <svg class="w-3.5 h-3.5 rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
+                                </svg>
+                            </a>
+                        @endif
                     </div>
                 @endif
+
 
                 <div
                     class="bg-gray-50/60 dark:bg-gray-900/30 rounded-2xl p-5 border border-gray-100 dark:border-gray-700/60 space-y-4">

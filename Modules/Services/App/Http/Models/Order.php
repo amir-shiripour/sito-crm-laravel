@@ -189,4 +189,95 @@ class Order extends Model
 
         return $this->hasOne(self::class, 'id', 'id')->whereRaw('1 = 0');
     }
+
+    public function getCurrencyLabelAttribute(): string
+    {
+        if ($this->relationLoaded('invoice') && $this->invoice) {
+            return $this->invoice->currency_label;
+        }
+        $curr = strtolower(\Modules\Settings\Entities\Setting::where('key', 'currency')->value('value') ?? 'rial');
+        return in_array($curr, ['rial', 'irr', 'ریال']) ? 'ریال' : 'تومان';
+    }
+
+    public function getIsRenewalManualAttribute(): bool
+    {
+        return ($this->renewal_price_type ?? 'auto') === 'manual';
+    }
+
+    public function getCalculatedRenewalPriceAttribute(): float
+    {
+        if ($this->billing_cycle === 'one_time') {
+            return 0.0;
+        }
+
+        if ($this->is_renewal_manual) {
+            $price = (float)($this->renewal_price ?? 0);
+        } else {
+            $service = $this->service;
+            if ($service && !empty($this->billing_cycle) && isset($service->renewal_prices[$this->billing_cycle]) && (float)$service->renewal_prices[$this->billing_cycle] > 0) {
+                $price = (float)$service->renewal_prices[$this->billing_cycle];
+            } else {
+                $price = (float)($this->renewal_price ?? 0);
+            }
+        }
+
+        if ($price <= 0) {
+            $fallback = (float)($this->total_amount ?: ($this->first_payment_amount ?: ($this->service?->base_price ?: 0)));
+            $price = $fallback;
+        }
+
+        return $price;
+    }
+
+    public function getEffectiveRenewalDateAttribute()
+    {
+        if ($this->renewal_date) {
+            return $this->renewal_date;
+        }
+
+        if ($this->billing_cycle && $this->billing_cycle !== 'one_time') {
+            $baseDate = $this->issue_date ?: ($this->invoice?->issue_date ?: $this->created_at);
+            if ($baseDate) {
+                try {
+                    $carbon = \Carbon\Carbon::parse($baseDate);
+                    return match ($this->billing_cycle) {
+                        'monthly' => $carbon->addMonth(),
+                        'quarterly' => $carbon->addMonths(3),
+                        'semi_annual', 'semi-annual' => $carbon->addMonths(6),
+                        'annual' => $carbon->addYear(),
+                        'biennial' => $carbon->addYears(2),
+                        'triennial' => $carbon->addYears(3),
+                        default => null,
+                    };
+                } catch (\Throwable $e) {
+                    return null;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    public function getRelatedInvoicesAttribute()
+    {
+        if (method_exists($this, 'invoices')) {
+            try {
+                $list = $this->invoices()->with(['status', 'payments'])->get();
+                if ($list->isNotEmpty()) {
+                    return $list;
+                }
+            } catch (\Throwable $e) {
+                // fallback
+            }
+        }
+
+        if ($this->invoice) {
+            $this->invoice->loadMissing(['status', 'payments']);
+            return collect([$this->invoice]);
+        }
+
+        return collect();
+    }
 }
+
+

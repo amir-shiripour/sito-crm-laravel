@@ -189,4 +189,37 @@ class Payment extends Model
     {
         return self::formatMethodName($this->method, $this->gateway);
     }
+
+    public function getReceiptUrlAttribute(): ?string
+    {
+        if (empty($this->notes)) {
+            return null;
+        }
+
+        if (preg_match('/(?:فایل پیوست|رسید پرداخت|فیش واریزی):\s*(https?:\/\/[^\s|]+)/u', $this->notes, $matches)) {
+            return trim($matches[1]);
+        }
+
+        if (preg_match('/(https?:\/\/[^\s|]+\.(?:jpg|jpeg|png|webp|pdf))/ui', $this->notes, $matches)) {
+            return trim($matches[1]);
+        }
+
+        return null;
+    }
+
+    public function isApproved(): bool
+    {
+        return $this->status === 'paid';
+    }
+
+    public function isPending(): bool
+    {
+        return $this->status === 'pending';
+    }
+
+    public function isCanceled(): bool
+    {
+        return $this->status === 'canceled';
+    }
 }
+

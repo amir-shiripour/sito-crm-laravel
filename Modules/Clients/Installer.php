@@ -38,10 +38,13 @@ class Installer extends BaseModuleInstaller
         parent::__construct('Clients');
     }
 
-    public function install(): void
+    public static function syncModulePermissions(): void
     {
-        parent::install();
+        (new self())->syncPermissions();
+    }
 
+    public function syncPermissions(): void
+    {
         // guard پیش‌فرض (در صورت نیاز تغییر بده)
         $guard = config('auth.defaults.guard', 'web');
 
@@ -94,7 +97,13 @@ class Installer extends BaseModuleInstaller
         // کش Spatie
         app(PermissionRegistrar::class)->forgetCachedPermissions();
 
-        Log::info("Clients Installer: permissions created / roles updated.");
+        Log::info("Clients Installer: permissions created / roles updated via syncPermissions.");
+    }
+
+    public function install(): void
+    {
+        parent::install();
+        $this->syncPermissions();
     }
 
 

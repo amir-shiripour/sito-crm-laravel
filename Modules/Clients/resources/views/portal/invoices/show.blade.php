@@ -19,27 +19,30 @@
     };
 
     $remainingBalance = max(0, $invoice->total - $invoice->paid_amount);
+    $invoiceCurrency = strtolower($invoice->currency ?? \Modules\Settings\Entities\Setting::where('key', 'currency')->value('value') ?? 'rial');
+    $invoiceCurrencyLabel = in_array($invoiceCurrency, ['rial', 'irr', 'ریال']) ? 'ریال' : 'تومان';
 @endphp
 
 @section('content')
     <div x-data="clientPaymentModal()"
-         class="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700 max-w-4xl mx-auto">
+         class="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700 w-full">
 
         {{-- هدر صفحه --}}
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
             <div>
                 <h1 class="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
                     <a href="{{ route('client.invoices.index') }}"
-                       class="p-2 -m-2 rounded-xl text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:text-gray-300 dark:hover:bg-gray-800 transition-colors">
-                        <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                       class="p-2 -m-2 rounded-xl text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:text-gray-300 dark:hover:bg-gray-800 transition-colors"
+                       title="بازگشت به لیست فاکتورها">
+                        <svg class="w-6 h-6 rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                  d="M14 5l7 7m0 0l-7 7m7-7H3"/>
+                                  d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
                         </svg>
                     </a>
-                    رسید و جزئیات فاکتور
+                    <span>رسید و جزئیات فاکتور</span>
                 </h1>
                 <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">شناسه یکتای صورت‌حساب: <span
-                        class="font-bold">{{ CalendarUtils::convertNumbers($invoice->invoice_number) }}</span></p>
+                        class="font-bold text-gray-700 dark:text-gray-300">{{ CalendarUtils::convertNumbers($invoice->invoice_number) }}</span></p>
             </div>
 
             <div class="flex flex-wrap items-center gap-3">
@@ -50,7 +53,7 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                   d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
                         </svg>
-                        سفارش مرتبط #{{ CalendarUtils::convertNumbers($linkedOrder->order_number) }}
+                        سفارش مرتبط #{{ CalendarUtils::convertNumbers($linkedOrder->order_number) }}{{ optional($linkedOrder->service)->name ? ' (' . $linkedOrder->service->name . ')' : '' }}
                     </a>
                 @endif
 
@@ -111,11 +114,18 @@
                     <div class="text-xs text-gray-400 mb-1">شماره فاکتور</div>
                     <div class="text-2xl font-bold text-gray-900 dark:text-white tracking-wider">
                         #{{ CalendarUtils::convertNumbers($invoice->invoice_number) }}</div>
-                    <div
-                        class="mt-3 inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-bold {{ $statusClass }}">
-                        {{ $statusName }}
+                    <div class="mt-3 flex items-center gap-2 flex-wrap">
+                        <span class="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-bold {{ $statusClass }}">
+                            {{ $statusName }}
+                        </span>
+                        @if(!empty($invoice->meta['source_order_id']))
+                            <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800/40">
+                                تمدید دوره‌ای سفارش
+                            </span>
+                        @endif
                     </div>
                 </div>
+
 
                 <div class="grid grid-cols-2 sm:grid-cols-3 gap-6 text-left">
                     <div>
@@ -160,16 +170,16 @@
                     <span class="text-xs font-bold text-gray-400 block mb-2">خلاصه وضعیت مالی:</span>
                     <div class="flex items-center justify-between text-xs text-gray-500 mb-1">
                         <span>مبلغ کل:</span>
-                        <span class="font-bold text-gray-900 dark:text-white">{{ CalendarUtils::convertNumbers(number_format($invoice->total)) }} تومان</span>
+                        <span class="font-bold text-gray-900 dark:text-white">{{ CalendarUtils::convertNumbers(number_format($invoice->total)) }} {{ $invoiceCurrencyLabel }}</span>
                     </div>
                     <div class="flex items-center justify-between text-xs text-gray-500 mb-1">
                         <span>مجموع پرداختی:</span>
-                        <span class="font-bold text-emerald-600">{{ CalendarUtils::convertNumbers(number_format($invoice->paid_amount)) }} تومان</span>
+                        <span class="font-bold text-emerald-600">{{ CalendarUtils::convertNumbers(number_format($invoice->paid_amount)) }} {{ $invoiceCurrencyLabel }}</span>
                     </div>
                     <div
                         class="flex items-center justify-between text-xs font-bold pt-1 border-t border-gray-200 dark:border-gray-700">
                         <span class="text-gray-700 dark:text-gray-300">مانده قابل پرداخت:</span>
-                        <span class="text-amber-600 font-bold text-sm">{{ CalendarUtils::convertNumbers(number_format($remainingBalance)) }} تومان</span>
+                        <span class="text-amber-600 font-bold text-sm">{{ CalendarUtils::convertNumbers(number_format($remainingBalance)) }} {{ $invoiceCurrencyLabel }}</span>
                     </div>
                 </div>
             </div>
@@ -212,7 +222,7 @@
                                     <td class="py-3 px-4 text-gray-400">{{ CalendarUtils::convertNumbers(number_format($item->discount_amount ?? 0)) }}</td>
                                     <td class="py-3 px-4 text-gray-400">{{ CalendarUtils::convertNumbers(number_format($item->tax_amount ?? 0)) }}</td>
                                     <td class="py-3 px-4 text-left font-bold text-gray-900 dark:text-white">{{ CalendarUtils::convertNumbers(number_format($item->total)) }}
-                                        تومان
+                                        {{ $invoiceCurrencyLabel }}
                                     </td>
                                 </tr>
                             @empty
@@ -224,7 +234,7 @@
                                     <td class="py-3 px-4 text-gray-400">{{ CalendarUtils::convertNumbers(number_format($invoice->discount_amount)) }}</td>
                                     <td class="py-3 px-4 text-gray-400">{{ CalendarUtils::convertNumbers(number_format($invoice->tax_amount)) }}</td>
                                     <td class="py-3 px-4 text-left font-bold text-gray-900 dark:text-white">{{ CalendarUtils::convertNumbers(number_format($invoice->total)) }}
-                                        تومان
+                                        {{ $invoiceCurrencyLabel }}
                                     </td>
                                 </tr>
                             @endforelse
@@ -239,33 +249,33 @@
                 <div class="w-full sm:w-80 space-y-2 text-xs">
                     <div class="flex justify-between text-gray-500">
                         <span>جمع جزء (مبلغ پایه):</span>
-                        <span class="font-medium text-gray-900 dark:text-white">{{ CalendarUtils::convertNumbers(number_format($invoice->subtotal)) }} تومان</span>
+                        <span class="font-medium text-gray-900 dark:text-white">{{ CalendarUtils::convertNumbers(number_format($invoice->subtotal)) }} {{ $invoiceCurrencyLabel }}</span>
                     </div>
                     @if($invoice->discount_amount > 0)
                         <div class="flex justify-between text-emerald-600">
                             <span>تخفیف:</span>
-                            <span class="font-medium">- {{ CalendarUtils::convertNumbers(number_format($invoice->discount_amount)) }} تومان</span>
+                            <span class="font-medium">- {{ CalendarUtils::convertNumbers(number_format($invoice->discount_amount)) }} {{ $invoiceCurrencyLabel }}</span>
                         </div>
                     @endif
                     @if($invoice->tax_amount > 0)
                         <div class="flex justify-between text-gray-500">
                             <span>مالیات و عوارض ({{ CalendarUtils::convertNumbers($invoice->tax_percent) }}%):</span>
-                            <span class="font-medium text-gray-900 dark:text-white">{{ CalendarUtils::convertNumbers(number_format($invoice->tax_amount)) }} تومان</span>
+                            <span class="font-medium text-gray-900 dark:text-white">{{ CalendarUtils::convertNumbers(number_format($invoice->tax_amount)) }} {{ $invoiceCurrencyLabel }}</span>
                         </div>
                     @endif
                     <div
                         class="flex justify-between text-sm font-bold text-gray-900 dark:text-white pt-2 border-t border-gray-100 dark:border-gray-700">
                         <span>جمع کل فاکتور:</span>
-                        <span class="text-base font-bold text-blue-600 dark:text-blue-400">{{ CalendarUtils::convertNumbers(number_format($invoice->total)) }} تومان</span>
+                        <span class="text-base font-bold text-blue-600 dark:text-blue-400">{{ CalendarUtils::convertNumbers(number_format($invoice->total)) }} {{ $invoiceCurrencyLabel }}</span>
                     </div>
                     <div class="flex justify-between text-xs text-gray-500">
                         <span>پرداخت شده:</span>
-                        <span class="font-medium text-emerald-600">{{ CalendarUtils::convertNumbers(number_format($invoice->paid_amount)) }} تومان</span>
+                        <span class="font-medium text-emerald-600">{{ CalendarUtils::convertNumbers(number_format($invoice->paid_amount)) }} {{ $invoiceCurrencyLabel }}</span>
                     </div>
                     <div
                         class="flex justify-between text-sm font-bold pt-2 border-t border-dashed border-gray-200 dark:border-gray-700 {{ $remainingBalance > 0 ? 'text-amber-600' : 'text-emerald-600' }}">
                         <span>مانده قابل پرداخت:</span>
-                        <span class="text-base font-bold">{{ CalendarUtils::convertNumbers(number_format($remainingBalance)) }} تومان</span>
+                        <span class="text-base font-bold">{{ CalendarUtils::convertNumbers(number_format($remainingBalance)) }} {{ $invoiceCurrencyLabel }}</span>
                     </div>
                 </div>
             </div>
@@ -291,17 +301,28 @@
                                 class="divide-y divide-gray-100 dark:divide-gray-700 text-gray-700 dark:text-gray-300">
                             @foreach($invoice->payments as $payment)
                                 <tr>
-                                    <td class="py-3 px-4 font-medium">{{ \Modules\Services\App\Http\Models\Payment::formatMethodName($payment->method, $payment->gateway) }}</td>
+                                    <td class="py-3 px-4 font-medium">
+                                        <div class="flex items-center gap-2">
+                                            <span>{{ \Modules\Services\App\Http\Models\Payment::formatMethodName($payment->method, $payment->gateway) }}</span>
+                                            @if($payment->receipt_url)
+                                                <a href="{{ $payment->receipt_url }}" target="_blank" rel="noopener noreferrer"
+                                                   class="text-blue-600 hover:text-blue-700 dark:text-blue-400 text-[11px] font-normal underline inline-flex items-center gap-0.5" title="مشاهده تصویر فیش واریزی">
+                                                    <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/></svg>
+                                                    <span>مشاهده فیش</span>
+                                                </a>
+                                            @endif
+                                        </div>
+                                    </td>
                                     <td class="py-3 px-4 font-bold"
                                         dir="ltr">{{ CalendarUtils::convertNumbers($payment->transaction_id ?: '---') }}</td>
                                     <td class="py-3 px-4 font-bold">{{ CalendarUtils::convertNumbers(number_format($payment->amount)) }}
-                                        تومان
+                                        {{ $invoiceCurrencyLabel }}
                                     </td>
                                     <td class="py-3 px-4">{{ $payment->paid_at ? CalendarUtils::convertNumbers(jdate($payment->paid_at)->format('Y/m/d H:i')) : CalendarUtils::convertNumbers(jdate($payment->created_at)->format('Y/m/d H:i')) }}</td>
                                     <td class="py-3 px-4 text-center">
                                         <span
                                             class="inline-flex px-2 py-0.5 rounded-lg text-[11px] font-bold {{ $payment->status === 'paid' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : ($payment->status === 'canceled' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400') }}">
-                                            {{ $payment->status === 'paid' ? 'تایید شده' : ($payment->status === 'canceled' ? 'لغو شده' : 'در انتظار بررسی') }}
+                                            {{ $payment->status === 'paid' ? 'تایید شده' : ($payment->status === 'canceled' ? 'رد شده / لغو' : 'در انتظار بررسی و تایید') }}
                                         </span>
                                     </td>
                                 </tr>
@@ -377,6 +398,7 @@
                             @csrf
                             <input type="hidden" name="payment_method" :value="method">
                             <input type="hidden" name="sub_item" :value="subItem">
+                            <input type="hidden" name="amount" :value="allowPartial && paymentMode === 'partial' ? customAmount : rawAmountNumber">
                             <div
                                 class="p-6 space-y-6 flex-1 min-h-0 overflow-y-auto custom-scrollbar overscroll-contain">
                                 <div
@@ -384,12 +406,15 @@
                                     <div
                                         class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 relative z-10">
                                         <div>
-                                            <span class="text-xs font-medium text-indigo-100/90 block mb-1">مبلغ قابل پرداخت فاکتور</span>
+                                            <span class="text-xs font-medium text-indigo-100/90 block mb-1"
+                                                  x-text="allowPartial && paymentMode === 'partial' ? 'مبلغ انتخابی برای پرداخت' : 'مبلغ قابل پرداخت فاکتور'">
+                                                مبلغ قابل پرداخت فاکتور
+                                            </span>
                                             <div class="flex flex-wrap items-center gap-2.5 sm:gap-3">
                                                 <div class="flex items-baseline gap-1.5">
                                                     <span class="text-xl sm:text-2xl font-bold tracking-tight"
                                                           x-text="paymentAmount"></span>
-                                                    <span class="text-xs font-bold text-indigo-200">تومان</span>
+                                                    <span class="text-xs font-bold text-indigo-200">{{ $invoiceCurrencyLabel }}</span>
                                                 </div>
 
                                                 <button type="button"
@@ -426,6 +451,83 @@
                                         </div>
                                     </div>
                                 </div>
+
+                                {{-- بخش انتخاب نوع پرداخت (تسویه کامل یا پرداخت جزئی) در صورت فعال بودن تنظیم --}}
+                                <template x-if="allowPartial && maxAmount > 1000">
+                                    <div class="space-y-4">
+                                        <div class="flex items-center justify-between">
+                                            <label class="block text-sm font-bold text-gray-800 dark:text-gray-200">نحوه پرداخت فاکتور</label>
+                                            <span class="text-xs text-indigo-600 dark:text-indigo-400 font-medium">پرداخت مرحله‌ای مجاز است</span>
+                                        </div>
+                                        <div class="grid grid-cols-2 gap-2 p-1.5 bg-gray-100 dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700">
+                                            <button type="button"
+                                                    @click="setPaymentMode('full')"
+                                                    :class="paymentMode === 'full' ? 'bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 shadow-sm font-bold' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 font-medium'"
+                                                    class="py-2.5 px-3 rounded-xl text-xs sm:text-sm transition-all flex items-center justify-center gap-1.5">
+                                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                </svg>
+                                                <span>تسویه کل مانده</span>
+                                            </button>
+                                            <button type="button"
+                                                    @click="setPaymentMode('partial')"
+                                                    :class="paymentMode === 'partial' ? 'bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 shadow-sm font-bold' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 font-medium'"
+                                                    class="py-2.5 px-3 rounded-xl text-xs sm:text-sm transition-all flex items-center justify-center gap-1.5">
+                                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                                </svg>
+                                                <span>پرداخت مبلغ دلخواه (جزئی)</span>
+                                            </button>
+                                        </div>
+
+                                        {{-- باکس ورودی مبلغ جزئی --}}
+                                        <div x-show="paymentMode === 'partial'" x-transition x-cloak
+                                             class="p-4 rounded-2xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/50 space-y-3">
+                                            <div class="flex items-center justify-between">
+                                                <label for="custom_partial_amount" class="text-xs font-bold text-gray-700 dark:text-gray-300">مبلغ مورد نظر برای واریز:</label>
+                                                <span class="text-[11px] text-gray-500">حداکثر: <strong class="text-indigo-600 dark:text-indigo-400" x-text="formatNumber(maxAmount) + ' {{ $invoiceCurrencyLabel }}'"></strong></span>
+                                            </div>
+
+                                            <div class="relative flex items-center">
+                                                <input type="text"
+                                                       id="custom_partial_amount"
+                                                       :value="customAmountFormatted"
+                                                       @input="onCustomAmountInput($event)"
+                                                       placeholder="مبلغ را وارد کنید..."
+                                                       class="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-4 py-3 text-base font-bold text-gray-900 dark:text-white placeholder-gray-400 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all text-center dir-ltr"
+                                                       dir="ltr">
+                                                <span class="absolute left-4 text-xs font-bold text-gray-400 pointer-events-none select-none">{{ $invoiceCurrencyLabel }}</span>
+                                            </div>
+
+                                            <template x-if="amountError">
+                                                <p class="text-xs font-medium text-rose-500 flex items-center gap-1" x-text="amountError"></p>
+                                            </template>
+
+                                            {{-- دکمه‌های انتخاب سریع درصد --}}
+                                            <div class="flex flex-wrap items-center justify-between gap-2 pt-1">
+                                                <span class="text-[11px] font-medium text-gray-500 dark:text-gray-400">انتخاب سریع:</span>
+                                                <div class="flex flex-wrap items-center gap-1.5">
+                                                    <button type="button" @click="setQuickPercent(25)"
+                                                            class="px-2.5 py-1 rounded-lg bg-white dark:bg-gray-800 hover:bg-indigo-50 dark:hover:bg-indigo-900/50 border border-gray-200 dark:border-gray-700 text-xs font-bold text-gray-700 dark:text-gray-300 transition-colors">
+                                                        ۲۵٪
+                                                    </button>
+                                                    <button type="button" @click="setQuickPercent(50)"
+                                                            class="px-2.5 py-1 rounded-lg bg-white dark:bg-gray-800 hover:bg-indigo-50 dark:hover:bg-indigo-900/50 border border-gray-200 dark:border-gray-700 text-xs font-bold text-gray-700 dark:text-gray-300 transition-colors">
+                                                        ۵۰٪
+                                                    </button>
+                                                    <button type="button" @click="setQuickPercent(75)"
+                                                            class="px-2.5 py-1 rounded-lg bg-white dark:bg-gray-800 hover:bg-indigo-50 dark:hover:bg-indigo-900/50 border border-gray-200 dark:border-gray-700 text-xs font-bold text-gray-700 dark:text-gray-300 transition-colors">
+                                                        ۷۵٪
+                                                    </button>
+                                                    <button type="button" @click="setPaymentMode('full')"
+                                                            class="px-2.5 py-1 rounded-lg bg-white dark:bg-gray-800 hover:bg-indigo-50 dark:hover:bg-indigo-900/50 border border-gray-200 dark:border-gray-700 text-xs font-bold text-indigo-600 dark:text-indigo-400 transition-colors">
+                                                        ۱۰۰٪ (کل)
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </template>
 
                                 <div class="space-y-3">
                                     <label class="block text-sm font-bold text-gray-800">انتخاب روش پرداخت <span
@@ -863,7 +965,7 @@
                                 </button>
 
                                 <button type="submit"
-                                        :disabled="!method"
+                                        :disabled="!method || (allowPartial && paymentMode === 'partial' && (amountError || !customAmount || parseInt(customAmount) <= 0))"
                                         class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-3 rounded-xl border border-transparent bg-indigo-600 text-white text-sm font-bold shadow-lg shadow-indigo-600/30 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-95 order-1 sm:order-2">
                                     <template x-if="method === 'online'">
                                     <span class="flex items-center gap-2">
@@ -901,6 +1003,12 @@
                 paymentId: null,
                 paymentAmount: '0',
                 rawAmountNumber: '0',
+                allowPartial: @json((bool)($allowPartialPayment ?? false)),
+                paymentMode: 'full',
+                maxAmount: 0,
+                customAmount: '',
+                customAmountFormatted: '',
+                amountError: '',
                 availableMethods: @json(array_keys($availablePaymentMethods ?? [])),
                 method: (@json(array_keys($availablePaymentMethods ?? [])))[0] || 'transfer',
                 subItem: '',
@@ -914,6 +1022,77 @@
                 get formAction() {
                     if (!this.paymentId) return '{{ route("client.invoices.pay", $invoice->id) }}';
                     return this.baseUrl + '/' + this.paymentId + '/pay';
+                },
+
+                formatNumber(num) {
+                    if (!num && num !== 0) return '0';
+                    return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+                },
+
+                setPaymentMode(mode) {
+                    this.paymentMode = mode;
+                    this.amountError = '';
+                    if (mode === 'full') {
+                        this.rawAmountNumber = this.maxAmount.toString();
+                        this.paymentAmount = this.formatNumber(this.maxAmount);
+                        this.customAmount = this.maxAmount.toString();
+                        this.customAmountFormatted = this.formatNumber(this.maxAmount);
+                    } else {
+                        if (!this.customAmount || parseInt(this.customAmount) >= this.maxAmount) {
+                            const half = Math.round(this.maxAmount / 2);
+                            this.setCustomAmount(half > 0 ? half : this.maxAmount);
+                        }
+                    }
+                },
+
+                setQuickPercent(percent) {
+                    if (this.maxAmount <= 0) return;
+                    const amt = Math.round((this.maxAmount * percent) / 100);
+                    this.setCustomAmount(amt);
+                },
+
+                setCustomAmount(val) {
+                    let num = parseInt(val.toString().replace(/,/g, '').replace(/[^0-9]/g, '')) || 0;
+                    if (num > this.maxAmount) {
+                        num = this.maxAmount;
+                        this.amountError = 'مبلغ نمی‌تواند بیشتر از مانده فاکتور باشد.';
+                    } else if (num < 1000 && this.maxAmount >= 1000) {
+                        this.amountError = 'حداقل مبلغ قابل پرداخت ۱,۰۰۰ {{ $invoiceCurrencyLabel }} است.';
+                    } else {
+                        this.amountError = '';
+                    }
+
+                    this.customAmount = num > 0 ? num.toString() : '';
+                    this.customAmountFormatted = num > 0 ? this.formatNumber(num) : '';
+                    this.rawAmountNumber = num.toString();
+                    this.paymentAmount = this.formatNumber(num);
+                },
+
+                onCustomAmountInput(e) {
+                    const raw = e.target.value;
+                    const persian = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
+                    const arabic  = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
+                    const english = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
+                    let clean = raw;
+                    for (let i = 0; i < 10; i++) {
+                        clean = clean.replaceAll(persian[i], english[i]).replaceAll(arabic[i], english[i]);
+                    }
+                    clean = clean.replace(/[^0-9]/g, '');
+                    let num = parseInt(clean) || 0;
+
+                    if (num > this.maxAmount) {
+                        num = this.maxAmount;
+                        this.amountError = 'مبلغ نمی‌تواند بیشتر از مانده فاکتور باشد.';
+                    } else if (num < 1000 && this.maxAmount >= 1000 && num > 0) {
+                        this.amountError = 'حداقل مبلغ قابل پرداخت ۱,۰۰۰ {{ $invoiceCurrencyLabel }} است.';
+                    } else {
+                        this.amountError = '';
+                    }
+
+                    this.customAmount = num > 0 ? num.toString() : '';
+                    this.customAmountFormatted = num > 0 ? this.formatNumber(num) : '';
+                    this.rawAmountNumber = num.toString();
+                    this.paymentAmount = this.formatNumber(num);
                 },
 
                 scrollToActiveBank() {
@@ -967,8 +1146,14 @@
 
                 openModal(id, amount) {
                     this.paymentId = id;
-                    this.paymentAmount = amount;
-                    this.rawAmountNumber = amount.toString().replace(/,/g, '').replace(/[^0-9]/g, '');
+                    const cleanNum = parseInt(amount.toString().replace(/,/g, '').replace(/[^0-9]/g, '')) || 0;
+                    this.maxAmount = cleanNum;
+                    this.rawAmountNumber = cleanNum.toString();
+                    this.paymentAmount = this.formatNumber(cleanNum);
+                    this.paymentMode = 'full';
+                    this.customAmount = cleanNum.toString();
+                    this.customAmountFormatted = this.formatNumber(cleanNum);
+                    this.amountError = '';
 
                     const defaultMethod = (this.availableMethods && this.availableMethods.length > 0) ? this.availableMethods[0] : 'transfer';
                     this.method = defaultMethod;

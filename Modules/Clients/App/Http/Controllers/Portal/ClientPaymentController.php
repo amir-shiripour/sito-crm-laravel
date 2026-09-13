@@ -447,12 +447,16 @@ class ClientPaymentController extends Controller
                 $linkedOrder = \Modules\Services\App\Http\Models\Order::where('invoice_id', $invoice->id)->first();
             }
 
+            // Allow partial payment setting
+            $allowPartialPayment = ($settingsMap['services_allow_partial_payment'] ?? '0') === '1';
+
             return view('clients::portal.payments.show_invoice', compact(
                 'invoice',
                 'availablePaymentMethods',
                 'paymentSubItems',
                 'bankAccounts',
-                'linkedOrder'
+                'linkedOrder',
+                'allowPartialPayment'
             ));
         }
 

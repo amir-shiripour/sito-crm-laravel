@@ -82,8 +82,9 @@ class ClientOrderController extends Controller
         }
 
         $order = Order::where('customer_id', $client->id)
-            ->with(['service.category', 'status', 'invoice.status', 'invoice.items', 'invoice.payments', 'customer'])
+            ->with(['service.category', 'service.customFields', 'status', 'invoice.status', 'invoice.items', 'invoice.payments', 'customer'])
             ->findOrFail($id);
+
 
         return view('clients::portal.orders.services_show', compact('order'));
     }

@@ -9,6 +9,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use Modules\Accounting\App\Models\AccountingSetting;
 use Modules\Accounting\App\Services\AccountingEngine;
 use Modules\Accounting\App\Services\ChequeService;
@@ -217,7 +218,8 @@ class InvoiceController extends Controller
     {
         return Module::has('Market')
             && Module::isEnabled('Market')
-            && class_exists(MarketOrder::class);
+            && class_exists(MarketOrder::class)
+            && Schema::hasTable('market_orders');
     }
 
 
@@ -239,9 +241,14 @@ class InvoiceController extends Controller
 
     private function getMarketAttributesForInvoice()
     {
-        return $this->isMarketModuleEnabled() && class_exists(MarketAttribute::class)
-            ? MarketAttribute::with('values')->orderBy('name')->get()
-            : collect();
+        if ($this->isMarketModuleEnabled() && class_exists(MarketAttribute::class) && Schema::hasTable('market_attributes')) {
+            try {
+                return MarketAttribute::with('values')->orderBy('name')->get();
+            } catch (Throwable $e) {
+                Log::error('[InvoiceController] Error loading market attributes: ' . $e->getMessage());
+            }
+        }
+        return collect();
     }
 
     private function buildCreateView(string $type)
@@ -1205,6 +1212,143 @@ class InvoiceController extends Controller
         } finally {
             optional($lock)->release();
         }
+    }
+
+    public function approvePayment(Request $request, Invoice $invoice, Payment $payment)
+    {
+        $this->authorize('pay', $invoice);
+
+        if ($payment->invoice_id !== $invoice->id) {
+            return back()->with('error', 'این پرداخت متعلق به این فاکتور نیست.');
+        }
+
+        if ($payment->status === 'paid') {
+            return back()->with('info', 'این پرداخت قبلاً تایید شده است.');
+        }
+
+        $lock = Cache::lock("services_invoice_approve_payment_{$payment->id}", 10);
+        if (!$lock->get()) {
+            return back()->with('error', 'عملیات تایید پرداخت در حال پردازش است. لطفاً چند لحظه صبر کنید.');
+        }
+
+        try {
+            DB::transaction(function () use ($invoice, $payment, $request) {
+                $payment->update([
+                    'status' => 'paid',
+                    'user_id' => $request->user()?->id ?? $payment->user_id,
+                    'paid_at' => $payment->paid_at ?: now(),
+                ]);
+
+                $invoice->paid_amount = $invoice->calculatePaidAmount();
+
+                $StatusModel = Status::class;
+                if ($invoice->isPaid()) {
+                    $status = $StatusModel::where('name', 'پرداخت شده')->where('type', 'payment')->first()
+                        ?? $StatusModel::where('name', 'LIKE', '%پرداخت شده%')->first();
+                    if (!$invoice->paid_at) {
+                        $invoice->paid_at = now();
+                    }
+                } elseif ($invoice->isOverdue()) {
+                    $status = $StatusModel::where('name', 'معوقه')->where('type', 'payment')->first();
+                } else {
+                    $status = $StatusModel::where('name', 'در انتظار پرداخت')->where('type', 'payment')->first();
+                }
+
+                if ($status) {
+                    $invoice->status_id = $status->id;
+                }
+
+                if ($invoice->isPaid() && Module::has('Accounting') && Module::isEnabled('Accounting')) {
+                    try {
+                        app(AccountingEngine::class)->recordFromServiceInvoice($invoice);
+                    } catch (Throwable $e) {
+                        Log::error('[AccountingEngine] Error recording service invoice on payment approval: ' . $e->getMessage());
+                    }
+                }
+
+                if (Module::has('Accounting') && Module::isEnabled('Accounting')) {
+                    try {
+                        $engine = app(AccountingEngine::class);
+                        $engine->recordServicePayment($payment);
+                    } catch (Throwable $e) {
+                        Log::error('[AccountingEngine] Error recording service payment on approval: ' . $e->getMessage());
+                    }
+                }
+
+                $invoice->save();
+                $this->syncOrdersForInvoice($invoice);
+            });
+        } catch (Exception $e) {
+            return back()->with('error', 'خطا در تایید پرداخت: ' . $e->getMessage());
+        } finally {
+            optional($lock)->release();
+        }
+
+        if (class_exists(WorkflowEngine::class)) {
+            try {
+                $eventKey = $invoice->isPaid() ? 'invoice_paid' : 'payment_received';
+                app(WorkflowEngine::class)->start($eventKey, 'INVOICE', $invoice->id, [
+                    'amount' => $payment->amount,
+                    'is_paid' => $invoice->isPaid(),
+                    'is_overdue' => $invoice->isOverdue(),
+                    'remaining' => $invoice->remainingAmount(),
+                ]);
+            } catch (Throwable $e) {
+                Log::error('[Workflows] Error starting workflow on approvePayment: ' . $e->getMessage());
+            }
+        }
+
+        return redirect()
+            ->route('services.invoices.show', $invoice)
+            ->with('success', 'پرداخت و فیش واریزی با موفقیت تایید شد و وضعیت فاکتور به‌روزرسانی گردید.');
+    }
+
+    public function rejectPayment(Request $request, Invoice $invoice, Payment $payment)
+    {
+        $this->authorize('cancelPayment', $invoice);
+
+        if ($payment->invoice_id !== $invoice->id) {
+            return back()->with('error', 'این پرداخت متعلق به این فاکتور نیست.');
+        }
+
+        if ($payment->status === 'canceled') {
+            return back()->with('error', 'این پرداخت قبلاً رد / لغو شده است.');
+        }
+
+        try {
+            DB::transaction(function () use ($invoice, $payment) {
+                $wasPaid = ($payment->status === 'paid');
+                $payment->update(['status' => 'canceled']);
+
+                $invoice->paid_amount = $invoice->calculatePaidAmount();
+
+                $StatusModel = Status::class;
+                if ($invoice->isPaid()) {
+                    $status = $StatusModel::where('name', 'پرداخت شده')->where('type', 'payment')->first();
+                } elseif ($invoice->isOverdue()) {
+                    $status = $StatusModel::where('name', 'معوقه')->where('type', 'payment')->first();
+                } else {
+                    $status = $StatusModel::where('name', 'در انتظار پرداخت')->where('type', 'payment')->first();
+                }
+
+                if ($status) {
+                    $invoice->status_id = $status->id;
+                }
+                $invoice->save();
+                $this->syncOrdersForInvoice($invoice);
+
+                if ($wasPaid && Module::has('Accounting') && Module::isEnabled('Accounting')) {
+                    $engine = app(AccountingEngine::class);
+                    $engine->cancelServicePayment($payment);
+                }
+            });
+        } catch (Exception $e) {
+            return back()->with('error', 'خطا در رد پرداخت: ' . $e->getMessage());
+        }
+
+        return redirect()
+            ->route('services.invoices.show', $invoice)
+            ->with('success', 'فیش / پرداخت با موفقیت رد شد.');
     }
 
     public function cancelPayment(Request $request, Invoice $invoice, Payment $payment)
@@ -2248,10 +2392,14 @@ class InvoiceController extends Controller
             $this->syncServiceOrders($invoice, $serviceItems);
         }
 
-        if (!empty($marketItems) && $this->isMarketModuleEnabled()) {
-            $this->syncMarketOrder($invoice, $marketItems);
-        } elseif (empty($marketItems) && $this->isMarketModuleEnabled()) {
-            $this->removeMarketOrderIfExists($invoice);
+        try {
+            if (!empty($marketItems) && $this->isMarketModuleEnabled()) {
+                $this->syncMarketOrder($invoice, $marketItems);
+            } elseif (empty($marketItems) && $this->isMarketModuleEnabled()) {
+                $this->removeMarketOrderIfExists($invoice);
+            }
+        } catch (Throwable $e) {
+            Log::error('[InvoiceController] Market order sync failed: ' . $e->getMessage());
         }
     }
 
@@ -2366,194 +2514,235 @@ class InvoiceController extends Controller
 
     private function syncMarketOrder(Invoice $invoice, array $marketItems)
     {
-        $marketOrderModel = MarketOrder::class;
-        $marketOrderItemModel = MarketOrderItem::class;
-        $vendorProductModel = VendorProduct::class;
+        try {
+            if (!$this->isMarketModuleEnabled() || !Schema::hasTable('market_orders')) {
+                return;
+            }
 
-        if (!$this->isMarketModuleEnabled()) {
-            return;
-        }
+            $marketOrderModel = MarketOrder::class;
+            $marketOrderItemModel = MarketOrderItem::class;
+            $vendorProductModel = VendorProduct::class;
 
-        $totalItemsPrice = 0;
-        $taxAmount = 0;
-        $discountAmount = 0;
+            $hasSourceCol = Schema::hasColumn('market_orders', 'source_invoice_id');
+            $marker = 'INVOICE_SOURCE_ID:' . $invoice->id;
 
-        $invoiceSubtotal = (float)($invoice->subtotal ?? 0);
-        $invoiceTax = (float)($invoice->tax_amount ?? 0);
+            $totalItemsPrice = 0;
+            $taxAmount = 0;
+            $discountAmount = 0;
 
-        foreach ($marketItems as $item) {
-            $qty = (int)($item['quantity'] ?? 1);
-            if ($qty < 1) $qty = 1;
-            $unitPrice = (float)($item['unit_price'] ?? ($item['total'] / max(1, $qty)));
-            $itemGross = $unitPrice * $qty;
-            $totalItemsPrice += (int)round($itemGross);
+            $invoiceSubtotal = (float)($invoice->subtotal ?? 0);
+            $invoiceTax = (float)($invoice->tax_amount ?? 0);
 
-            $itemDiscount = (float)($item['discount'] ?? 0);
-            $discountAmount += $itemDiscount;
+            foreach ($marketItems as $item) {
+                $qty = (int)($item['quantity'] ?? 1);
+                if ($qty < 1) $qty = 1;
+                $unitPrice = (float)($item['unit_price'] ?? ($item['total'] / max(1, $qty)));
+                $itemGross = $unitPrice * $qty;
+                $totalItemsPrice += (int)round($itemGross);
 
-            if (isset($item['tax_amount']) && $item['tax_amount'] > 0) {
-                $itemTax = (float)$item['tax_amount'];
-            } elseif (isset($item['tax_percent']) && $item['tax_percent'] > 0) {
-                $itemTax = $itemGross * ((float)$item['tax_percent'] / 100);
-            } elseif ($invoiceTax > 0 && $invoiceSubtotal > 0) {
-                $itemTax = ($invoiceTax / $invoiceSubtotal) * $itemGross;
+                $itemDiscount = (float)($item['discount'] ?? 0);
+                $discountAmount += $itemDiscount;
+
+                if (isset($item['tax_amount']) && $item['tax_amount'] > 0) {
+                    $itemTax = (float)$item['tax_amount'];
+                } elseif (isset($item['tax_percent']) && $item['tax_percent'] > 0) {
+                    $itemTax = $itemGross * ((float)$item['tax_percent'] / 100);
+                } elseif ($invoiceTax > 0 && $invoiceSubtotal > 0) {
+                    $itemTax = ($invoiceTax / $invoiceSubtotal) * $itemGross;
+                } else {
+                    $itemTax = 0;
+                }
+                $taxAmount += $itemTax;
+            }
+
+            $taxAmount = (float)round($taxAmount);
+            $discountAmount = (float)round($discountAmount);
+            $finalGrandTotal = max(0, $totalItemsPrice - $discountAmount + $taxAmount);
+
+            $marketOrder = null;
+            if ($hasSourceCol) {
+                $marketOrder = $marketOrderModel::where('source_invoice_id', $invoice->id)->first();
+            }
+            if (!$marketOrder && method_exists($marketOrderModel, 'scopeWhereSourceInvoiceId')) {
+                try {
+                    $marketOrder = $marketOrderModel::whereSourceInvoiceId($invoice->id)->first();
+                } catch (Throwable) {}
+            }
+            if (!$marketOrder) {
+                $marketOrder = $marketOrderModel::where('customer_notes', 'like', "%{$marker}%")->first();
+            }
+
+            $invStatus = $invoice->status_id ? Status::find($invoice->status_id) : ($invoice->status ?? null);
+            $isInvoiceCanceled = false;
+            $isInvoicePaid = false;
+
+            if ($invStatus) {
+                $statusName = mb_strtolower($invStatus->name ?? '');
+                if (mb_strpos($statusName, 'لغو') !== false || mb_strpos($statusName, 'باطل') !== false || ($invStatus->type ?? '') === 'canceled') {
+                    $isInvoiceCanceled = true;
+                } elseif (mb_strpos($statusName, 'پرداخت شده') !== false || mb_strpos($statusName, 'تکمیل') !== false) {
+                    $isInvoicePaid = true;
+                }
             } else {
-                $itemTax = 0;
+                if ($invoice->paid_amount >= $invoice->total && $invoice->total > 0) {
+                    $isInvoicePaid = true;
+                }
             }
-            $taxAmount += $itemTax;
-        }
 
-        $taxAmount = (float)round($taxAmount);
-        $discountAmount = (float)round($discountAmount);
-        $finalGrandTotal = max(0, $totalItemsPrice - $discountAmount + $taxAmount);
-
-        $marker = 'INVOICE_SOURCE_ID:' . $invoice->id;
-        $marketOrder = $marketOrderModel::where('source_invoice_id', $invoice->id)->first()
-            ?? (method_exists($marketOrderModel, 'scopeWhereSourceInvoiceId') ? $marketOrderModel::whereSourceInvoiceId($invoice->id)->first() : null)
-            ?? $marketOrderModel::where('customer_notes', 'like', "%{$marker}%")->first();
-
-        $invStatus = $invoice->status_id ? Status::find($invoice->status_id) : ($invoice->status ?? null);
-        $isInvoiceCanceled = false;
-        $isInvoicePaid = false;
-
-        if ($invStatus) {
-            $statusName = mb_strtolower($invStatus->name ?? '');
-            if (mb_strpos($statusName, 'لغو') !== false || mb_strpos($statusName, 'باطل') !== false || ($invStatus->type ?? '') === 'canceled') {
-                $isInvoiceCanceled = true;
-            } elseif (mb_strpos($statusName, 'پرداخت شده') !== false || mb_strpos($statusName, 'تکمیل') !== false) {
-                $isInvoicePaid = true;
-            }
-        } else {
-            if ($invoice->paid_amount >= $invoice->total && $invoice->total > 0) {
-                $isInvoicePaid = true;
-            }
-        }
-
-        $paymentStatus = 'unpaid';
-        $marketOrderStatusId = null;
-
-        if ($isInvoiceCanceled) {
-            $paymentStatus = 'failed';
-            $canceledStatus = MarketOrderStatus::where('system_type', 'canceled')->first()
-                ?? MarketOrderStatus::where('admin_label', 'like', '%لغو%')->first();
-            $marketOrderStatusId = $canceledStatus?->id;
-        } elseif ($isInvoicePaid) {
-            $paymentStatus = 'paid';
-            $processingStatus = MarketOrderStatus::where('admin_label', 'like', '%پرداخت تایید شده%')->first()
-                ?? MarketOrderStatus::where('system_type', 'processing')->first();
-            $marketOrderStatusId = $processingStatus?->id;
-        } else {
             $paymentStatus = 'unpaid';
-            $defaultStatus = MarketOrderStatus::getDefaultStatus();
-            $marketOrderStatusId = $defaultStatus?->id;
-        }
+            $marketOrderStatusId = null;
 
-        $orderData = [
-            'source_invoice_id' => $invoice->id,
-            'client_id' => $invoice->customer_id,
-            'shipping_address_json' => [
-                'name' => $invoice->client_name,
-                'mobile' => $invoice->client_phone,
-                'email' => $invoice->client_email,
-            ],
-            'payment_method' => $invoice->payment_method ?: 'transfer',
-            'payment_status' => $paymentStatus,
-            'paid_at' => $isInvoicePaid ? ($invoice->paid_at ?: now()) : null,
-            'total_items_price' => $totalItemsPrice,
-            'total_tax' => $taxAmount,
-            'total_discount' => $discountAmount,
-            'grand_total' => $finalGrandTotal,
-            'market_order_status_id' => $marketOrderStatusId ?: MarketOrderStatus::getDefaultStatus()?->id,
-            'customer_notes' => $invoice->notes ?? null,
-        ];
-
-        if ($marketOrder) {
-            if (class_exists(StockService::class)) {
-                try {
-                    app(StockService::class)->releaseReservation($marketOrder);
-                } catch (Throwable $e) {
-                    Log::error('Failed to release market stock before sync: ' . $e->getMessage());
-                }
-            }
-            $marketOrder->update($orderData);
-        } else {
-            $marketOrder = $marketOrderModel::create($orderData);
-        }
-
-        if (method_exists($marketOrder, 'meta')) {
-            $marketOrder->meta()->updateOrCreate(
-                ['key' => 'source_invoice_id'],
-                ['value' => (string)$invoice->id]
-            );
-        }
-
-        $marketOrder->items()->delete();
-
-        foreach ($marketItems as $item) {
-            $variantId = $item['meta']['product_variant_id'] ?? null;
-            $qty = (int)($item['quantity'] ?? 1);
-            if ($qty < 1) $qty = 1;
-            $vendorProductId = null;
-            $vendorId = null;
-
-            if ($variantId && class_exists($vendorProductModel)) {
-                $vendorProduct = $vendorProductModel::where('product_variant_id', $variantId)->first();
-                if ($vendorProduct) {
-                    $vendorProductId = $vendorProduct->id;
-                    $vendorId = $vendorProduct->vendor_id;
-                }
+            if ($isInvoiceCanceled) {
+                $paymentStatus = 'failed';
+                $canceledStatus = MarketOrderStatus::where('system_type', 'canceled')->first()
+                    ?? MarketOrderStatus::where('admin_label', 'like', '%لغو%')->first();
+                $marketOrderStatusId = $canceledStatus?->id;
+            } elseif ($isInvoicePaid) {
+                $paymentStatus = 'paid';
+                $processingStatus = MarketOrderStatus::where('admin_label', 'like', '%پرداخت تایید شده%')->first()
+                    ?? MarketOrderStatus::where('system_type', 'processing')->first();
+                $marketOrderStatusId = $processingStatus?->id;
+            } else {
+                $paymentStatus = 'unpaid';
+                $defaultStatus = MarketOrderStatus::getDefaultStatus();
+                $marketOrderStatusId = $defaultStatus?->id;
             }
 
-            $unitPrice = (float)($item['unit_price'] ?? ($item['total'] / max(1, $qty)));
+            $customerNotes = $invoice->notes ?? '';
+            if (!$hasSourceCol && !str_contains($customerNotes, $marker)) {
+                $customerNotes = trim($customerNotes . "\n[" . $marker . ']');
+            }
 
-            $marketOrderItemModel::create([
-                'order_id' => $marketOrder->id,
-                'vendor_product_id' => $vendorProductId,
-                'vendor_id' => $vendorId,
-                'product_title' => $item['custom_service_name'] ?? 'محصول فروشگاه',
-                'quantity' => $qty,
-                'unit_price' => (int)$unitPrice,
-                'total_price' => (int)$item['total'],
-            ]);
+            $orderData = [
+                'client_id' => $invoice->customer_id,
+                'shipping_address_json' => [
+                    'name' => $invoice->client_name,
+                    'mobile' => $invoice->client_phone,
+                    'email' => $invoice->client_email,
+                ],
+                'payment_method' => $invoice->payment_method ?: 'transfer',
+                'payment_status' => $paymentStatus,
+                'paid_at' => $isInvoicePaid ? ($invoice->paid_at ?: now()) : null,
+                'total_items_price' => $totalItemsPrice,
+                'total_tax' => $taxAmount,
+                'total_discount' => $discountAmount,
+                'grand_total' => $finalGrandTotal,
+                'market_order_status_id' => $marketOrderStatusId ?: MarketOrderStatus::getDefaultStatus()?->id,
+                'customer_notes' => $customerNotes,
+            ];
 
-            if (!$isInvoiceCanceled && class_exists(StockService::class)) {
-                try {
-                    $stockService = app(StockService::class);
-                    if ($vendorProductId) {
-                        $vp = $vendorProductModel::find($vendorProductId);
-                        if ($vp) {
-                            $stockService->deduct($vp->product_variant_id, $qty, $vp->id, $unitPrice);
-                        }
-                    } elseif ($variantId) {
-                        $stockService->deduct((int)$variantId, $qty, null, $unitPrice);
+            if ($hasSourceCol) {
+                $orderData['source_invoice_id'] = $invoice->id;
+            }
+
+            if ($marketOrder) {
+                if (class_exists(StockService::class)) {
+                    try {
+                        app(StockService::class)->releaseReservation($marketOrder);
+                    } catch (Throwable $e) {
+                        Log::error('Failed to release market stock before sync: ' . $e->getMessage());
                     }
-                } catch (Throwable $e) {
-                    Log::error('Failed to deduct stock during market order sync: ' . $e->getMessage());
+                }
+                $marketOrder->update($orderData);
+            } else {
+                $marketOrder = $marketOrderModel::create($orderData);
+            }
+
+            if (method_exists($marketOrder, 'meta')) {
+                $marketOrder->meta()->updateOrCreate(
+                    ['key' => 'source_invoice_id'],
+                    ['value' => (string)$invoice->id]
+                );
+            }
+
+            $marketOrder->items()->delete();
+
+            foreach ($marketItems as $item) {
+                $variantId = $item['meta']['product_variant_id'] ?? null;
+                $qty = (int)($item['quantity'] ?? 1);
+                if ($qty < 1) $qty = 1;
+                $vendorProductId = null;
+                $vendorId = null;
+
+                if ($variantId && class_exists($vendorProductModel)) {
+                    $vendorProduct = $vendorProductModel::where('product_variant_id', $variantId)->first();
+                    if ($vendorProduct) {
+                        $vendorProductId = $vendorProduct->id;
+                        $vendorId = $vendorProduct->vendor_id;
+                    }
+                }
+
+                $unitPrice = (float)($item['unit_price'] ?? ($item['total'] / max(1, $qty)));
+
+                $marketOrderItemModel::create([
+                    'order_id' => $marketOrder->id,
+                    'vendor_product_id' => $vendorProductId,
+                    'vendor_id' => $vendorId,
+                    'product_title' => $item['custom_service_name'] ?? 'محصول فروشگاه',
+                    'quantity' => $qty,
+                    'unit_price' => (int)$unitPrice,
+                    'total_price' => (int)$item['total'],
+                ]);
+
+                if (!$isInvoiceCanceled && class_exists(StockService::class)) {
+                    try {
+                        $stockService = app(StockService::class);
+                        if ($vendorProductId) {
+                            $vp = $vendorProductModel::find($vendorProductId);
+                            if ($vp) {
+                                $stockService->deduct($vp->product_variant_id, $qty, $vp->id, $unitPrice);
+                            }
+                        } elseif ($variantId) {
+                            $stockService->deduct((int)$variantId, $qty, null, $unitPrice);
+                        }
+                    } catch (Throwable $e) {
+                        Log::error('Failed to deduct stock during market order sync: ' . $e->getMessage());
+                    }
                 }
             }
+        } catch (Throwable $e) {
+            Log::error('[InvoiceController] syncMarketOrder error: ' . $e->getMessage());
         }
     }
 
 
     private function removeMarketOrderIfExists(Invoice $invoice)
     {
-        if (!$this->isMarketModuleEnabled()) return;
-        $marketOrderModel = MarketOrder::class;
-
-        $marker = 'INVOICE_SOURCE_ID:' . $invoice->id;
-        $marketOrder = method_exists($marketOrderModel, 'scopeWhereSourceInvoiceId')
-            ? $marketOrderModel::whereSourceInvoiceId($invoice->id)->first()
-            : ($marketOrderModel::where('source_invoice_id', $invoice->id)->first() ?? $marketOrderModel::where('customer_notes', 'like', "%{$marker}%")->first());
-        if ($marketOrder) {
-            if (class_exists(StockService::class)) {
-                try {
-                    app(StockService::class)->releaseReservation($marketOrder);
-                } catch (Throwable $e) {
-                    Log::error('Failed to release market stock on removeMarketOrderIfExists: ' . $e->getMessage());
-                }
+        try {
+            if (!$this->isMarketModuleEnabled() || !Schema::hasTable('market_orders')) {
+                return;
             }
-            $marketOrder->items()->delete();
-            $marketOrder->delete();
+
+            $marketOrderModel = MarketOrder::class;
+            $hasSourceCol = Schema::hasColumn('market_orders', 'source_invoice_id');
+            $marker = 'INVOICE_SOURCE_ID:' . $invoice->id;
+
+            $marketOrder = null;
+            if ($hasSourceCol) {
+                $marketOrder = $marketOrderModel::where('source_invoice_id', $invoice->id)->first();
+            }
+            if (!$marketOrder && method_exists($marketOrderModel, 'scopeWhereSourceInvoiceId')) {
+                try {
+                    $marketOrder = $marketOrderModel::whereSourceInvoiceId($invoice->id)->first();
+                } catch (Throwable) {}
+            }
+            if (!$marketOrder) {
+                $marketOrder = $marketOrderModel::where('customer_notes', 'like', "%{$marker}%")->first();
+            }
+
+            if ($marketOrder) {
+                if (class_exists(StockService::class)) {
+                    try {
+                        app(StockService::class)->releaseReservation($marketOrder);
+                    } catch (Throwable $e) {
+                        Log::error('Failed to release market stock on removeMarketOrderIfExists: ' . $e->getMessage());
+                    }
+                }
+                $marketOrder->items()->delete();
+                $marketOrder->delete();
+            }
+        } catch (Throwable $e) {
+            Log::error('[InvoiceController] removeMarketOrderIfExists error: ' . $e->getMessage());
         }
     }
 

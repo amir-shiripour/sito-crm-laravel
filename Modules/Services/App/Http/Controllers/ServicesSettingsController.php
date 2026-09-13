@@ -46,6 +46,7 @@ class ServicesSettingsController extends Controller
         'services_stamp_standard_height',
         'services_stamp_official_width',
         'services_stamp_official_height',
+        'services_allow_partial_payment',
     ];
 
     private const BOOLEANS = [
@@ -60,6 +61,7 @@ class ServicesSettingsController extends Controller
         'services_notify_internal',
         'services_use_global_payment_settings',
         'services_tax_apply_custom_fields',
+        'services_allow_partial_payment',
     ];
 
     private const DEFAULT_SELECTED_CLIENT_FIELDS = [
@@ -172,6 +174,7 @@ class ServicesSettingsController extends Controller
             'services_stamp_standard_height' => 'nullable|integer|min:20|max:600',
             'services_stamp_official_width' => 'nullable|integer|min:20|max:800',
             'services_stamp_official_height' => 'nullable|integer|min:20|max:600',
+            'services_allow_partial_payment' => 'nullable|boolean',
         ];
 
         $request->validate($rules);

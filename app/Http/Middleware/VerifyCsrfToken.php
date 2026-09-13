@@ -19,6 +19,7 @@ class VerifyCsrfToken extends Middleware
         'market/checkout/callback',
         'market/checkout/callback/*',
         'client/portal/payment/verify/*',
+        'clients/invoices/*/verify*',
         'payment/verify/*',
     ];
 }

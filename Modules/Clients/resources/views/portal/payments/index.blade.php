@@ -165,9 +165,15 @@
                                         if ($payment->type === 'booking') {
                                             $displayAmt = ($bookingCurrencyUnit === 'IRT') ? ($payment->amount / 10) : $payment->amount;
                                             $currLabel = $bookingCurrencyLabel;
+                                        } elseif (isset($payment->payment_record) && isset($payment->payment_record->currency_label)) {
+                                            $displayAmt = $payment->amount;
+                                            $currLabel = $payment->payment_record->currency_label;
+                                        } elseif (isset($payment->payment_record->currency)) {
+                                            $displayAmt = $payment->amount;
+                                            $currLabel = in_array(strtolower($payment->payment_record->currency), ['rial', 'irr', 'ریال']) ? 'ریال' : 'تومان';
                                         } else {
                                             $displayAmt = $payment->amount;
-                                            $currLabel = 'تومان';
+                                            $currLabel = 'ریال';
                                         }
                                     @endphp
                                     {{ CalendarUtils::convertNumbers(number_format($displayAmt)) }} <span

@@ -64,6 +64,8 @@ Route::middleware(['auth', 'verified'])
 
             Route::get('/{invoice}/payment', [InvoiceController::class, 'createPayment'])->name('payment');
             Route::post('/{invoice}/payment', [InvoiceController::class, 'storePayment'])->name('payment.store');
+            Route::post('/{invoice}/payment/{payment}/approve', [InvoiceController::class, 'approvePayment'])->name('approvePayment');
+            Route::post('/{invoice}/payment/{payment}/reject', [InvoiceController::class, 'rejectPayment'])->name('rejectPayment');
             Route::post('/{invoice}/payment/{payment}/cancel', [InvoiceController::class, 'cancelPayment'])->name('cancelPayment');
 
             Route::get('/verify/{gateway}', [InvoiceController::class, 'verify'])->name('verify');

@@ -24,6 +24,7 @@ use Modules\Services\App\Http\Models\Invoice;
 use Modules\Services\App\Http\Models\Order;
 use Modules\Services\App\Http\Models\Payment;
 use Modules\Services\App\Http\Models\Status;
+use Modules\Settings\Entities\Setting;
 use Modules\Wallet\App\Models\Wallet;
 use Modules\Wallet\App\Services\WalletService;
 use Modules\Workflows\Entities\Workflow;
@@ -428,13 +429,18 @@ class ClientController extends Controller
             }
         }
 
+        $currency = class_exists(Setting::class)
+            ? (Setting::where('key', 'currency')->value('value') ?? 'toman')
+            : 'toman';
+
         return view('clients::user.clients.show', compact(
             'client', 'activeForm', 'clientOrders', 'clientOrderStats', 'orderStatuses', 'clientInvoices', 'clientInvoiceStats',
             'bookingModule', 'workflowsModule', 'availableWorkflows',
             'accountingModule', 'accountingDocuments', 'clientAccountingStats',
             'isBookingQueueEnabled', 'clientWaitlists',
             'clientAppointments',
-            'walletModule', 'clientWallet', 'clientWalletTransactions', 'clientWalletTransactionsCount'
+            'walletModule', 'clientWallet', 'clientWalletTransactions', 'clientWalletTransactionsCount',
+            'currency'
         ));
     }
 

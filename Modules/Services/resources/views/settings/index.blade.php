@@ -429,6 +429,49 @@
                     </div>
                 </div>
 
+                {{-- Partial Payments Setting --}}
+                <div class="{{ $cardClass }} md:col-span-2">
+                    <div
+                        class="p-6 border-b border-gray-100 dark:border-gray-700/60 bg-linear-to-r from-emerald-50/50 to-transparent dark:from-emerald-900/10">
+                        <h2 class="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                            <svg class="w-5 h-5 text-emerald-500" fill="none" viewBox="0 0 24 24"
+                                 stroke="currentColor"
+                                 stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                      d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/>
+                            </svg>
+                            پرداخت جزئی و مرحله‌ای فاکتورها
+                        </h2>
+                    </div>
+                    <div class="p-6">
+                        <label
+                            class="flex items-center justify-between gap-6 cursor-pointer group p-5 rounded-2xl border-2 border-gray-100 dark:border-gray-700/50 bg-gray-50/50 dark:bg-gray-800/30 hover:border-emerald-200 dark:hover:border-emerald-500/30 hover:bg-emerald-50/30 dark:hover:bg-emerald-900/10 transition-all">
+                            <div class="flex-1">
+                                <span class="text-base font-black text-gray-800 dark:text-gray-200 block">اجازه پرداخت جزئی فاکتورها</span>
+                                <span class="text-sm text-gray-500 dark:text-gray-400 block mt-1.5 leading-relaxed">
+                                    با فعال‌سازی این گزینه، کاربران و مشتریان در پورتال هنگام پرداخت صورت‌حساب‌های خدمات می‌توانند علاوه بر تسویه کامل مانده، مبلغ دلخواهی (کمتر از مانده فاکتور) را وارد کرده و فاکتور را در چند مرحله تسویه نمایند. در صورت غیرفعال بودن، فاکتورها صرفاً به صورت یکجا و کامل قابل پرداخت خواهند بود.
+                                </span>
+                            </div>
+                            <div class="relative shrink-0">
+                                <input type="hidden" name="services_allow_partial_payment" value="0">
+                                <input type="checkbox" id="services_allow_partial_payment"
+                                       name="services_allow_partial_payment" value="1"
+                                       @checked($v('services_allow_partial_payment') === '1') class="sr-only peer">
+                                <div
+                                    class="w-14 h-8 bg-gray-200 dark:bg-gray-700 rounded-full peer peer-checked:bg-emerald-500 transition-colors duration-300 shadow-inner"></div>
+                                <div
+                                    class="absolute right-1 top-1 w-6 h-6 bg-white rounded-full shadow-md transition-transform duration-300 peer-checked:-translate-x-6 flex items-center justify-center">
+                                    <svg
+                                        class="w-3.5 h-3.5 text-emerald-600 opacity-0 peer-checked:opacity-100 transition-opacity"
+                                        fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+                                    </svg>
+                                </div>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
                 {{-- Currency Settings (Super Admin Only) --}}
                 @if($isSuperAdmin)
                 <div class="{{ $cardClass }}"

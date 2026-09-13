@@ -152,7 +152,7 @@
                                 <span class="text-xs text-gray-400">مبلغ سفارش:</span>
                                 <div class="text-base font-bold text-gray-900 dark:text-white">
                                     {{ CalendarUtils::convertNumbers(number_format($order->total_amount ?: $order->first_payment_amount)) }}
-                                    <span class="text-xs font-normal text-gray-400">تومان</span>
+                                    <span class="text-xs font-normal text-gray-400">{{ $order->currency_label ?? 'ریال' }}</span>
                                 </div>
                             </div>
 

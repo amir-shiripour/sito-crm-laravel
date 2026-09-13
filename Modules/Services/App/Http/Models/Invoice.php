@@ -12,8 +12,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Facades\Schema;
 use Carbon\Carbon;
 use Modules\Services\App\Http\Models\Payment;
+use Modules\Services\App\Http\Models\Order;
 
 class Invoice extends Model
 {
@@ -177,6 +180,28 @@ class Invoice extends Model
         return $this->belongsTo(Service::class);
     }
 
+    public function order(): HasOne
+    {
+        return $this->hasOne(Order::class, 'invoice_id');
+    }
+
+    public function getLinkedOrderAttribute(): ?Order
+    {
+        if ($this->relationLoaded('order') && $this->order) {
+            return $this->order;
+        }
+
+        if (class_exists(Order::class) && Schema::hasTable('service_orders')) {
+            $order = $this->order;
+            if (!$order && !empty($this->meta['source_order_id'])) {
+                $order = Order::find($this->meta['source_order_id']);
+            }
+            return $order;
+        }
+
+        return null;
+    }
+
     public function customer(): BelongsTo
     {
         return $this->belongsTo(Client::class, 'customer_id');
@@ -316,5 +341,11 @@ class Invoice extends Model
         }
 
         return Payment::formatMethodName($method, $gateway);
+    }
+
+    public function getCurrencyLabelAttribute(): string
+    {
+        $curr = strtolower($this->currency ?? Setting::where('key', 'currency')->value('value') ?? 'rial');
+        return in_array($curr, ['rial', 'irr', 'ریال']) ? 'ریال' : 'تومان';
     }
 }

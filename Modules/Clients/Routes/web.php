@@ -162,6 +162,8 @@ Route::prefix('clients')
                 ->name('invoices.print');
             Route::post('invoices/{invoice}/pay', [ClientInvoiceController::class, 'processPayment'])
                 ->name('invoices.pay');
+            Route::match(['get', 'post'], 'invoices/{invoice}/verify/{gateway?}', [ClientInvoiceController::class, 'verifyOnlinePayment'])
+                ->name('invoices.verify');
 
             // 📦 Service Orders Routes
             Route::get('orders', [ClientOrderController::class, 'index'])

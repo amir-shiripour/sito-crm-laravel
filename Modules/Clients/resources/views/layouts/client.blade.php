@@ -51,7 +51,7 @@
                                 <span class="text-sm font-medium text-gray-800 dark:text-gray-200">
                                     {{ auth('client')->user()->full_name }}
                                 </span>
-                            <span class="text-[10px] text-gray-500 dark:text-gray-400 dir-ltr font-mono">
+                            <span class="text-[10px] text-gray-500 dark:text-gray-400 dir-ltr">
                                     {{ auth('client')->user()->username }}
                                 </span>
                         </div>
@@ -226,7 +226,7 @@
                                 <h3 class="text-base font-bold text-gray-900 dark:text-white">
                                     {{ $termsTitle }}
                                 </h3>
-                                <span class="text-[11px] text-gray-400 font-mono">نسخه {{ $termsVersion }}</span>
+                                <span class="text-[11px] text-gray-400">نسخه {{ $termsVersion }}</span>
                             </div>
                         </div>
 

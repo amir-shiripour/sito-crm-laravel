@@ -119,6 +119,19 @@ class ClientFormBuilder extends Component
     public function deleteForm($id): void
     {
         $form = ClientForm::findOrFail($id);
+
+        // جلوگیری از حذف در صورتی که فقط یک فرم در سیستم وجود دارد
+        if (ClientForm::count() <= 1) {
+            $this->dispatch('notify', type: 'error', text: 'امکان حذف تنها فرم موجود در سیستم وجود ندارد.');
+            return;
+        }
+
+        // جلوگیری از حذف فرم فعال سیستم
+        if ($form->is_active) {
+            $this->dispatch('notify', type: 'error', text: 'امکان حذف فرم فعال وجود ندارد. لطفاً ابتدا فرم دیگری را فعال کنید.');
+            return;
+        }
+
         $form->delete();
 
         $this->forms = ClientForm::orderBy('name')->get();

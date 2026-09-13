@@ -140,4 +140,21 @@ class InvoicePolicy
     {
         return $user->can('services.invoices.cancel-payment');
     }
+
+    /**
+     * Determine whether the user can approve a pending payment.
+     */
+    public function approvePayment(User $user, Invoice $invoice)
+    {
+        return $user->can('services.invoices.pay') || $user->can('services.invoices.manage');
+    }
+
+    /**
+     * Determine whether the user can reject a pending payment.
+     */
+    public function rejectPayment(User $user, Invoice $invoice)
+    {
+        return $user->can('services.invoices.cancel-payment') || $user->can('services.invoices.manage');
+    }
 }
+
