@@ -75,6 +75,9 @@ class Payment extends Model
         // Matches e.g. pos-pos_1788859707755_t7evt, pos-1, pos_1788859707755_t7evt, pos
         if (str_starts_with($lower, 'pos-') || str_starts_with($lower, 'pos_') || $lower === 'pos') {
             $posId = ($lower === 'pos') ? null : preg_replace('/^pos[-_]/i', '', $raw);
+            if (!$posId && !empty($gateway)) {
+                $posId = preg_replace('/^pos[-_]/i', '', trim((string)$gateway));
+            }
             if ($posId) {
                 $posDevices = json_decode(self::$cachedSettings['pos_devices'] ?? '[]', true) ?: [];
                 foreach ($posDevices as $device) {
@@ -90,16 +93,19 @@ class Payment extends Model
         // Matches e.g. transfer-bank_1788859675199_7pqks, transfer-acc_0, transfer, card_to_card
         if (str_starts_with($lower, 'transfer-') || str_starts_with($lower, 'transfer_') || $lower === 'transfer' || $lower === 'card_to_card') {
             $accId = ($lower === 'transfer' || $lower === 'card_to_card') ? null : preg_replace('/^transfer[-_]/i', '', $raw);
+            if (!$accId && !empty($gateway)) {
+                $accId = preg_replace('/^transfer[-_]/i', '', trim((string)$gateway));
+            }
             if ($accId) {
                 $bankAccounts = json_decode(self::$cachedSettings['bank_transfer_accounts'] ?? '[]', true) ?: [];
                 foreach ($bankAccounts as $account) {
                     if (isset($account['id']) && (string)$account['id'] === (string)$accId) {
-                        $bankName = $account['bank_name'] ?? ($account['name'] ?? '');
-                        return 'کارت به کارت (' . ($bankName ?: 'بانک') . ')';
+                        $bankTitle = !empty($account['account_number']) ? $account['account_number'] : ($account['bank_name'] ?? ($account['name'] ?? ''));
+                        return 'انتقال به ' . ($bankTitle ?: 'حساب بانکی');
                     }
                 }
             }
-            return 'کارت به کارت / واریز فیش';
+            return 'انتقال به حساب بانکی';
         }
 
         // 3. درگاه پرداخت آنلاین
@@ -116,8 +122,8 @@ class Payment extends Model
         if (str_contains($combined, 'sadad')) {
             return 'درگاه سداد (بانک ملی)';
         }
-        if (str_contains($combined, 'saman')) {
-            return 'درگاه سامان کیش';
+        if (str_contains($combined, 'saman') || str_contains($combined, 'sep')) {
+            return 'درگاه سامان کیش (سپ)';
         }
         if (str_contains($combined, 'parsian')) {
             return 'درگاه پارسیان';
@@ -153,6 +159,9 @@ class Payment extends Model
         // 7. اقساطی
         if (str_starts_with($lower, 'installment-') || $lower === 'installment') {
             $instId = ($lower === 'installment') ? null : preg_replace('/^installment[-_]/i', '', $raw);
+            if (!$instId && !empty($gateway)) {
+                $instId = preg_replace('/^installment[-_]/i', '', trim((string)$gateway));
+            }
             if ($instId) {
                 $installmentTypes = json_decode(self::$cachedSettings['installment_types'] ?? '[]', true) ?: [];
                 foreach ($installmentTypes as $item) {

@@ -2842,6 +2842,17 @@
                                 else if (item.service_id) itemMode = 'service';
                                 else itemMode = 'manual';
                             }
+                            let itemRowDiscount = 0;
+                            if (item.discount_amount !== undefined && item.discount_amount !== null && Number(item.discount_amount) > 0) {
+                                itemRowDiscount = parseFloat(item.discount_amount);
+                            } else if (item.discount_value !== undefined && item.discount_value !== null && Number(item.discount_value) > 0) {
+                                if (item.discount_type === 'percent') {
+                                    let rawBase = (parseFloat(item.unit_price) || 0) * (parseFloat(item.quantity) || 1);
+                                    itemRowDiscount = Math.round((rawBase * Math.min(100, parseFloat(item.discount_value))) / 100);
+                                } else {
+                                    itemRowDiscount = parseFloat(item.discount_value);
+                                }
+                            }
 
                             this.items.push({
                                 mode: itemMode,
@@ -2859,7 +2870,7 @@
                                 unit: item.unit || 'عدد',
                                 quantity: item.quantity || 1,
                                 unit_price: item.unit_price || 0,
-                                discount: item.discount_amount ? parseFloat(item.discount_amount) : (item.discount_value ? parseFloat(item.discount_value) : 0),
+                                discount: itemRowDiscount,
                                 billing_period: item.billing_period || '',
                                 service_custom_fields: customFieldsArray,
                                 custom_field_values: customFieldValues,

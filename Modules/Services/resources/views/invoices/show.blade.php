@@ -97,16 +97,19 @@
 
     $cardClass  = "bg-white dark:bg-gray-800/60 rounded-3xl border border-gray-100 dark:border-gray-700/50 shadow-sm overflow-hidden backdrop-blur-xl";
 
-    $getPaymentMethodName = function($method) use ($settings) {
-        if (!$method) return '—';
-        $posDevices = json_decode($settings['pos_devices'] ?? '[]', true);
-        $bankAccounts = json_decode($settings['bank_transfer_accounts'] ?? '[]', true);
+    $getPaymentMethodName = function($method, $gateway = null) use ($settings) {
+        if (class_exists(\Modules\Services\App\Http\Models\Payment::class)) {
+            return \Modules\Services\App\Http\Models\Payment::formatMethodName($method, $gateway);
+        }
+        if (!$method && !$gateway) return '—';
+        $posDevices = json_decode($settings['pos_devices'] ?? '[]', true) ?: [];
+        $bankAccounts = json_decode($settings['bank_transfer_accounts'] ?? '[]', true) ?: [];
 
         if (str_starts_with($method, 'pos-') || $method === 'pos') {
-            $id = str_starts_with($method, 'pos-') ? substr($method, 4) : null;
+            $id = str_starts_with($method, 'pos-') ? substr($method, 4) : ($gateway ?: null);
             if ($id) {
                 foreach ($posDevices as $device) {
-                    if (isset($device['id']) && (string)$device['id'] === $id) {
+                    if (isset($device['id']) && (string)$device['id'] === (string)$id) {
                         return 'کارتخوان ' . ($device['name'] ?? '');
                     }
                 }
@@ -120,11 +123,12 @@
             return 'پرداخت در محل';
         }
         if (str_starts_with($method, 'transfer-') || $method === 'transfer') {
-            $id = str_starts_with($method, 'transfer-') ? substr($method, 9) : null;
+            $id = str_starts_with($method, 'transfer-') ? substr($method, 9) : ($gateway ?: null);
             if ($id) {
                 foreach ($bankAccounts as $account) {
-                    if (isset($account['id']) && (string)$account['id'] === $id) {
-                        return 'انتقال به ' . ($account['account_number'] ?? '');
+                    if (isset($account['id']) && (string)$account['id'] === (string)$id) {
+                        $bankTitle = !empty($account['account_number']) ? $account['account_number'] : ($account['bank_name'] ?? '');
+                        return 'انتقال به ' . $bankTitle;
                     }
                 }
             }
@@ -1046,7 +1050,7 @@
                                                 </span>
                                             @endif
                                         </td>
-                                        <td class="px-4 py-4 text-gray-700 dark:text-gray-300 text-start font-medium">{{ $getPaymentMethodName($payment->method) }}</td>
+                                        <td class="px-4 py-4 text-gray-700 dark:text-gray-300 text-start font-medium">{{ $getPaymentMethodName($payment->method, $payment->gateway) }}</td>
                                         <td class="px-4 py-4 text-gray-500 dark:text-gray-400 tabular-nums text-start" dir="ltr">{{ $payment->transaction_id ?: '—' }}</td>
                                         <td class="px-4 py-4 text-gray-500 dark:text-gray-400 text-start text-xs max-w-xs">
                                             <div class="space-y-1">

@@ -464,18 +464,18 @@ class AccountingEngine
             return null;
         }
 
-        $fundAccountId = $cashFundId;
+        $fundAccountId = null;
 
-        $method = $payment->method;
-
-        if (Str::startsWith((string)$method, 'transfer-')) {
-            $transferId = str_replace('transfer-', '', $method);
+        if (Str::startsWith((string)$method, 'transfer-') || $method === 'transfer') {
+            $transferId = Str::startsWith((string)$method, 'transfer-')
+                ? str_replace('transfer-', '', $method)
+                : ($payment->gateway ?: '');
             $settingsStr = Setting::where('key', 'bank_transfer_accounts')->value('value');
             if ($settingsStr) {
                 $accounts = json_decode($settingsStr, true);
                 if (is_array($accounts)) {
                     foreach ($accounts as $acc) {
-                        if (isset($acc['id']) && $acc['id'] === $transferId) {
+                        if (isset($acc['id']) && (string)$acc['id'] === (string)$transferId) {
                             if (!empty($acc['bank_id'])) {
                                 $fundAccountId = $acc['bank_id'];
                             } elseif ($bankFundId) {
@@ -503,14 +503,19 @@ class AccountingEngine
                     }
                 }
             }
-        } elseif (Str::startsWith((string)$method, 'pos-')) {
-            $posId = str_replace('pos-', '', $method);
+            if (!$fundAccountId && $bankFundId) {
+                $fundAccountId = $bankFundId;
+            }
+        } elseif (Str::startsWith((string)$method, 'pos-') || $method === 'pos') {
+            $posId = Str::startsWith((string)$method, 'pos-')
+                ? str_replace('pos-', '', $method)
+                : ($payment->gateway ?: '');
             $settingsStr = Setting::where('key', 'pos_devices')->value('value');
             if ($settingsStr) {
                 $devices = json_decode($settingsStr, true);
                 if (is_array($devices)) {
                     foreach ($devices as $dev) {
-                        if (isset($dev['id']) && $dev['id'] === $posId) {
+                        if (isset($dev['id']) && (string)$dev['id'] === (string)$posId) {
                             if (!empty($dev['bank_id'])) {
                                 $fundAccountId = $dev['bank_id'];
                             }
@@ -519,19 +524,76 @@ class AccountingEngine
                     }
                 }
             }
-        } elseif ($payment->gateway) {
+            if (!$fundAccountId && $bankFundId) {
+                $fundAccountId = $bankFundId;
+            }
+        } elseif ($payment->gateway || in_array((string)$method, ['online', 'zarinpal', 'zibal', 'behpardakht', 'mellat', 'saman', 'sep', 'parsian', 'sadad', 'payping', 'idpay']) || Str::startsWith((string)$method, 'online-')) {
+            $gwSlug = strtolower(trim((string)($payment->gateway ?: str_replace('online-', '', (string)$method))));
+            $gatewayKey = '';
             $gatewayName = '';
-            if ($payment->gateway === 'zarinpal') $gatewayName = 'زرین‌پال';
-            elseif ($payment->gateway === 'zibal') $gatewayName = 'زیبال';
-            elseif ($payment->gateway === 'behpardakht') $gatewayName = 'به‌پرداخت';
+            if (str_contains($gwSlug, 'zarinpal')) {
+                $gatewayKey = 'zarinpal';
+                $gatewayName = 'زرین‌پال';
+            } elseif (str_contains($gwSlug, 'zibal')) {
+                $gatewayKey = 'zibal';
+                $gatewayName = 'زیبال';
+            } elseif (str_contains($gwSlug, 'behpardakht') || str_contains($gwSlug, 'mellat')) {
+                $gatewayKey = 'behpardakht';
+                $gatewayName = 'به‌پرداخت';
+            } elseif (str_contains($gwSlug, 'saman') || str_contains($gwSlug, 'sep')) {
+                $gatewayKey = 'sep';
+                $gatewayName = 'سامان';
+            } elseif (str_contains($gwSlug, 'sadad')) {
+                $gatewayKey = 'sadad';
+                $gatewayName = 'سداد';
+            } elseif (str_contains($gwSlug, 'parsian')) {
+                $gatewayKey = 'parsian';
+                $gatewayName = 'پارسیان';
+            } elseif (str_contains($gwSlug, 'payping')) {
+                $gatewayKey = 'payping';
+                $gatewayName = 'پی‌پینگ';
+            } elseif (str_contains($gwSlug, 'idpay')) {
+                $gatewayKey = 'idpay';
+                $gatewayName = 'آیدی‌پی';
+            }
 
-            if ($gatewayName) {
-                $gatewayFund = FundAccount::where('type', 'gateway')
+            // 1. Check if gateway has a linked bank account in settings (e.g. zibal_bank_id)
+            if ($gatewayKey) {
+                $configuredBankId = Setting::where('key', $gatewayKey . '_bank_id')->value('value');
+                if ($configuredBankId && FundAccount::find($configuredBankId)) {
+                    $fundAccountId = $configuredBankId;
+                }
+            }
+
+            // 2. Check if a dedicated FundAccount exists for this gateway
+            if (!$fundAccountId && $gatewayName) {
+                $gatewayFund = FundAccount::where(function($q) {
+                        $q->where('type', 'gateway')->orWhere('type', 'bank');
+                    })
                     ->where('name', 'like', '%' . $gatewayName . '%')
                     ->first();
                 if ($gatewayFund) {
                     $fundAccountId = $gatewayFund->id;
                 }
+            }
+
+            // 3. Fallback for online payments is ALWAYS the default bank fund, NOT cash/wallet!
+            if (!$fundAccountId && $bankFundId) {
+                $fundAccountId = $bankFundId;
+            }
+        } elseif ($method === 'wallet') {
+            $fundAccountId = $cashFundId;
+        } elseif ($method === 'cash' || $method === 'cod') {
+            $fundAccountId = $cashFundId;
+        }
+
+        // Final fallback: if still null, choose bank or cash depending on method
+        if (!$fundAccountId) {
+            $isBankLike = in_array((string)$method, ['online', 'transfer', 'pos']) || Str::startsWith((string)$method, ['transfer-', 'pos-', 'online-']) || !empty($payment->gateway);
+            if ($isBankLike && $bankFundId) {
+                $fundAccountId = $bankFundId;
+            } else {
+                $fundAccountId = $cashFundId ?: $bankFundId;
             }
         }
 
@@ -559,6 +621,35 @@ class AccountingEngine
                 $debitCategoryId = $assetCat->id;
             } else {
                 throw new Exception("سرفصل متناظر برای واریز وجه یافت نشد. لطفاً سرفصل‌های پیش‌فرض حسابداری را بررسی کنید.");
+            }
+        }
+
+        // Check if an accounting document already exists for this payment
+        $existingSourceDoc = DB::table('accounting_source_documents')
+            ->where('sourceable_type', get_class($payment))
+            ->where('sourceable_id', $payment->id)
+            ->where('module', 'services')
+            ->where('event_type', 'payment_received')
+            ->first();
+
+        if ($existingSourceDoc) {
+            $existingDoc = Document::with('transactions')->find($existingSourceDoc->document_id);
+            if ($existingDoc) {
+                foreach ($existingDoc->transactions as $t) {
+                    if ((float)$t->debit > 0) {
+                        $t->update([
+                            'category_id' => $debitCategoryId,
+                            'fund_account_id' => $fundAccountId,
+                            'debit' => $amount,
+                        ]);
+                    } elseif ((float)$t->credit > 0) {
+                        $t->update([
+                            'category_id' => $receivableCatId,
+                            'credit' => $amount,
+                        ]);
+                    }
+                }
+                return $existingDoc;
             }
         }
 

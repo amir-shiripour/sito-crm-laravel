@@ -2356,7 +2356,7 @@ class InvoiceController extends Controller
         return $methods;
     }
 
-    private function syncOrdersForInvoice(Invoice $invoice, array $preparedItems = [])
+    public function syncOrdersForInvoice(Invoice $invoice, array $preparedItems = [])
     {
         if (!$invoice->invoice_number) return;
 

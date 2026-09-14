@@ -7,13 +7,14 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Route;
 use Modules\Services\App\Http\Models\Invoice;
 use Modules\Services\App\Http\Models\Payment;
 use Modules\Services\App\Http\Models\Status;
 use Modules\Settings\Entities\Setting;
 use App\Services\PaymentService as GlobalPaymentService;
 use Nwidart\Modules\Facades\Module;
-use Modules\Accounting\Services\AccountingEngine;
+use Modules\Accounting\App\Services\AccountingEngine;
 use Throwable;
 
 class ClientInvoiceController extends Controller
@@ -280,22 +281,116 @@ class ClientInvoiceController extends Controller
         ));
     }
 
-    public function print($id)
+    public function print(Request $request, $id)
     {
         $client = auth('client')->user();
 
-        if (!class_exists(Invoice::class) || !Schema::hasTable('service_invoices')) {
-            abort(404);
+        if (!Module::has('Services') || !Module::isEnabled('Services') || !class_exists(Invoice::class) || !Schema::hasTable('service_invoices')) {
+            abort(404, 'ماژول سرویس‌ها و خدمات فعال نیست.');
         }
 
         $invoice = Invoice::where('customer_id', $client->id)
-            ->with(['status', 'service', 'items.service', 'customer', 'payments'])
+            ->with(['status', 'service', 'items.service.customFields', 'customer', 'payments'])
             ->findOrFail($id);
 
         $settings = Setting::pluck('value', 'key')->toArray();
         $currency = $settings['currency'] ?? 'toman';
-        
-        return view('services::invoices.print', compact('invoice', 'settings', 'currency'));
+
+        $sellerInfo = $this->sellerInfo($settings);
+        [$siteName, $appLogo] = $this->siteBrand($settings, $sellerInfo);
+
+        $paymentStatuses = class_exists(Status::class) && Schema::hasTable('service_statuses')
+            ? Status::where('type', 'payment')->orderBy('sort_order')->get()
+            : collect();
+
+        $defaultMode = $settings['services_print_mode'] ?? 'standard';
+        $printMode = $request->query('mode', $defaultMode);
+        if (!in_array($printMode, ['standard', 'official'])) {
+            $printMode = $defaultMode;
+        }
+
+        $viewName = $printMode === 'official' ? 'services::invoices.print_official' : 'services::invoices.print';
+        $taxMode = $settings['services_tax_mode'] ?? 'invoice';
+
+        return view($viewName, compact(
+            'invoice',
+            'currency',
+            'sellerInfo',
+            'paymentStatuses',
+            'siteName',
+            'appLogo',
+            'taxMode',
+            'settings',
+            'printMode'
+        ));
+    }
+
+    private function sellerInfo(array $settings = []): array
+    {
+        if (empty($settings)) {
+            $settings = Setting::all()->pluck('value', 'key')->toArray();
+        }
+
+        $pick = function (array $keys) use ($settings) {
+            foreach ($keys as $key) {
+                if (!empty($settings[$key])) {
+                    return $settings[$key];
+                }
+            }
+            return null;
+        };
+
+        $customFieldsRaw = $pick(['identity_custom_fields', 'seller_custom_fields']);
+        $customFields = [];
+        if ($customFieldsRaw) {
+            $decoded = json_decode($customFieldsRaw, true);
+            if (is_array($decoded)) {
+                $customFields = array_values(array_filter(
+                    $decoded,
+                    fn($field) => !empty($field['value'] ?? null)
+                ));
+            }
+        }
+
+        return [
+            'name' => $pick(['identity_name', 'seller_name', 'company_name']) ?? '',
+            'economic_number' => $pick([
+                'identity_economic_code',
+                'identity_economic_number',
+                'seller_economic_number',
+                'economic_number',
+            ]) ?? '',
+            'national_id' => $pick(['identity_national_id', 'seller_national_id', 'national_id']) ?? '',
+            'registration_number' => $pick(['identity_registration_number', 'seller_registration_number', 'registration_number']) ?? '',
+            'phone_fax' => $pick(['identity_phone_fax', 'seller_phone_fax', 'phone_fax']) ?? '',
+            'address' => $pick([
+                'identity_full_address',
+                'identity_address',
+                'seller_address',
+                'address',
+            ]) ?? '',
+            'stamp_signature_image' => $pick(['identity_seal_signature', 'seller_stamp_signature', 'stamp_signature_image']),
+            'custom_fields' => $customFields,
+        ];
+    }
+
+    private function siteBrand(array $settings, array $sellerInfo): array
+    {
+        $pick = function (array $keys) use ($settings) {
+            foreach ($keys as $key) {
+                if (!empty($settings[$key])) {
+                    return $settings[$key];
+                }
+            }
+            return null;
+        };
+
+        $siteName = $pick(['identity_site_name', 'site_name', 'app_name', 'identity_name'])
+            ?: (($sellerInfo['name'] ?? null) ?: 'فاکتور');
+
+        $appLogo = $pick(['identity_logo', 'site_logo', 'app_logo', 'company_logo']);
+
+        return [$siteName, $appLogo];
     }
 
     public function processPayment(Request $request, $id)
@@ -379,10 +474,13 @@ class ClientInvoiceController extends Controller
                 $email = $client->email;
                 $mobile = $client->mobile ?? $client->phone;
 
-                $callbackUrl = route('clients.invoices.verify', [
-                    'invoice' => $invoice->id,
-                    'gateway' => $gateway,
-                ]);
+                $verifyRouteName = Route::has('client.invoices.verify')
+                    ? 'client.invoices.verify'
+                    : (Route::has('clients.invoices.verify') ? 'clients.invoices.verify' : null);
+
+                $callbackUrl = $verifyRouteName
+                    ? route($verifyRouteName, ['invoice' => $invoice->id, 'gateway' => $gateway])
+                    : url("clients/invoices/{$invoice->id}/verify/{$gateway}");
 
                 $result = $globalPaymentService->requestPaymentInRials(
                     $amountInRials,
@@ -397,11 +495,11 @@ class ClientInvoiceController extends Controller
                         'invoice_id'     => $invoice->id,
                         'user_id'        => null,
                         'amount'         => $amount,
-                        'method'         => 'online',
+                        'method'         => $gateway ?: 'online',
                         'gateway'        => $gateway,
                         'paid_at'        => now(),
                         'transaction_id' => $result['authority'] ?? null,
-                        'notes'          => 'پرداخت آنلاین از طریق ' . Payment::formatMethodName('online', $gateway) . ($isPartial ? ' (پرداخت جزئی)' : '') . ' | شناسه: ' . ($result['authority'] ?? '—'),
+                        'notes'          => 'پرداخت آنلاین از طریق ' . Payment::formatMethodName($gateway, $gateway) . ($isPartial ? ' (پرداخت جزئی)' : '') . ' | شناسه: ' . ($result['authority'] ?? '—'),
                         'status'         => 'pending',
                     ]);
 
@@ -445,12 +543,22 @@ class ClientInvoiceController extends Controller
                 . ($request->tracking_code ? ' | کد پیگیری: ' . $request->tracking_code : '')
                 . ($receiptUrl ? ' | فایل پیوست: ' . $receiptUrl : '');
 
+            $subItem = $request->input('sub_item');
+            $storedMethod = $method;
+            if ($method === 'transfer' && $subItem) {
+                $storedMethod = str_starts_with($subItem, 'transfer-') ? $subItem : 'transfer-' . $subItem;
+            } elseif ($method === 'pos' && $subItem) {
+                $storedMethod = str_starts_with($subItem, 'pos-') ? $subItem : 'pos-' . $subItem;
+            } elseif ($method === 'installment' && $subItem) {
+                $storedMethod = str_starts_with($subItem, 'installment-') ? $subItem : 'installment-' . $subItem;
+            }
+
             Payment::create([
                 'invoice_id'     => $invoice->id,
                 'user_id'        => null,
                 'amount'         => $amount,
-                'method'         => $method,
-                'gateway'        => $request->sub_item,
+                'method'         => $storedMethod,
+                'gateway'        => $subItem,
                 'paid_at'        => now(),
                 'transaction_id' => $request->tracking_code ?? uniqid('TR-'),
                 'notes'          => $note,
@@ -491,14 +599,24 @@ class ClientInvoiceController extends Controller
 
         if (!$gateway) {
             $pendingPayment = Payment::where('invoice_id', $invoice->id)
-                ->where('method', 'online')
+                ->where(function ($q) {
+                    $q->where('method', 'online')
+                      ->orWhereIn('method', ['zarinpal', 'zibal', 'behpardakht', 'saman', 'sep', 'parsian', 'sadad', 'payping', 'idpay'])
+                      ->orWhere('method', 'LIKE', 'online-%')
+                      ->orWhereNotNull('gateway');
+                })
                 ->latest()
                 ->first();
             $gateway = $pendingPayment?->gateway ?: Setting::where('key', 'default_payment_gateway')->value('value') ?: 'zarinpal';
         }
 
         $payment = Payment::where('invoice_id', $invoice->id)
-            ->where('method', 'online')
+            ->where(function ($q) use ($gateway) {
+                $q->where('method', 'online')
+                  ->orWhere('method', $gateway)
+                  ->orWhere('method', 'online-' . $gateway)
+                  ->orWhere('gateway', $gateway);
+            })
             ->where(function ($q) use ($authority) {
                 if ($authority) {
                     $q->where('transaction_id', $authority);
@@ -532,7 +650,7 @@ class ClientInvoiceController extends Controller
         if ($status === 'NOK' || $status === 'CANCELED') {
             $payment?->update(['status' => 'canceled']);
             return redirect()
-                ->route('clients.invoices.show', $invoice->id)
+                ->route('client.invoices.show', $invoice->id)
                 ->with('error', 'پرداخت آنلاین توسط کاربر لغو شد یا انجام نشد.');
         }
 
@@ -576,11 +694,11 @@ class ClientInvoiceController extends Controller
                         $payment = $invoice->payments()->create([
                             'user_id' => null,
                             'amount' => max(0, $invoice->total - $invoice->calculatePaidAmount()),
-                            'method' => 'online',
+                            'method' => $gateway ?: 'online',
                             'gateway' => $gateway,
                             'paid_at' => now(),
                             'transaction_id' => $refId,
-                            'notes' => 'پرداخت آنلاین تایید شده | کد رهگیری: ' . $refId,
+                            'notes' => 'پرداخت آنلاین تایید شده (' . Payment::formatMethodName($gateway, $gateway) . ') | کد رهگیری: ' . $refId,
                             'status' => 'paid',
                         ]);
                     }
@@ -624,24 +742,28 @@ class ClientInvoiceController extends Controller
 
                     // Automatically activate linked orders
                     if (class_exists(\Modules\Services\App\Http\Controllers\InvoiceController::class)) {
-                        app(\Modules\Services\App\Http\Controllers\InvoiceController::class)->syncOrdersForInvoice($invoice);
+                        try {
+                            app(\Modules\Services\App\Http\Controllers\InvoiceController::class)->syncOrdersForInvoice($invoice);
+                        } catch (\Throwable $e) {
+                            Log::error('[ClientInvoiceController] Error syncing orders for invoice on verify: ' . $e->getMessage());
+                        }
                     }
                 });
 
                 return redirect()
-                    ->route('clients.invoices.show', $invoice->id)
+                    ->route('client.invoices.show', $invoice->id)
                     ->with('success', 'پرداخت شما با موفقیت انجام شد و صورت‌حساب تسویه گردید. کد پیگیری: ' . $refId);
             } else {
                 $payment?->update(['status' => 'canceled']);
                 $errorMsg = $verifyResult['message'] ?? 'تراکنش توسط درگاه تایید نشد.';
                 return redirect()
-                    ->route('clients.invoices.show', $invoice->id)
+                    ->route('client.invoices.show', $invoice->id)
                     ->with('error', 'خطا در تایید تراکنش بانکی: ' . $errorMsg);
             }
         } catch (\Throwable $e) {
             Log::error('Invoice online payment verify error: ' . $e->getMessage());
             return redirect()
-                ->route('clients.invoices.show', $invoice->id)
+                ->route('client.invoices.show', $invoice->id)
                 ->with('error', 'خطا در پردازش بازگشت از درگاه: ' . $e->getMessage());
         }
     }

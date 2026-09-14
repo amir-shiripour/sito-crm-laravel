@@ -57,14 +57,34 @@
                     </a>
                 @endif
 
-                <a href="{{ route('client.invoices.print', $invoice->id) }}" target="_blank"
-                   class="inline-flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl transition-colors text-xs font-medium shadow-sm">
-                    <svg class="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                              d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
-                    </svg>
-                    نسخه چاپی
-                </a>
+                <div class="relative inline-flex items-center" x-data="{ open: false }">
+                    <a href="{{ route('client.invoices.print', $invoice->id) }}" target="_blank"
+                       class="inline-flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-s-xl transition-colors text-xs font-medium shadow-sm">
+                        <svg class="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
+                        </svg>
+                        نسخه چاپی
+                    </a>
+                    <button type="button" @click="open = !open" @click.outside="open = false"
+                            class="px-2 py-2.5 bg-white dark:bg-gray-800 border-y border-e border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-e-xl transition-colors text-xs font-medium shadow-sm"
+                            title="انتخاب قالب چاپ">
+                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                        </svg>
+                    </button>
+                    <div x-show="open" x-cloak
+                         class="absolute left-0 top-full mt-1 w-44 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg z-50 py-1 text-xs">
+                        <a href="{{ route('client.invoices.print', ['invoice' => $invoice->id, 'mode' => 'official']) }}" target="_blank"
+                           class="flex items-center gap-2 px-3 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                            <span>نسخه رسمی (مالیاتی)</span>
+                        </a>
+                        <a href="{{ route('client.invoices.print', ['invoice' => $invoice->id, 'mode' => 'standard']) }}" target="_blank"
+                           class="flex items-center gap-2 px-3 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                            <span>نسخه استاندارد</span>
+                        </a>
+                    </div>
+                </div>
 
                 @if($isPending)
                     <button type="button"
