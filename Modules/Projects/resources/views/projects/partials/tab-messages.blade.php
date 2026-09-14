@@ -134,9 +134,26 @@
                     </svg>
                 </div>
                 <div>
-                    <h3 class="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                        گفتگو و پیام‌های پروژه
-                    </h3>
+                    <div class="flex items-center gap-2">
+                        <h3 class="text-base font-bold text-gray-900 dark:text-white">
+                            گفتگو و پیام‌های پروژه
+                        </h3>
+                        {{-- Connection status badge --}}
+                        <div class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium"
+                             :class="{
+                                 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-500/20': wsStatus === 'connected',
+                                 'bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400 border border-amber-200/60 dark:border-amber-500/20 animate-pulse': wsStatus === 'connecting',
+                                 'bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-400 border border-rose-200/60 dark:border-rose-500/20': wsStatus === 'disconnected'
+                             }">
+                            <span class="w-1.5 h-1.5 rounded-full"
+                                  :class="{
+                                      'bg-emerald-500': wsStatus === 'connected',
+                                      'bg-amber-500': wsStatus === 'connecting',
+                                      'bg-rose-500': wsStatus === 'disconnected'
+                                  }"></span>
+                            <span x-text="wsStatus === 'connected' ? 'زنده' : (wsStatus === 'connecting' ? 'در حال اتصال...' : 'ارتباط قطع است')"></span>
+                        </div>
+                    </div>
                     <p class="text-xs text-gray-400">فضای تبادل نظر، منشن، پاسخ و جستجوی پیام‌ها</p>
                 </div>
             </div>
@@ -1080,24 +1097,133 @@
                 });
             },
 
-            messagesPollTimer: null,
-            isMessagesPolling: false,
+            wsStatus: 'connecting', // 'connected' | 'connecting' | 'disconnected'
+            echoSubscribed: false,
             lastPollTime: Math.floor(Date.now() / 1000),
             lastMessageId: {{ $project->messages->isNotEmpty() ? $project->messages->last()->id : 0 }},
 
-            startPolling() {
-                if (this.messagesPollTimer) return;
-                this.pollMessages();
-                this.messagesPollTimer = setInterval(() => {
-                    this.pollMessages();
-                }, 3000);
+            setupEchoListeners() {
+                if (this.echoSubscribed) return;
+
+                if (!window.Echo) {
+                    this.wsStatus = 'disconnected';
+                    return;
+                }
+
+                try {
+                    // Monitor connection state
+                    const connector = window.Echo.connector;
+                    if (connector && connector.pusher && connector.pusher.connection) {
+                        const state = connector.pusher.connection.state;
+                        this.wsStatus = state === 'connected' ? 'connected' : (state === 'connecting' ? 'connecting' : 'disconnected');
+
+                        connector.pusher.connection.bind('connected', () => {
+                            this.wsStatus = 'connected';
+                        });
+                        connector.pusher.connection.bind('connecting', () => {
+                            this.wsStatus = 'connecting';
+                        });
+                        connector.pusher.connection.bind('unavailable', () => {
+                            this.wsStatus = 'disconnected';
+                        });
+                        connector.pusher.connection.bind('failed', () => {
+                            this.wsStatus = 'disconnected';
+                        });
+                        connector.pusher.connection.bind('disconnected', () => {
+                            this.wsStatus = 'disconnected';
+                        });
+                    }
+
+                    const channel = window.Echo.private(`project.{{ $project->id }}`);
+
+                    // 1. New message event
+                    channel.listen('.message.new_message', (payload) => {
+                        this.handleIncomingMessage(payload);
+                    });
+
+                    // 2. Deleted messages event
+                    channel.listen('.message.messages_deleted', (payload) => {
+                        if (payload.ids && Array.isArray(payload.ids)) {
+                            this.handleDeletedMessages(payload.ids);
+                        }
+                    });
+
+                    // 3. Pin updated event
+                    channel.listen('.message.pin_updated', (payload) => {
+                        if (payload.updates && Array.isArray(payload.updates)) {
+                            this.handlePinUpdates(payload.updates);
+                        }
+                    });
+
+                    this.echoSubscribed = true;
+                } catch (e) {
+                    console.error('Echo subscription error:', e);
+                    this.wsStatus = 'disconnected';
+                }
             },
 
-            stopPolling() {
-                if (this.messagesPollTimer) {
-                    clearInterval(this.messagesPollTimer);
-                    this.messagesPollTimer = null;
+            handleIncomingMessage(msg) {
+                if (!msg || !msg.id) return;
+                if (msg.id > this.lastMessageId) {
+                    this.lastMessageId = msg.id;
                 }
+                if (document.getElementById('message-' + msg.id)) return;
+
+                const currentUserId = {{ auth()->id() ?? 0 }};
+                const isMine = Number(msg.user_id) === Number(currentUserId);
+
+                this.allMessages = this.allMessages || this.messages || [];
+                this.allMessages.push({
+                    id: msg.id,
+                    user_id: msg.user_id,
+                    user_name: msg.user_name,
+                    body: msg.body,
+                    is_pinned: msg.is_pinned,
+                    has_reply: !!msg.parent_id,
+                    is_mine: isMine,
+                    mentions_me: false,
+                });
+
+                msg.is_mine = isMine;
+                this.appendMessageToDOM(msg);
+                if (this.showScrollBottom) {
+                    this.newMessagesCount++;
+                } else {
+                    this.scrollToBottom();
+                }
+            },
+
+            handleDeletedMessages(ids) {
+                ids.forEach(id => {
+                    document.getElementById('message-' + id)?.remove();
+                    if (this.allMessages) {
+                        this.allMessages = this.allMessages.filter(m => m.id !== id);
+                    }
+                    if (this.messages) {
+                        this.messages = this.messages.filter(m => m.id !== id);
+                    }
+                });
+            },
+
+            handlePinUpdates(updates) {
+                updates.forEach(u => {
+                    const el = document.getElementById('message-' + u.id);
+                    if (el) {
+                        if (u.is_pinned) {
+                            el.classList.add('border-amber-300', 'bg-amber-50/50');
+                        } else {
+                            el.classList.remove('border-amber-300', 'bg-amber-50/50');
+                        }
+                    }
+                    if (this.allMessages) {
+                        const m = this.allMessages.find(m => m.id === u.id);
+                        if (m) m.is_pinned = u.is_pinned;
+                    }
+                    if (this.messages) {
+                        const m = this.messages.find(m => m.id === u.id);
+                        if (m) m.is_pinned = u.is_pinned;
+                    }
+                });
             },
 
             async pollMessages() {
@@ -1348,22 +1474,24 @@
                 setTimeout(() => this.scrollToBottom(), 100);
                 setTimeout(() => this.scrollToBottom(), 300);
 
+                // Setup WebSocket real-time subscription via Laravel Reverb
+                this.setupEchoListeners();
+
                 window.addEventListener('tab-changed', (e) => {
                     if (e.detail === 'messages') {
                         setTimeout(() => this.scrollToBottom(), 50);
                         setTimeout(() => this.scrollToBottom(), 200);
-                        this.startPolling();
+                        this.setupEchoListeners();
                     }
                 });
 
                 document.addEventListener('visibilitychange', () => {
-                    if (!document.hidden) {
-                        this.pollMessages();
+                    if (!document.hidden && this.wsStatus === 'disconnected') {
+                        if (window.Echo && window.Echo.connector && window.Echo.connector.pusher) {
+                            window.Echo.connector.pusher.connect();
+                        }
                     }
                 });
-
-                // Start polling on load
-                this.startPolling();
             }
         };
     }

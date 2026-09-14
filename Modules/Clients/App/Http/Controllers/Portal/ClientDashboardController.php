@@ -47,7 +47,10 @@ class ClientDashboardController extends Controller
 
         // مبلغ پرداخت نشده کلی بر مبنای ریال برای نمایش در داشبورد
         $unpaidInvoicesSum = $allPayments->where('is_pending', true)->sum('amount_in_rials');
-        $recentPayments = $allPayments->take(5);
+        $recentPayments = $allPayments
+            ->reject(fn($payment) => in_array($payment->status, ['CANCELED', 'CANCELLED'], true))
+            ->values()
+            ->take(5);
 
         return view('clients::portal.dashboard', [
             'client'                  => $client,
@@ -178,6 +181,10 @@ class ClientDashboardController extends Controller
 
             $recent = ServiceInvoice::where('customer_id', $client->id)
                 ->whereNotNull('invoice_number')
+                ->whereDoesntHave('status', function($q) {
+                    $q->where('name', 'LIKE', '%لغو%')
+                      ->orWhere('name', 'LIKE', '%ادغام%');
+                })
                 ->with(['service', 'status', 'items'])
                 ->latest('id')
                 ->take(5)
@@ -243,7 +250,7 @@ class ClientDashboardController extends Controller
                 ->count();
 
             $recent = ServiceOrder::where('customer_id', $client->id)
-                ->with(['service', 'status', 'invoice.status'])
+                ->with(['service', 'status', 'invoice.status', 'invoice.items'])
                 ->latest('id')
                 ->take(5)
                 ->get();

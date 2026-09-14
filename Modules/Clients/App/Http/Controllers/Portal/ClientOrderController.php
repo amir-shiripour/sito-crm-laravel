@@ -19,7 +19,7 @@ class ClientOrderController extends Controller
         }
 
         $query = Order::where('customer_id', $client->id)
-            ->with(['service', 'status', 'invoice.status'])
+            ->with(['service', 'status', 'invoice.status', 'invoice.items'])
             ->latest('id');
 
         if ($request->filled('status') && $request->status !== 'all') {
@@ -46,6 +46,7 @@ class ClientOrderController extends Controller
             $search = $request->search;
             $query->where(function($q) use ($search) {
                 $q->where('order_number', 'LIKE', "%{$search}%")
+                  ->orWhere('notes', 'LIKE', "%{$search}%")
                   ->orWhereHas('service', function($sq) use ($search) {
                       $sq->where('name', 'LIKE', "%{$search}%");
                   });

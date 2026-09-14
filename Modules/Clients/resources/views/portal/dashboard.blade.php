@@ -321,6 +321,7 @@
                                 </thead>
                                 <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
                                 @foreach($recentPayments as $payment)
+                                    @continue(in_array($payment->status, ['CANCELED', 'CANCELLED'], true))
                                     <tr class="hover:bg-gray-50/50 dark:hover:bg-gray-700/50 transition-colors cursor-pointer" onclick="window.location.href='{{ route('client.payments.show', ['type' => $payment->type, 'id' => $payment->id]) }}'">
                                         <td class="px-6 py-4 text-gray-900 dark:text-white font-medium">
                                             <div class="flex flex-col">
@@ -410,7 +411,7 @@
                                     <tr class="hover:bg-gray-50/50 dark:hover:bg-gray-700/50 transition-colors cursor-pointer" onclick="window.location.href='{{ route('client.orders.show', $order->id) }}'">
                                         <td class="px-6 py-4 text-gray-700 dark:text-gray-300">
                                             <div class="flex flex-col">
-                                                <span class="font-medium text-gray-900 dark:text-white">{{ optional($order->service)->name ?: 'سفارش خدمات' }}</span>
+                                                <span class="font-medium text-gray-900 dark:text-white">{{ \Modules\Clients\App\Support\OrderDisplayHelper::getTitle($order) }}</span>
                                                 <span class="text-xs text-gray-400">#{{ \Morilog\Jalali\CalendarUtils::convertNumbers($order->order_number) }}</span>
                                             </div>
                                         </td>

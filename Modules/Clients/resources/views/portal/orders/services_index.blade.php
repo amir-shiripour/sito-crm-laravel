@@ -116,11 +116,14 @@
                             </span>
                             </div>
 
+                            @php
+                                $cardOrderTitle = \Modules\Clients\App\Support\OrderDisplayHelper::getTitle($order);
+                            @endphp
                             <h3 class="font-bold text-base text-gray-900 dark:text-white mb-1 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors line-clamp-1">
-                                {{ optional($order->service)->name ?: 'سرویس خدمات' }}
+                                {{ $cardOrderTitle }}
                             </h3>
 
-                            @if($order->notes)
+                            @if($order->notes && $order->notes !== $cardOrderTitle)
                                 <p class="text-xs text-gray-500 dark:text-gray-400 mb-4 line-clamp-2">{{ $order->notes }}</p>
                             @else
                                 <div class="mb-4"></div>

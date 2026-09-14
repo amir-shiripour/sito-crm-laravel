@@ -16,6 +16,10 @@ class ProjectsMessageSseController extends Controller
      */
     public function poll(Request $request, Project $project): JsonResponse|StreamedResponse
     {
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            session_write_close();
+        }
+
         $this->authorize('view', $project);
         $lastId = (int)$request->query('last_id', 0);
         $since = (int)$request->query('since', 0);

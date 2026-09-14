@@ -47,6 +47,22 @@ class ProjectsMessageController extends Controller
 
         cache()->put('project_last_message_id_' . $project->id, $message->id, 3600);
 
+        // Broadcast real-time message via Laravel Reverb
+        $loadedMessage = $message->load(['user', 'parent.user']);
+        $payload = [
+            'id' => $loadedMessage->id,
+            'user_id' => $loadedMessage->user_id,
+            'user_name' => $loadedMessage->user?->name ?? 'کاربر',
+            'user_initial' => mb_substr($loadedMessage->user?->name ?? 'U', 0, 1),
+            'body' => $loadedMessage->body,
+            'is_pinned' => (bool)$loadedMessage->is_pinned,
+            'parent_id' => $loadedMessage->parent_id,
+            'parent_body' => $loadedMessage->parent ? mb_substr($loadedMessage->parent->body, 0, 60) : null,
+            'parent_user' => $loadedMessage->parent?->user?->name,
+            'created_at' => $loadedMessage->created_at?->toISOString(),
+        ];
+        \Modules\Projects\App\Events\ProjectMessageEvent::dispatch($project->id, 'new_message', $payload);
+
         ProjectActivity::log(
             projectId: $project->id,
             action: 'message.sent',
@@ -55,7 +71,7 @@ class ProjectsMessageController extends Controller
         );
 
         if ($request->wantsJson() || $request->ajax()) {
-            return response()->json($message->load(['user', 'parent.user']), 201);
+            return response()->json($loadedMessage, 201);
         }
 
         return redirect()->route('projects.projects.show', ['project' => $project->id, 'tab' => 'messages'])
@@ -83,6 +99,11 @@ class ProjectsMessageController extends Controller
             $existing = array_slice($existing, -50);
         }
         cache()->put($deletedKey, $existing, 600); // 10 minutes
+
+        // Broadcast real-time deletion via Laravel Reverb
+        \Modules\Projects\App\Events\ProjectMessageEvent::dispatch($project->id, 'messages_deleted', [
+            'ids' => [$messageId],
+        ]);
 
         ProjectActivity::log(
             projectId: $project->id,
@@ -119,6 +140,16 @@ class ProjectsMessageController extends Controller
             $existing = array_slice($existing, -50);
         }
         cache()->put($pinKey, $existing, 600); // 10 minutes
+
+        // Broadcast real-time pin update via Laravel Reverb
+        \Modules\Projects\App\Events\ProjectMessageEvent::dispatch($project->id, 'pin_updated', [
+            'updates' => [
+                [
+                    'id' => $message->id,
+                    'is_pinned' => !$isCurrentlyPinned,
+                ]
+            ]
+        ]);
 
         $pinAction = !$isCurrentlyPinned ? 'message.pinned' : 'message.unpinned';
         ProjectActivity::log(

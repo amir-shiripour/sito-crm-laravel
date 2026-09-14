@@ -156,11 +156,22 @@ class InvoiceController extends Controller
 
     public function getCustomerDebts(Request $request, Client $client)
     {
-        $excludeInvoiceId = $request->query('exclude_invoice_id');
+        $excludeIds = [];
+        foreach (['exclude_invoice_id', 'exclude_ids', 'merge_invoices'] as $param) {
+            if ($request->filled($param)) {
+                $val = $request->query($param);
+                if (is_array($val)) {
+                    $excludeIds = array_merge($excludeIds, $val);
+                } else {
+                    $excludeIds = array_merge($excludeIds, explode(',', (string)$val));
+                }
+            }
+        }
+        $excludeIds = array_values(array_filter(array_map('trim', $excludeIds)));
 
         $query = Invoice::where('customer_id', $client->id)
             ->whereNotNull('invoice_number')
-            ->when($excludeInvoiceId, fn($q) => $q->where('id', '!=', $excludeInvoiceId))
+            ->when(!empty($excludeIds), fn($q) => $q->whereNotIn('id', $excludeIds))
             ->with(['payments', 'status']);
 
         $mergedStatusIds = Status::where('name', 'LIKE', '%ادغام%')->pluck('id');
@@ -170,8 +181,12 @@ class InvoiceController extends Controller
 
         $invoices = $query->latest()->get();
 
-        $unpaidInvoices = $invoices->filter(function ($inv) {
-            return !$inv->isCanceled() && !$inv->isMerged() && $inv->remainingAmount() > 0;
+        $unpaidInvoices = $invoices->filter(function ($inv) use ($excludeIds) {
+            return !in_array((string)$inv->id, $excludeIds, true)
+                && !in_array($inv->id, $excludeIds, true)
+                && !$inv->isCanceled()
+                && !$inv->isMerged()
+                && $inv->remainingAmount() > 0;
         })->values();
 
         $totalDebt = (int)$unpaidInvoices->sum(fn($inv) => $inv->remainingAmount());
@@ -435,6 +450,7 @@ class InvoiceController extends Controller
             'marketModuleEnabled' => $this->isMarketModuleEnabled(),
             'mergedItems' => $mergedItems,
             'mergedFromIds' => $mergedFromIds,
+            'mergedInvoiceIds' => !empty($mergedFromIds) ? array_values(array_filter(array_map('intval', explode(',', $mergedFromIds)))) : [],
             'packages' => ServicePackage::where('status', 'active')
                 ->with('items.service.customFields')->get(),
         ]);

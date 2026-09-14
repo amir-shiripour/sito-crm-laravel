@@ -1969,43 +1969,42 @@
                 .catch(err => console.error('Item comment delete error:', err));
         }
 
-        // --- Real-time Polling for Tasks and Checklists ---
+        // --- Real-time WebSockets for Tasks and Checklists via Laravel Reverb ---
         let lastTasksEventId = Math.floor(Date.now());
-        let tasksPollTimer = null;
-        let isTasksPolling = false;
+        let tasksEchoSubscribed = false;
 
-        async function pollTasksEvents() {
-            if (document.hidden) return; // Pause when tab is in background
-            if (isTasksPolling) return; // Prevent concurrent requests
+        function setupTasksEcho() {
+            if (tasksEchoSubscribed) return;
+            if (!window.Echo) return;
 
-            isTasksPolling = true;
             try {
-                const url = `{{ url('user/projects/projects') }}/{{ $project->id }}/tasks/sse?last_event_id=${lastTasksEventId}`;
-                const response = await fetch(url, {
-                    headers: {
-                        'Accept': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest'
-                    }
+                const channel = window.Echo.private(`project.{{ $project->id }}`);
+
+                // Listen to all task events broadcasted from server
+                channel.listen('.task.checklist_item_toggled', (payload) => {
+                    handleTaskEvent({
+                        type: 'checklist_item_toggled',
+                        data: payload.data || payload
+                    });
                 });
 
-                if (response.ok) {
-                    const data = await response.json();
-                    if (data.events && Array.isArray(data.events)) {
-                        for (const event of data.events) {
-                            if (event.id && event.id > lastTasksEventId) {
-                                lastTasksEventId = event.id;
-                            }
-                            handleTaskEvent(event);
-                        }
-                    }
-                    if (data.last_event_id && data.last_event_id > lastTasksEventId) {
-                        lastTasksEventId = data.last_event_id;
-                    }
-                }
+                channel.listen('.task.checklist_updated', (payload) => {
+                    handleTaskEvent({
+                        type: 'checklist_updated',
+                        data: payload.data || payload
+                    });
+                });
+
+                channel.listen('.task.task_updated', (payload) => {
+                    handleTaskEvent({
+                        type: 'task_updated',
+                        data: payload.data || payload
+                    });
+                });
+
+                tasksEchoSubscribed = true;
             } catch (err) {
-                // Silently handle transient network issues
-            } finally {
-                isTasksPolling = false;
+                console.error('Tasks Echo subscription error:', err);
             }
         }
 
@@ -2016,16 +2015,20 @@
                     lastTasksEventId = data.event_id;
                 }
 
+                // Check if current user triggered this action
+                const currentUserId = {{ auth()->id() ?? 0 }};
+                const isMyAction = data.triggered_by_user_id && Number(data.triggered_by_user_id) === Number(currentUserId);
+
                 if (event.type === 'checklist_item_toggled') {
                     if (window.applyChecklistToggleUpdate) {
                         window.applyChecklistToggleUpdate(data, false);
                     }
                 } else if (event.type === 'checklist_updated') {
-                    if (!data.is_my_action) {
+                    if (!isMyAction) {
                         window.location.reload();
                     }
                 } else if (event.type === 'task_updated') {
-                    if (!data.is_my_action) {
+                    if (!isMyAction) {
                         if (data.action === 'status_updated' && data.task_id && data.task_status) {
                             if (window.updateTaskStatusBadgeAndIcon) {
                                 window.updateTaskStatusBadgeAndIcon(data.task_id, data.task_status);
@@ -2043,22 +2046,16 @@
             }
         }
 
-        function startTasksPolling() {
-            if (tasksPollTimer) clearInterval(tasksPollTimer);
-            tasksPollTimer = setInterval(pollTasksEvents, 3000);
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', setupTasksEcho);
+        } else {
+            setupTasksEcho();
         }
 
-        // Pause polling when tab is inactive, resume immediately when active
-        document.addEventListener('visibilitychange', () => {
-            if (!document.hidden) {
-                pollTasksEvents();
+        window.addEventListener('tab-changed', (e) => {
+            if (e.detail === 'tasks') {
+                setupTasksEcho();
             }
         });
-
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', startTasksPolling);
-        } else {
-            startTasksPolling();
-        }
     </script>
 @endpush

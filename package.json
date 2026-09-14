@@ -23,9 +23,11 @@
         "@majidh1/jalalidatepicker": "^0.9.12",
         "alpinejs": "^3.15.1",
         "chart.js": "^4.5.1",
+        "laravel-echo": "^2.5.0",
         "leaflet": "^1.9.4",
         "leaflet-geosearch": "^4.0.0",
         "puppeteer": "^22.15.0",
+        "pusher-js": "^8.6.0",
         "quill": "^2.0.3"
     },
     "overrides": {

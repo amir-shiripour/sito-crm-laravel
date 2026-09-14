@@ -2248,6 +2248,8 @@
                     extraDiscountType: @json(old('extra_discount_type', $invoice->extra_discount_type ?? 'amount')),
                     extraDiscountValue: @json(old('extra_discount_value', $invoice->extra_discount_value ?? 0)),
 
+                    currentInvoiceId: @json($invoice->id),
+                    mergedSourceIds: @json(!empty($invoice->meta['merged_from_invoice_ids']) ? implode(',', (array)$invoice->meta['merged_from_invoice_ids']) : ''),
                     selectedCustomer: @json(old('customer_id', $invoice->customer_id)),
                     selectedCustomerData: null,
                     clientSelectedFields: @json(old('client_selected_fields', $invoice->meta['client_selected_fields'] ?? (object)[])),
@@ -2440,7 +2442,10 @@
                         }
 
                         this.loadingCustomerDebt = true;
-                        const url = '{{ url("user/services/invoices/customer") }}/' + clientId + '/debts' + (this.currentInvoiceId ? '?exclude_invoice_id=' + this.currentInvoiceId : '');
+                        const excludeList = [];
+                        if (this.currentInvoiceId) excludeList.push(this.currentInvoiceId);
+                        if (this.mergedSourceIds) excludeList.push(this.mergedSourceIds);
+                        const url = '{{ url("user/services/invoices/customer") }}/' + clientId + '/debts' + (excludeList.length > 0 ? '?exclude_ids=' + encodeURIComponent(excludeList.join(',')) : '');
                         fetch(url)
                             .then(res => res.json())
                             .then(data => {

@@ -21,3 +21,20 @@ Broadcast::channel('treatment-plan.{id}', function ($user, $id) {
     // Clinic staff check: permit any authenticated staff/user
     return auth()->check();
 });
+
+Broadcast::channel('project.{projectId}', function ($user, $projectId) {
+    if ($user->hasAnyRole(['super-admin', 'superadmin'])) {
+        return true;
+    }
+
+    $project = \Modules\Projects\App\Http\Models\Project::find($projectId);
+    if (!$project) {
+        return false;
+    }
+
+    if ($project->created_by === $user->id || $project->isManager($user->id)) {
+        return true;
+    }
+
+    return $project->userHasPermission($user->id, 'projects.view');
+});
