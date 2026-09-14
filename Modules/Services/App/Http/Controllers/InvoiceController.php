@@ -529,10 +529,23 @@ class InvoiceController extends Controller
                 $sourceInvoiceIds = array_values(array_unique($debtIds));
                 $sourceInvoices = Invoice::whereIn('id', $sourceInvoiceIds)->get();
 
-                // Transfer payments only if it's the old full-items merge mode
-                if ($request->has('merge_invoices')) {
+                $mergedOrderIdsByInvoice = [];
+                foreach ($sourceInvoiceIds as $sId) {
+                    $mergedOrderIdsByInvoice[$sId] = Order::where('invoice_id', $sId)->pluck('id')->all();
+                }
+
+                // Transfer payments and orders only if it's merge mode
+                if ($request->has('merge_invoices') || $request->filled('merged_from_invoice_ids')) {
                     Payment::whereIn('invoice_id', $sourceInvoiceIds)
                         ->update(['invoice_id' => $invoice->id]);
+
+                    Order::whereIn('invoice_id', $sourceInvoiceIds)
+                        ->update(['invoice_id' => $invoice->id]);
+
+                    if ($this->isMarketModuleEnabled() && Schema::hasTable('market_orders') && Schema::hasColumn('market_orders', 'source_invoice_id')) {
+                        MarketOrder::whereIn('source_invoice_id', $sourceInvoiceIds)
+                            ->update(['source_invoice_id' => $invoice->id]);
+                    }
                 }
 
                 // Mark old invoices as merged
@@ -541,6 +554,7 @@ class InvoiceController extends Controller
                     $meta = is_array($sourceInv->meta) ? $sourceInv->meta : (json_decode($sourceInv->meta, true) ?? []);
                     if (isset($meta['is_merged_invoice'])) unset($meta['is_merged_invoice']);
                     $meta['was_merged_into'] = $invoice->id;
+                    $meta['merged_order_ids'] = $mergedOrderIdsByInvoice[$sourceInv->id] ?? [];
                     $sourceInv->update([
                         'status_id' => $mergedStatus?->id ?? $sourceInv->status_id,
                         'meta' => $meta,
@@ -2480,8 +2494,10 @@ class InvoiceController extends Controller
                 }
             }
 
+            $order = $existingOrders->get($newIndexPosition);
+
             $orderData = [
-                'order_number' => 'ORD-' . $invoice->id . '-' . ($newIndexPosition + 1),
+                'order_number' => $order?->order_number ?: ('ORD-' . $invoice->id . '-' . ($newIndexPosition + 1)),
                 'invoice_id' => $invoice->id,
                 'service_id' => $serviceId,
                 'customer_id' => $invoice->customer_id,
@@ -2498,8 +2514,6 @@ class InvoiceController extends Controller
                 'renewal_price_type' => 'auto',
                 'notes' => $customName,
             ];
-
-            $order = $existingOrders->get($newIndexPosition);
 
             if ($order) {
                 $order->update($orderData);

@@ -243,9 +243,9 @@
                     <tbody class="divide-y divide-gray-50 dark:divide-gray-700/40">
                     @forelse($orders as $order)
                         @php
-                            $invoice    = $order->invoice;
+                            $invoice      = $order->invoice ?: $order->latest_invoice;
                             $customerName = $order->customer->full_name ?? $order->client_name ?? 'مشتری نامشخص';
-                            $issueDate  = $invoice ? $invoice->issue_date : $order->issue_date;
+                            $issueDate    = $order->issue_date ?: $invoice?->issue_date;
 
                             $statusColor = $order->status->color ?? '#6b7280';
                             $statusName  = $order->status->name ?? 'نامشخص';
@@ -398,17 +398,28 @@
 
                             {{-- شماره فاکتور --}}
                             <td class="px-6 py-4 text-center align-middle">
-                                @if($invoice)
-                                    <a href="{{ route('services.invoices.show', $invoice) }}"
-                                       onclick="event.stopPropagation()"
-                                       class="inline-flex items-center gap-1.5 bg-gray-100 hover:bg-indigo-100 dark:bg-gray-700/50 dark:hover:bg-indigo-500/20 text-sm font-bold text-gray-600 hover:text-indigo-700 dark:text-gray-300 dark:hover:text-indigo-300 px-3 py-1.5 rounded-md tabular-nums transition-colors">
-                                        <svg class="w-4 h-4 text-gray-400 hover:text-indigo-500" fill="none"
-                                             viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                            <path stroke-linecap="round" stroke-linejoin="round"
-                                                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                                        </svg>
-                                        {{ $faNum($invoice->invoice_number) }}
-                                    </a>
+                                @php
+                                    $displayInvoice = $invoice;
+                                    $isRenewalInvoice = $displayInvoice && (empty($order->invoice_id) || !empty($displayInvoice->meta['is_renewal']));
+                                @endphp
+                                @if($displayInvoice)
+                                    <div class="inline-flex flex-col items-center gap-1">
+                                        <a href="{{ route('services.invoices.show', $displayInvoice) }}"
+                                           onclick="event.stopPropagation()"
+                                           class="inline-flex items-center gap-1.5 bg-gray-100 hover:bg-indigo-100 dark:bg-gray-700/50 dark:hover:bg-indigo-500/20 text-sm font-bold text-gray-600 hover:text-indigo-700 dark:text-gray-300 dark:hover:text-indigo-300 px-3 py-1.5 rounded-md tabular-nums transition-colors">
+                                            <svg class="w-4 h-4 text-gray-400 hover:text-indigo-500" fill="none"
+                                                 viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                            </svg>
+                                            {{ $faNum($displayInvoice->invoice_number) }}
+                                        </a>
+                                        @if($isRenewalInvoice)
+                                            <span class="text-[10px] font-bold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 px-1.5 py-0.5 rounded leading-none">
+                                                تمدید
+                                            </span>
+                                        @endif
+                                    </div>
                                 @else
                                     <span class="text-sm font-bold text-gray-400">بدون فاکتور</span>
                                 @endif

@@ -960,49 +960,106 @@ class WorkflowEngine
                         $order = $context['order'];
                         
                         try {
-                            $invoiceTotal = $order->renewal_price ?: $order->total_amount;
+                            // Calculate renewal price using model accessor if available, or fallback
+                            $invoiceTotal = (int)($order->calculated_renewal_price ?? ($order->renewal_price ?: $order->total_amount));
                             $dueDateOffset = (int)($config['due_date_offset'] ?? 0);
                             $dueDate = $dueDateOffset > 0 ? now()->addDays($dueDateOffset) : $order->renewal_date;
+
+                            // Calculate next renewal date
+                            $nextRenewalDate = method_exists($order, 'calculateNextRenewalDate') ? $order->calculateNextRenewalDate() : null;
+
+                            // Billing cycle labels in Persian
+                            $billingCycleLabels = [
+                                'monthly' => 'ماهانه',
+                                'quarterly' => 'فصلی',
+                                'semi_annual' => 'شش ماهه',
+                                'annual' => 'سالانه',
+                                'biennial' => 'دو ساله',
+                                'triennial' => 'سه ساله',
+                            ];
+                            $cycleLabel = $billingCycleLabels[$order->billing_cycle] ?? ($order->billing_cycle ?: 'دوره‌ای');
+
+                            // Pending status for invoice
+                            $pendingStatus = null;
+                            if (class_exists('Modules\\Services\\App\\Http\\Models\\Status')) {
+                                $pendingStatus = \Modules\Services\App\Http\Models\Status::where('type', 'payment')->where('name', 'در انتظار پرداخت')->first()
+                                    ?? \Modules\Services\App\Http\Models\Status::where('type', 'invoice')->where('name', 'در انتظار پرداخت')->first()
+                                    ?? \Modules\Services\App\Http\Models\Status::where('type', 'payment')->first();
+                            }
+
+                            // Currency
+                            $currency = 'toman';
+                            if (class_exists('Modules\\Settings\\Entities\\Setting')) {
+                                $currency = \Modules\Settings\Entities\Setting::where('key', 'currency')->value('value')
+                                    ?? \Modules\Settings\Entities\Setting::where('key', 'payment_currency')->value('value')
+                                    ?? $order->invoice?->currency
+                                    ?? 'toman';
+                            }
+
+                            $serviceName = $order->service?->name ?? $order->notes ?? 'سرویس خدمات';
+                            $clientName = $order->client_name ?: ($order->customer?->full_name ?: '—');
+                            $clientPhone = $order->client_phone ?: $order->customer?->phone;
+                            $clientEmail = $order->client_email ?: $order->customer?->email;
 
                             $invoiceData = [
                                 'customer_id' => $order->customer_id,
                                 'service_id' => $order->service_id,
                                 'project_id' => $order->project_id ?? null,
-                                'client_name' => $order->client_name,
-                                'client_phone' => $order->client_phone,
-                                'client_email' => $order->client_email,
+                                'status_id' => $pendingStatus?->id ?? $order->status_id,
+                                'client_name' => $clientName,
+                                'client_phone' => $clientPhone,
+                                'client_email' => $clientEmail,
                                 'issue_date' => now(),
                                 'due_date' => $dueDate,
                                 'subtotal' => $invoiceTotal,
                                 'total' => $invoiceTotal,
                                 'tax_amount' => 0,
+                                'tax_percent' => 0,
                                 'discount_amount' => 0,
                                 'paid_amount' => 0,
+                                'currency' => $currency,
                                 'created_by' => Auth::id() ?: 1,
+                                'notes' => 'فاکتور تمدید دوره‌ای برای سفارش ' . ($order->order_number ?? '') . ' (' . $serviceName . ') - صدور خودکار گردش کار',
                                 'meta' => [
+                                    'is_renewal' => true,
                                     'created_by_workflow' => true,
                                     'source_order_id' => $order->id,
+                                    'source_invoice_id' => $order->invoice_id,
+                                    'billing_period' => $order->billing_cycle,
+                                    'next_renewal_date' => $nextRenewalDate,
                                 ],
                             ];
 
                             $invoice = \Modules\Services\App\Http\Models\Invoice::create($invoiceData);
                             
-                            // Try to create invoice item if service exists
-                            if ($order->service && class_exists('Modules\\Services\\App\\Http\\Models\\InvoiceItem')) {
+                            // Create invoice item
+                            if (class_exists('Modules\\Services\\App\\Http\\Models\\InvoiceItem')) {
                                 \Modules\Services\App\Http\Models\InvoiceItem::create([
                                     'invoice_id' => $invoice->id,
                                     'service_id' => $order->service_id,
-                                    'custom_service_name' => $order->service->name ?? 'تمدید سفارش',
-                                    'description' => 'تمدید سفارش',
+                                    'custom_service_name' => $serviceName,
+                                    'description' => 'تمدید دوره سرویس (' . $cycleLabel . ')',
+                                    'unit' => 'عدد',
                                     'quantity' => 1,
                                     'unit_price' => $invoiceTotal,
                                     'total' => $invoiceTotal,
                                     'discount' => 0,
+                                    'tax_percent' => 0,
                                     'tax_amount' => 0,
+                                    'meta' => [
+                                        'billing_period' => $order->billing_cycle,
+                                        'is_renewal_item' => true,
+                                    ],
                                 ]);
                             }
 
-                            Log::info("[Workflows] Created Invoice ID {$invoice->id} for Order ID {$order->id}");
+                            // Advance Order's renewal_date to the NEXT billing cycle
+                            if ($nextRenewalDate) {
+                                $order->update(['renewal_date' => $nextRenewalDate]);
+                                Log::info("[Workflows] Updated Order ID {$order->id} next renewal_date to {$nextRenewalDate}");
+                            }
+
+                            Log::info("[Workflows] Created Invoice ID {$invoice->id} for Order ID {$order->id} with total {$invoiceTotal}");
                             
                             if (class_exists(\Modules\Workflows\Services\WorkflowEngine::class)) {
                                 app(\Modules\Workflows\Services\WorkflowEngine::class)->start('invoice_created', 'INVOICE', $invoice->id, []);
