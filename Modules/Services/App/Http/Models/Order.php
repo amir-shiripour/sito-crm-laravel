@@ -74,27 +74,54 @@ class Order extends Model
             return Invoice::whereRaw('1 = 0');
         }
 
-        return Invoice::where(function($query) {
+        $sourceInvoiceIdFromNumber = null;
+        if (!empty($this->order_number) && preg_match('/^ORD-(\d+)-/i', $this->order_number, $matches)) {
+            $candidateId = (int)$matches[1];
+            if ($candidateId !== (int)$this->invoice_id) {
+                $sourceInvoiceIdFromNumber = $candidateId;
+            }
+        }
+
+        return Invoice::where(function($query) use ($sourceInvoiceIdFromNumber) {
             $hasCondition = false;
 
+            // 1. Directly attached invoice
             if (!empty($this->invoice_id)) {
-                $query->where('id', $this->invoice_id)
-                      ->orWhereJsonContains('meta->merged_from_invoice_ids', (int)$this->invoice_id)
-                      ->orWhere('meta->was_merged_into', (int)$this->invoice_id);
+                $query->where('id', $this->invoice_id);
                 $hasCondition = true;
             }
 
+            // 2. Specific source invoice from order_number if it was merged into this order's invoice
+            if ($sourceInvoiceIdFromNumber) {
+                $query->orWhere(function($sub) use ($sourceInvoiceIdFromNumber) {
+                    $sub->where('id', $sourceInvoiceIdFromNumber)
+                        ->where(function($s) {
+                            $s->where('meta->was_merged_into', (int)$this->invoice_id)
+                              ->orWhere('meta->was_merged_into', (string)$this->invoice_id);
+                        });
+                });
+                $hasCondition = true;
+            }
+
+            // 3. Invoices that explicitly recorded merging this specific order
             if (!empty($this->id)) {
-                if ($hasCondition) {
-                    $query->orWhere('meta->source_order_id', (int)$this->id)
-                          ->orWhere('meta->source_order_id', (string)$this->id);
-                } else {
-                    $query->where(function($q) {
-                        $q->where('meta->source_order_id', (int)$this->id)
-                          ->orWhere('meta->source_order_id', (string)$this->id);
-                    });
-                    $hasCondition = true;
-                }
+                $query->orWhereJsonContains('meta->merged_order_ids', (int)$this->id)
+                      ->orWhereJsonContains('meta->merged_order_ids', (string)$this->id);
+                $hasCondition = true;
+            }
+
+            // 4. Renewal invoices generated from this order
+            if (!empty($this->id)) {
+                $query->orWhere('meta->source_order_id', (int)$this->id)
+                      ->orWhere('meta->source_order_id', (string)$this->id);
+                $hasCondition = true;
+            }
+
+            // 5. If this order's invoice_id is an old merged invoice, find the invoice it was merged into
+            if (!empty($this->invoice_id)) {
+                $query->orWhereJsonContains('meta->merged_from_invoice_ids', (int)$this->invoice_id)
+                      ->orWhereJsonContains('meta->merged_from_invoice_ids', (string)$this->invoice_id);
+                $hasCondition = true;
             }
 
             if (!$hasCondition) {
@@ -258,6 +285,44 @@ class Order extends Model
         return null;
     }
 
+    public function calculateNextRenewalDate(): ?string
+    {
+        $currentDate = $this->renewal_date ? \Carbon\Carbon::parse($this->renewal_date) : ($this->issue_date ? \Carbon\Carbon::parse($this->issue_date) : now());
+        $cycle = $this->billing_cycle;
+        if (!$cycle || $cycle === 'one_time') {
+            return null;
+        }
+
+        if (class_exists(\Morilog\Jalali\Jalalian::class)) {
+            try {
+                $jalali = \Morilog\Jalali\Jalalian::fromCarbon($currentDate);
+                $nextJalali = match ($cycle) {
+                    'monthly' => $jalali->addMonths(1),
+                    'quarterly' => $jalali->addMonths(3),
+                    'semi_annual', 'semi-annual' => $jalali->addMonths(6),
+                    'annual' => $jalali->addYears(1),
+                    'biennial' => $jalali->addYears(2),
+                    'triennial' => $jalali->addYears(3),
+                    default => null,
+                };
+                if ($nextJalali) {
+                    return $nextJalali->toCarbon()->format('Y-m-d');
+                }
+            } catch (\Throwable $e) {
+            }
+        }
+
+        return match ($cycle) {
+            'monthly' => $currentDate->copy()->addMonth()->format('Y-m-d'),
+            'quarterly' => $currentDate->copy()->addMonths(3)->format('Y-m-d'),
+            'semi_annual', 'semi-annual' => $currentDate->copy()->addMonths(6)->format('Y-m-d'),
+            'annual' => $currentDate->copy()->addYear()->format('Y-m-d'),
+            'biennial' => $currentDate->copy()->addYears(2)->format('Y-m-d'),
+            'triennial' => $currentDate->copy()->addYears(3)->format('Y-m-d'),
+            default => null,
+        };
+    }
+
     public function getRelatedInvoicesAttribute()
     {
         if (method_exists($this, 'invoices')) {
@@ -277,6 +342,25 @@ class Order extends Model
         }
 
         return collect();
+    }
+
+    public function getLatestInvoiceAttribute(): ?Invoice
+    {
+        if ($this->relationLoaded('invoice') && $this->invoice) {
+            return $this->invoice;
+        }
+
+        if (method_exists($this, 'invoices')) {
+            try {
+                $latest = $this->invoices()->first();
+                if ($latest) {
+                    return $latest;
+                }
+            } catch (\Throwable $e) {
+            }
+        }
+
+        return $this->invoice;
     }
 }
 

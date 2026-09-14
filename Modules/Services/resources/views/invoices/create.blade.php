@@ -225,6 +225,7 @@
             <input type="hidden" name="invoice_type" value="{{ $type }}">
             @if(!empty($mergedFromIds))
                 <input type="hidden" name="merged_from_invoice_ids" value="{{ $mergedFromIds }}">
+                <input type="hidden" name="merge_invoices" value="{{ $mergedFromIds }}">
             @endif
             <div class="{{ $cardClass }} overflow-visible relative z-30">
                 <div
@@ -2048,6 +2049,8 @@
                     selectedCustomerData: null,
                     clientSelectedFields: @json(old('client_selected_fields', (object)[])),
                     isMergeMode: @json(!empty($mergedFromIds)),
+                    mergedFromIds: @json($mergedFromIds ?? ''),
+                    mergedInvoiceIds: @json($mergedInvoiceIds ?? []),
                     customersList: @json($customersListForJs),
                     customerQuery: '',
                     customerDropdownOpen: false,
@@ -2216,9 +2219,25 @@
                         }
 
                         this.loadingCustomerDebt = true;
-                        fetch('{{ url("user/services/invoices/customer") }}/' + clientId + '/debts')
+                        let url = '{{ url("user/services/invoices/customer") }}/' + clientId + '/debts';
+                        if (this.mergedFromIds) {
+                            url += '?exclude_ids=' + encodeURIComponent(this.mergedFromIds);
+                        }
+                        fetch(url)
                             .then(res => res.json())
                             .then(data => {
+                                if (data && Array.isArray(data.invoices) && this.mergedInvoiceIds && this.mergedInvoiceIds.length > 0) {
+                                    const mergedSet = new Set(this.mergedInvoiceIds.map(Number));
+                                    data.invoices = data.invoices.filter(inv => !mergedSet.has(Number(inv.id)));
+                                    data.invoices_count = data.invoices.length;
+                                    data.total_debt = data.invoices.reduce((sum, inv) => sum + (Number(inv.remaining) || 0), 0);
+                                    data.total_debt_formatted = this.formatMoney ? this.formatMoney(data.total_debt) : String(data.total_debt);
+                                    data.has_debt = data.total_debt > 0;
+                                    data.invoice_ids = data.invoices.map(inv => inv.id);
+                                    data.invoice_ids_string = data.invoice_ids.join(',');
+                                    data.invoice_numbers = data.invoices.map(inv => inv.invoice_number || String(inv.id));
+                                    data.invoice_numbers_string = data.invoice_numbers.join(' ، ');
+                                }
                                 this.customerDebtInfo = data || {};
                                 // Do not select any by default; user explicitly checks
                                 this.selectedDebtInvoiceIds = [];

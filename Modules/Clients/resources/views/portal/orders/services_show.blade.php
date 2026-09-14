@@ -48,8 +48,14 @@
             $invoiceItem = $primaryInvoice->items->where('service_id', $order->service_id)->first();
         } else {
             $invoiceItem = $primaryInvoice->items->where('custom_service_name', $order->notes)->first()
-                ?? $primaryInvoice->items->where('description', $order->notes)->first();
+                ?? $primaryInvoice->items->where('description', $order->notes)->first()
+                ?? $primaryInvoice->items->first(fn($it) => empty($it->service_id));
         }
+    }
+
+    $orderServiceTitle = \Modules\Clients\App\Support\OrderDisplayHelper::getTitle($order);
+    if ($orderServiceTitle === 'سفارش خدمات' && $invoiceItem) {
+        $orderServiceTitle = $invoiceItem->custom_service_name ?: ($invoiceItem->description ?: 'سفارش خدمات');
     }
 
     if ($invoiceItem) {
@@ -202,7 +208,7 @@
                           dir="ltr">#{{ \Morilog\Jalali\CalendarUtils::convertNumbers($order->order_number) }}</span>
                 </div>
                 <h2 class="text-2xl font-black text-gray-900 dark:text-white tracking-tight">
-                    {{ optional($order->service)->name ?: 'سرویس خدمات' }}
+                    {{ $orderServiceTitle }}
                 </h2>
                 <div class="mt-3 flex flex-wrap items-center gap-2.5">
                     <span
@@ -218,6 +224,15 @@
                                                              stroke-width="2"
                                                              d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
                             {{ $order->service->category->name }}
+                        </span>
+                    @elseif(!$order->service_id)
+                        <span
+                            class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800/40">
+                            <svg class="w-3.5 h-3.5 text-amber-500" fill="none" viewBox="0 0 24 24"
+                                 stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round"
+                                                             stroke-width="2"
+                                                             d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                            ردیف دستی (سفارشی)
                         </span>
                     @endif
                 </div>
@@ -265,7 +280,7 @@
                             class="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-100 dark:border-gray-700">
                             <span class="block text-xs text-gray-400 mb-1">عنوان کامل سرویس</span>
                             <div class="flex items-center gap-2 flex-wrap">
-                                <span class="font-bold text-sm text-gray-900 dark:text-white">{{ optional($order->service)->name ?: 'سرویس خدمات' }}</span>
+                                <span class="font-bold text-sm text-gray-900 dark:text-white">{{ $orderServiceTitle }}</span>
                                 @if($packageTitle)
                                     <span class="inline-flex items-center gap-1 text-[10px] font-bold text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-500/10 border border-amber-300 dark:border-amber-500/20 px-2 py-0.5 rounded-md">
                                         پکیج: {{ $packageTitle }}
@@ -278,7 +293,7 @@
                             class="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-100 dark:border-gray-700">
                             <span class="block text-xs text-gray-400 mb-1">دسته‌بندی خدمت</span>
                             <span
-                                class="font-bold text-sm text-gray-900 dark:text-white">{{ optional(optional($order->service)->category)->name ?: 'عمومی' }}</span>
+                                class="font-bold text-sm text-gray-900 dark:text-white">{{ optional(optional($order->service)->category)->name ?: ($order->service_id ? 'عمومی' : 'ردیف دستی (سفارشی)') }}</span>
                         </div>
 
 
@@ -329,17 +344,20 @@
                     @endif
 
 
-                    @if(optional($order->service)->description)
+                    @php
+                        $serviceDesc = optional($order->service)->description ?: ($invoiceItem?->description && $invoiceItem->description !== $orderServiceTitle ? $invoiceItem->description : null);
+                    @endphp
+                    @if($serviceDesc)
                         <div class="pt-3 border-t border-gray-200/60 dark:border-gray-700">
                             <span class="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-2">توضیحات و ویژگی‌های سرویس</span>
                             <div
                                 class="p-4 rounded-xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 text-xs text-gray-700 dark:text-gray-300 leading-relaxed prose dark:prose-invert max-w-none">
-                                {!! optional($order->service)->description !!}
+                                {!! nl2br(e($serviceDesc)) !!}
                             </div>
                         </div>
                     @endif
 
-                    @if($order->notes)
+                    @if($order->notes && $order->notes !== $orderServiceTitle)
                         <div class="pt-3 border-t border-gray-200/60 dark:border-gray-700">
                             <span class="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-2">یادداشت‌های اختصاصی سفارش</span>
                             <div

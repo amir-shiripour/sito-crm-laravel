@@ -11,7 +11,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 class ProjectsTaskSseController extends Controller
 {
     /**
-     * Broadcast an event to project tasks SSE stream listeners.
+     * Broadcast an event to project tasks SSE stream listeners and WebSocket subscribers.
      */
     public static function broadcastEvent(int $projectId, string $type, array $data): void
     {
@@ -20,10 +20,11 @@ class ProjectsTaskSseController extends Controller
             $events = cache()->get($cacheKey, []);
 
             $eventId = (int)round(microtime(true) * 1000);
+            $eventData = array_merge($data, ['event_id' => $eventId]);
             $events[] = [
                 'id' => $eventId,
                 'type' => $type,
-                'data' => array_merge($data, ['event_id' => $eventId]),
+                'data' => $eventData,
                 'time' => time(),
             ];
 
@@ -33,6 +34,9 @@ class ProjectsTaskSseController extends Controller
             }
 
             cache()->put($cacheKey, $events, now()->addMinutes(10));
+
+            // Broadcast via Laravel Reverb (WebSockets)
+            \Modules\Projects\App\Events\ProjectTaskEvent::dispatch($projectId, $type, $eventData);
         } catch (\Throwable $e) {
             \Log::error('ProjectsTaskSse broadcast error: ' . $e->getMessage());
         }
@@ -43,6 +47,10 @@ class ProjectsTaskSseController extends Controller
      */
     public function poll(Request $request, Project $project): JsonResponse|StreamedResponse
     {
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            session_write_close();
+        }
+
         $this->authorize('view', $project);
         $lastEventId = (int)$request->query('last_event_id', 0);
         $currentUserId = auth()->id();
