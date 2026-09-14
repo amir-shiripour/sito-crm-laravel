@@ -31,7 +31,10 @@
         }
     };
 
-    $getPaymentMethodName = function ($method) use ($settings) {
+    $getPaymentMethodName = function ($method, $gateway = null) use ($settings) {
+        if (class_exists(\Modules\Services\App\Http\Models\Payment::class)) {
+            return \Modules\Services\App\Http\Models\Payment::formatMethodName($method, $gateway);
+        }
         if (!$method) return 'نامشخص';
         $methodStr = strtolower(trim((string) $method));
         $posDevices = json_decode($settings['pos_devices'] ?? '[]', true);
@@ -1064,7 +1067,7 @@
                         <td class="text-right">{{ $toJalali($payment->paid_at) }}</td>
                         <td class="text-center font-bold"
                             style="color:#059669;">{{ $faNum(number_format($payment->amount)) }} {{ $currencyLabel }}</td>
-                        <td class="text-center">{{ $getPaymentMethodName($payment->method) }}</td>
+                        <td class="text-center">{{ $getPaymentMethodName($payment->method, $payment->gateway) }}</td>
                         <td class="text-center" dir="ltr">{{ $faNum($payment->transaction_id) ?: '---' }}</td>
                     </tr>
                 @endforeach

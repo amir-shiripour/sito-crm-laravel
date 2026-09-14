@@ -97,16 +97,19 @@
 
     $cardClass  = "bg-white dark:bg-gray-800/60 rounded-3xl border border-gray-100 dark:border-gray-700/50 shadow-sm overflow-hidden backdrop-blur-xl";
 
-    $getPaymentMethodName = function($method) use ($settings) {
-        if (!$method) return '—';
-        $posDevices = json_decode($settings['pos_devices'] ?? '[]', true);
-        $bankAccounts = json_decode($settings['bank_transfer_accounts'] ?? '[]', true);
+    $getPaymentMethodName = function($method, $gateway = null) use ($settings) {
+        if (class_exists(\Modules\Services\App\Http\Models\Payment::class)) {
+            return \Modules\Services\App\Http\Models\Payment::formatMethodName($method, $gateway);
+        }
+        if (!$method && !$gateway) return '—';
+        $posDevices = json_decode($settings['pos_devices'] ?? '[]', true) ?: [];
+        $bankAccounts = json_decode($settings['bank_transfer_accounts'] ?? '[]', true) ?: [];
 
         if (str_starts_with($method, 'pos-') || $method === 'pos') {
-            $id = str_starts_with($method, 'pos-') ? substr($method, 4) : null;
+            $id = str_starts_with($method, 'pos-') ? substr($method, 4) : ($gateway ?: null);
             if ($id) {
                 foreach ($posDevices as $device) {
-                    if (isset($device['id']) && (string)$device['id'] === $id) {
+                    if (isset($device['id']) && (string)$device['id'] === (string)$id) {
                         return 'کارتخوان ' . ($device['name'] ?? '');
                     }
                 }
@@ -120,11 +123,12 @@
             return 'پرداخت در محل';
         }
         if (str_starts_with($method, 'transfer-') || $method === 'transfer') {
-            $id = str_starts_with($method, 'transfer-') ? substr($method, 9) : null;
+            $id = str_starts_with($method, 'transfer-') ? substr($method, 9) : ($gateway ?: null);
             if ($id) {
                 foreach ($bankAccounts as $account) {
-                    if (isset($account['id']) && (string)$account['id'] === $id) {
-                        return 'انتقال به ' . ($account['account_number'] ?? '');
+                    if (isset($account['id']) && (string)$account['id'] === (string)$id) {
+                        $bankTitle = !empty($account['account_number']) ? $account['account_number'] : ($account['bank_name'] ?? '');
+                        return 'انتقال به ' . $bankTitle;
                     }
                 }
             }
@@ -1024,27 +1028,73 @@
                                 <tbody class="divide-y divide-gray-100 dark:divide-gray-700/50">
                                 @foreach ($invoice->payments as $payment)
                                     <tr class="hover:bg-gray-50/50 dark:hover:bg-gray-800/30 transition-colors">
-                                        <td class="px-4 py-4 tabular-nums text-gray-600 dark:text-gray-400 text-start">{{ $faNum($toJalali($payment->paid_at)->format('Y/m/d')) }}</td>
+                                        <td class="px-4 py-4 tabular-nums text-gray-600 dark:text-gray-400 text-start">{{ $payment->paid_at ? $faNum($toJalali($payment->paid_at)->format('Y/m/d')) : $faNum($toJalali($payment->created_at)->format('Y/m/d')) }}</td>
                                         <td class="px-4 py-4 font-bold text-gray-800 dark:text-gray-200 tabular-nums text-start">{{ $faNum(number_format($payment->amount)) }} {{ $currencyLabel }}</td>
                                         <td class="px-4 py-4 text-start">
                                             @if($payment->status === 'canceled')
                                                 <span
-                                                    class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-bold bg-gray-100 text-gray-500 border border-gray-200 dark:bg-gray-700 dark:text-gray-400 dark:border-gray-600">
-                                                    لغو شده
+                                                    class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-bold bg-gray-100 text-gray-600 border border-gray-200 dark:bg-gray-700 dark:text-gray-400 dark:border-gray-600">
+                                                    لغو شده / رد شده
+                                                </span>
+                                            @elseif($payment->status === 'pending')
+                                                <span
+                                                    class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20 shadow-sm">
+                                                    <svg class="w-3 h-3 text-amber-500 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="9"/><path stroke-linecap="round" stroke-linejoin="round" d="M12 7v5l3 3"/></svg>
+                                                    در انتظار بررسی و تایید
                                                 </span>
                                             @else
                                                 <span
-                                                    class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-bold"
-                                                    style="background-color: {{ $paidColor }}15; color: {{ $paidColor }}; border-color: {{ $paidColor }}33;">
-                                                    پرداخت شده
+                                                    class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20">
+                                                    <svg class="w-3 h-3 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                                                    تایید شده
                                                 </span>
                                             @endif
                                         </td>
-                                        <td class="px-4 py-4 text-gray-700 dark:text-gray-300 text-start">{{ $getPaymentMethodName($payment->method) }}</td>
-                                        <td class="px-4 py-4 text-gray-500 dark:text-gray-400 tabular-nums text-start">{{ $payment->transaction_id ?: '—' }}</td>
-                                        <td class="px-4 py-4 text-gray-500 dark:text-gray-400 text-start">{{ $payment->notes ?: '—' }}</td>
+                                        <td class="px-4 py-4 text-gray-700 dark:text-gray-300 text-start font-medium">{{ $getPaymentMethodName($payment->method, $payment->gateway) }}</td>
+                                        <td class="px-4 py-4 text-gray-500 dark:text-gray-400 tabular-nums text-start" dir="ltr">{{ $payment->transaction_id ?: '—' }}</td>
+                                        <td class="px-4 py-4 text-gray-500 dark:text-gray-400 text-start text-xs max-w-xs">
+                                            <div class="space-y-1">
+                                                <div>{{ Str::before($payment->notes ?: '—', ' | فایل پیوست:') }}</div>
+                                                @if($payment->receipt_url)
+                                                    <div class="pt-1">
+                                                        <a href="{{ $payment->receipt_url }}" target="_blank" rel="noopener noreferrer"
+                                                           class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 dark:bg-indigo-900/30 dark:text-indigo-400 dark:border-indigo-800/50 transition-colors shadow-sm"
+                                                           title="مشاهده تصویر فیش واریزی">
+                                                            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/>
+                                                            </svg>
+                                                            <span>مشاهده فیش واریزی</span>
+                                                        </a>
+                                                    </div>
+                                                @endif
+                                            </div>
+                                        </td>
                                         <td class="px-4 py-4 text-start">
-                                            @if($payment->status !== 'canceled' && !str_contains($invoice->status?->name ?? '', 'لغو'))
+                                            @if($payment->status === 'pending')
+                                                <div class="flex items-center gap-2">
+                                                    @can('pay', $invoice)
+                                                        <form action="{{ route('services.invoices.approvePayment', [$invoice, $payment]) }}" method="POST"
+                                                              onsubmit="return confirm('آیا از تایید این پرداخت و فیش واریزی اطمینان دارید؟ فاکتور به میزان مبلغ پرداختی تسویه خواهد شد.');">
+                                                            @csrf
+                                                            <button type="submit"
+                                                                    class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm shadow-emerald-600/20 transition-all">
+                                                                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                                                                <span>تایید پرداخت</span>
+                                                            </button>
+                                                        </form>
+                                                    @endcan
+                                                    @can('cancelPayment', $invoice)
+                                                        <form action="{{ route('services.invoices.rejectPayment', [$invoice, $payment]) }}" method="POST"
+                                                              onsubmit="return confirm('آیا از رد کردن این فیش / پرداخت اطمینان دارید؟');">
+                                                            @csrf
+                                                            <button type="submit"
+                                                                    class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold bg-rose-50 text-rose-600 hover:bg-rose-100 dark:bg-rose-900/20 dark:text-rose-400 border border-rose-200 dark:border-rose-800/50 transition-colors">
+                                                                <span>رد فیش</span>
+                                                            </button>
+                                                        </form>
+                                                    @endcan
+                                                </div>
+                                            @elseif($payment->status === 'paid' && !str_contains($invoice->status?->name ?? '', 'لغو'))
                                                 @can('cancelPayment', $invoice)
                                                     <form
                                                         action="{{ route('services.invoices.cancelPayment', [$invoice, $payment]) }}"

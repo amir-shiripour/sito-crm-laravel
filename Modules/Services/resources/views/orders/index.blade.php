@@ -303,13 +303,10 @@
                             }
 
                             // مبلغ تمدید - خودکار/دستی
-                            $isRenewalManual = ($order->renewal_price_type ?? 'auto') === 'manual';
-                            $calculatedRenewalPrice = $isRenewalManual
-                                ? ($order->renewal_price ?? 0)
-                                : (($order->service && $order->billing_cycle && isset($order->service->renewal_prices[$order->billing_cycle]))
-                                    ? $order->service->renewal_prices[$order->billing_cycle]
-                                    : ($order->renewal_price ?? 0));
+                            $isRenewalManual = $order->is_renewal_manual;
+                            $calculatedRenewalPrice = $order->calculated_renewal_price;
                         @endphp
+
 
                         <tr class="group bg-white dark:bg-gray-800 hover:bg-indigo-50/50 dark:hover:bg-indigo-500/10 transition-colors duration-300">
                             @php

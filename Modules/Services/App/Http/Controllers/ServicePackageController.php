@@ -80,7 +80,7 @@ class ServicePackageController extends Controller
                 if ($qty <= 0) $qty = 1;
                 $unitPrice = intval($this->parsePrice($item['unit_price'] ?? 0));
                 $discType = $item['discount_type'] ?? 'amount';
-                $discVal = floatval($this->parsePrice($item['discount_value'] ?? 0));
+                $discVal = floatval($this->parsePrice($item['discount_value'] ?? ($item['discount'] ?? 0)));
 
                 $rawCustomFields = $item['custom_fields'] ?? [];
                 $customFields = [];
@@ -304,7 +304,7 @@ class ServicePackageController extends Controller
                 if ($qty <= 0) $qty = 1;
                 $unitPrice = intval($this->parsePrice($item['unit_price'] ?? 0));
                 $discType = $item['discount_type'] ?? 'amount';
-                $discVal = floatval($this->parsePrice($item['discount_value'] ?? 0));
+                $discVal = floatval($this->parsePrice($item['discount_value'] ?? ($item['discount'] ?? 0)));
 
                 $rawCustomFields = $item['custom_fields'] ?? [];
                 $customFields = [];

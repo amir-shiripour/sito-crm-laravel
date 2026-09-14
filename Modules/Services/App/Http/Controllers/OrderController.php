@@ -235,16 +235,8 @@ class OrderController extends Controller
         $service = $order->service_id ? Service::find($order->service_id) : null;
 
         // Determine renewal price
-        $isRenewalManual = ($order->renewal_price_type ?? 'auto') === 'manual';
-        $renewalPrice = $isRenewalManual
-            ? (float)($order->renewal_price ?? 0)
-            : (($service && isset($service->renewal_prices[$order->billing_cycle]))
-                ? (float)$service->renewal_prices[$order->billing_cycle]
-                : (float)($order->renewal_price ?? 0));
+        $renewalPrice = (float)$order->calculated_renewal_price;
 
-        if ($renewalPrice <= 0) {
-            $renewalPrice = (float)($order->total_amount ?: ($order->first_payment_amount ?: ($service?->base_price ?: 0)));
-        }
 
         // Determine tax percent
         $taxPercent = 0;

@@ -154,6 +154,7 @@
                     <th class="px-6 py-4 text-center font-bold">تعداد / واحد</th>
                     <th class="px-6 py-4 text-center font-bold">دوره billing</th>
                     <th class="px-6 py-4 text-center font-bold">مبلغ واحد</th>
+                    <th class="px-6 py-4 text-center font-bold">تخفیف</th>
                     <th class="px-6 py-4 text-center font-bold">مبلغ کل</th>
                 </tr>
                 </thead>
@@ -256,6 +257,20 @@
                             {{ number_format($item->unit_price) }} <span
                                 class="text-[10px] font-normal text-gray-400">{{ $currencyLabel }}</span>
                         </td>
+                        <td class="px-6 py-4 text-center align-top tabular-nums text-sm">
+                            @if(($item->discount_amount ?? 0) > 0 || ($item->discount_value ?? 0) > 0)
+                                <div class="font-bold text-red-500 dark:text-red-400">
+                                    @if(($item->discount_type ?? 'amount') === 'percent')
+                                        {{ number_format($item->discount_value) }}%
+                                        <span class="block text-[10px] text-gray-400 mt-0.5">({{ number_format($item->discount_amount) }} {{ $currencyLabel }})</span>
+                                    @else
+                                        {{ number_format($item->discount_amount ?: $item->discount_value) }} <span class="text-[10px] font-normal text-gray-400">{{ $currencyLabel }}</span>
+                                    @endif
+                                </div>
+                            @else
+                                <span class="text-gray-400 text-xs">—</span>
+                            @endif
+                        </td>
                         <td class="px-6 py-4 text-center align-top tabular-nums font-black text-indigo-600 dark:text-indigo-400 text-base">
                             {{ number_format($item->total_price) }} <span
                                 class="text-xs font-normal text-gray-400">{{ $currencyLabel }}</span>
@@ -266,12 +281,34 @@
             </table>
         </div>
 
+        @php
+            $itemsDiscountTotal = $package->items->sum('discount_amount');
+        @endphp
+
         {{-- Totals Summary Box --}}
         <div class="bg-gray-50/50 dark:bg-gray-900/20 p-6 border-t border-gray-100 dark:border-gray-700/50">
             <div class="w-full md:w-[28rem] ms-auto">
                 <div class="space-y-3 text-sm">
+                    @if($itemsDiscountTotal > 0)
+                        <div class="flex justify-between text-gray-600 dark:text-gray-400 font-medium">
+                            <span>مجموع ناخالص ردیف‌ها</span>
+                            <span class="tabular-nums font-bold text-gray-900 dark:text-white">
+                                {{ number_format($package->total_amount + $itemsDiscountTotal) }}
+                                <span class="text-[10px] text-gray-400 ms-1">{{ $currencyLabel }}</span>
+                            </span>
+                        </div>
+
+                        <div class="flex justify-between items-center text-amber-600 dark:text-amber-400 font-medium">
+                            <span>تخفیف کل ردیف‌ها</span>
+                            <span class="tabular-nums font-bold">
+                                − {{ number_format($itemsDiscountTotal) }}
+                                <span class="text-[10px] text-gray-400 ms-1">{{ $currencyLabel }}</span>
+                            </span>
+                        </div>
+                    @endif
+
                     <div class="flex justify-between text-gray-600 dark:text-gray-400 font-medium">
-                        <span>جمع کل مبالغ سرویس‌ها</span>
+                        <span>{{ $itemsDiscountTotal > 0 ? 'مجموع پس از تخفیف ردیف‌ها' : 'جمع کل مبالغ سرویس‌ها' }}</span>
                         <span class="tabular-nums font-bold text-gray-900 dark:text-white">
                             {{ number_format($package->total_amount) }}
                             <span class="text-[10px] text-gray-400 ms-1">{{ $currencyLabel }}</span>

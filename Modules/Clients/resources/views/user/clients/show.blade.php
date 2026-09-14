@@ -36,9 +36,12 @@
     $showWalletTab       = ($walletModule && $walletModule->installed && $walletModule->active)
                         || (\Nwidart\Modules\Facades\Module::has('Wallet') && \Nwidart\Modules\Facades\Module::isEnabled('Wallet'));
 
+    $currency      = $currency ?? (class_exists(\Modules\Settings\Entities\Setting::class) ? (\Modules\Settings\Entities\Setting::where('key', 'currency')->value('value') ?? 'toman') : 'toman');
+    $currencyLabel = $currency === 'rial' ? 'ریال' : 'تومان';
+
     $clientWallet        = $clientWallet ?? null;
     $clientWalletBalance = $clientWallet ? (float)$clientWallet->balance : 0;
-    $walletCurrencyLabel = ($clientWallet && ($clientWallet->currency === 'rial' || $clientWallet->currency === 'IRR')) ? 'ریال' : ($currencyLabel ?? 'تومان');
+    $walletCurrencyLabel = ($clientWallet && ($clientWallet->currency === 'rial' || $clientWallet->currency === 'IRR')) ? 'ریال' : $currencyLabel;
 
     $showWorkflowTab     = $workflowsModule && $workflowsModule->installed && $workflowsModule->active
                         && class_exists(Workflow::class)
@@ -83,9 +86,6 @@
             return Jalalian::fromDateTime($date);
         } catch (Exception $e) { return null; }
     };
-
-    $currency      = $currency ?? 'toman';
-    $currencyLabel = $currency === 'rial' ? 'ریال' : 'تومان';
 
     $billingCycleLabels = [
         'monthly'     => 'ماهانه',

@@ -159,12 +159,12 @@
                     <thead
                         class="bg-gray-50/80 dark:bg-gray-900/30 text-gray-500 dark:text-gray-400 font-bold border-b border-gray-100 dark:border-gray-700/50 text-xs uppercase tracking-wider">
                     <tr>
-                        <th class="px-4 py-3 w-[28%] min-w-[200px] max-w-[280px] font-bold">سرویس / عنوان</th>
-                        <th class="px-4 py-3 w-[26%] min-w-[180px] max-w-[240px] font-bold">شرح</th>
-                        <th class="px-4 py-3 w-[14%] min-w-[130px] max-w-[150px] font-bold text-center">تعداد / واحد
-                        </th>
-                        <th class="px-4 py-3 w-[18%] min-w-[170px] max-w-[200px] font-bold text-center">مبلغ واحد</th>
-                        <th class="px-4 py-3 w-[14%] min-w-[130px] max-w-[150px] font-bold text-center">جمع ردیف</th>
+                        <th class="px-4 py-3 w-[26%] min-w-[200px] max-w-[280px] font-bold">سرویس / عنوان</th>
+                        <th class="px-4 py-3 w-[22%] min-w-[180px] max-w-[240px] font-bold">شرح</th>
+                        <th class="px-4 py-3 w-[12%] min-w-[120px] max-w-[140px] font-bold text-center">تعداد / واحد</th>
+                        <th class="px-4 py-3 w-[16%] min-w-[150px] max-w-[180px] font-bold text-center">مبلغ واحد</th>
+                        <th class="px-4 py-3 w-[13%] min-w-[140px] max-w-[160px] font-bold text-center">تخفیف</th>
+                        <th class="px-4 py-3 w-[11%] min-w-[120px] max-w-[140px] font-bold text-center">جمع ردیف</th>
                         <th class="px-4 py-3 w-12 text-center"></th>
                     </tr>
                     </thead>
@@ -356,6 +356,35 @@
                                     class="text-[10px] text-gray-500 dark:text-gray-400 mt-1.5 text-center bg-gray-100 dark:bg-gray-800/50 p-1 rounded-md">
                                     (پایه: <span x-text="formatMoney(item.service_raw?.base_price || 0)"></span> +
                                     اشتراک: <span x-text="formatMoney(getPeriodPrice(item) || 0)"></span>)
+                                </div>
+                            </td>
+                            <td class="px-4 py-3 align-top max-w-[170px]">
+                                <input type="hidden" :name="'items[' + index + '][discount_type]'" :value="item.discount_type || 'amount'">
+                                <input type="hidden" :name="'items[' + index + '][discount_value]'" :value="item.discount_value">
+                                <input type="hidden" :name="'items[' + index + '][discount]'" :value="getRowDiscount(item)">
+
+                                <div class="flex items-center gap-1 w-full">
+                                    <div class="relative w-full">
+                                        <input type="text"
+                                               :value="item.discount_type === 'percent' ? toPersianNum(item.discount_value) : formatPriceInput(item.discount_value)"
+                                               @input="if(item.discount_type === 'percent') { let n = Math.min(100, Math.max(0, parseFloat(toEnglishNum($event.target.value).replace(/[^\d.]/g, '')) || 0)); item.discount_value = n; } else { let val = parsePriceInput($event.target.value); item.discount_value = val; $event.target.value = val ? formatPriceInput(val) : ''; }"
+                                               class="{{ $inputClass }} py-2.5 text-xs text-center tabular-nums font-medium w-full"
+                                               :class="item.discount_type === 'percent' ? 'px-1 text-center font-bold text-red-600 dark:text-red-400' : 'pe-9 font-medium'"
+                                               dir="ltr" placeholder="۰">
+                                        <span x-show="item.discount_type !== 'percent'"
+                                              class="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-bold text-gray-400 pointer-events-none">{{ $currencyLabel }}</span>
+                                    </div>
+                                    <button type="button"
+                                            @click="item.discount_type = (item.discount_type === 'percent' ? 'amount' : 'percent'); item.discount_value = 0;"
+                                            class="shrink-0 p-2.5 rounded-xl border text-[11px] font-black transition-all active:scale-95"
+                                            :class="item.discount_type === 'percent' ? 'bg-red-500 text-white border-red-500 shadow-sm shadow-red-500/30' : 'bg-gray-50 dark:bg-gray-800 text-gray-500 border-gray-200 dark:border-gray-700 hover:border-red-300 hover:text-red-500'"
+                                            title="تغییر نوع تخفیف (مبلغ / درصد)">
+                                        <span x-text="item.discount_type === 'percent' ? '٪' : '{{ $currencyLabel }}'"></span>
+                                    </button>
+                                </div>
+                                <div x-show="item.discount_type === 'percent' && item.discount_value > 0"
+                                     class="text-[10px] text-red-500 dark:text-red-400 mt-1 text-center tabular-nums">
+                                    معادل: <span x-text="formatMoney(getRowDiscount(item))"></span> {{ $currencyLabel }}
                                 </div>
                             </td>
                             <td class="px-4 py-3 tabular-nums font-bold text-gray-800 dark:text-gray-100 text-center whitespace-nowrap align-top max-w-[150px]">
@@ -867,8 +896,24 @@
 
                 <div class="w-full md:w-[28rem] ms-auto">
                     <div class="space-y-3 text-sm">
+                        <div class="flex justify-between text-gray-600 dark:text-gray-400 font-medium" x-show="totals.itemsDiscountTotal > 0">
+                            <span>مجموع ناخالص ردیف‌ها</span>
+                            <span class="tabular-nums font-medium">
+                                <span x-text="formatMoney(totals.grossSubtotal)"></span>
+                                <span class="text-[10px] text-gray-400 ms-1">{{ $currencyLabel }}</span>
+                            </span>
+                        </div>
+
+                        <div class="flex justify-between text-amber-600 dark:text-amber-400 font-medium" x-show="totals.itemsDiscountTotal > 0">
+                            <span>تخفیف کل ردیف‌ها</span>
+                            <span class="tabular-nums font-medium">
+                                − <span x-text="formatMoney(totals.itemsDiscountTotal)"></span>
+                                <span class="text-[10px] text-gray-400 ms-1">{{ $currencyLabel }}</span>
+                            </span>
+                        </div>
+
                         <div class="flex justify-between text-gray-600 dark:text-gray-400 font-medium">
-                            <span>جمع کل مبالغ</span>
+                            <span x-text="totals.itemsDiscountTotal > 0 ? 'مجموع پس از تخفیف ردیف‌ها' : 'جمع کل مبالغ'"></span>
                             <span class="tabular-nums font-medium">
                                 <span x-text="formatMoney(totals.subtotal)"></span>
                                 <span class="text-[10px] text-gray-400 ms-1">{{ $currencyLabel }}</span>
@@ -1242,6 +1287,26 @@
             return 0;
         }
 
+        function getRowGross(item) {
+            if (window.Alpine && document.querySelector('[x-data]')) {
+                const el = document.querySelector('[x-data]');
+                if (el && el._x_dataStack && el._x_dataStack[0] && typeof el._x_dataStack[0].getRowGross === 'function') {
+                    return el._x_dataStack[0].getRowGross(item);
+                }
+            }
+            return 0;
+        }
+
+        function getRowDiscount(item) {
+            if (window.Alpine && document.querySelector('[x-data]')) {
+                const el = document.querySelector('[x-data]');
+                if (el && el._x_dataStack && el._x_dataStack[0] && typeof el._x_dataStack[0].getRowDiscount === 'function') {
+                    return el._x_dataStack[0].getRowDiscount(item);
+                }
+            }
+            return 0;
+        }
+
         function calculateRowTotal(item) {
             if (window.Alpine && document.querySelector('[x-data]')) {
                 const el = document.querySelector('[x-data]');
@@ -1331,7 +1396,9 @@
                         description: item.description || '',
                         quantity: item.quantity || 1,
                         unit: item.unit || 'عدد',
-                        unit_price: item.unit_price || 0,
+                        unit_price: item.unit_price !== undefined && item.unit_price !== null ? Number(item.unit_price) : 0,
+                        discount_type: item.discount_type || 'amount',
+                        discount_value: item.discount_value !== undefined && item.discount_value !== null ? item.discount_value : (item.discount_amount || 0),
                         billing_period: item.billing_period || '',
                         service_custom_fields: sFields,
                         custom_field_values: customFieldValues,
@@ -1360,9 +1427,6 @@
                         this.addItem();
                     } else {
                         this.items.forEach((it, idx) => {
-                            if (it.service_raw && it.service_raw.billing_type === 'recurring' && it.billing_period) {
-                                this.updatePriceForPeriod(idx);
-                            }
                             if (it.service_custom_fields && it.service_custom_fields.length > 0) {
                                 it._showCustomFields = true;
                             }
@@ -1394,6 +1458,8 @@
                         quantity: 1,
                         unit: 'عدد',
                         unit_price: 0,
+                        discount_type: 'amount',
+                        discount_value: 0,
                         billing_period: '',
                         service_custom_fields: [],
                         custom_field_values: {},
@@ -1878,7 +1944,7 @@
                     const a = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
                     return val.toString().replace(/[۰-۹]/g, d => p.indexOf(d)).replace(/[٠-٩]/g, d => a.indexOf(d));
                 },
-                calculateRowTotal(item) {
+                getRowGross(item) {
                     const qty = parseFloat(item.quantity) || 0;
                     const price = parseFloat(item.unit_price) || 0;
                     let total = qty * price;
@@ -1897,18 +1963,42 @@
                     }
                     return Math.max(0, total);
                 },
+                getRowDiscount(item) {
+                    const gross = this.getRowGross(item);
+                    const discType = item.discount_type || 'amount';
+                    const discVal = parseFloat(item.discount_value) || 0;
+                    if (discVal <= 0) return 0;
+                    if (discType === 'percent') {
+                        return Math.round((gross * Math.min(100, Math.max(0, discVal))) / 100);
+                    }
+                    return Math.min(gross, discVal);
+                },
+                calculateRowTotal(item) {
+                    const gross = this.getRowGross(item);
+                    const disc = this.getRowDiscount(item);
+                    return Math.max(0, gross - disc);
+                },
                 get totals() {
+                    let grossSubtotal = 0;
+                    let itemsDiscountTotal = 0;
                     let subtotal = 0;
                     this.items.forEach(item => {
-                        subtotal += this.calculateRowTotal(item);
+                        const g = this.getRowGross(item);
+                        const d = this.getRowDiscount(item);
+                        grossSubtotal += g;
+                        itemsDiscountTotal += d;
+                        subtotal += (g - d);
                     });
+                    subtotal = Math.max(0, subtotal);
                     let pkgDisc = 0;
                     if (this.discountType === 'percent') {
-                        pkgDisc = (subtotal * Math.min(100, Math.max(0, parseFloat(this.discountValue) || 0))) / 100;
+                        pkgDisc = Math.round((subtotal * Math.min(100, Math.max(0, parseFloat(this.discountValue) || 0))) / 100);
                     } else {
                         pkgDisc = Math.min(subtotal, parseFloat(this.discountValue) || 0);
                     }
                     return {
+                        grossSubtotal: grossSubtotal,
+                        itemsDiscountTotal: itemsDiscountTotal,
                         subtotal: subtotal,
                         packageDiscount: pkgDisc,
                         finalPrice: Math.max(0, subtotal - pkgDisc)
@@ -1916,7 +2006,7 @@
                 },
                 onSubmitCheck(e) {
                     const f = e.target;
-                    const nF = f.querySelectorAll('input[name*="[quantity]"], input[name*="[custom_fields_quantities]"], input[name*="[unit_price]"], input[name*="[custom_fields_prices]"]');
+                    const nF = f.querySelectorAll('input[name*="[quantity]"], input[name*="[custom_fields_quantities]"], input[name*="[unit_price]"], input[name*="[custom_fields_prices]"], input[name*="[discount_value]"], input[name*="[discount]"]');
                     nF.forEach(i => {
                         i.value = this.toEnglishNum(i.value).replace(/[^\d.]/g, '');
                     });

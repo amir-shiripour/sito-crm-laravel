@@ -75,12 +75,15 @@
                                 @endif
                             </button>
 
-                            {{-- حذف فرم --}}
-                            <button type="button" wire:click="deleteForm({{ $f->id }})"
-                                    onclick="return confirm('فرم حذف شود؟');"
-                                    class="text-xs px-2 py-1 rounded-lg bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-200">
-                                ✕
-                            </button>
+                            {{-- حذف فرم (فقط در صورتی که فعال نباشد و بیش از یک فرم وجود داشته باشد) --}}
+                            @if(!$f->is_active && $forms->count() > 1)
+                                <button type="button" wire:click="deleteForm({{ $f->id }})"
+                                        onclick="return confirm('آیا از حذف این فرم اطمینان دارید؟');"
+                                        class="text-xs px-2 py-1 rounded-lg bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/40 dark:text-red-200 transition-colors"
+                                        title="حذف فرم">
+                                    ✕
+                                </button>
+                            @endif
                         </li>
                     @endforeach
                 </ul>

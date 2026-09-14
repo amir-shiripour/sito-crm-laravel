@@ -4,11 +4,18 @@ namespace Modules\Clients\App\Http\Controllers\Portal;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Route;
 use Modules\Services\App\Http\Models\Invoice;
 use Modules\Services\App\Http\Models\Payment;
 use Modules\Services\App\Http\Models\Status;
 use Modules\Settings\Entities\Setting;
+use App\Services\PaymentService as GlobalPaymentService;
+use Nwidart\Modules\Facades\Module;
+use Modules\Accounting\App\Services\AccountingEngine;
+use Throwable;
 
 class ClientInvoiceController extends Controller
 {
@@ -72,7 +79,7 @@ class ClientInvoiceController extends Controller
         // کوئری فاکتورهای مشتری
         $query = Invoice::where('customer_id', $client->id)
             ->whereNotNull('invoice_number')
-            ->with(['status', 'service', 'items', 'payments'])
+            ->with(['status', 'service', 'items', 'payments', 'order.service'])
             ->latest('id');
 
         $statusFilter = $request->query('status');
@@ -102,11 +109,33 @@ class ClientInvoiceController extends Controller
                 $q->where('invoice_number', 'LIKE', "%{$search}%")
                   ->orWhereHas('service', function($sq) use ($search) {
                       $sq->where('name', 'LIKE', "%{$search}%");
+                  })
+                  ->orWhereHas('order', function($oq) use ($search) {
+                      $oq->where('order_number', 'LIKE', "%{$search}%")
+                        ->orWhereHas('service', function($osq) use ($search) {
+                            $osq->where('name', 'LIKE', "%{$search}%");
+                        });
                   });
             });
         }
 
         $invoices = $query->paginate(12)->withQueryString();
+
+        if (class_exists(\Modules\Services\App\Http\Models\Order::class) && Schema::hasTable('service_orders')) {
+            $missingOrderInvoices = $invoices->getCollection()->filter(fn($inv) => !$inv->order && !empty($inv->meta['source_order_id']));
+            if ($missingOrderInvoices->isNotEmpty()) {
+                $sourceOrderIds = $missingOrderInvoices->map(fn($inv) => $inv->meta['source_order_id'])->unique()->filter()->values()->all();
+                if (!empty($sourceOrderIds)) {
+                    $extraOrders = \Modules\Services\App\Http\Models\Order::with('service')->whereIn('id', $sourceOrderIds)->get()->keyBy('id');
+                    foreach ($missingOrderInvoices as $inv) {
+                        $srcId = $inv->meta['source_order_id'];
+                        if (isset($extraOrders[$srcId])) {
+                            $inv->setRelation('order', $extraOrders[$srcId]);
+                        }
+                    }
+                }
+            }
+        }
         $currentStatus = $statusFilter ?: ($statusIdFilter ? (string)$statusIdFilter : null);
 
         return view('clients::portal.invoices.index', compact(
@@ -232,37 +261,136 @@ class ClientInvoiceController extends Controller
             'cod' => []
         ];
 
-        // Linked order if any
-        $linkedOrder = null;
-        if (class_exists(\Modules\Services\App\Http\Models\Order::class) && Schema::hasTable('service_orders')) {
+        // Linked order if any (handles both direct order invoice and recurring renewal invoice)
+        $linkedOrder = $invoice->linked_order;
+        if (!$linkedOrder && class_exists(\Modules\Services\App\Http\Models\Order::class) && Schema::hasTable('service_orders')) {
             $linkedOrder = \Modules\Services\App\Http\Models\Order::where('invoice_id', $invoice->id)->first();
         }
+
+
+        // Allow partial payment setting
+        $allowPartialPayment = ($settingsMap['services_allow_partial_payment'] ?? '0') === '1';
 
         return view('clients::portal.invoices.show', compact(
             'invoice',
             'availablePaymentMethods',
             'paymentSubItems',
             'bankAccounts',
-            'linkedOrder'
+            'linkedOrder',
+            'allowPartialPayment'
         ));
     }
 
-    public function print($id)
+    public function print(Request $request, $id)
     {
         $client = auth('client')->user();
 
-        if (!class_exists(Invoice::class) || !Schema::hasTable('service_invoices')) {
-            abort(404);
+        if (!Module::has('Services') || !Module::isEnabled('Services') || !class_exists(Invoice::class) || !Schema::hasTable('service_invoices')) {
+            abort(404, 'ماژول سرویس‌ها و خدمات فعال نیست.');
         }
 
         $invoice = Invoice::where('customer_id', $client->id)
-            ->with(['status', 'service', 'items.service', 'customer', 'payments'])
+            ->with(['status', 'service', 'items.service.customFields', 'customer', 'payments'])
             ->findOrFail($id);
 
         $settings = Setting::pluck('value', 'key')->toArray();
         $currency = $settings['currency'] ?? 'toman';
-        
-        return view('services::invoices.print', compact('invoice', 'settings', 'currency'));
+
+        $sellerInfo = $this->sellerInfo($settings);
+        [$siteName, $appLogo] = $this->siteBrand($settings, $sellerInfo);
+
+        $paymentStatuses = class_exists(Status::class) && Schema::hasTable('service_statuses')
+            ? Status::where('type', 'payment')->orderBy('sort_order')->get()
+            : collect();
+
+        $defaultMode = $settings['services_print_mode'] ?? 'standard';
+        $printMode = $request->query('mode', $defaultMode);
+        if (!in_array($printMode, ['standard', 'official'])) {
+            $printMode = $defaultMode;
+        }
+
+        $viewName = $printMode === 'official' ? 'services::invoices.print_official' : 'services::invoices.print';
+        $taxMode = $settings['services_tax_mode'] ?? 'invoice';
+
+        return view($viewName, compact(
+            'invoice',
+            'currency',
+            'sellerInfo',
+            'paymentStatuses',
+            'siteName',
+            'appLogo',
+            'taxMode',
+            'settings',
+            'printMode'
+        ));
+    }
+
+    private function sellerInfo(array $settings = []): array
+    {
+        if (empty($settings)) {
+            $settings = Setting::all()->pluck('value', 'key')->toArray();
+        }
+
+        $pick = function (array $keys) use ($settings) {
+            foreach ($keys as $key) {
+                if (!empty($settings[$key])) {
+                    return $settings[$key];
+                }
+            }
+            return null;
+        };
+
+        $customFieldsRaw = $pick(['identity_custom_fields', 'seller_custom_fields']);
+        $customFields = [];
+        if ($customFieldsRaw) {
+            $decoded = json_decode($customFieldsRaw, true);
+            if (is_array($decoded)) {
+                $customFields = array_values(array_filter(
+                    $decoded,
+                    fn($field) => !empty($field['value'] ?? null)
+                ));
+            }
+        }
+
+        return [
+            'name' => $pick(['identity_name', 'seller_name', 'company_name']) ?? '',
+            'economic_number' => $pick([
+                'identity_economic_code',
+                'identity_economic_number',
+                'seller_economic_number',
+                'economic_number',
+            ]) ?? '',
+            'national_id' => $pick(['identity_national_id', 'seller_national_id', 'national_id']) ?? '',
+            'registration_number' => $pick(['identity_registration_number', 'seller_registration_number', 'registration_number']) ?? '',
+            'phone_fax' => $pick(['identity_phone_fax', 'seller_phone_fax', 'phone_fax']) ?? '',
+            'address' => $pick([
+                'identity_full_address',
+                'identity_address',
+                'seller_address',
+                'address',
+            ]) ?? '',
+            'stamp_signature_image' => $pick(['identity_seal_signature', 'seller_stamp_signature', 'stamp_signature_image']),
+            'custom_fields' => $customFields,
+        ];
+    }
+
+    private function siteBrand(array $settings, array $sellerInfo): array
+    {
+        $pick = function (array $keys) use ($settings) {
+            foreach ($keys as $key) {
+                if (!empty($settings[$key])) {
+                    return $settings[$key];
+                }
+            }
+            return null;
+        };
+
+        $siteName = $pick(['identity_site_name', 'site_name', 'app_name', 'identity_name'])
+            ?: (($sellerInfo['name'] ?? null) ?: 'فاکتور');
+
+        $appLogo = $pick(['identity_logo', 'site_logo', 'app_logo', 'company_logo']);
+
+        return [$siteName, $appLogo];
     }
 
     public function processPayment(Request $request, $id)
@@ -294,11 +422,95 @@ class ClientInvoiceController extends Controller
                 : 'nullable',
         ]);
 
+        $settingsMap = Schema::hasTable('settings')
+            ? Setting::query()->pluck('value', 'key')->toArray()
+            : [];
+        $allowPartial = ($settingsMap['services_allow_partial_payment'] ?? '0') === '1';
+
         $remaining = max(0, $invoice->total - $invoice->paid_amount);
-        $amount = $remaining > 0 ? $remaining : $invoice->total;
+        if ($remaining <= 0) {
+            return back()->with('error', 'این فاکتور قبلاً به طور کامل تسویه شده است.');
+        }
+
+        $amount = $remaining;
+        if ($allowPartial && $request->filled('amount')) {
+            $rawAmount = (string)$request->input('amount');
+            $persian = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
+            $arabic  = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
+            $english = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
+            $cleanAmount = str_replace($persian, $english, $rawAmount);
+            $cleanAmount = str_replace($arabic, $english, $cleanAmount);
+            $parsedAmount = (float)preg_replace('/[^\d.]/', '', $cleanAmount);
+
+            $invoiceCurrency = strtolower($invoice->currency ?? $settingsMap['currency'] ?? 'rial');
+            $currencyLabel = in_array($invoiceCurrency, ['rial', 'irr', 'ریال']) ? 'ریال' : 'تومان';
+
+            if ($parsedAmount <= 0) {
+                return back()->withInput()->with('error', 'مبلغ پرداختی وارد شده باید بزرگتر از صفر باشد.');
+            }
+
+            if ($parsedAmount > $remaining) {
+                return back()->withInput()->with('error', 'مبلغ پرداختی وارد شده (' . number_format($parsedAmount) . ' ' . $currencyLabel . ') نمی‌تواند بیشتر از مانده بدهی فاکتور (' . number_format($remaining) . ' ' . $currencyLabel . ') باشد.');
+            }
+
+            $amount = (int)round($parsedAmount);
+        }
+
+        $isPartial = $amount < $remaining;
 
         if ($method === 'online') {
-            return back()->with('error', 'درگاه آنلاین در حال حاضر فعال نیست؛ لطفاً از گزینه انتقال بانکی / کارت به کارت استفاده فرمایید.');
+            $gateway = $request->input('sub_item');
+            if (empty($gateway)) {
+                $gateway = $settingsMap['default_payment_gateway'] ?? 'zarinpal';
+            }
+
+            $invoiceCurrency = strtolower($invoice->currency ?? $settingsMap['currency'] ?? 'rial');
+            $isRial = in_array($invoiceCurrency, ['rial', 'irr', 'ریال']);
+            $amountInRials = $isRial ? (int)$amount : (int)($amount * 10);
+
+            try {
+                $globalPaymentService = new GlobalPaymentService($gateway);
+                $description = "پرداخت صورت‌حساب شماره " . ($invoice->invoice_number ?: $invoice->proforma_invoice_number ?: $invoice->id) . ($isPartial ? ' (پرداخت جزئی)' : '');
+                $email = $client->email;
+                $mobile = $client->mobile ?? $client->phone;
+
+                $verifyRouteName = Route::has('client.invoices.verify')
+                    ? 'client.invoices.verify'
+                    : (Route::has('clients.invoices.verify') ? 'clients.invoices.verify' : null);
+
+                $callbackUrl = $verifyRouteName
+                    ? route($verifyRouteName, ['invoice' => $invoice->id, 'gateway' => $gateway])
+                    : url("clients/invoices/{$invoice->id}/verify/{$gateway}");
+
+                $result = $globalPaymentService->requestPaymentInRials(
+                    $amountInRials,
+                    $description,
+                    $email,
+                    $mobile,
+                    $callbackUrl
+                );
+
+                if (!empty($result['success']) && !empty($result['payment_url'])) {
+                    Payment::create([
+                        'invoice_id'     => $invoice->id,
+                        'user_id'        => null,
+                        'amount'         => $amount,
+                        'method'         => $gateway ?: 'online',
+                        'gateway'        => $gateway,
+                        'paid_at'        => now(),
+                        'transaction_id' => $result['authority'] ?? null,
+                        'notes'          => 'پرداخت آنلاین از طریق ' . Payment::formatMethodName($gateway, $gateway) . ($isPartial ? ' (پرداخت جزئی)' : '') . ' | شناسه: ' . ($result['authority'] ?? '—'),
+                        'status'         => 'pending',
+                    ]);
+
+                    return redirect()->away($result['payment_url']);
+                }
+
+                return back()->with('error', $result['message'] ?? 'خطا در برقراری ارتباط با درگاه پرداخت آنلاین.');
+            } catch (\Throwable $e) {
+                Log::error('[ClientInvoiceController] Online payment dispatch error: ' . $e->getMessage());
+                return back()->with('error', 'خطا در شروع تراکنش آنلاین: ' . $e->getMessage());
+            }
         } else {
             $receiptPath = null;
             if ($request->hasFile('receipt_file')) {
@@ -324,18 +536,29 @@ class ClientInvoiceController extends Controller
             $receiptUrl = $receiptPath ? (str_starts_with($receiptPath, 'uploads/') ? asset($receiptPath) : asset('storage/' . $receiptPath)) : null;
 
             $note = 'ثبت توسط مشتری در پرتال'
+                . ($isPartial ? ' (پرداخت جزئی)' : '')
                 . ($request->payer_name ? ' | پرداخت‌کننده: ' . $request->payer_name : '')
                 . ($request->payer_mobile ? ' | شماره تماس: ' . $request->payer_mobile : '')
                 . ($request->payment_date ? ' | تاریخ واریز: ' . $request->payment_date : '')
                 . ($request->tracking_code ? ' | کد پیگیری: ' . $request->tracking_code : '')
                 . ($receiptUrl ? ' | فایل پیوست: ' . $receiptUrl : '');
 
+            $subItem = $request->input('sub_item');
+            $storedMethod = $method;
+            if ($method === 'transfer' && $subItem) {
+                $storedMethod = str_starts_with($subItem, 'transfer-') ? $subItem : 'transfer-' . $subItem;
+            } elseif ($method === 'pos' && $subItem) {
+                $storedMethod = str_starts_with($subItem, 'pos-') ? $subItem : 'pos-' . $subItem;
+            } elseif ($method === 'installment' && $subItem) {
+                $storedMethod = str_starts_with($subItem, 'installment-') ? $subItem : 'installment-' . $subItem;
+            }
+
             Payment::create([
                 'invoice_id'     => $invoice->id,
                 'user_id'        => null,
                 'amount'         => $amount,
-                'method'         => $method,
-                'gateway'        => $request->sub_item,
+                'method'         => $storedMethod,
+                'gateway'        => $subItem,
                 'paid_at'        => now(),
                 'transaction_id' => $request->tracking_code ?? uniqid('TR-'),
                 'notes'          => $note,
@@ -346,7 +569,202 @@ class ClientInvoiceController extends Controller
                 $invoice->updatePaymentStatus(false);
             }
 
-            return back()->with('success', 'اطلاعات پرداخت و فیش واریزی با موفقیت ثبت شد و پس از بررسی کارشناسان تایید خواهد شد.');
+            return back()->with('success', 'اطلاعات پرداخت و فیش واریزی با موفقیت ثبت شد و پس از بررسی و تایید کارشناسان در حساب شما منظور خواهد شد.');
+        }
+    }
+
+    public function verifyOnlinePayment(Request $request, $id, $gateway = null)
+    {
+        $client = auth('client')->user();
+
+        if (!class_exists(Invoice::class) || !Schema::hasTable('service_invoices')) {
+            abort(404);
+        }
+
+        $invoiceQuery = Invoice::query();
+        if ($client) {
+            $invoiceQuery->where('customer_id', $client->id);
+        }
+        $invoice = $invoiceQuery->findOrFail($id);
+
+        $gateway = $gateway ?: $request->query('gateway') ?: $request->input('gateway');
+
+        // Extract tracking tokens across various Iranian gateways
+        $authority = $request->input('Authority')
+            ?: ($request->input('trackId')
+            ?: ($request->input('RefId')
+            ?: ($request->input('Token')
+            ?: ($request->input('ResNum')
+            ?: $request->input('RefNum')))));
+
+        if (!$gateway) {
+            $pendingPayment = Payment::where('invoice_id', $invoice->id)
+                ->where(function ($q) {
+                    $q->where('method', 'online')
+                      ->orWhereIn('method', ['zarinpal', 'zibal', 'behpardakht', 'saman', 'sep', 'parsian', 'sadad', 'payping', 'idpay'])
+                      ->orWhere('method', 'LIKE', 'online-%')
+                      ->orWhereNotNull('gateway');
+                })
+                ->latest()
+                ->first();
+            $gateway = $pendingPayment?->gateway ?: Setting::where('key', 'default_payment_gateway')->value('value') ?: 'zarinpal';
+        }
+
+        $payment = Payment::where('invoice_id', $invoice->id)
+            ->where(function ($q) use ($gateway) {
+                $q->where('method', 'online')
+                  ->orWhere('method', $gateway)
+                  ->orWhere('method', 'online-' . $gateway)
+                  ->orWhere('gateway', $gateway);
+            })
+            ->where(function ($q) use ($authority) {
+                if ($authority) {
+                    $q->where('transaction_id', $authority);
+                } else {
+                    $q->where('status', 'pending');
+                }
+            })
+            ->latest()
+            ->first();
+
+        if (!$payment && $authority) {
+            $payment = Payment::where('invoice_id', $invoice->id)
+                ->where('transaction_id', $authority)
+                ->first();
+        }
+
+        // Check user cancellation / NOK status across gateways
+        if ($gateway === 'zibal') {
+            $status = ((string)($request->input('success') ?? '')) === '1' ? 'OK' : 'NOK';
+        } elseif ($gateway === 'behpardakht') {
+            $resCode = (string)($request->input('ResCode') ?? '-1');
+            $status = ($resCode === '0' || $resCode === '00') ? 'OK' : 'NOK';
+        } elseif ($gateway === 'sep' || $gateway === 'saman') {
+            $sepState = strtoupper((string)($request->input('State') ?? ''));
+            $sepStatus = (int)($request->input('Status') ?? -1);
+            $status = ($sepState === 'OK' && $sepStatus === 2) ? 'OK' : 'NOK';
+        } else {
+            $status = strtoupper((string)($request->input('Status') ?? ''));
+        }
+
+        if ($status === 'NOK' || $status === 'CANCELED') {
+            $payment?->update(['status' => 'canceled']);
+            return redirect()
+                ->route('client.invoices.show', $invoice->id)
+                ->with('error', 'پرداخت آنلاین توسط کاربر لغو شد یا انجام نشد.');
+        }
+
+        try {
+            $globalPaymentService = new GlobalPaymentService($gateway);
+
+            $dataToVerify = $request->all();
+            $invoiceCurrency = strtolower($invoice->currency ?? Setting::where('key', 'currency')->value('value') ?? 'rial');
+            $isRial = in_array($invoiceCurrency, ['rial', 'irr', 'ریال']);
+            $amountInRials = $isRial ? (int)($payment?->amount ?? $invoice->total) : (int)(($payment?->amount ?? $invoice->total) * 10);
+
+            if ($gateway === 'zibal') {
+                $dataToVerify['trackId'] = $authority;
+                $dataToVerify['Amount'] = $amountInRials;
+            } elseif ($gateway === 'behpardakht') {
+                $dataToVerify['RefId'] = $authority;
+                $dataToVerify['Amount'] = $amountInRials;
+            } elseif ($gateway === 'sep' || $gateway === 'saman') {
+                $dataToVerify['Token'] = $authority;
+                $dataToVerify['RefNum'] = $request->input('RefNum');
+                $dataToVerify['Amount'] = $amountInRials;
+            } else {
+                $dataToVerify['Authority'] = $authority;
+                $dataToVerify['Amount'] = $amountInRials;
+            }
+
+            $verifyResult = $globalPaymentService->verifyPayment($dataToVerify);
+
+            if ($verifyResult && ($verifyResult['success'] ?? false)) {
+                $refId = $verifyResult['ref_id'] ?? $verifyResult['reference_id'] ?? $authority;
+
+                DB::transaction(function () use ($invoice, $payment, $refId, $gateway) {
+                    if ($payment) {
+                        $payment->update([
+                            'status' => 'paid',
+                            'transaction_id' => $refId,
+                            'paid_at' => now(),
+                            'notes' => ($payment->notes ? $payment->notes . ' | ' : '') . 'تایید شده توسط درگاه | کد رهگیری: ' . $refId,
+                        ]);
+                    } else {
+                        $payment = $invoice->payments()->create([
+                            'user_id' => null,
+                            'amount' => max(0, $invoice->total - $invoice->calculatePaidAmount()),
+                            'method' => $gateway ?: 'online',
+                            'gateway' => $gateway,
+                            'paid_at' => now(),
+                            'transaction_id' => $refId,
+                            'notes' => 'پرداخت آنلاین تایید شده (' . Payment::formatMethodName($gateway, $gateway) . ') | کد رهگیری: ' . $refId,
+                            'status' => 'paid',
+                        ]);
+                    }
+
+                    $invoice->paid_amount = $invoice->calculatePaidAmount();
+
+                    $StatusModel = Status::class;
+                    if ($invoice->isPaid()) {
+                        $status = $StatusModel::where('name', 'پرداخت شده')->where('type', 'payment')->first()
+                            ?? $StatusModel::where('name', 'LIKE', '%پرداخت شده%')->first();
+                        if (!$invoice->paid_at) {
+                            $invoice->paid_at = now();
+                        }
+                    } elseif ($invoice->isOverdue()) {
+                        $status = $StatusModel::where('name', 'معوقه')->where('type', 'payment')->first();
+                    } else {
+                        $status = $StatusModel::where('name', 'در انتظار پرداخت')->where('type', 'payment')->first();
+                    }
+
+                    if ($status) {
+                        $invoice->status_id = $status->id;
+                    }
+
+                    if ($invoice->isPaid() && Module::has('Accounting') && Module::isEnabled('Accounting')) {
+                        try {
+                            app(AccountingEngine::class)->recordFromServiceInvoice($invoice);
+                        } catch (Throwable $e) {
+                            Log::error('[AccountingEngine] Error on online invoice verification: ' . $e->getMessage());
+                        }
+                    }
+
+                    if (Module::has('Accounting') && Module::isEnabled('Accounting')) {
+                        try {
+                            app(AccountingEngine::class)->recordServicePayment($payment);
+                        } catch (Throwable $e) {
+                            Log::error('[AccountingEngine] Error recording service payment on verify: ' . $e->getMessage());
+                        }
+                    }
+
+                    $invoice->save();
+
+                    // Automatically activate linked orders
+                    if (class_exists(\Modules\Services\App\Http\Controllers\InvoiceController::class)) {
+                        try {
+                            app(\Modules\Services\App\Http\Controllers\InvoiceController::class)->syncOrdersForInvoice($invoice);
+                        } catch (\Throwable $e) {
+                            Log::error('[ClientInvoiceController] Error syncing orders for invoice on verify: ' . $e->getMessage());
+                        }
+                    }
+                });
+
+                return redirect()
+                    ->route('client.invoices.show', $invoice->id)
+                    ->with('success', 'پرداخت شما با موفقیت انجام شد و صورت‌حساب تسویه گردید. کد پیگیری: ' . $refId);
+            } else {
+                $payment?->update(['status' => 'canceled']);
+                $errorMsg = $verifyResult['message'] ?? 'تراکنش توسط درگاه تایید نشد.';
+                return redirect()
+                    ->route('client.invoices.show', $invoice->id)
+                    ->with('error', 'خطا در تایید تراکنش بانکی: ' . $errorMsg);
+            }
+        } catch (\Throwable $e) {
+            Log::error('Invoice online payment verify error: ' . $e->getMessage());
+            return redirect()
+                ->route('client.invoices.show', $invoice->id)
+                ->with('error', 'خطا در پردازش بازگشت از درگاه: ' . $e->getMessage());
         }
     }
 }
