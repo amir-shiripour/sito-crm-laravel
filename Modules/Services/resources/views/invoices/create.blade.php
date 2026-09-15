@@ -2597,6 +2597,11 @@
                                 customFieldCustomPrices = JSON.parse(JSON.stringify(item.custom_fields_prices));
                             }
 
+                            let customFieldCustomDiscounts = {};
+                            if (item.custom_fields_discounts && typeof item.custom_fields_discounts === 'object') {
+                                customFieldCustomDiscounts = JSON.parse(JSON.stringify(item.custom_fields_discounts));
+                            }
+
                             customFieldsArray.forEach(f => {
                                 if (f.type === 'number') {
                                     let rawV = customFieldValues[f.id] !== undefined ? customFieldValues[f.id] : null;
@@ -2671,7 +2676,7 @@
                                 custom_field_values: customFieldValues,
                                 custom_field_custom_prices: customFieldCustomPrices,
                                 custom_field_quantities: customFieldQuantities,
-                                custom_field_custom_discounts: {},
+                                custom_field_custom_discounts: customFieldCustomDiscounts,
                                 custom_field_tax_percents: {},
                                 custom_field_use_default_price: item.custom_fields_use_default_price || item.custom_field_use_default_price || {},
                                 tax_percent: this.defaultTaxRate,

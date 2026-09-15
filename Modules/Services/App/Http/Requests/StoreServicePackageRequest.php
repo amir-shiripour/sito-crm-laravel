@@ -50,6 +50,7 @@ class StoreServicePackageRequest extends FormRequest
             'items.*.billing_period' => 'nullable|string',
             'items.*.custom_fields' => 'nullable',
             'items.*.custom_fields_prices' => 'nullable',
+            'items.*.custom_fields_discounts' => 'nullable',
             'items.*.custom_fields_quantities' => 'nullable',
             'items.*.custom_fields_use_default_price' => 'nullable',
         ];

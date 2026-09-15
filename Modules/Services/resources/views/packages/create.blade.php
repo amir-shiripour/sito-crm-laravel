@@ -471,6 +471,18 @@
                                                     </button>
                                                 </div>
                                             </td>
+                                            <td class="px-4 py-2.5 align-middle max-w-[170px]">
+                                                <div class="relative w-full">
+                                                    <input type="text"
+                                                           :value="formatPriceInput(getCustomFieldDiscount(item, field, opt))"
+                                                           @input="setCustomFieldDiscount(item, field, opt, $event.target.value)"
+                                                           :name="'items[' + index + '][custom_fields_discounts][' + field.id + '][' + opt + ']'"
+                                                           class="{{ $inputClass }} py-2 text-sm text-center tabular-nums font-black w-full pe-14 shadow-none border-gray-200 dark:border-gray-800"
+                                                           dir="ltr" placeholder="۰">
+                                                    <span
+                                                        class="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] font-bold text-gray-400 pointer-events-none">{{ $currencyLabel }}</span>
+                                                </div>
+                                            </td>
                                             <td class="px-4 py-2.5 align-middle tabular-nums font-black text-indigo-600 dark:text-indigo-400 text-center whitespace-nowrap text-sm max-w-[150px]">
                                                 <span
                                                     x-text="formatMoney(getCustomFieldRowTotal(item, field, opt))"></span>
@@ -565,6 +577,19 @@
                                                     </button>
                                                 </div>
                                             </td>
+                                            <td class="px-4 py-2.5 align-middle max-w-[170px]">
+                                                <div class="relative w-full">
+                                                    <input type="text"
+                                                           :value="formatPriceInput(getCustomFieldDiscount(item, field))"
+                                                           @input="setCustomFieldDiscount(item, field, null, $event.target.value)"
+                                                           :disabled="!isFieldSelected(field, item.custom_field_values[field.id])"
+                                                           :name="'items[' + index + '][custom_fields_discounts][' + field.id + ']'"
+                                                           class="{{ $inputClass }} py-2 text-sm text-center tabular-nums font-black w-full pe-14 shadow-none border-gray-200 dark:border-gray-800"
+                                                           dir="ltr" placeholder="۰">
+                                                    <span
+                                                        class="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] font-bold text-gray-400 pointer-events-none">{{ $currencyLabel }}</span>
+                                                </div>
+                                            </td>
                                             <td class="px-4 py-2.5 align-middle tabular-nums font-black text-indigo-600 dark:text-indigo-400 text-center whitespace-nowrap text-sm max-w-[150px]">
                                                 <span x-text="formatMoney(getCustomFieldRowTotal(item, field))"></span>
                                                 <span
@@ -589,7 +614,7 @@
                             </template>
                         <tr x-show="item.service_custom_fields && item.service_custom_fields.length > 0"
                             :class="item._hasOpenSelectDropdown ? 'relative z-50' : 'relative z-10'">
-                            <td colspan="6" class="p-0 border-0">
+                            <td colspan="7" class="p-0 border-0">
                                 <div x-show="item['_showCustomFields']"
                                      x-transition:enter="transition ease-out duration-200"
                                      x-transition:enter-start="opacity-0 -translate-y-2"
@@ -1360,6 +1385,7 @@
                         custom_field_values: {},
                         custom_field_custom_prices: {},
                         custom_field_quantities: {},
+                        custom_field_discounts: {},
                         custom_field_use_default_price: {},
                         _customPricesUnlocked: {},
                         _showServiceDropdown: false,
@@ -1414,6 +1440,7 @@
                     item.custom_field_values = {};
                     item.custom_field_custom_prices = {};
                     item.custom_field_quantities = {};
+                    item.custom_field_discounts = {};
                     item.custom_field_use_default_price = {};
                     item._showProductDropdown = false;
                     item._showCustomFields = false;
@@ -1763,11 +1790,44 @@
 
                     return defaultFieldPrice;
                 },
+                getCustomFieldDiscount(it, f, opt = null) {
+                    if (!it) return 0;
+                    const fId = (f && f.id !== undefined) ? f.id : f;
+                    if (opt !== null && opt !== undefined) {
+                        if (it.custom_field_discounts && it.custom_field_discounts[fId] && typeof it.custom_field_discounts[fId] === 'object' && it.custom_field_discounts[fId][opt] !== undefined) {
+                            let d = Number(it.custom_field_discounts[fId][opt]);
+                            return isNaN(d) ? 0 : d;
+                        }
+                        return 0;
+                    }
+                    if (it.custom_field_discounts && it.custom_field_discounts[fId] !== undefined && typeof it.custom_field_discounts[fId] !== 'object') {
+                        let d = Number(it.custom_field_discounts[fId]);
+                        return isNaN(d) ? 0 : d;
+                    }
+                    return 0;
+                },
+                setCustomFieldDiscount(it, f, opt = null, val) {
+                    let num = this.parsePriceInput(val);
+                    const fId = (f && f.id !== undefined) ? f.id : f;
+                    if (!it.custom_field_discounts) it.custom_field_discounts = {};
+                    if (opt !== null && opt !== undefined) {
+                        if (typeof it.custom_field_discounts[fId] !== 'object' || it.custom_field_discounts[fId] === null) {
+                            it.custom_field_discounts[fId] = {};
+                        }
+                        it.custom_field_discounts[fId][opt] = num;
+                    } else {
+                        it.custom_field_discounts[fId] = num;
+                    }
+                    if (typeof this.calculateTotals === 'function') {
+                        this.calculateTotals();
+                    }
+                },
                 getCustomFieldRowTotal(it, f, opt = null) {
                     if (opt !== null && opt !== undefined) {
                         let optQ = this.getCustomFieldQuantity(it, f, opt);
                         let optP = this.getCustomFieldPrice(it, f, opt);
-                        return optP * optQ;
+                        let optDisc = this.getCustomFieldDiscount(it, f, opt);
+                        return Math.max(0, (optP * optQ) - optDisc);
                     }
                     if (f.type === 'multiselect') {
                         const selectedOpts = Array.isArray(it.custom_field_values[f.id]) ? it.custom_field_values[f.id] : [];
@@ -1775,12 +1835,15 @@
                         selectedOpts.forEach(opt => {
                             let optQ = this.getCustomFieldQuantity(it, f, opt);
                             let optP = this.getCustomFieldPrice(it, f, opt);
-                            total += optP * optQ;
+                            let optDisc = this.getCustomFieldDiscount(it, f, opt);
+                            total += Math.max(0, (optP * optQ) - optDisc);
                         });
                         return total;
                     }
                     let q = this.getCustomFieldQuantity(it, f);
-                    return this.getCustomFieldPrice(it, f) * q;
+                    let p = this.getCustomFieldPrice(it, f);
+                    let disc = this.getCustomFieldDiscount(it, f);
+                    return Math.max(0, (p * q) - disc);
                 },
                 getPeriodPrice(it) {
                     if (!it.service_raw || it.service_raw.billing_type !== 'recurring' || !it.billing_period) return 0;
@@ -1901,7 +1964,7 @@
                 },
                 onSubmitCheck(e) {
                     const f = e.target;
-                    const nF = f.querySelectorAll('input[name*="[quantity]"], input[name*="[custom_fields_quantities]"], input[name*="[unit_price]"], input[name*="[custom_fields_prices]"], input[name*="[discount_value]"], input[name*="[discount]"]');
+                    const nF = f.querySelectorAll('input[name*="[quantity]"], input[name*="[custom_fields_quantities]"], input[name*="[unit_price]"], input[name*="[custom_fields_prices]"], input[name*="[custom_fields_discounts]"], input[name*="[discount_value]"], input[name*="[discount]"]');
                     nF.forEach(i => {
                         i.value = this.toEnglishNum(i.value).replace(/[^\d.]/g, '');
                     });
