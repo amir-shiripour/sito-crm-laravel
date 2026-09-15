@@ -187,19 +187,25 @@
 
                                                     $rawCfPrice = $item->custom_fields_prices[$cfId] ?? null;
                                                     $rawCfQty = $item->custom_fields_quantities[$cfId] ?? null;
+                                                    $rawCfDisc = $item->custom_fields_discounts[$cfId] ?? null;
                                                     $cfPrice = 0;
+                                                    $cfDisc = 0;
                                                     if ($cfDef && $cfDef->has_pricing) {
                                                         if ($cfDef->type === 'multiselect' && is_array($cfValue)) {
                                                             $totalPrice = 0;
+                                                            $totalDisc = 0;
                                                             foreach ($cfValue as $opt) {
                                                                 $optPrice = is_array($rawCfPrice) ? ($rawCfPrice[$opt] ?? null) : null;
                                                                 if ($optPrice === null) {
                                                                     $optPrice = $cfDef->getOptionPrice($opt, $item->unit_price);
                                                                 }
                                                                 $optQty = is_array($rawCfQty) ? ($rawCfQty[$opt] ?? 1) : (floatval($rawCfQty ?? 1) ?: 1);
+                                                                $optD = is_array($rawCfDisc) ? floatval($rawCfDisc[$opt] ?? 0) : 0;
                                                                 $totalPrice += (floatval($optPrice) * $optQty);
+                                                                $totalDisc += $optD;
                                                             }
                                                             $cfPrice = $totalPrice;
+                                                            $cfDisc = $totalDisc;
                                                         } else {
                                                             if (!empty($rawCfPrice) && !is_array($rawCfPrice)) {
                                                                 $pStr = str_replace(['۰','۱','۲','۳','۴','۵','۶','۷','۸','۹','٠','١','٢','٣','٤','٥','٦','٧','٨','٩'], ['0','1','2','3','4','5','6','7','8','9','0','1','2','3','4','5','6','7','8','9'], (string)$rawCfPrice);
@@ -216,6 +222,10 @@
                                                             $cfQty = floatval($rawCfQty ?? 1);
                                                             if ($cfQty <= 0) $cfQty = 1;
                                                             $cfPrice = $cfPrice * $cfQty;
+                                                            if (!empty($rawCfDisc) && !is_array($rawCfDisc)) {
+                                                                $dStr = str_replace(['۰','۱','۲','۳','۴','۵','۶','۷','۸','۹','٠','١','٢','٣','٤','٥','٦','٧','٨','٩'], ['0','1','2','3','4','5','6','7','8','9','0','1','2','3','4','5','6','7','8','9'], (string)$rawCfDisc);
+                                                                $cfDisc = floatval(preg_replace('/[^\d.]/', '', $dStr));
+                                                            }
                                                         }
                                                     }
                                                 @endphp
@@ -227,8 +237,14 @@
                                                         <span
                                                             class="text-[10px] font-black text-emerald-600 dark:text-emerald-400 bg-emerald-100/80 dark:bg-emerald-500/20 px-1.5 py-0.5 rounded me-0.5">
                                                                 +{{ number_format($cfPrice) }} {{ $currencyLabel }}
-                                                            </span>
-                                                    @endif
+                                                        </span>
+                                                        @endif
+                                                        @if($cfDisc > 0)
+                                                        <span
+                                                            class="text-[10px] font-black text-rose-600 dark:text-rose-400 bg-rose-100/80 dark:bg-rose-500/20 px-1.5 py-0.5 rounded me-0.5">
+                                                                -{{ number_format($cfDisc) }} {{ $currencyLabel }}
+                                                        </span>
+                                                        @endif
                                                     </span>
                                             @endif
                                         @endforeach

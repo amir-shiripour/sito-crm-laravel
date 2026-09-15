@@ -98,8 +98,10 @@ class ServicePackageController extends Controller
                 }
 
                 $rawCustomFieldsPrices = $item['custom_fields_prices'] ?? [];
+                $rawCustomFieldsDiscounts = $item['custom_fields_discounts'] ?? [];
                 $rawCustomFieldsQuantities = $item['custom_fields_quantities'] ?? [];
                 $customFieldsPrices = [];
+                $customFieldsDiscounts = [];
                 $customFieldsQuantities = [];
 
                 foreach ($rawCustomFieldsPrices as $k => $v) {
@@ -110,6 +112,17 @@ class ServicePackageController extends Controller
                         }
                     } else {
                         $customFieldsPrices[$k] = $this->parsePrice($v);
+                    }
+                }
+
+                foreach ($rawCustomFieldsDiscounts as $k => $v) {
+                    if (is_array($v)) {
+                        $customFieldsDiscounts[$k] = [];
+                        foreach ($v as $subK => $subV) {
+                            $customFieldsDiscounts[$k][$subK] = $this->parsePrice($subV);
+                        }
+                    } else {
+                        $customFieldsDiscounts[$k] = $this->parsePrice($v);
                     }
                 }
 
@@ -152,7 +165,7 @@ class ServicePackageController extends Controller
                                 }
                             }
                             if (!$isSelected) {
-                                unset($customFieldsQuantities[$cf->id], $customFieldsPrices[$cf->id], $customFields[$cf->id]);
+                                unset($customFieldsQuantities[$cf->id], $customFieldsPrices[$cf->id], $customFieldsDiscounts[$cf->id], $customFields[$cf->id]);
                                 continue;
                             }
                             $customFieldsUseDefaultPrice = $item['custom_fields_use_default_price'] ?? [];
@@ -170,7 +183,11 @@ class ServicePackageController extends Controller
                                         $optQty = is_array($customFieldsQuantities[$cf->id] ?? null)
                                             ? (floatval($this->parsePrice($customFieldsQuantities[$cf->id][$opt] ?? 1)) ?: 1)
                                             : (floatval($this->parsePrice($customFieldsQuantities[$cf->id] ?? 1)) ?: 1);
-                                        $cfPriceTotal += (floatval($optPrice) * $optQty);
+                                        $optDisc = is_array($customFieldsDiscounts[$cf->id] ?? null)
+                                            ? floatval($this->parsePrice($customFieldsDiscounts[$cf->id][$opt] ?? 0))
+                                            : 0;
+                                        $optRowTotal = max(0, (floatval($optPrice) * $optQty) - $optDisc);
+                                        $cfPriceTotal += $optRowTotal;
                                     }
                                     $cfSubtotal += $cfPriceTotal;
                                 } else {
@@ -197,7 +214,9 @@ class ServicePackageController extends Controller
                                     }
                                     if ($cfQty <= 0) $cfQty = 1;
                                     $customFieldsQuantities[$cf->id] = $cfQty;
-                                    $cfSubtotal += ($cfPrice * $cfQty);
+                                    $cfDisc = floatval($this->parsePrice($customFieldsDiscounts[$cf->id] ?? 0));
+                                    $cfRowTotal = max(0, ($cfPrice * $cfQty) - $cfDisc);
+                                    $cfSubtotal += $cfRowTotal;
                                 }
                             }
                         }
@@ -230,6 +249,7 @@ class ServicePackageController extends Controller
                     'billing_period' => $item['billing_period'] ?? null,
                     'custom_fields' => $customFields,
                     'custom_fields_prices' => $customFieldsPrices,
+                    'custom_fields_discounts' => $customFieldsDiscounts,
                     'custom_fields_quantities' => $customFieldsQuantities,
                     'custom_fields_use_default_price' => $customFieldsUseDefaultPrice ?? [],
                     'total_price' => $rowTotal,
@@ -322,8 +342,10 @@ class ServicePackageController extends Controller
                 }
 
                 $rawCustomFieldsPrices = $item['custom_fields_prices'] ?? [];
+                $rawCustomFieldsDiscounts = $item['custom_fields_discounts'] ?? [];
                 $rawCustomFieldsQuantities = $item['custom_fields_quantities'] ?? [];
                 $customFieldsPrices = [];
+                $customFieldsDiscounts = [];
                 $customFieldsQuantities = [];
 
                 foreach ($rawCustomFieldsPrices as $k => $v) {
@@ -334,6 +356,17 @@ class ServicePackageController extends Controller
                         }
                     } else {
                         $customFieldsPrices[$k] = $this->parsePrice($v);
+                    }
+                }
+
+                foreach ($rawCustomFieldsDiscounts as $k => $v) {
+                    if (is_array($v)) {
+                        $customFieldsDiscounts[$k] = [];
+                        foreach ($v as $subK => $subV) {
+                            $customFieldsDiscounts[$k][$subK] = $this->parsePrice($subV);
+                        }
+                    } else {
+                        $customFieldsDiscounts[$k] = $this->parsePrice($v);
                     }
                 }
 
@@ -376,7 +409,7 @@ class ServicePackageController extends Controller
                                 }
                             }
                             if (!$isSelected) {
-                                unset($customFieldsQuantities[$cf->id], $customFieldsPrices[$cf->id], $customFields[$cf->id]);
+                                unset($customFieldsQuantities[$cf->id], $customFieldsPrices[$cf->id], $customFieldsDiscounts[$cf->id], $customFields[$cf->id]);
                                 continue;
                             }
                             $customFieldsUseDefaultPrice = $item['custom_fields_use_default_price'] ?? [];
@@ -394,7 +427,11 @@ class ServicePackageController extends Controller
                                         $optQty = is_array($customFieldsQuantities[$cf->id] ?? null)
                                             ? (floatval($this->parsePrice($customFieldsQuantities[$cf->id][$opt] ?? 1)) ?: 1)
                                             : (floatval($this->parsePrice($customFieldsQuantities[$cf->id] ?? 1)) ?: 1);
-                                        $cfPriceTotal += (floatval($optPrice) * $optQty);
+                                        $optDisc = is_array($customFieldsDiscounts[$cf->id] ?? null)
+                                            ? floatval($this->parsePrice($customFieldsDiscounts[$cf->id][$opt] ?? 0))
+                                            : 0;
+                                        $optRowTotal = max(0, (floatval($optPrice) * $optQty) - $optDisc);
+                                        $cfPriceTotal += $optRowTotal;
                                     }
                                     $cfSubtotal += $cfPriceTotal;
                                 } else {
@@ -421,7 +458,9 @@ class ServicePackageController extends Controller
                                     }
                                     if ($cfQty <= 0) $cfQty = 1;
                                     $customFieldsQuantities[$cf->id] = $cfQty;
-                                    $cfSubtotal += ($cfPrice * $cfQty);
+                                    $cfDisc = floatval($this->parsePrice($customFieldsDiscounts[$cf->id] ?? 0));
+                                    $cfRowTotal = max(0, ($cfPrice * $cfQty) - $cfDisc);
+                                    $cfSubtotal += $cfRowTotal;
                                 }
                             }
                         }
@@ -454,6 +493,7 @@ class ServicePackageController extends Controller
                     'billing_period' => $item['billing_period'] ?? null,
                     'custom_fields' => $customFields,
                     'custom_fields_prices' => $customFieldsPrices,
+                    'custom_fields_discounts' => $customFieldsDiscounts,
                     'custom_fields_quantities' => $customFieldsQuantities,
                     'custom_fields_use_default_price' => $customFieldsUseDefaultPrice ?? [],
                     'total_price' => $rowTotal,
