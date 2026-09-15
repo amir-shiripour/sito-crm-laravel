@@ -327,6 +327,35 @@ class WorkflowEngine
                         }
                     }
                 }
+
+                if ($relatedType === 'PAYMENT' && class_exists(\Modules\Services\App\Http\Models\Payment::class)) {
+                    $payment = \Modules\Services\App\Http\Models\Payment::find($relatedId);
+                    if ($payment) {
+                        $paymentStatuses = $config['payment_statuses'] ?? [];
+                        $paymentStatuses = array_filter(array_map('strval', $paymentStatuses));
+                        if (!empty($paymentStatuses)) {
+                            $currentStatus = (string)($payment->status ?? '');
+                            $statusMappings = [
+                                'pending'   => ['pending', 'در انتظار تایید', 'در انتظار پرداخت'],
+                                'paid'      => ['paid', 'پرداخت شده', 'موفق'],
+                                'canceled'  => ['canceled', 'cancelled', 'لغو شده', 'رد شده'],
+                            ];
+                            $matched = in_array($currentStatus, $paymentStatuses, true);
+                            if (!$matched && isset($statusMappings[$currentStatus])) {
+                                foreach ($paymentStatuses as $pst) {
+                                    if (in_array(trim($pst), $statusMappings[$currentStatus], true)) {
+                                        $matched = true;
+                                        break;
+                                    }
+                                }
+                            }
+                            if (!$matched) {
+                                Log::info("[Workflows] Skipping workflow {$wf->name} due to payment status filter mismatch.");
+                                continue;
+                            }
+                        }
+                    }
+                }
             }
 
             if ($wf->nodes()->exists()) {
@@ -743,6 +772,49 @@ class WorkflowEngine
                 ]);
 
                 $notifTarget = $config['notification_target'] ?? 'CURRENT_USER';
+
+                // Resolve Action URL (direct link to the relevant resource, e.g. invoice)
+                $actionUrl = null;
+                if (isset($context['invoice']) && !empty($context['invoice']->id)) {
+                    $actionUrl = '/user/services/invoices/' . $context['invoice']->id;
+                } elseif (isset($context['payment']) && !empty($context['payment']->invoice_id)) {
+                    $actionUrl = '/user/services/invoices/' . $context['payment']->invoice_id;
+                } elseif (isset($context['order']) && !empty($context['order']->id)) {
+                    $actionUrl = '/user/services/orders/' . $context['order']->id;
+                } elseif (isset($context['client']) && !empty($context['client']->id)) {
+                    $actionUrl = '/user/clients/' . $context['client']->id;
+                }
+
+                // Check if target is a system Role (e.g. ROLE_1, ROLE_2)
+                if (str_starts_with($notifTarget, 'ROLE_')) {
+                    $roleId = (int) str_replace('ROLE_', '', $notifTarget);
+                    $recipients = collect();
+                    if (class_exists(\Spatie\Permission\Models\Role::class)) {
+                        $role = \Spatie\Permission\Models\Role::findById($roleId);
+                        $recipients = $role ? $role->users : collect();
+                    }
+                    if ($recipients->isEmpty()) {
+                        $recipients = \App\Models\User::whereHas('roles', function ($q) use ($roleId) {
+                            $q->where('id', $roleId);
+                        })->get();
+                    }
+
+                    if ($recipients->isNotEmpty() && class_exists(\Modules\Workflows\Notifications\SystemNotification::class)) {
+                        $title = 'گردش کار: ' . ($instance->workflow->name ?? 'اعلان سیستم');
+                        $sentCount = 0;
+                        foreach ($recipients as $recipientUser) {
+                            $recipientUser->notify(new \Modules\Workflows\Notifications\SystemNotification($title, $message, $actionUrl));
+                            $sentCount++;
+                            Log::info("[Workflows] Sent system notification to Role User ID {$recipientUser->id} (Role ID: {$roleId})");
+                        }
+                        $result = ['status' => 'sent', 'recipients_count' => $sentCount];
+                    } else {
+                        Log::warning("[Workflows] No recipients found for Role ID: {$roleId}");
+                        $result = ['status' => 'role_empty'];
+                    }
+                    break;
+                }
+
                 $notifUserId = Auth::id() ?: ($instance->created_by ?? null);
 
                 if ($notifTarget === 'APPOINTMENT_PROVIDER' && isset($context['appointment'])) {
@@ -780,7 +852,7 @@ class WorkflowEngine
 
                 if ($recipient && class_exists(\Modules\Workflows\Notifications\SystemNotification::class)) {
                     $title = 'گردش کار: ' . ($instance->workflow->name ?? 'اعلان سیستم');
-                    $recipient->notify(new \Modules\Workflows\Notifications\SystemNotification($title, $message));
+                    $recipient->notify(new \Modules\Workflows\Notifications\SystemNotification($title, $message, $actionUrl));
                     Log::info("[Workflows] Sent system notification to User ID {$recipient->id}");
                     $result = ['status' => 'sent', 'user_id' => $recipient->id];
                 } else {
@@ -1102,6 +1174,46 @@ class WorkflowEngine
         return $minutes ? $base->copy()->addMinutes($minutes) : $base;
     }
 
+    public static function translatePaymentStatus(?string $status): string
+    {
+        if (empty($status)) {
+            return '';
+        }
+
+        $statusMap = [
+            'pending'   => 'در انتظار تایید',
+            'paid'      => 'پرداخت شده',
+            'canceled'  => 'لغو شده',
+            'cancelled' => 'لغو شده',
+            'failed'    => 'ناموفق',
+            'rejected'  => 'رد شده',
+            'refunded'  => 'مسترد شده',
+            'completed' => 'تکمیل شده',
+        ];
+
+        $clean = strtolower(trim((string)$status));
+        return $statusMap[$clean] ?? (string)$status;
+    }
+
+    public static function formatCurrencyValue($amount, ?string $currencyLabel = null): string
+    {
+        if (!is_numeric($amount)) {
+            return (string)$amount;
+        }
+
+        if (empty($currencyLabel)) {
+            $currencyLabel = 'تومان';
+            if (class_exists(\Modules\Settings\Entities\Setting::class)) {
+                $currSetting = strtolower(\Modules\Settings\Entities\Setting::where('key', 'currency')->value('value')
+                    ?? \Modules\Settings\Entities\Setting::where('key', 'payment_currency')->value('value')
+                    ?? 'rial');
+                $currencyLabel = in_array($currSetting, ['rial', 'irr', 'ریال']) ? 'ریال' : 'تومان';
+            }
+        }
+
+        return number_format((float)$amount) . ' ' . $currencyLabel;
+    }
+
     public function buildContextData(WorkflowInstance $instance, array $payload = []): array
     {
         $data = ['tokens' => []];
@@ -1109,6 +1221,9 @@ class WorkflowEngine
         // Merge payload into tokens
         if (!empty($payload)) {
             $data['tokens'] = array_merge($data['tokens'], $payload);
+            if (isset($data['tokens']['payment_status'])) {
+                $data['tokens']['payment_status'] = self::translatePaymentStatus($data['tokens']['payment_status']);
+            }
         }
 
         if ($instance->related_type === 'APPOINTMENT' && file_exists(base_path('Modules/Booking/Entities/Appointment.php')) && class_exists('Modules\\Booking\\Entities\\Appointment')) {
@@ -1389,24 +1504,31 @@ class WorkflowEngine
                     $data['client'] = $invoice->customer;
                 }
 
+                $currencyLabel = $invoice->currency_label ?? 'تومان';
+
                 $invoiceTokens = [
-                    'invoice_id'             => $invoice->id,
-                    'invoice_number'         => $invoice->invoice_number ?? $invoice->proforma_invoice_number,
-                    'invoice_total'          => $invoice->total,
-                    'invoice_paid_amount'    => $invoice->paid_amount,
-                    'invoice_remaining'      => $invoice->remainingAmount(),
-                    'invoice_status'         => $invoice->status?->name,
-                    'invoice_due_date'       => $invoice->due_date ? \Morilog\Jalali\Jalalian::fromCarbon($invoice->due_date)->format('Y/m/d') : null,
-                    'invoice_issue_date'     => $invoice->issue_date ? \Morilog\Jalali\Jalalian::fromCarbon($invoice->issue_date)->format('Y/m/d') : null,
-                    'client_name'            => $invoice->client_name,
-                    'client_phone'           => $invoice->client_phone,
-                    'client_email'           => $invoice->client_email,
-                    'invoice_client_name'    => $invoice->client_name,
-                    'invoice_client_phone'   => $invoice->client_phone,
-                    'invoice_client_email'   => $invoice->client_email,
-                    'invoice_is_paid'        => $invoice->isPaid() ? 'بله' : 'خیر',
-                    'invoice_is_overdue'     => $invoice->isOverdue() ? 'بله' : 'خیر',
-                    'invoice_has_payment'    => $invoice->paid_amount > 0 ? 'بله' : 'خیر',
+                    'invoice_id'              => $invoice->id,
+                    'invoice_number'          => $invoice->invoice_number ?? $invoice->proforma_invoice_number,
+                    'invoice_total'           => self::formatCurrencyValue($invoice->total, $currencyLabel),
+                    'invoice_total_raw'       => $invoice->total,
+                    'invoice_paid_amount'     => self::formatCurrencyValue($invoice->paid_amount, $currencyLabel),
+                    'invoice_paid_amount_raw' => $invoice->paid_amount,
+                    'invoice_remaining'       => self::formatCurrencyValue($invoice->remainingAmount(), $currencyLabel),
+                    'invoice_remaining_raw'   => $invoice->remainingAmount(),
+                    'invoice_currency'        => $currencyLabel,
+                    'currency'                => $currencyLabel,
+                    'invoice_status'          => $invoice->status?->name,
+                    'invoice_due_date'        => $invoice->due_date ? \Morilog\Jalali\Jalalian::fromCarbon($invoice->due_date)->format('Y/m/d') : null,
+                    'invoice_issue_date'      => $invoice->issue_date ? \Morilog\Jalali\Jalalian::fromCarbon($invoice->issue_date)->format('Y/m/d') : null,
+                    'client_name'             => $invoice->client_name,
+                    'client_phone'            => $invoice->client_phone,
+                    'client_email'            => $invoice->client_email,
+                    'invoice_client_name'     => $invoice->client_name,
+                    'invoice_client_phone'    => $invoice->client_phone,
+                    'invoice_client_email'    => $invoice->client_email,
+                    'invoice_is_paid'         => $invoice->isPaid() ? 'بله' : 'خیر',
+                    'invoice_is_overdue'      => $invoice->isOverdue() ? 'بله' : 'خیر',
+                    'invoice_has_payment'     => $invoice->paid_amount > 0 ? 'بله' : 'خیر',
                 ];
 
                 // Add invoice creator info
@@ -1436,20 +1558,66 @@ class WorkflowEngine
                     }
                 }
 
+                $currencyLabel = $invoice?->currency_label;
+                if (empty($currencyLabel) && class_exists(\Modules\Settings\Entities\Setting::class)) {
+                    $currSetting = strtolower(\Modules\Settings\Entities\Setting::where('key', 'currency')->value('value')
+                        ?? \Modules\Settings\Entities\Setting::where('key', 'payment_currency')->value('value')
+                        ?? 'rial');
+                    $currencyLabel = in_array($currSetting, ['rial', 'irr', 'ریال']) ? 'ریال' : 'تومان';
+                }
+                $currencyLabel = $currencyLabel ?: 'تومان';
+
+                $paymentStatusPersian = self::translatePaymentStatus($payment->status);
+                $formattedPaymentAmount = self::formatCurrencyValue($payment->amount, $currencyLabel);
+                $methodLabel = $payment->method_label ?? $payment->method;
+
+                $paidAtFormatted = $payment->paid_at
+                    ? \Morilog\Jalali\Jalalian::fromCarbon($payment->paid_at)->format('Y/m/d H:i')
+                    : ($payment->created_at ? \Morilog\Jalali\Jalalian::fromCarbon($payment->created_at)->format('Y/m/d H:i') : null);
+
+                $formattedInvoiceTotal = ($invoice && is_numeric($invoice->total))
+                    ? self::formatCurrencyValue($invoice->total, $currencyLabel)
+                    : $invoice?->total;
+
+                $formattedInvoiceRemaining = ($invoice && is_numeric($invoice->remainingAmount()))
+                    ? self::formatCurrencyValue($invoice->remainingAmount(), $currencyLabel)
+                    : $invoice?->remainingAmount();
+
+                $formattedInvoicePaid = ($invoice && is_numeric($invoice->paid_amount))
+                    ? self::formatCurrencyValue($invoice->paid_amount, $currencyLabel)
+                    : $invoice?->paid_amount;
+
                 $paymentTokens = [
                     'payment_id'                => $payment->id,
-                    'payment_amount'            => $payment->amount,
-                    'payment_method'            => $payment->method,
-                    'payment_status'            => $payment->status,
-                    'payment_paid_at'           => $payment->paid_at?->format('Y-m-d H:i'),
+                    'payment_amount'            => $formattedPaymentAmount,
+                    'payment_amount_raw'        => $payment->amount,
+                    'amount'                    => $formattedPaymentAmount,
+                    'amount_raw'                => $payment->amount,
+                    'payment_currency'          => $currencyLabel,
+                    'currency'                  => $currencyLabel,
+                    'payment_method'            => $methodLabel,
+                    'payment_method_raw'        => $payment->method,
+                    'payment_status'            => $paymentStatusPersian,
+                    'payment_status_raw'        => $payment->status,
+                    'status'                    => $paymentStatusPersian,
+                    'status_raw'                => $payment->status,
+                    'payment_paid_at'           => $paidAtFormatted,
+                    'payment_date'              => $paidAtFormatted,
+                    'payment_gateway'           => $payment->gateway,
+                    'payment_ref_id'            => $payment->transaction_id,
                     'payment_transaction_id'   => $payment->transaction_id,
                     'payment_is_late'           => ($invoice && $invoice->due_date && $payment->paid_at && $payment->paid_at->isAfter($invoice->due_date->endOfDay())) ? 'بله' : 'خیر',
                     'invoice_number'            => $invoice?->invoice_number ?? $invoice?->proforma_invoice_number,
                     'payment_invoice_number'   => $invoice?->invoice_number ?? $invoice?->proforma_invoice_number,
-                    'invoice_total'             => $invoice?->total,
-                    'payment_invoice_total'     => $invoice?->total,
-                    'invoice_remaining'         => $invoice?->remainingAmount(),
-                    'payment_invoice_remaining' => $invoice?->remainingAmount(),
+                    'invoice_total'             => $formattedInvoiceTotal,
+                    'payment_invoice_total'     => $formattedInvoiceTotal,
+                    'invoice_total_raw'         => $invoice?->total,
+                    'payment_invoice_total_raw' => $invoice?->total,
+                    'invoice_remaining'         => $formattedInvoiceRemaining,
+                    'payment_invoice_remaining' => $formattedInvoiceRemaining,
+                    'invoice_remaining_raw'     => $invoice?->remainingAmount(),
+                    'invoice_paid_amount'       => $formattedInvoicePaid,
+                    'payment_invoice_paid'      => $formattedInvoicePaid,
                     'invoice_is_paid'           => $invoice?->isPaid() ? 'بله' : 'خیر',
                     'payment_invoice_is_paid'   => $invoice?->isPaid() ? 'بله' : 'خیر',
                     'client_name'               => $invoice?->client_name ?? $payment->invoice?->client_name,
@@ -1471,11 +1639,16 @@ class WorkflowEngine
                     $data['invoice'] = $order->invoice;
                 }
 
+                $currencyLabel = $order->currency_label ?? 'تومان';
+
                 $orderTokens = [
                     'order_id'           => $order->id,
                     'order_number'       => $order->order_number,
                     'order_status'       => $order->status?->name,
-                    'order_total'        => $order->total_amount,
+                    'order_total'        => self::formatCurrencyValue($order->total_amount, $currencyLabel),
+                    'order_total_raw'    => $order->total_amount,
+                    'order_currency'     => $currencyLabel,
+                    'currency'           => $currencyLabel,
                     'order_service_name' => $order->service?->name ?? $order->notes,
                     'order_issue_date'   => $order->issue_date ? \Morilog\Jalali\Jalalian::fromCarbon($order->issue_date)->format('Y/m/d') : null,
                     'order_renewal_date' => $order->renewal_date ? \Morilog\Jalali\Jalalian::fromCarbon($order->renewal_date)->format('Y/m/d') : null,
@@ -1505,11 +1678,22 @@ class WorkflowEngine
             if ($service) {
                 $data['service'] = $service;
 
+                $currencyLabel = 'تومان';
+                if (class_exists(\Modules\Settings\Entities\Setting::class)) {
+                    $currSetting = strtolower(\Modules\Settings\Entities\Setting::where('key', 'currency')->value('value')
+                        ?? \Modules\Settings\Entities\Setting::where('key', 'payment_currency')->value('value')
+                        ?? 'rial');
+                    $currencyLabel = in_array($currSetting, ['rial', 'irr', 'ریال']) ? 'ریال' : 'تومان';
+                }
+
                 $serviceTokens = [
                     'service_id'           => $service->id,
                     'service_name'         => $service->name,
                     'service_status'       => $service->status?->name,
-                    'service_price'        => $service->base_price,
+                    'service_price'        => self::formatCurrencyValue($service->base_price, $currencyLabel),
+                    'service_price_raw'    => $service->base_price,
+                    'service_currency'     => $currencyLabel,
+                    'currency'             => $currencyLabel,
                     'service_type'         => $service->billing_type,
                 ];
 

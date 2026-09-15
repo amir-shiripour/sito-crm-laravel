@@ -60,6 +60,10 @@
         $financialStatusLabel = 'نیازمند پرداخت';
         $financialStatusColor = 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400';
     }
+
+    $tz = config('booking.timezones.display_default', 'Asia/Tehran');
+    $startLocal = $appointment->start_at_utc?->copy()->timezone($tz);
+    $endLocal = $appointment->end_at_utc?->copy()->timezone($tz);
 @endphp
 
 @section('content')
@@ -130,14 +134,14 @@
                     <span class="text-xs text-gray-400 block mb-1">تاریخ مراجعه</span>
                     <span class="font-medium text-gray-900 dark:text-white flex items-center gap-1.5">
                         <svg class="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                        {{ $appointment->start_at_utc ? jdate($appointment->start_at_utc)->format('Y/m/d (l)') : '---' }}
+                        {{ $startLocal ? jdate($startLocal)->format('Y/m/d (l)') : '---' }}
                     </span>
                 </div>
                 <div>
                     <span class="text-xs text-gray-400 block mb-1">ساعت مراجعه</span>
                     <span class="font-medium text-gray-900 dark:text-white flex items-center gap-1.5">
                         <svg class="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                        {{ $appointment->start_at_utc ? jdate($appointment->start_at_utc)->format('H:i') : '---' }}
+                        <span dir="ltr">{{ $startLocal ? $startLocal->format('H:i') : '---' }}</span>
                     </span>
                 </div>
             </div>

@@ -553,7 +553,7 @@ class ClientInvoiceController extends Controller
                 $storedMethod = str_starts_with($subItem, 'installment-') ? $subItem : 'installment-' . $subItem;
             }
 
-            Payment::create([
+            $payment = Payment::create([
                 'invoice_id'     => $invoice->id,
                 'user_id'        => null,
                 'amount'         => $amount,
@@ -567,6 +567,21 @@ class ClientInvoiceController extends Controller
 
             if (method_exists($invoice, 'updatePaymentStatus')) {
                 $invoice->updatePaymentStatus(false);
+            }
+
+            if (class_exists(\Modules\Workflows\Services\WorkflowEngine::class)) {
+                try {
+                    app(\Modules\Workflows\Services\WorkflowEngine::class)->start('payment_created', 'PAYMENT', $payment->id, [
+                        'status'         => 'pending',
+                        'amount'         => $payment->amount,
+                        'method'         => $payment->method,
+                        'gateway'        => $payment->gateway,
+                        'invoice_id'     => $invoice->id,
+                        'transaction_id' => $payment->transaction_id,
+                    ]);
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::error('[Workflows] Error starting workflow on portal payment: ' . $e->getMessage());
+                }
             }
 
             return back()->with('success', 'اطلاعات پرداخت و فیش واریزی با موفقیت ثبت شد و پس از بررسی و تایید کارشناسان در حساب شما منظور خواهد شد.');
@@ -749,6 +764,30 @@ class ClientInvoiceController extends Controller
                         }
                     }
                 });
+
+                if (class_exists(\Modules\Workflows\Services\WorkflowEngine::class) && isset($payment)) {
+                    try {
+                        app(\Modules\Workflows\Services\WorkflowEngine::class)->start('payment_created', 'PAYMENT', $payment->id, [
+                            'status'         => 'paid',
+                            'amount'         => $payment->amount,
+                            'method'         => $payment->method,
+                            'gateway'        => $payment->gateway,
+                            'invoice_id'     => $invoice->id,
+                            'transaction_id' => $payment->transaction_id,
+                        ]);
+
+                        if ($invoice->isPaid()) {
+                            app(\Modules\Workflows\Services\WorkflowEngine::class)->start('invoice_paid', 'INVOICE', $invoice->id, [
+                                'amount'     => $payment->amount,
+                                'is_paid'    => true,
+                                'is_overdue' => $invoice->isOverdue(),
+                                'remaining'  => $invoice->remainingAmount(),
+                            ]);
+                        }
+                    } catch (\Throwable $e) {
+                        Log::error('[Workflows] Error starting workflow on online payment verify: ' . $e->getMessage());
+                    }
+                }
 
                 return redirect()
                     ->route('client.invoices.show', $invoice->id)

@@ -161,6 +161,10 @@
 
 {{-- Alpine helpers --}}
 <script>
+    window.showToast = function(type, message) {
+        window.dispatchEvent(new CustomEvent('notify', { detail: { type: type || 'info', text: message || '' } }));
+    };
+
     function dashboardLayout() {
         return {
             mobileOpen: false,
@@ -251,5 +255,6 @@
 @livewireScriptConfig
 @includeIf('partials.jalali-date-picker')
 @stack('scripts')
+@stack('js')
 </body>
 </html>

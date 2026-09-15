@@ -86,28 +86,56 @@ class MarketSetting extends Model
 
     public static function getValue(string $key, $default = null)
     {
-        return Cache::rememberForever("market_setting_{$key}", function () use ($key, $default) {
-            $setting = self::where('key', $key)->first();
-            if ($setting) {
-                return $setting->value;
+        try {
+            if (!\Illuminate\Support\Facades\Schema::hasTable('market_settings')) {
+                return self::getDefaultValue($key, $default);
             }
+        } catch (\Throwable $e) {
+            return self::getDefaultValue($key, $default);
+        }
 
-            $keys = explode('.', $key);
-            $value = self::DEFAULTS;
-            foreach ($keys as $k) {
-                if (!isset($value[$k])) {
-                    return $default;
+        try {
+            return Cache::rememberForever("market_setting_{$key}", function () use ($key, $default) {
+                try {
+                    $setting = self::where('key', $key)->first();
+                    if ($setting) {
+                        return $setting->value;
+                    }
+                } catch (\Throwable $e) {
+                    return self::getDefaultValue($key, $default);
                 }
-                $value = $value[$k];
+
+                return self::getDefaultValue($key, $default);
+            });
+        } catch (\Throwable $e) {
+            return self::getDefaultValue($key, $default);
+        }
+    }
+
+    protected static function getDefaultValue(string $key, $default = null)
+    {
+        $keys = explode('.', $key);
+        $value = self::DEFAULTS;
+        foreach ($keys as $k) {
+            if (!isset($value[$k])) {
+                return $default;
             }
-            return $value;
-        });
+            $value = $value[$k];
+        }
+        return $value;
     }
 
     public static function setValue(string $key, $value)
     {
-        $setting = self::updateOrCreate(['key' => $key], ['value' => $value]);
-        Cache::forget("market_setting_{$key}");
-        return $setting;
+        try {
+            if (!\Illuminate\Support\Facades\Schema::hasTable('market_settings')) {
+                return null;
+            }
+            $setting = self::updateOrCreate(['key' => $key], ['value' => $value]);
+            Cache::forget("market_setting_{$key}");
+            return $setting;
+        } catch (\Throwable $e) {
+            return null;
+        }
     }
 }

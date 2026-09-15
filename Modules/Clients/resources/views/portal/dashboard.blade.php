@@ -245,6 +245,10 @@
                                 </thead>
                                 <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
                                 @foreach($recentAppointments as $appointment)
+                                    @php
+                                        $tz = config('booking.timezones.display_default', 'Asia/Tehran');
+                                        $startLocal = $appointment->start_at_utc?->copy()->timezone($tz);
+                                    @endphp
                                     <tr class="hover:bg-gray-50/50 dark:hover:bg-gray-700/50 transition-colors cursor-pointer" onclick="window.location.href='{{ route('client.appointments.show', $appointment->id) }}'">
                                         <td class="px-6 py-4 text-gray-700 dark:text-gray-300">
                                             <div class="flex flex-col">
@@ -254,8 +258,8 @@
                                         </td>
                                         <td class="px-6 py-4 text-gray-700 dark:text-gray-300">
                                             <div class="flex flex-col">
-                                                <span>{{ $appointment->start_at_utc ? \Morilog\Jalali\CalendarUtils::convertNumbers(jdate($appointment->start_at_utc)->format('Y/m/d')) : '---' }}</span>
-                                                <span class="text-xs text-gray-500">{{ $appointment->start_at_utc ? \Morilog\Jalali\CalendarUtils::convertNumbers(jdate($appointment->start_at_utc)->format('H:i')) : '---' }}</span>
+                                                <span>{{ $startLocal ? \Morilog\Jalali\CalendarUtils::convertNumbers(jdate($startLocal)->format('Y/m/d')) : '---' }}</span>
+                                                <span class="text-xs text-gray-500">{{ $startLocal ? \Morilog\Jalali\CalendarUtils::convertNumbers($startLocal->format('H:i')) : '---' }}</span>
                                             </div>
                                         </td>
                                         <td class="px-6 py-4">

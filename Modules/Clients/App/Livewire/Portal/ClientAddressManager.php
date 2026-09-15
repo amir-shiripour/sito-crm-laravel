@@ -5,6 +5,8 @@ namespace Modules\Clients\App\Livewire\Portal;
 use Livewire\Component;
 use Livewire\Attributes\On;
 use Modules\Clients\Entities\ClientAddress;
+use Illuminate\Support\Facades\Schema;
+use Nwidart\Modules\Facades\Module;
 
 class ClientAddressManager extends Component
 {
@@ -37,7 +39,7 @@ class ClientAddressManager extends Component
             return;
         }
 
-        if (interface_exists(\Modules\Market\App\Services\Map\MapServiceInterface::class) && app()->bound(\Modules\Market\App\Services\Map\MapServiceInterface::class)) {
+        if ($this->isMarketActive() && interface_exists(\Modules\Market\App\Services\Map\MapServiceInterface::class) && app()->bound(\Modules\Market\App\Services\Map\MapServiceInterface::class)) {
             $mapService = app(\Modules\Market\App\Services\Map\MapServiceInterface::class);
             $this->searchResults = $mapService->search($query, $this->lat, $this->lng);
         } else {
@@ -82,9 +84,12 @@ class ClientAddressManager extends Component
     {
         $this->loadAddresses();
 
-        if (class_exists(\Modules\Market\Entities\MarketSetting::class)) {
+        if ($this->isMarketActive() && class_exists(\Modules\Market\Entities\MarketSetting::class)) {
             $this->mapProvider = \Modules\Market\Entities\MarketSetting::getValue('map.provider', 'neshan');
             $this->mapApiKey = \Modules\Market\Entities\MarketSetting::getValue('map.api_key', '');
+        } else {
+            $this->mapProvider = 'leaflet';
+            $this->mapApiKey = '';
         }
     }
 
@@ -134,7 +139,7 @@ class ClientAddressManager extends Component
         $this->lng = $lng;
         $geoData = [];
 
-        if (interface_exists(\Modules\Market\App\Services\Map\MapServiceInterface::class) && app()->bound(\Modules\Market\App\Services\Map\MapServiceInterface::class)) {
+        if ($this->isMarketActive() && interface_exists(\Modules\Market\App\Services\Map\MapServiceInterface::class) && app()->bound(\Modules\Market\App\Services\Map\MapServiceInterface::class)) {
             $mapService = app(\Modules\Market\App\Services\Map\MapServiceInterface::class);
             $geoData = $mapService->reverseGeocode($lat, $lng);
         }
@@ -373,6 +378,28 @@ class ClientAddressManager extends Component
 
         $this->loadAddresses();
         $this->dispatch('notify', type: 'success', text: 'آدرس پیش‌فرض تغییر کرد.');
+    }
+
+    protected function isMarketActive(): bool
+    {
+        try {
+            if (class_exists(\Nwidart\Modules\Facades\Module::class)) {
+                if (!\Nwidart\Modules\Facades\Module::has('Market') || !\Nwidart\Modules\Facades\Module::isEnabled('Market')) {
+                    return false;
+                }
+            }
+
+            if (class_exists(\App\Models\Module::class)) {
+                $dbModule = \App\Models\Module::where('slug', 'market')->first();
+                if ($dbModule && (!$dbModule->isInstalled() || !$dbModule->isEnabled())) {
+                    return false;
+                }
+            }
+
+            return Schema::hasTable('market_settings');
+        } catch (\Throwable $e) {
+            return false;
+        }
     }
 
     public function render()

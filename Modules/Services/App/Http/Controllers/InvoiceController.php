@@ -1231,6 +1231,15 @@ class InvoiceController extends Controller
                     'is_overdue' => $invoice->isOverdue(),
                     'remaining' => $invoice->remainingAmount(),
                 ]);
+
+                app(WorkflowEngine::class)->start('payment_created', 'PAYMENT', $lastPayment->id, [
+                    'status' => $lastPayment->status,
+                    'amount' => $lastPayment->amount,
+                    'method' => $lastPayment->method,
+                    'gateway' => $lastPayment->gateway,
+                    'invoice_id' => $invoice->id,
+                    'transaction_id' => $lastPayment->transaction_id,
+                ]);
             } catch (Throwable $e) {
                 Log::error('[Workflows] Error starting workflow: ' . $e->getMessage());
             }
@@ -1323,6 +1332,16 @@ class InvoiceController extends Controller
                     'is_overdue' => $invoice->isOverdue(),
                     'remaining' => $invoice->remainingAmount(),
                 ]);
+
+                app(WorkflowEngine::class)->start('payment_status_changed', 'PAYMENT', $payment->id, [
+                    'status' => 'paid',
+                    'previous_status' => 'pending',
+                    'amount' => $payment->amount,
+                    'method' => $payment->method,
+                    'gateway' => $payment->gateway,
+                    'invoice_id' => $invoice->id,
+                    'transaction_id' => $payment->transaction_id,
+                ]);
             } catch (Throwable $e) {
                 Log::error('[Workflows] Error starting workflow on approvePayment: ' . $e->getMessage());
             }
@@ -1376,6 +1395,22 @@ class InvoiceController extends Controller
             return back()->with('error', 'خطا در رد پرداخت: ' . $e->getMessage());
         }
 
+        if (class_exists(WorkflowEngine::class)) {
+            try {
+                app(WorkflowEngine::class)->start('payment_status_changed', 'PAYMENT', $payment->id, [
+                    'status' => 'canceled',
+                    'previous_status' => 'pending',
+                    'amount' => $payment->amount,
+                    'method' => $payment->method,
+                    'gateway' => $payment->gateway,
+                    'invoice_id' => $invoice->id,
+                    'transaction_id' => $payment->transaction_id,
+                ]);
+            } catch (Throwable $e) {
+                Log::error('[Workflows] Error starting workflow on rejectPayment: ' . $e->getMessage());
+            }
+        }
+
         return redirect()
             ->route('services.invoices.show', $invoice)
             ->with('success', 'فیش / پرداخت با موفقیت رد شد.');
@@ -1392,6 +1427,8 @@ class InvoiceController extends Controller
         if ($payment->status === 'canceled') {
             return back()->with('error', 'این پرداخت قبلاً لغو شده است.');
         }
+
+        $prevPaymentStatus = $payment->status;
 
         try {
             DB::transaction(function () use ($invoice, $payment) {
@@ -1431,6 +1468,23 @@ class InvoiceController extends Controller
                     'is_paid' => $invoice->isPaid(),
                     'is_overdue' => $invoice->isOverdue(),
                     'remaining' => $invoice->remainingAmount(),
+                ]);
+
+                app(WorkflowEngine::class)->start('payment_status_changed', 'PAYMENT', $payment->id, [
+                    'status' => 'canceled',
+                    'previous_status' => $prevPaymentStatus,
+                    'amount' => $payment->amount,
+                    'method' => $payment->method,
+                    'gateway' => $payment->gateway,
+                    'invoice_id' => $invoice->id,
+                    'transaction_id' => $payment->transaction_id,
+                ]);
+
+                app(WorkflowEngine::class)->start('payment_cancelled', 'PAYMENT', $payment->id, [
+                    'status' => 'canceled',
+                    'amount' => $payment->amount,
+                    'method' => $payment->method,
+                    'invoice_id' => $invoice->id,
                 ]);
             } catch (Throwable $e) {
                 Log::error('[Workflows] Error starting workflow: ' . $e->getMessage());
