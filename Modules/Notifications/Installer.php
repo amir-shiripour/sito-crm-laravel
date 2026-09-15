@@ -50,6 +50,8 @@ class Installer extends BaseModuleInstaller
         $perms = [
             'notifications.view',
             'notifications.manage',
+            'notifications.settings',
+            'notifications.broadcast',
         ];
 
         $tracker = $this->loadTracker();

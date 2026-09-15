@@ -188,7 +188,13 @@ class WorkflowController extends Controller
             }
         }
 
-        return view('workflows::user.workflows.create', compact('triggerOptions', 'services', 'users', 'providers', 'tokens', 'cureStatuses', 'cureAssignableRoles', 'cureRoles', 'clientStatuses', 'serviceModuleStatuses'));
+        $rolesQuery = \Spatie\Permission\Models\Role::orderBy('name');
+        if (!auth()->user() || !auth()->user()->hasRole('super-admin')) {
+            $rolesQuery->where('name', '!=', 'super-admin');
+        }
+        $roles = $rolesQuery->get();
+
+        return view('workflows::user.workflows.create', compact('triggerOptions', 'services', 'users', 'providers', 'tokens', 'cureStatuses', 'cureAssignableRoles', 'cureRoles', 'clientStatuses', 'serviceModuleStatuses', 'roles'));
     }
 
     public function store(Request $request)
@@ -303,7 +309,13 @@ class WorkflowController extends Controller
             }
         }
 
-        return view('workflows::user.workflows.edit', compact('workflow', 'triggerOptions', 'users', 'services', 'providers', 'tokens', 'cureStatuses', 'cureAssignableRoles', 'cureRoles', 'clientStatuses', 'serviceModuleStatuses'));
+        $rolesQuery = \Spatie\Permission\Models\Role::orderBy('name');
+        if (!auth()->user() || !auth()->user()->hasRole('super-admin')) {
+            $rolesQuery->where('name', '!=', 'super-admin');
+        }
+        $roles = $rolesQuery->get();
+
+        return view('workflows::user.workflows.edit', compact('workflow', 'triggerOptions', 'users', 'services', 'providers', 'tokens', 'cureStatuses', 'cureAssignableRoles', 'cureRoles', 'clientStatuses', 'serviceModuleStatuses', 'roles'));
     }
 
     public function update(Request $request, Workflow $workflow)

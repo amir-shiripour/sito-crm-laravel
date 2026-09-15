@@ -204,6 +204,14 @@ class HandleNodeReached
                     if (!empty($assignedUsers)) {
                         $assigneeId = $assignedUsers[0]['user_id'];
                     }
+                } elseif (str_starts_with($assigneeTarget, 'ROLE_')) {
+                    $roleId = (int) str_replace('ROLE_', '', $assigneeTarget);
+                    $userWithRole = \App\Models\User::whereHas('roles', function ($q) use ($roleId) {
+                        $q->where('id', $roleId);
+                    })->first();
+                    if ($userWithRole) {
+                        $assigneeId = $userWithRole->id;
+                    }
                 } elseif ($assigneeTarget === 'CLIENT_CREATOR' && isset($context['client'])) {
                     $assigneeId = $context['client']->created_by ?? $assigneeId;
                 } elseif ($assigneeTarget === 'CLIENT_ASSIGNED_USER' && isset($context['client'])) {

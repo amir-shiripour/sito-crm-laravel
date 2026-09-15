@@ -178,7 +178,8 @@
             @if(Route::has('user.notifications.index') && auth()->check() && auth()->user()->can('notifications.view'))
                 @php
                     $unreadNotificationsCount = 0;
-                    $latestNotifications = collect();
+                    $initialNotifications = collect();
+                    $soundEnabled = true;
                     if (class_exists(\Modules\Notifications\Entities\Notification::class)) {
                         $user = auth()->user();
                         $unreadNotificationsCount = \Modules\Notifications\Entities\Notification::where('notifiable_type', get_class($user))
@@ -186,18 +187,112 @@
                             ->whereNull('read_at')
                             ->count();
                         
-                        $latestNotifications = \Modules\Notifications\Entities\Notification::where('notifiable_type', get_class($user))
+                        $latestList = \Modules\Notifications\Entities\Notification::where('notifiable_type', get_class($user))
                             ->where('notifiable_id', $user->id)
                             ->orderByDesc('created_at')
-                            ->take(5)
+                            ->take(6)
                             ->get();
+
+                        $initialNotifications = $latestList->map(function($n) {
+                            return [
+                                'id'          => (string) $n->id,
+                                'title'       => (string) $n->title,
+                                'message'     => (string) $n->message,
+                                'action_url'  => $n->action_url,
+                                'category'    => (string) $n->category,
+                                'priority'    => (string) $n->priority,
+                                'severity'    => (string) $n->severity,
+                                'is_unread'   => is_null($n->read_at),
+                                'created_at'  => $n->created_at->diffForHumans(),
+                            ];
+                        })->values();
+
+                        if (class_exists(\Modules\Notifications\Entities\NotificationUserSetting::class)) {
+                            $setting = \Modules\Notifications\Entities\NotificationUserSetting::where('user_id', $user->id)->first();
+                            $soundEnabled = $setting ? (bool) $setting->sound_enabled : true;
+                        }
                     }
                 @endphp
 
-                {{-- اعلانات --}}
+                {{-- اعلانات با به‌روزرسانی آنی و زنده --}}
                 <div class="relative" x-data="{
                     open: false,
                     unreadCount: {{ $unreadNotificationsCount }},
+                    notifications: {{ Js::from($initialNotifications) }},
+                    soundEnabled: {{ $soundEnabled ? 'true' : 'false' }},
+
+                    playSound() {
+                        if (!this.soundEnabled) return;
+                        try {
+                            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                            const osc = audioCtx.createOscillator();
+                            const gain = audioCtx.createGain();
+                            osc.type = 'sine';
+                            osc.frequency.setValueAtTime(587.33, audioCtx.currentTime);
+                            osc.frequency.setValueAtTime(880, audioCtx.currentTime + 0.1);
+                            gain.gain.setValueAtTime(0.12, audioCtx.currentTime);
+                            gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.35);
+                            osc.connect(gain);
+                            gain.connect(audioCtx.destination);
+                            osc.start();
+                            osc.stop(audioCtx.currentTime + 0.35);
+                        } catch(e) {}
+                    },
+
+                    async fetchLatest() {
+                        try {
+                            const res = await fetch('{{ route('user.notifications.latest') }}');
+                            const data = await res.json();
+                            if (typeof data.unreadCount === 'number') {
+                                this.unreadCount = data.unreadCount;
+                            }
+                            if (Array.isArray(data.items)) {
+                                this.notifications = data.items;
+                            }
+                        } catch (error) {
+                            console.error('Error fetching latest notifications:', error);
+                        }
+                    },
+
+                    toggleOpen() {
+                        this.open = !this.open;
+                        if (this.open) {
+                            this.fetchLatest();
+                        }
+                    },
+
+                    init() {
+                        // ۱. در صورتی که Laravel Echo یا Reverb/Pusher فعال باشد، اعلان به صورت آنی و لحظه‌ای دریافت می‌شود
+                        if (window.Echo && {{ auth()->check() ? auth()->id() : 'null' }}) {
+                            try {
+                                window.Echo.private(`App.Models.User.{{ auth()->id() }}`)
+                                    .notification((notification) => {
+                                        this.playSound();
+                                        this.fetchLatest();
+                                    });
+                            } catch(e) {}
+                        }
+
+                        // ۲. بررسی دوره‌ای (Polling) برای تضمین همگام‌سازی بلادرنگ شمارنده، آیتم‌ها و صدای هشدار
+                        setInterval(() => {
+                            fetch('{{ route('user.notifications.unread-count') }}')
+                                .then(res => res.json())
+                                .then(data => {
+                                    if (typeof data.count === 'number') {
+                                        const previousCount = this.unreadCount;
+                                        this.unreadCount = data.count;
+                                        if (data.count > previousCount) {
+                                            this.playSound();
+                                            this.fetchLatest();
+                                        } else if (data.count !== previousCount) {
+                                            this.fetchLatest();
+                                        }
+                                    }
+                                })
+                                .catch(() => {});
+                        }, 15000);
+                    },
+
                     async markAsRead(id, actionUrl, event) {
                         if (event) {
                             event.preventDefault();
@@ -214,15 +309,10 @@
                             });
                             const data = await response.json();
                             if (data.success) {
-                                this.unreadCount = Math.max(0, this.unreadCount - 1);
-                                const el = document.getElementById('dropdown-notification-' + id);
-                                if (el) {
-                                    el.classList.remove('bg-indigo-50/30', 'dark:bg-indigo-950/10');
-                                    el.classList.add('hover:bg-gray-50/50', 'dark:hover:bg-gray-700/30');
-                                    const badge = el.querySelector('.unread-dot');
-                                    if (badge) badge.remove();
-                                    const btn = el.querySelector('.mark-read-btn');
-                                    if (btn) btn.remove();
+                                const item = this.notifications.find(n => n.id === id);
+                                if (item && item.is_unread) {
+                                    item.is_unread = false;
+                                    this.unreadCount = Math.max(0, this.unreadCount - 1);
                                 }
                                 if (typeof showToast === 'function') {
                                     showToast('success', data.message);
@@ -235,6 +325,7 @@
                             console.error('Error marking notification as read:', error);
                         }
                     },
+
                     async markAllAsRead() {
                         try {
                             const response = await fetch('{{ route('user.notifications.mark-all-read') }}', {
@@ -248,14 +339,7 @@
                             const data = await response.json();
                             if (data.success) {
                                 this.unreadCount = 0;
-                                document.querySelectorAll('[id^=\'dropdown-notification-\']').forEach(el => {
-                                    el.classList.remove('bg-indigo-50/30', 'dark:bg-indigo-950/10');
-                                    el.classList.add('hover:bg-gray-50/50', 'dark:hover:bg-gray-700/30');
-                                    const badge = el.querySelector('.unread-dot');
-                                    if (badge) badge.remove();
-                                    const btn = el.querySelector('.mark-read-btn');
-                                    if (btn) btn.remove();
-                                });
+                                this.notifications.forEach(n => n.is_unread = false);
                                 if (typeof showToast === 'function') {
                                     showToast('success', data.message);
                                 }
@@ -264,12 +348,33 @@
                             console.error('Error marking all notifications as read:', error);
                         }
                     },
-                    async deleteNotification(id, event) {
+
+                    deleteModal: {
+                        open: false,
+                        id: null,
+                        loading: false
+                    },
+
+                    openDeleteModal(id, event) {
                         if (event) {
                             event.preventDefault();
                             event.stopPropagation();
                         }
-                        if (!confirm('آیا از حذف این اعلان اطمینان دارید؟')) return;
+                        this.deleteModal.id = id;
+                        this.deleteModal.loading = false;
+                        this.deleteModal.open = true;
+                    },
+
+                    closeDeleteModal() {
+                        this.deleteModal.open = false;
+                        this.deleteModal.id = null;
+                        this.deleteModal.loading = false;
+                    },
+
+                    async confirmDelete() {
+                        if (!this.deleteModal.id || this.deleteModal.loading) return;
+                        const id = this.deleteModal.id;
+                        this.deleteModal.loading = true;
                         try {
                             const response = await fetch('{{ route('user.notifications.destroy', ['id' => 'NOTIFICATION_ID']) }}'.replace('NOTIFICATION_ID', id), {
                                 method: 'DELETE',
@@ -281,34 +386,32 @@
                             });
                             const data = await response.json();
                             if (data.success) {
-                                const el = document.getElementById('dropdown-notification-' + id);
-                                if (el) {
-                                    if (el.classList.contains('bg-indigo-50/30') || el.classList.contains('dark:bg-indigo-950/10')) {
-                                        this.unreadCount = Math.max(0, this.unreadCount - 1);
-                                    }
-                                    el.style.transition = 'all 0.3s ease';
-                                    el.style.opacity = '0';
-                                    el.style.transform = 'translateY(10px)';
-                                    setTimeout(() => {
-                                        el.remove();
-                                        const list = document.getElementById('dropdown-notifications-list');
-                                        const itemsCount = Array.from(list.children).filter(child => !child.classList.contains('hidden') && child.id.startsWith('dropdown-notification-')).length;
-                                        if (itemsCount === 0) {
-                                            const emptyState = document.getElementById('dropdown-notifications-empty');
-                                            if (emptyState) emptyState.classList.remove('hidden');
-                                        }
-                                    }, 300);
+                                const item = this.notifications.find(n => n.id === id);
+                                if (item && item.is_unread) {
+                                    this.unreadCount = Math.max(0, this.unreadCount - 1);
                                 }
+                                this.notifications = this.notifications.filter(n => n.id !== id);
+                                this.closeDeleteModal();
                                 if (typeof showToast === 'function') {
-                                    showToast('success', data.message);
+                                    showToast('success', data.message || 'اعلان با موفقیت حذف شد.');
+                                }
+                            } else {
+                                this.closeDeleteModal();
+                                if (typeof showToast === 'function') {
+                                    showToast('error', data.message || 'خطا در حذف اعلان.');
                                 }
                             }
                         } catch (error) {
                             console.error('Error deleting notification:', error);
+                            this.closeDeleteModal();
+                            if (typeof showToast === 'function') {
+                                showToast('error', 'خطایی در ارتباط با سرور رخ داد.');
+                            }
                         }
                     }
                 }">
-                    <button @click="open=!open"
+                    {{-- دکمه زنگوله --}}
+                    <button @click="toggleOpen()"
                             class="relative w-10 h-10 flex items-center justify-center rounded-xl bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-indigo-600 dark:hover:text-indigo-400 transition-all border border-transparent dark:border-gray-700"
                             aria-haspopup="true" :aria-expanded="open">
                         <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -322,6 +425,7 @@
                         </span>
                     </button>
 
+                    {{-- دراپ‌داون لیست اعلان‌ها --}}
                     <div x-cloak x-show="open" @click.outside="open=false"
                          x-transition:enter="transition ease-out duration-200"
                          x-transition:enter-start="opacity-0 translate-y-2 scale-95"
@@ -342,76 +446,71 @@
                         </div>
 
                         <div id="dropdown-notifications-list" class="max-h-[24rem] overflow-y-auto custom-scrollbar divide-y divide-gray-100/60 dark:divide-gray-700/40">
-                            @forelse($latestNotifications as $n)
-                                @php
-                                    $data = $n->formatted_data;
-                                    $isUnread = is_null($n->read_at);
-                                    $isEscalation = str_contains($n->type, 'SnoozeEscalation') || str_contains($n->type, 'escalation');
+                            <template x-for="n in notifications" :key="n.id">
+                                <div :id="'dropdown-notification-' + n.id" 
+                                     class="relative flex gap-3 px-4 py-3.5 transition-all duration-200 group"
+                                     :class="n.is_unread ? 'bg-indigo-50/30 dark:bg-indigo-950/10' : 'hover:bg-gray-50/50 dark:hover:bg-gray-800/40'">
                                     
-                                    $bgColor = $isUnread 
-                                        ? 'bg-indigo-50/30 dark:bg-indigo-950/10' 
-                                        : 'hover:bg-gray-50/50 dark:hover:bg-gray-800/40';
+                                    <template x-if="n.action_url">
+                                        <a href="#" @click="markAsRead(n.id, n.action_url, $event)" class="absolute inset-0 z-0"></a>
+                                    </template>
+                                    <template x-if="!n.action_url">
+                                        <a href="#" @click="markAsRead(n.id, null, $event)" class="absolute inset-0 z-0"></a>
+                                    </template>
 
-                                    $iconBg = 'bg-indigo-100 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-400';
-                                    $iconSvg = '<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>';
-
-                                    if ($isEscalation) {
-                                        $iconBg = 'bg-rose-100 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400';
-                                        $iconSvg = '<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>';
-                                    } elseif (isset($data['type'])) {
-                                        if ($data['type'] === 'success' || str_contains(strtolower($data['title'] ?? ''), 'پرداخت') || str_contains(strtolower($data['message'] ?? ''), 'موفق')) {
-                                            $iconBg = 'bg-emerald-100 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400';
-                                            $iconSvg = '<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>';
-                                        } elseif ($data['type'] === 'info' || str_contains(strtolower($data['title'] ?? ''), 'کاربر')) {
-                                            $iconBg = 'bg-blue-100 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400';
-                                            $iconSvg = '<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" /></svg>';
-                                        }
-                                    }
-                                    
-                                    $actionUrl = $data['action_url'] ?? null;
-                                @endphp
-
-                                <div id="dropdown-notification-{{ $n->id }}" 
-                                     class="relative flex gap-3 px-4 py-3.5 transition-all duration-200 group {{ $bgColor }}">
-                                    
-                                    @if($actionUrl)
-                                        <a href="#" @click="markAsRead('{{ $n->id }}', '{{ $actionUrl }}', $event)" class="absolute inset-0 z-0"></a>
-                                    @else
-                                        <a href="#" @click="markAsRead('{{ $n->id }}', null, $event)" class="absolute inset-0 z-0"></a>
-                                    @endif
-
-                                    <div class="relative z-10 w-8 h-8 rounded-xl flex items-center justify-center shrink-0 {{ $iconBg }}">
-                                        {!! $iconSvg !!}
+                                    {{-- آیکون متناسب با وضعیت و اهمیت --}}
+                                    <div class="relative z-10 w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+                                         :class="{
+                                            'bg-rose-100 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400': n.severity === 'danger' || n.priority === 'urgent',
+                                            'bg-amber-100 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400': (n.severity === 'warning' || n.priority === 'high') && n.severity !== 'danger' && n.priority !== 'urgent',
+                                            'bg-emerald-100 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400': n.severity === 'success',
+                                            'bg-indigo-100 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-400': n.severity === 'info' || (!n.severity && n.priority !== 'urgent' && n.priority !== 'high' && n.severity !== 'success')
+                                         }">
+                                        <template x-if="n.severity === 'danger' || n.priority === 'urgent'">
+                                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                            </svg>
+                                        </template>
+                                        <template x-if="(n.severity === 'warning' || n.priority === 'high') && n.severity !== 'danger' && n.priority !== 'urgent'">
+                                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                            </svg>
+                                        </template>
+                                        <template x-if="n.severity === 'success'">
+                                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                            </svg>
+                                        </template>
+                                        <template x-if="n.severity !== 'danger' && n.priority !== 'urgent' && n.severity !== 'warning' && n.priority !== 'high' && n.severity !== 'success'">
+                                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                            </svg>
+                                        </template>
                                     </div>
 
+                                    {{-- محتوای متن اعلان --}}
                                     <div class="relative z-10 flex-1 min-w-0">
                                         <div class="flex items-center justify-between gap-1">
-                                            <p class="text-xs font-bold text-gray-900 dark:text-white truncate">
-                                                {{ $data['title'] ?? 'اعلان سیستم' }}
-                                            </p>
-                                            @if($isUnread)
-                                                <span class="unread-dot w-2 h-2 rounded-full bg-indigo-600 dark:bg-indigo-400 shrink-0"></span>
-                                            @endif
+                                            <p class="text-xs font-bold text-gray-900 dark:text-white truncate" x-text="n.title"></p>
+                                            <span x-show="n.is_unread" class="unread-dot w-2 h-2 rounded-full bg-indigo-600 dark:bg-indigo-400 shrink-0"></span>
                                         </div>
-                                        <p class="text-[11px] text-gray-650 dark:text-gray-400 mt-1 leading-relaxed line-clamp-2">
-                                            {{ $data['message'] ?? $data['description'] ?? '' }}
-                                        </p>
+                                        <p class="text-[11px] text-gray-600 dark:text-gray-400 mt-1 leading-relaxed line-clamp-2" x-text="n.message"></p>
                                         <div class="flex items-center justify-between mt-2 gap-2">
-                                            <span class="text-[9px] text-gray-400 dark:text-gray-500 font-medium">
-                                                {{ $n->created_at->diffForHumans() }}
-                                            </span>
+                                            <span class="text-[9px] text-gray-400 dark:text-gray-500 font-medium" x-text="n.created_at"></span>
                                             
                                             <div class="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
-                                                @if($isUnread)
-                                                    <button @click="markAsRead('{{ $n->id }}', null, $event)"
+                                                <template x-if="n.is_unread">
+                                                    <button @click.stop.prevent="markAsRead(n.id, null, $event)"
+                                                            type="button"
                                                             title="علامت خوانده شده"
                                                             class="mark-read-btn p-1 rounded-md bg-gray-100 dark:bg-gray-800 hover:bg-gray-250 dark:hover:bg-gray-700/60 text-gray-400 hover:text-gray-750 dark:hover:text-gray-200 transition-colors">
                                                         <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
                                                         </svg>
                                                     </button>
-                                                @endif
-                                                <button @click="deleteNotification('{{ $n->id }}', $event)"
+                                                </template>
+                                                <button @click.stop.prevent="openDeleteModal(n.id, $event)"
+                                                        type="button"
                                                         title="حذف اعلان"
                                                         class="p-1 rounded-md bg-rose-50/50 dark:bg-rose-950/20 hover:bg-rose-100 dark:hover:bg-rose-900/40 text-gray-400 hover:text-rose-600 dark:hover:text-rose-450 transition-colors">
                                                     <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -422,11 +521,10 @@
                                         </div>
                                     </div>
                                 </div>
-                            @empty
-                                {{-- Empty state dynamically handled --}}
-                            @endforelse
+                            </template>
 
-                            <div id="dropdown-notifications-empty" class="@if($latestNotifications->isNotEmpty()) hidden @endif flex flex-col items-center justify-center py-10 px-4 text-center">
+                            {{-- وضعیت خالی بودن --}}
+                            <div x-show="notifications.length === 0" class="flex flex-col items-center justify-center py-10 px-4 text-center">
                                 <div class="w-12 h-12 rounded-full bg-gray-50 dark:bg-gray-900/30 flex items-center justify-center text-gray-300 dark:text-gray-600 mb-3">
                                     <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0a2 2 0 01-2 2H6a2 2 0 01-2-2m16 0V9a2 2 0 00-2-2H6a2 2 0 00-2 2v4.5m16 3H4" />
@@ -441,6 +539,56 @@
 
                         <div class="p-2 border-t border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/30 text-center">
                             <a href="{{ route('user.notifications.index') }}" class="text-xs font-bold text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300">نمایش همه اعلان‌ها</a>
+                        </div>
+                    </div>
+
+                    {{-- مودال اختصاصی تایید حذف پنل برای هدر (Panel Delete Alert Modal) --}}
+                    <div x-cloak x-show="deleteModal.open"
+                         class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm"
+                         x-transition:enter="transition ease-out duration-200"
+                         x-transition:enter-start="opacity-0"
+                         x-transition:enter-end="opacity-100"
+                         x-transition:leave="transition ease-in duration-150"
+                         x-transition:leave-start="opacity-100"
+                         x-transition:leave-end="opacity-0">
+
+                        <div class="bg-white dark:bg-gray-800 rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-gray-100 dark:border-gray-700 text-center space-y-4 transform transition-all"
+                             @click.outside="closeDeleteModal()"
+                             x-transition:enter="transition ease-out duration-200"
+                             x-transition:enter-start="scale-95 opacity-0"
+                             x-transition:enter-end="scale-100 opacity-100"
+                             x-transition:leave="transition ease-in duration-150"
+                             x-transition:leave-start="scale-100 opacity-100"
+                             x-transition:leave-end="scale-95 opacity-0">
+
+                            <div class="w-14 h-14 rounded-2xl bg-rose-50 text-rose-600 dark:bg-rose-950/50 dark:text-rose-400 flex items-center justify-center mx-auto border border-rose-100 dark:border-rose-900/30">
+                                <svg class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                            </div>
+
+                            <div>
+                                <h3 class="text-base font-bold text-gray-900 dark:text-white">حذف اعلان</h3>
+                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-2 leading-relaxed">آیا از حذف این اعلان از سیستم اطمینان دارید؟ این عملیات غیرقابل بازگشت است.</p>
+                            </div>
+
+                            <div class="flex items-center justify-center gap-3 pt-2">
+                                <button type="button" @click="closeDeleteModal()" :disabled="deleteModal.loading"
+                                        class="w-1/2 py-2.5 text-xs font-bold rounded-xl text-gray-700 bg-gray-100 hover:bg-gray-200 dark:text-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 transition-colors">
+                                    انصراف
+                                </button>
+                                <button type="button" @click="confirmDelete()" :disabled="deleteModal.loading"
+                                        class="w-1/2 py-2.5 text-xs font-bold rounded-xl text-white bg-rose-600 hover:bg-rose-700 transition-colors shadow-sm inline-flex items-center justify-center gap-1.5">
+                                    <span x-show="!deleteModal.loading">بله، حذف شود</span>
+                                    <span x-cloak x-show="deleteModal.loading" class="inline-flex items-center gap-1">
+                                        <svg class="animate-spin w-4 h-4 text-white" fill="none" viewBox="0 0 24 24">
+                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                                        </svg>
+                                        در حال حذف...
+                                    </span>
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>

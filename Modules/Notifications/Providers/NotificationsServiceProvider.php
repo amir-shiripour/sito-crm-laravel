@@ -3,6 +3,8 @@
 namespace Modules\Notifications\Providers;
 
 use Illuminate\Support\ServiceProvider;
+use Modules\Notifications\Console\Commands\PruneNotificationsCommand;
+use Modules\Notifications\Services\NotificationService;
 
 class NotificationsServiceProvider extends ServiceProvider
 {
@@ -15,11 +17,21 @@ class NotificationsServiceProvider extends ServiceProvider
         $this->registerViews();
 
         $this->loadMigrationsFrom(module_path($this->moduleName, 'Database/Migrations'));
+
+        if ($this->app->runningInConsole()) {
+            $this->commands([
+                PruneNotificationsCommand::class,
+            ]);
+        }
     }
 
     public function register(): void
     {
         $this->app->register(RouteServiceProvider::class);
+
+        $this->app->singleton(NotificationService::class, function () {
+            return new NotificationService();
+        });
     }
 
     protected function registerConfig(): void

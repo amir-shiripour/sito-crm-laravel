@@ -17,6 +17,8 @@
         \Modules\Workflows\Entities\WorkflowAction::TYPE_CREATE_INVOICE           => 'ساخت فاکتور تمدید',
     ];
 
+    $roles = $roles ?? (class_exists(\Spatie\Permission\Models\Role::class) ? \Spatie\Permission\Models\Role::orderBy('name')->get() : collect());
+
     // Collect available service statuses for the CHANGE_SERVICE_STATUS action
     $serviceModuleStatuses = $serviceModuleStatuses ?? [];
     $allServiceStatuses = [];
@@ -574,6 +576,13 @@
                             <option value="CURRENT_USER">کاربر فعلی سیستم</option>
                             <option value="APPOINTMENT_PROVIDER">پزشک نوبت مربوطه</option>
                             <option value="SPECIFIC_USER">کاربر خاص مشخص شده</option>
+                            @if(isset($roles) && count($roles) > 0)
+                                <optgroup label="نقش‌های سیستمی (ارسال به همه کاربران دارای نقش)">
+                                    @foreach($roles as $role)
+                                        <option value="ROLE_{{ $role->id }}" @selected(($cfg['notification_target'] ?? '') === "ROLE_{$role->id}")>کاربران با نقش «{{ $role->name }}»</option>
+                                    @endforeach
+                                </optgroup>
+                            @endif
                             <optgroup label="طرح درمان">
                                 <option value="TREATMENT_PLAN_CREATOR">ایجادکننده طرح درمان</option>
                                 <option value="TREATMENT_PLAN_CLIENT_ASSIGNEE">بیمار طرح درمان</option>

@@ -10,26 +10,62 @@ use Modules\Notifications\Entities\Notification;
 class NotificationController extends Controller
 {
     /**
-     * نمایش لیست اعلان‌های کاربر جاری.
+     * نمایش لیست اعلان‌های کاربر جاری با فیلترها و جستجو.
      */
     public function index(Request $request)
     {
         $user = Auth::user();
         
-        $filter = $request->get('filter', 'all'); // all, unread, read
+        $statusFilter   = $request->get('filter', 'all'); // all, unread, read
+        $categoryFilter = $request->get('category', 'all');
+        $priorityFilter = $request->get('priority', 'all');
+        $search         = $request->get('search');
         
-        $query = Notification::where('notifiable_type', get_class($user))
+        $baseQuery = Notification::where('notifiable_type', get_class($user))
             ->where('notifiable_id', $user->id);
 
-        if ($filter === 'unread') {
-            $query->whereNull('read_at');
-        } elseif ($filter === 'read') {
-            $query->whereNotNull('read_at');
+        // آمار سریع
+        $unreadCount = (clone $baseQuery)->unread()->count();
+        $readCount   = (clone $baseQuery)->read()->count();
+        $totalCount  = (clone $baseQuery)->count();
+
+        $query = clone $baseQuery;
+
+        if ($statusFilter === 'unread') {
+            $query->unread();
+        } elseif ($statusFilter === 'read') {
+            $query->read();
         }
 
-        $notifications = $query->orderByDesc('created_at')->paginate(15);
+        if ($categoryFilter && $categoryFilter !== 'all') {
+            $query->category($categoryFilter);
+        }
 
-        return view('notifications::user.index', compact('notifications', 'filter'));
+        if ($priorityFilter && $priorityFilter !== 'all') {
+            $query->priority($priorityFilter);
+        }
+
+        if (!empty($search)) {
+            $query->search($search);
+        }
+
+        $notifications = $query->orderByDesc('created_at')->paginate(15)->withQueryString();
+
+        $categories = config('notifications.categories', []);
+        $priorities = config('notifications.priorities', []);
+
+        return view('notifications::user.index', compact(
+            'notifications',
+            'statusFilter',
+            'categoryFilter',
+            'priorityFilter',
+            'search',
+            'unreadCount',
+            'readCount',
+            'totalCount',
+            'categories',
+            'priorities'
+        ));
     }
 
     /**
@@ -65,7 +101,7 @@ class NotificationController extends Controller
         
         Notification::where('notifiable_type', get_class($user))
             ->where('notifiable_id', $user->id)
-            ->whereNull('read_at')
+            ->unread()
             ->update(['read_at' => now()]);
 
         if ($request->expectsJson()) {
@@ -76,6 +112,35 @@ class NotificationController extends Controller
         }
 
         return back()->with('success', 'تمام اعلان‌ها خوانده شدند.');
+    }
+
+    /**
+     * علامت‌گذاری دسته‌جمعی اعلان‌های انتخاب‌شده به عنوان خوانده شده.
+     */
+    public function bulkMarkAsRead(Request $request)
+    {
+        $request->validate([
+            'ids'   => 'required|array',
+            'ids.*' => 'string',
+        ]);
+
+        $user = Auth::user();
+
+        $count = Notification::where('notifiable_type', get_class($user))
+            ->where('notifiable_id', $user->id)
+            ->whereIn('id', $request->ids)
+            ->unread()
+            ->update(['read_at' => now()]);
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'count'   => $count,
+                'message' => "تعداد {$count} اعلان به عنوان خوانده شده ثبت شدند."
+            ]);
+        }
+
+        return back()->with('success', "تعداد {$count} اعلان به عنوان خوانده شده ثبت شدند.");
     }
 
     /**
@@ -100,5 +165,91 @@ class NotificationController extends Controller
         }
 
         return back()->with('success', 'اعلان حذف شد.');
+    }
+
+    /**
+     * حذف دسته‌جمعی اعلان‌های انتخاب‌شده.
+     */
+    public function bulkDestroy(Request $request)
+    {
+        $request->validate([
+            'ids'   => 'required|array',
+            'ids.*' => 'string',
+        ]);
+
+        $user = Auth::user();
+
+        $count = Notification::where('notifiable_type', get_class($user))
+            ->where('notifiable_id', $user->id)
+            ->whereIn('id', $request->ids)
+            ->delete();
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'count'   => $count,
+                'message' => "تعداد {$count} اعلان با موفقیت حذف شدند."
+            ]);
+        }
+
+        return back()->with('success', "تعداد {$count} اعلان حذف شدند.");
+    }
+
+    /**
+     * متد سبک برای بررسی تعداد اعلان‌های خوانده نشده (مناسب Polling زنده).
+     */
+    public function unreadCount(Request $request)
+    {
+        $user = Auth::user();
+        if (!$user) {
+            return response()->json(['count' => 0]);
+        }
+
+        $count = Notification::where('notifiable_type', get_class($user))
+            ->where('notifiable_id', $user->id)
+            ->unread()
+            ->count();
+
+        return response()->json(['count' => $count]);
+    }
+
+    /**
+     * دریافت آخرین اعلان‌ها جهت به‌روزرسانی زنده تاپ‌بار بدون رفرش.
+     */
+    public function latest(Request $request)
+    {
+        $user = Auth::user();
+        if (!$user) {
+            return response()->json(['unreadCount' => 0, 'items' => []]);
+        }
+
+        $unreadCount = Notification::where('notifiable_type', get_class($user))
+            ->where('notifiable_id', $user->id)
+            ->unread()
+            ->count();
+
+        $items = Notification::where('notifiable_type', get_class($user))
+            ->where('notifiable_id', $user->id)
+            ->orderByDesc('created_at')
+            ->take(6)
+            ->get()
+            ->map(function ($n) {
+                return [
+                    'id'          => $n->id,
+                    'title'       => $n->title,
+                    'message'     => $n->message,
+                    'action_url'  => $n->action_url,
+                    'category'    => $n->category,
+                    'priority'    => $n->priority,
+                    'severity'    => $n->severity,
+                    'is_unread'   => is_null($n->read_at),
+                    'created_at'  => $n->created_at->diffForHumans(),
+                ];
+            });
+
+        return response()->json([
+            'unreadCount' => $unreadCount,
+            'items'       => $items,
+        ]);
     }
 }
