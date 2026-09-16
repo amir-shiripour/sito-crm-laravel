@@ -102,6 +102,11 @@ class ClientFormBuilder extends Component
             if (!isset($f['conditional_required']) || !is_array($f['conditional_required'])) {
                 $f['conditional_required'] = [];
             }
+            if (!array_key_exists('show_in_profile', $f)) {
+                $f['show_in_profile'] = !in_array($f['id'] ?? '', ['notes', 'booking_waitlist', 'status_id', 'password'], true);
+            } else {
+                $f['show_in_profile'] = (bool)$f['show_in_profile'];
+            }
             if (($f['type'] ?? '') === 'file' && !isset($f['multiple'])) {
                 $f['multiple'] = false;
             }
@@ -153,6 +158,7 @@ class ClientFormBuilder extends Component
             'id'                  => $id,
             'label'               => 'بی‌نام',
             'quick_create'        => false,
+            'show_in_profile'     => true,
             'client_auth'         => false,
             'show_in_registration'=> false,
             'placeholder'         => '',
@@ -236,6 +242,9 @@ class ClientFormBuilder extends Component
         if (!array_key_exists('show_in_registration', $field)) {
             $field['show_in_registration'] = false;
         }
+        if (!array_key_exists('show_in_profile', $field)) {
+            $field['show_in_profile'] = !in_array($id, ['notes', 'booking_waitlist', 'status_id', 'password'], true);
+        }
 
         $this->schema['fields'][] = $field;
     }
@@ -280,6 +289,11 @@ class ClientFormBuilder extends Component
             }
             if (!array_key_exists('show_in_registration', $f)) {
                 $f['show_in_registration'] = false;
+            }
+            if (!array_key_exists('show_in_profile', $f)) {
+                $f['show_in_profile'] = !in_array($fid, ['notes', 'booking_waitlist', 'status_id', 'password'], true);
+            } else {
+                $f['show_in_profile'] = (bool)$f['show_in_profile'];
             }
 
             if ($isReserved) {

@@ -85,6 +85,7 @@ class ClientForm extends Model implements FormSchemaContract
                 'width'        => '1/2',
                 'required'     => false,
                 'quick_create' => false,
+                'show_in_profile' => true,
                 'client_auth'  => true,
                 'is_system'    => true,
                 'required_status_keys' => [],
@@ -98,6 +99,7 @@ class ClientForm extends Model implements FormSchemaContract
                 'width'        => '1/2',
                 'required'     => true,
                 'quick_create' => true,
+                'show_in_profile' => true,
                 'client_auth'  => true, // احراز هویت کاربری (آیا در پروفایل کاربر قابل ویرایش است)
                 'is_system'    => true,
                 'required_status_keys' => [], // الزامی براساس وضعیت (درصورت نیاز)
@@ -111,6 +113,7 @@ class ClientForm extends Model implements FormSchemaContract
                 'width'        => '1/2',
                 'required'     => true,
                 'quick_create' => true,
+                'show_in_profile' => true,
                 'client_auth'  => true,
                 'is_system'    => true,
                 'required_status_keys' => [],
@@ -124,6 +127,7 @@ class ClientForm extends Model implements FormSchemaContract
                 'width'        => '1/2',
                 'required'     => false,
                 'quick_create' => true,
+                'show_in_profile' => true,
                 'client_auth'  => true,
                 'is_system'    => true,
                 'required_status_keys' => [],
@@ -137,6 +141,7 @@ class ClientForm extends Model implements FormSchemaContract
                 'width'        => '1/2',
                 'required'     => false,
                 'quick_create' => false,
+                'show_in_profile' => true,
                 'client_auth'  => true,
                 'is_system'    => true,
                 'required_status_keys' => [],
@@ -150,6 +155,7 @@ class ClientForm extends Model implements FormSchemaContract
                 'width'        => '1/2',
                 'required'     => false,
                 'quick_create' => false,
+                'show_in_profile' => true,
                 'client_auth'  => false,
                 'is_system'    => true,
                 'required_status_keys' => [],
@@ -160,6 +166,7 @@ class ClientForm extends Model implements FormSchemaContract
                 'label'        => 'وضعیت پرونده',
                 'required'     => true,
                 'quick_create' => true,
+                'show_in_profile' => false,
                 'client_auth'  => false,
                 'width'        => 'full',
                 'group'        => 'وضعیت',
@@ -175,6 +182,7 @@ class ClientForm extends Model implements FormSchemaContract
                 'width'        => '1/2',
                 'required'     => true,      // ← الزامی (در فرم‌ساز هم قابل تغییر است)
                 'quick_create' => false,     // در ایجاد سریع نمی‌خواهیم
+                'show_in_profile' => false,
                 'client_auth'  => true,
                 'is_system'    => true,
                 'required_status_keys' => [], // اگر بعداً خواستی شرطی براساس وضعیت بزاری
@@ -188,6 +196,7 @@ class ClientForm extends Model implements FormSchemaContract
                 'width'        => 'full',
                 'required'     => false,
                 'quick_create' => true,
+                'show_in_profile' => false,
                 'client_auth'  => false,
                 'is_system'    => true,
                 'required_status_keys' => [],
@@ -205,6 +214,7 @@ class ClientForm extends Model implements FormSchemaContract
                 'width'        => 'full',
                 'required'     => false,
                 'quick_create' => false,
+                'show_in_profile' => false,
                 'client_auth'  => false,
                 'is_system'    => true,
                 'required_status_keys' => [],
@@ -257,12 +267,17 @@ class ClientForm extends Model implements FormSchemaContract
 
             $fid = $f['id'];
 
-            // تنظیم مقدار پیش‌فرض برای client_auth و show_in_registration در فیلدهای سفارشی
+            // تنظیم مقدار پیش‌فرض برای client_auth، show_in_registration و show_in_profile در فیلدهای سفارشی
             if (!array_key_exists('client_auth', $f)) {
                 $f['client_auth'] = false;
             }
             if (!array_key_exists('show_in_registration', $f)) {
                 $f['show_in_registration'] = false;
+            }
+            if (!array_key_exists('show_in_profile', $f)) {
+                $f['show_in_profile'] = true;
+            } else {
+                $f['show_in_profile'] = (bool)$f['show_in_profile'];
             }
 
             // اگر فیلد سیستمی است → روی تعریف سیستمی قفل کن (ولی overrideهای کاربر رو نگه می‌داریم)
@@ -277,7 +292,7 @@ class ClientForm extends Model implements FormSchemaContract
                     $f['label'] = $canon['label'];
                 }
 
-                foreach (['group', 'width', 'placeholder', 'quick_create', 'client_auth', 'show_in_registration', 'required'] as $k) {
+                foreach (['group', 'width', 'placeholder', 'quick_create', 'client_auth', 'show_in_registration', 'show_in_profile', 'required'] as $k) {
                     if (!array_key_exists($k, $f) && array_key_exists($k, $canon)) {
                         $f[$k] = $canon[$k];
                     }
