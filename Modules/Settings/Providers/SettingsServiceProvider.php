@@ -17,6 +17,9 @@ class SettingsServiceProvider extends ServiceProvider
 
         // Register custom middleware alias
         $this->app['router']->aliasMiddleware('validate.api.key', \Modules\Settings\Http\Middleware\ValidateApiKey::class);
+        
+        // Push panel indexing prevention middleware to web group
+        $this->app['router']->pushMiddlewareToGroup('web', \Modules\Settings\Http\Middleware\PreventPanelIndexingMiddleware::class);
     }
 
     public function register()

@@ -50,6 +50,11 @@
     $activeStyle = $themeStyles[$appTheme] ?? $themeStyles['default'];
     @endphp
 
+    @if(function_exists('is_public_indexing_blocked') ? is_public_indexing_blocked() : (!empty($globalSettings['prevent_public_indexing']) && ($globalSettings['prevent_public_indexing'] == '1' || $globalSettings['prevent_public_indexing'] === true)))
+    <meta name="robots" content="noindex, nofollow, noarchive, nosnippet">
+    <meta name="googlebot" content="noindex, nofollow, noarchive, nosnippet">
+    @endif
+
     <title>{{ $appName }} - @yield('title', 'صفحه اصلی')</title>
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])

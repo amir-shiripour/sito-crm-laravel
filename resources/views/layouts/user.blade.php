@@ -30,6 +30,10 @@
     </style>
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
+    @if(function_exists('is_panel_indexing_blocked') && is_panel_indexing_blocked())
+    <meta name="robots" content="noindex, nofollow, noarchive, nosnippet">
+    <meta name="googlebot" content="noindex, nofollow, noarchive, nosnippet">
+    @endif
 </head>
 <body class="bg-gray-50 text-gray-800 dark:bg-gray-900 dark:text-gray-100">
 <div
