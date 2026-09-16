@@ -1284,9 +1284,10 @@
                             </h2>
                         </div>
                         <div class="p-6">
-                            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-2xl bg-gray-50/70 dark:bg-gray-900/40 border border-gray-100 dark:border-gray-700/50">
-                                <div class="space-y-1">
-                                    <span class="text-sm font-bold text-gray-900 dark:text-gray-100 block">
+                            <label for="services_auto_merge_concurrent_invoices"
+                                   class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 rounded-2xl border-2 border-gray-100 dark:border-gray-700/50 bg-gray-50/50 dark:bg-gray-800/30 hover:border-indigo-200 dark:hover:border-indigo-500/30 hover:bg-indigo-50/30 dark:hover:bg-indigo-900/10 transition-all cursor-pointer group">
+                                <div class="space-y-1 flex-1">
+                                    <span class="text-base font-black text-gray-800 dark:text-gray-200 block">
                                         فعال‌سازی ادغام هوشمند فاکتورهای هم‌دوره
                                     </span>
                                     <p class="text-xs text-gray-500 dark:text-gray-400 leading-relaxed max-w-2xl">
@@ -1306,7 +1307,7 @@
                                         </svg>
                                     </div>
                                 </div>
-                            </div>
+                            </label>
                         </div>
                     </div>
 
