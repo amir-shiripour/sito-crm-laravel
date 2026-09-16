@@ -482,6 +482,96 @@
                             </div>
                         </div>
 
+                        {{-- کارت ۳: تنظیمات سئو و موتورهای جستجو --}}
+                        <div class="{{ $cardClass }}">
+                            <div class="{{ $headerClass }}">
+                                <div class="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+                                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7"/>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h2 class="text-base font-bold text-gray-900 dark:text-white">تنظیمات سئو و موتورهای جستجو (SEO & Indexing)</h2>
+                                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">کنترل خزش و نمایه‌سازی صفحات پنل و بخش عمومی وب‌سایت توسط موتورهای جستجو (Google و ...)</p>
+                                </div>
+                            </div>
+
+                            <div class="p-6 space-y-6">
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+                                    {{-- تنظیم ۱: عدم ایندکس صفحات پنل --}}
+                                    @php
+                                        $panelNoindex = !empty($settings['prevent_panel_indexing']) && ($settings['prevent_panel_indexing'] == '1' || $settings['prevent_panel_indexing'] === true);
+                                    @endphp
+                                    <div class="p-5 rounded-2xl border-2 transition-all duration-200 {{ $panelNoindex ? 'border-amber-500/40 bg-amber-50/20 dark:bg-amber-900/10 dark:border-amber-500/30' : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/60' }}">
+                                        <div class="flex items-start justify-between gap-4">
+                                            <div class="flex-1">
+                                                <div class="flex items-center gap-2 mb-1">
+                                                    <span class="text-sm font-black text-gray-900 dark:text-white">عدم ایندکس صفحات پنل (Noindex Panel)</span>
+                                                    <span class="px-2 py-0.5 text-[10px] font-bold rounded-full {{ $panelNoindex ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300' : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400' }}">
+                                                        {{ $panelNoindex ? 'فعال (مسدود شده)' : 'غیرفعال (آزاد)' }}
+                                                    </span>
+                                                </div>
+                                                <p class="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
+                                                    با فعال‌سازی این گزینه، متاتگ‌های <code class="px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 font-mono text-[11px]">noindex, nofollow</code> و هدر امنیتی <code class="px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 font-mono text-[11px]">X-Robots-Tag</code> در تمامی صفحات پنل مدیریت، پنل کاربری و فرم‌های ورود اعمال می‌شود تا اطلاعات محرمانه در گوگل ایندکس نشود.
+                                                </p>
+                                            </div>
+                                            <div class="shrink-0 pt-0.5">
+                                                <label class="relative inline-flex items-center cursor-pointer">
+                                                    <input type="hidden" name="prevent_panel_indexing" value="0">
+                                                    <input type="checkbox" name="prevent_panel_indexing" value="1"
+                                                           {{ $panelNoindex ? 'checked' : '' }}
+                                                           class="sr-only peer">
+                                                    <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-amber-500"></div>
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {{-- تنظیم ۲: عدم ایندکس صفحات عمومی سایت --}}
+                                    @php
+                                        $publicNoindex = !empty($settings['prevent_public_indexing']) && ($settings['prevent_public_indexing'] == '1' || $settings['prevent_public_indexing'] === true);
+                                    @endphp
+                                    <div class="p-5 rounded-2xl border-2 transition-all duration-200 {{ $publicNoindex ? 'border-rose-500/40 bg-rose-50/20 dark:bg-rose-900/10 dark:border-rose-500/30' : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/60' }}">
+                                        <div class="flex items-start justify-between gap-4">
+                                            <div class="flex-1">
+                                                <div class="flex items-center gap-2 mb-1">
+                                                    <span class="text-sm font-black text-gray-900 dark:text-white">عدم ایندکس صفحات عمومی سایت (Noindex Public)</span>
+                                                    <span class="px-2 py-0.5 text-[10px] font-bold rounded-full {{ $publicNoindex ? 'bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300' : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400' }}">
+                                                        {{ $publicNoindex ? 'فعال (مسدود شده)' : 'غیرفعال (آزاد)' }}
+                                                    </span>
+                                                </div>
+                                                <p class="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
+                                                    جلوگیری از خزش و نمایه‌سازی بخش عمومی سایت (لندینگ، فروشگاه، املاک، خدمات و مقالات) توسط موتورهای جستجو. مناسب برای زمان توسعه یا پیش از افتتاح و معرفی رسمی وب‌سایت.
+                                                </p>
+                                            </div>
+                                            <div class="shrink-0 pt-0.5">
+                                                <label class="relative inline-flex items-center cursor-pointer">
+                                                    <input type="hidden" name="prevent_public_indexing" value="0">
+                                                    <input type="checkbox" name="prevent_public_indexing" value="1"
+                                                           {{ $publicNoindex ? 'checked' : '' }}
+                                                           class="sr-only peer">
+                                                    <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-rose-500"></div>
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                </div>
+
+                                <div class="bg-gray-50 dark:bg-gray-900/40 border border-gray-100 dark:border-gray-700/60 p-4 rounded-xl flex items-start gap-3">
+                                    <svg class="w-5 h-5 text-indigo-500 dark:text-indigo-400 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                    </svg>
+                                    <p class="text-xs text-gray-600 dark:text-gray-300 leading-relaxed">
+                                        <span class="font-bold text-gray-800 dark:text-gray-100">نکته فنی سئو:</span>
+                                        دستورات عدم ایندکس با استفاده از استاندارد رسمی روبات‌ها (<code class="font-mono text-[11px] text-indigo-600 dark:text-indigo-300">meta robots: noindex, nofollow, noarchive, nosnippet</code>) و هدر شبکه <code class="font-mono text-[11px] text-indigo-600 dark:text-indigo-300">X-Robots-Tag</code> در لایوت‌ها و لایه سرور اعمال می‌شوند تا اطمینان حاصل شود که موتورهای جستجو صفحات مشخص‌شده را ایندکس نمی‌کنند.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
                     </div> {{-- پایان تب عمومی --}}
 
                     {{-- تب اطلاعات هویتی --}}

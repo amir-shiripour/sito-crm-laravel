@@ -5,6 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
+    @if(function_exists('is_panel_indexing_blocked') && is_panel_indexing_blocked())
+    <meta name="robots" content="noindex, nofollow, noarchive, nosnippet">
+    <meta name="googlebot" content="noindex, nofollow, noarchive, nosnippet">
+    @endif
+
     <title>{{ config('app.name', 'Laravel') }}</title>
 
     <!-- Fonts -->

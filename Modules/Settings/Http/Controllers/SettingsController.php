@@ -216,6 +216,15 @@ class SettingsController extends Controller
             }
         }
 
+        if ($activeTab === 'general') {
+            if (!$request->has('prevent_panel_indexing')) {
+                $data['prevent_panel_indexing'] = '0';
+            }
+            if (!$request->has('prevent_public_indexing')) {
+                $data['prevent_public_indexing'] = '0';
+            }
+        }
+
         // Validate installment types before processing
         if (isset($data['installment_types']) && is_array($data['installment_types'])) {
             $errors = $this->validateInstallmentTypes($data['installment_types']);
