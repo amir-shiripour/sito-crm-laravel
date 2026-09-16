@@ -231,6 +231,7 @@
                         @php
                             $remaining   = $invoice->remainingAmount();
                             $isCanceled  = $invoice->isCanceled();
+                            $isFreeZero  = !empty($showFreeForZero) && (int)$invoice->total <= 0;
 
                             $statusName = $invoice->status?->name ?? '—';
                             $statusColor = $invoice->status?->color ?? '#6b7280';
@@ -276,9 +277,18 @@
                                 @endif
                             </td>
                             <td class="px-6 py-4 text-center">
-                                <span
-                                    class="font-black text-gray-900 dark:text-gray-100 text-base tabular-nums">{{ $faNum(number_format($invoice->total)) }}</span>
-                                <span class="text-[11px] font-medium text-gray-400 block">{{ $currencyLabel }}</span>
+                                @if($isFreeZero)
+                                    <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-black bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20 shadow-2xs">
+                                        <svg class="w-3.5 h-3.5 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+                                        </svg>
+                                        رایگان
+                                    </span>
+                                @else
+                                    <span
+                                        class="font-black text-gray-900 dark:text-gray-100 text-base tabular-nums">{{ $faNum(number_format($invoice->total)) }}</span>
+                                    <span class="text-[11px] font-medium text-gray-400 block">{{ $currencyLabel }}</span>
+                                @endif
                             </td>
                             <td class="px-6 py-4 text-center">
                                 @if($isCanceled)
@@ -301,6 +311,14 @@
                                     @else
                                         <span class="block text-[11px] font-bold text-purple-400 mt-1">ادغام شده</span>
                                     @endif
+                                @elseif($isFreeZero)
+                                    <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-black bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20 shadow-2xs">
+                                        <svg class="w-3.5 h-3.5 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+                                        </svg>
+                                        رایگان
+                                    </span>
+                                    <span class="block text-[11px] font-bold text-emerald-600 dark:text-emerald-400 mt-1">بدون نیاز به پرداخت</span>
                                 @elseif($remaining <= 0)
                                     <span
                                         class="font-black text-emerald-600 dark:text-emerald-400 text-base tabular-nums">{{ $faNum(number_format($invoice->paid_amount)) }} <span

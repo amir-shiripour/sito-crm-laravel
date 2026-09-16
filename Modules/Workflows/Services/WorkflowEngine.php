@@ -1133,11 +1133,25 @@ class WorkflowEngine
 
                             Log::info("[Workflows] Created Invoice ID {$invoice->id} for Order ID {$order->id} with total {$invoiceTotal}");
                             
+                            // Check and auto-merge concurrent invoices if enabled
+                            $finalInvoiceId = $invoice->id;
+                            if (class_exists(\Modules\Services\App\Services\InvoiceMergeService::class)) {
+                                try {
+                                    $mergedInvoice = app(\Modules\Services\App\Services\InvoiceMergeService::class)->checkAndAutoMergeConcurrentInvoices($invoice);
+                                    if ($mergedInvoice) {
+                                        $finalInvoiceId = $mergedInvoice->id;
+                                        Log::info("[Workflows][AutoMerge] Invoice ID {$invoice->id} was automatically merged into Invoice ID {$finalInvoiceId}");
+                                    }
+                                } catch (\Throwable $e) {
+                                    Log::error("[Workflows][AutoMerge] Failed during auto-merge check: " . $e->getMessage());
+                                }
+                            }
+
                             if (class_exists(\Modules\Workflows\Services\WorkflowEngine::class)) {
-                                app(\Modules\Workflows\Services\WorkflowEngine::class)->start('invoice_created', 'INVOICE', $invoice->id, []);
+                                app(\Modules\Workflows\Services\WorkflowEngine::class)->start('invoice_created', 'INVOICE', $finalInvoiceId, []);
                             }
                             
-                            $result = ['status' => 'created', 'invoice_id' => $invoice->id];
+                            $result = ['status' => 'created', 'invoice_id' => $finalInvoiceId];
                         } catch (\Throwable $e) {
                             Log::error("[Workflows] Invoice creation failed: " . $e->getMessage());
                             $result = ['status' => 'error', 'message' => $e->getMessage()];
