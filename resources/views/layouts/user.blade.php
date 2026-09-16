@@ -170,8 +170,8 @@
             mobileOpen: false,
             sidebarCollapsed: localStorage.getItem('sidebarCollapsed') === 'true',
             sidebarFilter: '',
-            openedMenuKey: localStorage.getItem('openedMenuKey') || null,
-            activeClosedKeys: JSON.parse(localStorage.getItem('activeClosedKeys') || '{}'),
+            openedMenuKey: null,
+            activeClosedKeys: {},
             closedAll: false,
             theme: localStorage.getItem('theme') || 'system',
             themeIcon: 'system',
@@ -182,7 +182,11 @@
                 window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
                     if (this.theme === 'system') this.applyTheme();
                 });
-                localStorage.removeItem('openMenus');
+                try {
+                    localStorage.removeItem('openMenus');
+                    localStorage.removeItem('openedMenuKey');
+                    localStorage.removeItem('activeClosedKeys');
+                } catch (e) {}
             },
 
             toggleSidebar() {
@@ -204,14 +208,12 @@
                 this.closedAll = false;
                 if (isGroupActive) {
                     this.activeClosedKeys[key] = !this.activeClosedKeys[key];
-                    localStorage.setItem('activeClosedKeys', JSON.stringify(this.activeClosedKeys));
                 } else {
                     if (this.openedMenuKey === key) {
                         this.openedMenuKey = null;
                     } else {
                         this.openedMenuKey = key;
                     }
-                    localStorage.setItem('openedMenuKey', this.openedMenuKey || '');
                 }
             },
             closeAllMenus() {

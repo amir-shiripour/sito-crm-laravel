@@ -39,50 +39,59 @@
     };
 
     // تشخیص گروه فعال در زمان لود اولیه (هم برای منوی معمولی و هم دو مرحله‌ای)
+    $allSettingsItems = !empty($isCustomEnabled) && !empty($menuBlocks)
+        ? (collect($menuBlocks)->firstWhere('type', 'settings')['items'] ?? [])
+        : ($settingsItems ?? []);
+
+    $isSettingsRoute = request()->routeIs('settings.*')
+        || request()->routeIs('user.settings.*')
+        || collect($allSettingsItems)->contains(fn($i) => !empty($i['route']) && request()->routeIs($i['route'] . '*'));
+
     $activeGroupKey = null;
     $activeGroupTitle = '';
 
-    if (!empty($isCustomEnabled) && !empty($menuBlocks)) {
+    if ($isSettingsRoute) {
+        $activeGroupKey = 'settings';
+        $activeGroupTitle = !empty($isCustomEnabled) && !empty($menuBlocks)
+            ? (collect($menuBlocks)->firstWhere('type', 'settings')['title'] ?? 'تنظیمات')
+            : ($settingsGroupMeta['title'] ?? 'تنظیمات سیستم');
+    } elseif (!empty($isCustomEnabled) && !empty($menuBlocks)) {
         foreach ($menuBlocks as $block) {
             if ($block['type'] === 'group') {
                 $gMod = $block['module'];
-                $isAct = request()->routeIs('user.' . $gMod . '.*')
-                    || request()->routeIs($gMod . '.*')
-                    || ($gMod === 'clients' && (request()->routeIs('user.clients.*') || request()->routeIs('user.settings.clients.*')))
-                    || collect($block['items'] ?? [])->contains(fn($i) => !empty($i['route']) && request()->routeIs($i['route'] . '*'));
+                if ($gMod === 'admin') {
+                    $isAct = collect($block['items'] ?? [])->contains(fn($i) => !empty($i['route']) && request()->routeIs($i['route'] . '*'));
+                } else {
+                    $isAct = request()->routeIs('user.' . $gMod . '.*')
+                        || request()->routeIs($gMod . '.*')
+                        || collect($block['items'] ?? [])->contains(fn($i) => !empty($i['route']) && request()->routeIs($i['route'] . '*'));
+                }
                 if ($isAct) {
                     $activeGroupKey = $gMod;
                     $activeGroupTitle = $block['title'] ?? '';
                     break;
                 }
-            } elseif ($block['type'] === 'settings') {
-                $isAct = request()->routeIs('settings.*') || request()->routeIs('user.settings.*') || request()->routeIs('user.settings.clients.*');
-                if ($isAct) {
-                    $activeGroupKey = 'settings';
-                    $activeGroupTitle = $block['title'] ?? 'تنظیمات';
-                    break;
-                }
             }
         }
     } else {
-        if (request()->routeIs('user.clients.*') || request()->routeIs('clients.*') || request()->routeIs('user.settings.clients.*')) {
+        if (request()->routeIs('user.clients.*') || request()->routeIs('clients.*')) {
             $activeGroupKey = 'clients';
             $activeGroupTitle = $clientsGroupMeta['title'] ?? ('مدیریت '.config('clients.labels.plural', 'مشتریان'));
         } else {
             foreach ($menuGroups as $group) {
                 $gMod = $group['module'];
-                $isAct = request()->routeIs('user.' . $gMod . '.*')
-                    || request()->routeIs($gMod . '.*')
-                    || collect($group['items'] ?? [])->contains(fn($i) => !empty($i['route']) && request()->routeIs($i['route'] . '*'));
+                if ($gMod === 'admin') {
+                    $isAct = collect($group['items'] ?? [])->contains(fn($i) => !empty($i['route']) && request()->routeIs($i['route'] . '*'));
+                } else {
+                    $isAct = request()->routeIs('user.' . $gMod . '.*')
+                        || request()->routeIs($gMod . '.*')
+                        || collect($group['items'] ?? [])->contains(fn($i) => !empty($i['route']) && request()->routeIs($i['route'] . '*'));
+                }
                 if ($isAct) {
                     $activeGroupKey = $gMod;
                     $activeGroupTitle = $group['title'] ?? $group['module_name'] ?? $gMod;
                     break;
                 }
-            }
-            if (!$activeGroupKey && (request()->routeIs('settings.*') || request()->routeIs('user.settings.*') || request()->routeIs('user.settings.clients.*'))) {
-                $activeGroupKey = 'settings';
-                $activeGroupTitle = $settingsGroupMeta['title'] ?? 'تنظیمات سیستم';
             }
         }
     }
@@ -97,23 +106,14 @@
     activeDrilldownTitle: {{ $activeDrilldownTitleOnInit }},
     init() {
         @if(!empty($activeGroupKey))
-            // کاربر در صفحه یکی از زیرگروه‌ها قرار دارد: گروه مربوطه باید باز بماند
+            // کاربر در صفحه یکی از زیرگروه‌ها قرار دارد: گروه مربوطه در همین صفحه باز می‌ماند
             this.closedAll = false;
             if (this.activeClosedKeys && this.activeClosedKeys['{{ $activeGroupKey }}']) {
                 delete this.activeClosedKeys['{{ $activeGroupKey }}'];
-                try {
-                    localStorage.setItem('activeClosedKeys', JSON.stringify(this.activeClosedKeys));
-                } catch(e) {}
             }
             this.openedMenuKey = '{{ $activeGroupKey }}';
-            try {
-                localStorage.setItem('openedMenuKey', '{{ $activeGroupKey }}');
-            } catch(e) {}
         @else
-            // در صفحات غیرگروهی (مثل پیشخوان یا آیتم‌های تکی): همه گروه‌ها بسته می‌شوند
-            try {
-                localStorage.removeItem('openedMenuKey');
-            } catch (e) {}
+            // در صفحات غیرگروهی (مثل پیشخوان یا آیتم‌های تکی): همه منوها به صورت پیش‌فرض بسته هستند
             if (typeof this.closeAllMenus === 'function') {
                 this.closeAllMenus();
             }
@@ -288,10 +288,13 @@ class="space-y-1.5">
                 @php
                     $validGroupItems = collect($block['items'])->filter(fn($i) => empty($i['route']) || \Illuminate\Support\Facades\Route::has($i['route']))->values()->all();
                     $groupModule = $block['module'];
-                    $isGroupActive = request()->routeIs('user.' . $groupModule . '.*')
-                        || request()->routeIs($groupModule . '.*')
-                        || ($groupModule === 'clients' && (request()->routeIs('user.clients.*') || request()->routeIs('user.settings.clients.*')))
-                        || collect($block['items'])->contains(fn($i) => !empty($i['route']) && request()->routeIs($i['route'] . '*'));
+                    $isGroupActive = !$isSettingsRoute && (
+                        $groupModule === 'admin'
+                            ? collect($block['items'])->contains(fn($i) => !empty($i['route']) && request()->routeIs($i['route'] . '*'))
+                            : (request()->routeIs('user.' . $groupModule . '.*')
+                                || request()->routeIs($groupModule . '.*')
+                                || collect($block['items'])->contains(fn($i) => !empty($i['route']) && request()->routeIs($i['route'] . '*')))
+                    );
                     $groupTitle = $block['title'];
                     $firstItem = $block['items'][0] ?? null;
                     $itemsJson = json_encode(array_column($validGroupItems, 'title'));
@@ -474,7 +477,7 @@ class="space-y-1.5">
 
             @elseif($block['type'] === 'settings')
                 @php
-                    $isSettingsActive = request()->routeIs('settings.*') || request()->routeIs('user.settings.*') || request()->routeIs('user.settings.clients.*');
+                    $isSettingsActive = $isSettingsRoute;
                     $settingsTitle = $block['title'] ?? 'تنظیمات';
                     $settingsIcon = $block['icon'] ?? null;
                     $settingsValidItems = $block['items'] ?? [];
@@ -791,9 +794,7 @@ class="space-y-1.5">
         {{-- گروه اختصاصی مشتریان --}}
         @if(count($clientsItems) > 0)
             @php
-                $isClientsActive = request()->routeIs('user.clients.*')
-                    || request()->routeIs('clients.*')
-                    || request()->routeIs('user.settings.clients.*');
+                $isClientsActive = !$isSettingsRoute && (request()->routeIs('user.clients.*') || request()->routeIs('clients.*'));
                 $clientsTitle = $clientsGroupMeta['title'] ?? ('مدیریت '.config('clients.labels.plural', 'مشتریان'));
                 $clientsIcon = $clientsGroupMeta['icon'] ?? null;
                 $clientsItemsJson = json_encode(array_column($clientsItems, 'title'));
@@ -1047,9 +1048,13 @@ class="space-y-1.5">
             @php
                 $validGroupItems = collect($group['items'])->filter(fn($i) => empty($i['route']) || \Illuminate\Support\Facades\Route::has($i['route']))->values()->all();
                 $groupModule = $group['module'];
-                $isGroupActive = request()->routeIs('user.' . $groupModule . '.*')
-                    || request()->routeIs($groupModule . '.*')
-                    || collect($group['items'])->contains(fn($i) => !empty($i['route']) && request()->routeIs($i['route'] . '*'));
+                $isGroupActive = !$isSettingsRoute && (
+                    $groupModule === 'admin'
+                        ? collect($group['items'])->contains(fn($i) => !empty($i['route']) && request()->routeIs($i['route'] . '*'))
+                        : (request()->routeIs('user.' . $groupModule . '.*')
+                            || request()->routeIs($groupModule . '.*')
+                            || collect($group['items'])->contains(fn($i) => !empty($i['route']) && request()->routeIs($i['route'] . '*')))
+                );
                 $groupTitle = $group['title'] ?? $group['module_name'] ?? $groupModule;
                 $firstItem = $group['items'][0] ?? null;
                 $itemsJson = json_encode(array_column($validGroupItems, 'title'));
@@ -1235,7 +1240,7 @@ class="space-y-1.5">
         {{-- گروه تنظیمات سیستم (Settings Group) --}}
         @if(count($settingsItems) > 0)
             @php
-                $isSettingsActive = request()->routeIs('settings.*') || request()->routeIs('user.settings.*') || request()->routeIs('user.settings.clients.*');
+                $isSettingsActive = $isSettingsRoute;
                 $settingsTitle = $settingsGroupMeta['title'] ?? 'تنظیمات سیستم';
                 $settingsIcon = $settingsGroupMeta['icon'] ?? null;
                 $settingsValidItems = $settingsItems;
