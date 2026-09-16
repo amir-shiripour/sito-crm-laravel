@@ -289,7 +289,7 @@
                 filterType: 'all',
                 openFields: {},
                 allFieldIds: @js(collect($schema['fields'] ?? [])->map(fn($f, $idx) => $f['id'] ?? "f{$idx}")->toArray()),
-                isFieldVisible(label, id, group, type, isSystem, isRequired, isQuick, isAuth, isReg) {
+                isFieldVisible(label, id, group, type, isSystem, isRequired, isQuick, isAuth, isReg, isProfile) {
                     const q = this.searchQuery.toLowerCase().trim();
                     const matchesQuery = !q || 
                         (label && String(label).toLowerCase().includes(q)) || 
@@ -305,6 +305,7 @@
                     if (this.filterType === 'quick') return isQuick;
                     if (this.filterType === 'auth') return isAuth;
                     if (this.filterType === 'reg') return isReg;
+                    if (this.filterType === 'profile') return isProfile;
                     return true;
                 },
                 isOpen(fid) {
@@ -466,6 +467,11 @@
                                     class="px-2.5 py-1 rounded-lg text-xs transition-all">
                                 ایجاد سریع
                             </button>
+                            <button type="button" @click="filterType = 'profile'"
+                                    :class="filterType === 'profile' ? 'bg-indigo-600 text-white font-bold shadow-2xs' : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700/60 dark:text-gray-400 dark:hover:bg-gray-700'"
+                                    class="px-2.5 py-1 rounded-lg text-xs transition-all">
+                                پروفایل کلاینت
+                            </button>
                         </div>
                     </div>
                 @endif
@@ -536,7 +542,7 @@
                              id="field-card-{{ $fid }}"
                              data-field-id="{{ $fid }}"
                              wire:key="field-system-{{ $fid }}"
-                             x-show="isFieldVisible(@js($field['label'] ?? $fid), @js($fid), @js($field['group'] ?? ''), @js($field['type'] ?? 'system'), true, @js(!empty($field['required'])), @js(!empty($field['quick_create'])), @js(!empty($field['client_auth'])), @js(!empty($field['show_in_registration'])))"
+                             x-show="isFieldVisible(@js($field['label'] ?? $fid), @js($fid), @js($field['group'] ?? ''), @js($field['type'] ?? 'system'), true, @js(!empty($field['required'])), @js(!empty($field['quick_create'])), @js(!empty($field['client_auth'])), @js(!empty($field['show_in_registration'])), @js(!array_key_exists('show_in_profile', $field) ? !in_array($fid, ['notes', 'booking_waitlist', 'status_id', 'password'], true) : !empty($field['show_in_profile'])))"
                              x-transition:enter="transition ease-out duration-200"
                              x-transition:enter-start="opacity-0 transform scale-95"
                              x-transition:enter-end="opacity-100 transform scale-100">
@@ -652,6 +658,12 @@
                                             <input type="checkbox" class="{{ $checkboxClass }}"
                                                    wire:model="schema.fields.{{ $i }}.quick_create">
                                             <span class="text-xs text-gray-700 dark:text-gray-300">نمایش در ایجاد سریع</span>
+                                        </label>
+                                        <label
+                                            class="inline-flex items-center gap-2 p-2 rounded-lg border border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors dark:border-gray-700 dark:hover:bg-gray-700/30">
+                                            <input type="checkbox" class="{{ $checkboxClass }}"
+                                                   wire:model="schema.fields.{{ $i }}.show_in_profile">
+                                            <span class="text-xs text-gray-700 dark:text-gray-300">نمایش در پروفایل کلاینت</span>
                                         </label>
                                         <label
                                             class="inline-flex items-center gap-2 p-2 rounded-lg border border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors dark:border-gray-700 dark:hover:bg-gray-700/30">
@@ -829,7 +841,7 @@
                              id="field-card-{{ $fid }}"
                              data-field-id="{{ $fid }}"
                              wire:key="field-custom-{{ $fid }}"
-                             x-show="isFieldVisible(@js($field['label'] ?? $fid), @js($fid), @js($field['group'] ?? ''), @js($field['type'] ?? 'text'), false, @js(!empty($field['required'])), @js(!empty($field['quick_create'])), @js(!empty($field['client_auth'])), @js(!empty($field['show_in_registration'])))"
+                             x-show="isFieldVisible(@js($field['label'] ?? $fid), @js($fid), @js($field['group'] ?? ''), @js($field['type'] ?? 'text'), false, @js(!empty($field['required'])), @js(!empty($field['quick_create'])), @js(!empty($field['client_auth'])), @js(!empty($field['show_in_registration'])), @js(!array_key_exists('show_in_profile', $field) ? true : !empty($field['show_in_profile'])))"
                              x-transition:enter="transition ease-out duration-200"
                              x-transition:enter-start="opacity-0 transform scale-95"
                              x-transition:enter-end="opacity-100 transform scale-100">
@@ -906,7 +918,7 @@
                                  x-transition:enter-end="opacity-100 translate-y-0"
                                  class="p-5 space-y-5">
                                 {{-- تنظیمات اصلی --}}
-                                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
                                     <label
                                         class="flex items-center gap-2 p-2 rounded-lg border border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors dark:border-gray-700 dark:hover:bg-gray-700/30">
                                         <input type="checkbox" class="{{ $checkboxClass }}"
@@ -922,6 +934,12 @@
                                     <label
                                         class="flex items-center gap-2 p-2 rounded-lg border border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors dark:border-gray-700 dark:hover:bg-gray-700/30">
                                         <input type="checkbox" class="{{ $checkboxClass }}"
+                                               wire:model="schema.fields.{{ $i }}.show_in_profile">
+                                        <span class="text-sm text-gray-700 dark:text-gray-300">نمایش در پروفایل کلاینت</span>
+                                    </label>
+                                    <label
+                                        class="flex items-center gap-2 p-2 rounded-lg border border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors dark:border-gray-700 dark:hover:bg-gray-700/30">
+                                        <input type="checkbox" class="{{ $checkboxClass }}"
                                                wire:model="schema.fields.{{ $i }}.client_auth">
                                         <span class="text-sm text-gray-700 dark:text-gray-300">احراز هویت (پروفایل)</span>
                                     </label>
@@ -931,7 +949,9 @@
                                                wire:model="schema.fields.{{ $i }}.show_in_registration">
                                         <span class="text-sm text-gray-700 dark:text-gray-300">ثبت نام کاربر</span>
                                     </label>
+                                </div>
 
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     {{-- عرض فیلد --}}
                                     <div>
                                         <label class="{{ $labelClass }}">عرض فیلد</label>

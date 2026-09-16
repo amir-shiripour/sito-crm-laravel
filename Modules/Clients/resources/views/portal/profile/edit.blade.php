@@ -4,7 +4,7 @@
     $title = 'پروفایل کاربری';
     // گروه‌ها را برای تب‌ها آماده می‌کنیم
     $groups = array_keys($groupedFields);
-    $firstGroup = $groups[0] ?? 'اطلاعات کاربری';
+    $firstGroup = $groups[0] ?? 'addresses';
 
     $baseInputClass = "w-full rounded-xl border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400
     focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 transition-all duration-200
@@ -86,7 +86,9 @@
                             </button>
                         @endforeach
 
-                        <div class="h-px bg-gray-100 dark:bg-gray-700 my-2 mx-4"></div>
+                        @if(!empty($groups))
+                            <div class="h-px bg-gray-100 dark:bg-gray-700 my-2 mx-4"></div>
+                        @endif
 
                         <button @click="switchTab('addresses')"
                                 :class="activeTab === 'addresses' ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-700/50 dark:hover:text-white'"

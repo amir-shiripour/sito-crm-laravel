@@ -60,6 +60,15 @@ class ClientProfileController extends Controller
             // اگر فیلدی از نوع status هست هم نادیده بگیر
             if (($field['type'] ?? '') === 'status') continue;
 
+            // بررسی تنظیم نمایش در پروفایل پورتال کلاینت (show_in_profile)
+            $showInProfile = array_key_exists('show_in_profile', $field)
+                ? (bool)$field['show_in_profile']
+                : !in_array($field['id'], ['notes', 'booking_waitlist'], true);
+
+            if (!$showInProfile) {
+                continue;
+            }
+
             // بررسی احراز هویت کاربری (client_auth)
             $isClientAuth = $field['client_auth'] ?? false;
 
@@ -108,9 +117,18 @@ class ClientProfileController extends Controller
         // Get validation rules
         $rules = $this->clientFormService->getValidationRules(true, $client->id);
 
-        // فیلتر کردن فیلدهای قفل شده به دلیل عدم دسترسی client_auth
+        // فیلتر کردن فیلدهای قفل شده به دلیل عدم دسترسی client_auth یا تنظیم show_in_profile
         $formFields = $this->clientFormService->getFormFields();
+        $hiddenProfileFields = [];
         foreach ($formFields as $field) {
+            $showInProfile = array_key_exists('show_in_profile', $field)
+                ? (bool)$field['show_in_profile']
+                : !in_array($field['id'], ['notes', 'booking_waitlist', 'status_id', 'password'], true);
+
+            if (!$showInProfile) {
+                $hiddenProfileFields[] = $field['id'];
+            }
+
             $isClientAuth = $field['client_auth'] ?? false;
             if (!$isClientAuth && !in_array($field['id'], $lockedFields)) {
                 $lockedFields[] = $field['id'];
@@ -118,7 +136,7 @@ class ClientProfileController extends Controller
         }
 
         // حذف رول‌های فیلدهای قفل شده و فیلدهایی که نباید توسط کاربر تغییر کنند
-        $ignoredFields = array_merge($lockedFields, ['status_id']);
+        $ignoredFields = array_unique(array_merge($lockedFields, $hiddenProfileFields, ['status_id', 'notes', 'booking_waitlist']));
         foreach ($ignoredFields as $ignoredField) {
             if (isset($rules[$ignoredField])) {
                 unset($rules[$ignoredField]);
