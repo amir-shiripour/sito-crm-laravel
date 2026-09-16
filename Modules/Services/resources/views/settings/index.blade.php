@@ -472,6 +472,49 @@
                     </div>
                 </div>
 
+                {{-- Free Display for Zero-Amount Invoices --}}
+                <div class="{{ $cardClass }} md:col-span-2">
+                    <div
+                        class="p-6 border-b border-gray-100 dark:border-gray-700/60 bg-linear-to-r from-emerald-50/50 to-transparent dark:from-emerald-900/10">
+                        <h2 class="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                            <svg class="w-5 h-5 text-emerald-500" fill="none" viewBox="0 0 24 24"
+                                 stroke="currentColor"
+                                 stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                      d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                            نمایش فاکتورهای با مبلغ صفر به عنوان «رایگان»
+                        </h2>
+                    </div>
+                    <div class="p-6">
+                        <label
+                            class="flex items-center justify-between gap-6 cursor-pointer group p-5 rounded-2xl border-2 border-gray-100 dark:border-gray-700/50 bg-gray-50/50 dark:bg-gray-800/30 hover:border-emerald-200 dark:hover:border-emerald-500/30 hover:bg-emerald-50/30 dark:hover:bg-emerald-900/10 transition-all">
+                            <div class="flex-1">
+                                <span class="text-base font-black text-gray-800 dark:text-gray-200 block">نمایش برچسب «رایگان» در لیست فاکتورها</span>
+                                <span class="text-sm text-gray-500 dark:text-gray-400 block mt-1.5 leading-relaxed">
+                                    با فعال‌سازی این گزینه، فاکتورهایی که مبلغ کل آنها ۰ می‌باشد در صفحه مدیریت فاکتورها در ستون‌های «مبلغ کل» و «وضعیت پرداخت» با عنوان «رایگان» نمایش داده خواهند شد.
+                                </span>
+                            </div>
+                            <div class="relative shrink-0">
+                                <input type="hidden" name="services_show_free_for_zero_invoices" value="0">
+                                <input type="checkbox" id="services_show_free_for_zero_invoices"
+                                       name="services_show_free_for_zero_invoices" value="1"
+                                       @checked($v('services_show_free_for_zero_invoices') === '1') class="sr-only peer">
+                                <div
+                                    class="w-14 h-8 bg-gray-200 dark:bg-gray-700 rounded-full peer peer-checked:bg-emerald-500 transition-colors duration-300 shadow-inner"></div>
+                                <div
+                                    class="absolute right-1 top-1 w-6 h-6 bg-white rounded-full shadow-md transition-transform duration-300 peer-checked:-translate-x-6 flex items-center justify-center">
+                                    <svg
+                                        class="w-3.5 h-3.5 text-emerald-600 opacity-0 peer-checked:opacity-100 transition-opacity"
+                                        fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+                                    </svg>
+                                </div>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
                 {{-- Currency Settings (Super Admin Only) --}}
                 @if($isSuperAdmin)
                 <div class="{{ $cardClass }}"
@@ -1230,6 +1273,43 @@
 
             <div x-show="activeTab === 'automation'" x-cloak class="space-y-6">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {{-- Auto Merge Concurrent Invoices Card --}}
+                    <div class="{{ $cardClass }} md:col-span-2">
+                        <div class="p-6 border-b border-gray-100 dark:border-gray-700/60">
+                            <h2 class="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                                <svg class="w-5 h-5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                                </svg>
+                                ادغام خودکار فاکتورهای همزمان
+                            </h2>
+                        </div>
+                        <div class="p-6">
+                            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-2xl bg-gray-50/70 dark:bg-gray-900/40 border border-gray-100 dark:border-gray-700/50">
+                                <div class="space-y-1">
+                                    <span class="text-sm font-bold text-gray-900 dark:text-gray-100 block">
+                                        فعال‌سازی ادغام هوشمند فاکتورهای هم‌دوره
+                                    </span>
+                                    <p class="text-xs text-gray-500 dark:text-gray-400 leading-relaxed max-w-2xl">
+                                        چنانچه این گزینه فعال باشد، هنگامی که از طریق گردش‌کارها یا تمدید خودکار، ۲ یا چند فاکتور برای یک مشتری با تاریخ صدور و سررسید یکسان ایجاد شود، سیستم به طور خودکار آن‌ها را در یک فاکتور تجمیعی ادغام کرده و سفارش‌ها را به آن متصل می‌کند.
+                                    </p>
+                                </div>
+                                <div class="relative shrink-0">
+                                    <input type="hidden" name="services_auto_merge_concurrent_invoices" value="0">
+                                    <input type="checkbox" id="services_auto_merge_concurrent_invoices"
+                                           name="services_auto_merge_concurrent_invoices" value="1"
+                                           @checked($v('services_auto_merge_concurrent_invoices') === '1') class="sr-only peer">
+                                    <div class="w-14 h-8 bg-gray-300 dark:bg-gray-600 rounded-full peer peer-checked:bg-indigo-600 transition-colors duration-300 shadow-inner"></div>
+                                    <div class="absolute right-1 top-1 w-6 h-6 bg-white rounded-full shadow transition-transform duration-300 peer-checked:-translate-x-6 flex items-center justify-center">
+                                        <svg class="w-3 h-3 text-indigo-600 opacity-0 peer-checked:opacity-100 transition-opacity"
+                                             fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+                                        </svg>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="{{ $cardClass }} md:col-span-2">
                         <div class="p-6 border-b border-gray-100 dark:border-gray-700/60">
                             <h2 class="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">

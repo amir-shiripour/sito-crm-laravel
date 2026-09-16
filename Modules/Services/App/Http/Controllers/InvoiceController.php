@@ -108,10 +108,12 @@ class InvoiceController extends Controller
 
         $customers = Client::orderBy('full_name')->get();
         $currency = Setting::where('key', 'currency')->value('value') ?? 'toman';
+        $showFreeForZero = (bool)(Setting::where('key', 'services_show_free_for_zero_invoices')->value('value') ?? false);
 
         return view('services::invoices.index', compact(
             'invoices', 'statuses', 'customers', 'currency',
-            'grandCount', 'grandTotal', 'grandPaid', 'grandDue'
+            'grandCount', 'grandTotal', 'grandPaid', 'grandDue',
+            'showFreeForZero'
         ));
     }
 
