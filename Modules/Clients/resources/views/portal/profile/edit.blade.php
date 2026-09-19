@@ -321,7 +321,7 @@
 
                                                         @case('date')
                                                             <input type="text" id="field_{{ $fid }}" name="{{ $fid }}" value="{{ $fieldValue }}"
-                                                                   class="{{ $baseInputClass }} font-mono" placeholder="{{ $field['placeholder'] ?? '' }}"
+                                                                   class="{{ $baseInputClass }}" placeholder="{{ $field['placeholder'] ?? '' }}"
                                                                    data-jdp-only-date>
                                                             @break
 
@@ -631,13 +631,32 @@
                                                             @break
 
                                                         @case('checkbox')
-                                                            <div class="flex items-center h-full pt-1">
-                                                                <input type="checkbox" id="field_{{ $fid }}" name="{{ $fid }}" value="1" {{ $fieldValue ? 'checked' : '' }}
-                                                                       class="w-5 h-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-800 transition-colors cursor-pointer" />
-                                                                <label for="field_{{ $fid }}" class="mr-3 text-sm font-medium text-gray-700 dark:text-gray-300 cursor-pointer select-none">
-                                                                    {{ $field['placeholder'] ?: 'تأیید / فعال' }}
-                                                                </label>
-                                                            </div>
+                                                            @if(!empty($opts))
+                                                                <div class="flex flex-wrap gap-4 pt-1">
+                                                                    @php
+                                                                        $selectedValues = is_array($fieldValue) ? $fieldValue : (is_string($fieldValue) && str_starts_with(trim($fieldValue), '[') ? (json_decode($fieldValue, true) ?: []) : ($fieldValue ? [$fieldValue] : []));
+                                                                    @endphp
+                                                                    @foreach($opts as $ov => $ol)
+                                                                        @php
+                                                                            $v = is_string($ov) ? $ov : $ol;
+                                                                            $l = is_string($ol) ? $ol : $ov;
+                                                                        @endphp
+                                                                        <label class="inline-flex items-center gap-2 cursor-pointer group">
+                                                                            <input type="checkbox" name="{{ $fid }}[]" value="{{ $v }}" {{ in_array($v, $selectedValues) ? 'checked' : '' }}
+                                                                                   class="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-800 transition-colors cursor-pointer" />
+                                                                            <span class="text-sm text-gray-700 group-hover:text-indigo-600 dark:text-gray-300 transition-colors">{{ $l }}</span>
+                                                                        </label>
+                                                                    @endforeach
+                                                                </div>
+                                                            @else
+                                                                <div class="flex items-center h-full pt-1">
+                                                                    <input type="checkbox" id="field_{{ $fid }}" name="{{ $fid }}" value="1" {{ $fieldValue ? 'checked' : '' }}
+                                                                           class="w-5 h-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-800 transition-colors cursor-pointer" />
+                                                                    <label for="field_{{ $fid }}" class="mr-3 text-sm font-medium text-gray-700 dark:text-gray-300 cursor-pointer select-none">
+                                                                        {{ $field['placeholder'] ?: 'تأیید / فعال' }}
+                                                                    </label>
+                                                                </div>
+                                                            @endif
                                                             @break
 
                                                         @case('radio')
@@ -714,7 +733,7 @@
                                     <div>
                                         <label for="current_password" class="block mb-2 text-sm font-semibold text-gray-800 dark:text-gray-200">رمز عبور فعلی</label>
                                         <input type="password" id="current_password" name="current_password" autocomplete="current-password"
-                                               class="{{ $baseInputClass }} font-mono">
+                                               class="{{ $baseInputClass }} dir-ltr">
                                         @error('current_password')
                                             <div class="flex items-center gap-1.5 text-sm font-medium text-red-600 dark:text-red-400 mt-2">
                                                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
@@ -730,7 +749,7 @@
                                         <div>
                                             <label for="password" class="block mb-2 text-sm font-semibold text-gray-800 dark:text-gray-200">رمز عبور جدید</label>
                                             <input type="password" id="password" name="password" autocomplete="new-password"
-                                                   class="{{ $baseInputClass }} font-mono" placeholder="حداقل ۸ کاراکتر">
+                                                   class="{{ $baseInputClass }} dir-ltr" placeholder="حداقل ۸ کاراکتر">
                                             @error('password')
                                                 <div class="flex items-center gap-1.5 text-sm font-medium text-red-600 dark:text-red-400 mt-2">
                                                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
@@ -743,7 +762,7 @@
                                         <div>
                                             <label for="password_confirmation" class="block mb-2 text-sm font-semibold text-gray-800 dark:text-gray-200">تکرار رمز عبور جدید</label>
                                             <input type="password" id="password_confirmation" name="password_confirmation" autocomplete="new-password"
-                                                   class="{{ $baseInputClass }} font-mono" placeholder="تکرار رمز">
+                                                   class="{{ $baseInputClass }} dir-ltr" placeholder="تکرار رمز">
                                         </div>
                                     </div>
                                 </div>

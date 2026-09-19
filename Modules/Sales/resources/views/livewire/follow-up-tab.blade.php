@@ -111,7 +111,10 @@
                     <div class="inline-block align-bottom relative bg-white dark:bg-gray-800 rounded-2xl text-right overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-xl sm:w-full border border-gray-200 dark:border-gray-700">
                         <div class="p-6">
                             <div class="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 pb-4 mb-5">
-                                <h3 class="text-lg font-bold text-gray-900 dark:text-white" id="modal-title">✅ ثبت اقدام پیگیری</h3>
+                                <h3 class="text-lg font-bold text-gray-900 dark:text-white inline-flex items-center gap-2" id="modal-title">
+                                    <svg class="w-5 h-5 text-indigo-600 dark:text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                    ثبت اقدام پیگیری
+                                </h3>
                                 <button x-on:click="show = false" type="button" class="text-gray-400 hover:text-rose-500 bg-gray-50 hover:bg-rose-50 dark:bg-gray-900/50 dark:hover:bg-rose-500/20 p-2 rounded-xl transition-colors">
                                     <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                                 </button>
@@ -128,10 +131,10 @@
                                 <div>
                                     <label class="{{ $labelClass }}">اولویت <span class="text-rose-500">*</span></label>
                                     <select wire:model="followup_priority" class="{{ $inputClass }}">
-                                        <option value="low">🔽 کم</option>
-                                        <option value="medium">▶️ متوسط</option>
-                                        <option value="high">🔼 زیاد</option>
-                                        <option value="urgent">🔥 فوری / بحرانی</option>
+                                        <option value="low">کم</option>
+                                        <option value="medium">متوسط</option>
+                                        <option value="high">زیاد</option>
+                                        <option value="urgent">فوری / بحرانی</option>
                                     </select>
                                     @error('followup_priority') <span class="text-rose-500 text-2xs mt-1.5 block">{{ $message }}</span> @enderror
                                 </div>

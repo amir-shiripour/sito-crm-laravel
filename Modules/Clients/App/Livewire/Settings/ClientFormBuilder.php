@@ -179,7 +179,7 @@ class ClientFormBuilder extends Component
             $this->schema['fields'][$lastIndex]['save_globally'] = false;
         }
 
-        if ($type === 'radio') {
+        if ($type === 'radio' || $type === 'checkbox') {
             $this->schema['fields'][$lastIndex]['options_json'] = '';
         }
 

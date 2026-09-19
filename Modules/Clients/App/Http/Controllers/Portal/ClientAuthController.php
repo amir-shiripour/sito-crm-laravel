@@ -506,19 +506,31 @@ class ClientAuthController extends Controller
             }
 
             $fieldRules = [];
+            $fieldType = $field['type'] ?? 'text';
+            $isMultiple = !empty($field['multiple']) || ($fieldType === 'checkbox' && !empty($field['options_json']));
+
             if (!empty($field['required'])) {
                 $fieldRules[] = 'required';
+                if ($isMultiple) {
+                    $fieldRules[] = 'array';
+                    $fieldRules[] = 'min:1';
+                }
             } else {
                 $fieldRules[] = 'nullable';
+                if ($isMultiple) {
+                    $fieldRules[] = 'array';
+                }
             }
 
-            if ($field['type'] === 'email') {
+            if ($fieldType === 'email') {
                 $fieldRules[] = 'email';
                 if ($fid === 'email') {
                     $fieldRules[] = 'unique:clients,email';
                 }
-            } elseif ($field['type'] === 'number') {
+            } elseif ($fieldType === 'number') {
                 $fieldRules[] = 'numeric';
+            } elseif ($fieldType === 'file' || $fieldType === 'profile-photo') {
+                $fieldRules[] = 'file';
             }
 
             if ($fid === 'phone') {
@@ -602,13 +614,20 @@ class ClientAuthController extends Controller
             if (\Modules\Clients\Entities\ClientForm::isSystemFieldId($fid)) {
                 continue;
             }
-            if ($request->has($fid)) {
+            $fieldType = $field['type'] ?? 'text';
+            if (($fieldType === 'file' || $fieldType === 'profile-photo') && $request->hasFile($fid)) {
+                $meta[$fid] = $request->file($fid)->store('clients/uploads', 'public');
+            } elseif ($request->has($fid)) {
                 $meta[$fid] = $request->input($fid);
             }
         }
         $clientData['meta'] = $meta;
 
         $client = Client::create($clientData);
+
+        if (class_exists(\Modules\Clients\App\Services\ClientFormService::class)) {
+            app(\Modules\Clients\App\Services\ClientFormService::class)->saveNewOptionsFromPayload($meta);
+        }
 
         Auth::guard('client')->login($client);
         $request->session()->regenerate();

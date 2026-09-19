@@ -110,7 +110,7 @@
                     </div>
                     <div>
                         <label class="{{ $labelClass }}">شناسه سیستمی (Key)</label>
-                        <input type="text" wire:model="key" class="{{ $inputClass }} dir-ltr font-mono text-xs"
+                        <input type="text" wire:model="key" class="{{ $inputClass }} dir-ltr text-xs"
                                placeholder="در صورت خالی‌بودن، خودکار تولید می‌شود">
                         @error('key')
                         <div class="mt-1 text-xs text-red-600">{{ $message }}</div>
@@ -127,7 +127,7 @@
 
                 <p class="mt-3 text-[11px] text-gray-500 dark:text-gray-400">
                     آیدی‌های زیر برای فیلدهای سیستمی رزرو شده‌اند و نباید در فیلدهای سفارشی به‌کار بروند:
-                    <span class="font-mono">username, full_name, email, phone, national_code, case_number</span>
+                    <span class="dir-ltr inline-block">username, full_name, email, phone, national_code, case_number</span>
                 </p>
 
                 @error('schema')
@@ -571,7 +571,7 @@
                                         سیستمی
                                     </span>
                                     <span
-                                        class="inline-flex items-center px-2 py-0.5 rounded text-xs font-mono font-semibold bg-gray-900/80 text-emerald-300 shrink-0">
+                                        class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-gray-900/80 text-emerald-300 shrink-0 dir-ltr">
                                         {{ $fid }}
                                     </span>
                                     <input type="text" wire:model="schema.fields.{{ $i }}.label"
@@ -765,7 +765,7 @@
                                                                         foreach ($statuses as $st) {
                                                                             $triggerOptions[$st['id']] = $st['label'];
                                                                         }
-                                                                    } elseif (in_array($triggerField['type'] ?? '', ['select', 'radio']) && !empty($triggerField['options_json'])) {
+                                                                    } elseif (in_array($triggerField['type'] ?? '', ['select', 'radio', 'checkbox']) && !empty($triggerField['options_json'])) {
                                                                         $parsedOpts = json_decode($triggerField['options_json'], true);
                                                                         if (is_array($parsedOpts)) {
                                                                             $triggerOptions = $parsedOpts;
@@ -866,7 +866,7 @@
                                     </button>
 
                                     <span
-                                        class="inline-flex items-center px-2 py-0.5 rounded text-xs font-mono font-semibold bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300 uppercase shrink-0">
+                                        class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300 uppercase shrink-0">
                                         {{ $field['type'] ?? 'text' }}
                                     </span>
                                     <input type="text" wire:model="schema.fields.{{ $i }}.label"
@@ -876,9 +876,9 @@
 
                                 <div class="flex items-center gap-2 shrink-0">
                                     <div class="flex items-center gap-1.5" @click.stop>
-                                        <span class="text-[11px] text-gray-400 font-mono">ID:</span>
+                                        <span class="text-[11px] text-gray-400">ID:</span>
                                         <input type="text" wire:model="schema.fields.{{ $i }}.id"
-                                               class="bg-transparent border-b border-gray-300 text-xs font-mono text-gray-600 focus:border-indigo-500 focus:ring-0 w-24 text-left dir-ltr dark:border-gray-600 dark:text-gray-400 py-0.5"
+                                               class="bg-transparent border-b border-gray-300 text-xs text-gray-600 focus:border-indigo-500 focus:ring-0 w-24 text-left dir-ltr dark:border-gray-600 dark:text-gray-400 py-0.5"
                                                placeholder="field_id">
                                     </div>
 
@@ -1037,9 +1037,8 @@
                                             </div>
                                         @endif
 
-                                        @if(($field['type'] ?? '') !== 'checkbox')
                                             <div class="space-y-2"
-                                                 x-show="type === 'radio' || !useClientsList"
+                                                 x-show="type === 'radio' || type === 'checkbox' || !useClientsList"
                                                  x-data="{
                                                       optionsJson: $wire.entangle('schema.fields.{{ $i }}.options_json'),
                                                       optionsList: [],
@@ -1126,7 +1125,7 @@
                                                                     <div>
                                                                         <input type="text"
                                                                                placeholder="کد/کلید (مثال: male)"
-                                                                               class="{{ $inputClass }} !py-1 !text-xs dir-ltr font-mono text-center"
+                                                                               class="{{ $inputClass }} !py-1 !text-xs dir-ltr text-center"
                                                                                x-model="opt.key"
                                                                                @input="updateJsonFromList()">
                                                                     </div>
@@ -1160,13 +1159,18 @@
 
                                                 {{-- تب JSON --}}
                                                 <div x-show="mode === 'json'" class="space-y-1">
-                                                     <textarea class="{{ $inputClass }} font-mono text-xs dir-ltr" rows="3"
+                                                     <textarea class="{{ $inputClass }} text-xs dir-ltr" rows="3"
                                                                placeholder='{"m":"مرد", "f":"زن"}'
                                                                x-model="optionsJson"
                                                                @input="(() => { try { JSON.parse(optionsJson) } catch(e) {} })()"></textarea>
                                                 </div>
+
+                                                <template x-if="type === 'checkbox'">
+                                                    <p class="text-[11px] text-gray-500 dark:text-gray-400 mt-2">
+                                                        💡 راهنما: با تعریف گزینه‌ها، این فیلد به صورت چک‌باکس چندانتخابی نمایش داده می‌شود. اگر هیچ گزینه‌ای تعریف نشود، به صورت چک‌باکس تکی (بله/خیر) عمل خواهد کرد.
+                                                    </p>
+                                                </template>
                                             </div>
-                                        @endif
 
                                         {{-- تنظیمات پیشرفته سلکت --}}
                                         @if(($field['type'] ?? '') === 'select')
@@ -1350,7 +1354,7 @@
                                                                         foreach ($statuses as $st) {
                                                                             $triggerOptions[$st['id']] = $st['label'];
                                                                         }
-                                                                    } elseif (in_array($triggerField['type'] ?? '', ['select', 'radio']) && !empty($triggerField['options_json'])) {
+                                                                    } elseif (in_array($triggerField['type'] ?? '', ['select', 'radio', 'checkbox']) && !empty($triggerField['options_json'])) {
                                                                         $parsedOpts = json_decode($triggerField['options_json'], true);
                                                                         if (is_array($parsedOpts)) {
                                                                             $triggerOptions = $parsedOpts;

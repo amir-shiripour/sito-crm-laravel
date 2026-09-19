@@ -20,6 +20,8 @@ class DealTab extends Component
     public string $sortBy = 'latest'; // 'latest', 'name', 'revenue'
     
     public ?int $selectedDealId = null;
+    public ?int $selectedClientId = null;
+    public string $filterClientMode = 'active'; // 'active', 'all'
     public bool $showCreateModal = false;
 
     // Create/Edit Deal Form Fields
@@ -52,9 +54,10 @@ class DealTab extends Component
 
     protected $queryString = ['search', 'filterStage', 'filterStatus', 'sortBy'];
 
-    public function mount($selectedDealId = null)
+    public function mount($selectedDealId = null, $selectedClientId = null)
     {
-        $this->selectedDealId = $selectedDealId;
+        $this->selectedDealId = $selectedDealId ? (int) $selectedDealId : null;
+        $this->selectedClientId = $selectedClientId ? (int) $selectedClientId : null;
         $this->newDealUserId = auth()->id();
         $this->loadDropdowns();
     }
@@ -71,7 +74,15 @@ class DealTab extends Component
     #[On('dealChanged')]
     public function updateSelectedDeal($dealId)
     {
-        $this->selectedDealId = $dealId;
+        $this->selectedDealId = $dealId ? (int) $dealId : null;
+    }
+
+    #[On('clientChanged')]
+    public function updateSelectedClient($clientId)
+    {
+        $this->selectedClientId = $clientId ? (int) $clientId : null;
+        $this->filterClientMode = 'active';
+        $this->resetPage();
     }
 
     public function selectDeal($id)
@@ -88,6 +99,11 @@ class DealTab extends Component
         $firstPipeline = SalesPipeline::orderBy('order')->first();
         $this->newDealStageId = $firstPipeline?->id;
         $this->newDealUserId = auth()->id();
+
+        if ($this->selectedClientId) {
+            $this->newDealClientId = $this->selectedClientId;
+            $this->clientMode = 'existing';
+        }
         
         $this->showCreateModal = true;
     }
@@ -333,6 +349,10 @@ class DealTab extends Component
             ->with(['client', 'stage', 'owner'])
             ->visibleForUser(auth()->user());
 
+        if ($this->selectedClientId && $this->filterClientMode === 'active') {
+            $query->where('client_id', $this->selectedClientId);
+        }
+
         if ($this->search) {
             $query->where(function($q) {
                 $q->where('title', 'like', '%'.$this->search.'%')
@@ -361,9 +381,11 @@ class DealTab extends Component
         }
 
         $deals = $query->paginate(10);
+        $selectedClient = $this->selectedClientId ? Client::find($this->selectedClientId) : null;
 
         return view('sales::livewire.deal-tab', [
-            'deals' => $deals
+            'deals' => $deals,
+            'selectedClient' => $selectedClient,
         ]);
     }
 }

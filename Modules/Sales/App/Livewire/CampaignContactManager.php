@@ -195,7 +195,7 @@ class CampaignContactManager extends Component
         }
 
         \Modules\Sales\App\Models\SalesDeal::create([
-            'title' => 'پرونده: ' . $contact->name,
+            'title' => $contact->name,
             'client_id' => $clientId,
             'pipeline_stage_id' => $firstStage->id,
             'user_id' => $userId,

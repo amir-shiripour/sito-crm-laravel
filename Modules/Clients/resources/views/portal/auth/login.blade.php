@@ -34,6 +34,18 @@
     $activeForm = \Modules\Clients\Entities\ClientForm::active();
     $regFields = $activeForm ? collect($activeForm->schema['fields'] ?? [])->where('show_in_registration', true) : collect();
 
+    $hasProvinceCityField = $regFields->contains(fn($f) => ($f['type'] ?? '') === 'select-province-city');
+    $provincesData = [];
+    $provinces = [];
+    if ($hasProvinceCityField) {
+        $jsonPath = base_path('Modules/Clients/resources/data/iran-provinces-cities.json');
+        if (file_exists($jsonPath)) {
+            $provincesData = json_decode(file_get_contents($jsonPath), true) ?? [];
+            $provinces = array_keys($provincesData);
+        }
+    }
+    $hasDateField = $regFields->contains(fn($f) => ($f['type'] ?? '') === 'date');
+
     $isRegisterMode = session('register_mode') || request()->query('register') == '1' || old('via_otp') !== null || $errors->has('full_name') || $errors->has('email') || $errors->has('phone') || $errors->has('national_code');
     $registerUsername = session('register_username') ?: request()->query('username') ?: old('username');
     $registerPassword = session('register_password') ?: old('password');
@@ -99,6 +111,10 @@
 
                 @if($isRegisterMode)
                     {{-- فرم ثبت‌نام --}}
+                    @if($hasDateField)
+                        @includeIf('partials.jalali-date-picker')
+                    @endif
+
                     <div class="px-6 py-8 space-y-5">
                         @if ($registerAlert)
                             <div class="rounded-xl bg-indigo-50 p-3 text-xs font-medium text-indigo-700 dark:bg-indigo-900/10 dark:text-indigo-300 border border-indigo-100 dark:border-indigo-900/20">
@@ -106,12 +122,34 @@
                             </div>
                         @endif
 
-                        <form method="POST" action="{{ route('client.register.submit') }}" class="space-y-4">
+                        <form method="POST" action="{{ route('client.register.submit') }}" class="space-y-4" enctype="multipart/form-data">
                             @csrf
                             
                             <input type="hidden" name="username" value="{{ $registerUsername }}">
                             <input type="hidden" name="via_otp" value="{{ $viaOtp ? '1' : '0' }}">
                             
+                            @if($viaOtp)
+                                <div class="rounded-xl border border-emerald-200 bg-emerald-50/60 p-3.5 dark:border-emerald-800/40 dark:bg-emerald-950/20">
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center gap-2.5">
+                                            <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100 text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-400">
+                                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                                </svg>
+                                            </div>
+                                            <div>
+                                                <span class="block text-xs font-semibold text-emerald-800 dark:text-emerald-300">شماره موبایل تایید شده</span>
+                                                <span class="block text-xs font-bold text-gray-700 dark:text-gray-200 dir-ltr text-right">{{ $registerUsername }}</span>
+                                            </div>
+                                        </div>
+                                        <span class="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-0.5 text-[10px] font-medium text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300">
+                                            احراز شده
+                                        </span>
+                                    </div>
+                                    <input type="hidden" name="phone" value="{{ $registerUsername }}">
+                                </div>
+                            @endif
+
                             @if(!$viaOtp)
                                 <div>
                                     <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
@@ -152,6 +190,7 @@
                                         continue;
                                     }
                                     $isRequired = !empty($field['required']);
+                                    $fieldType = $field['type'] ?? 'text';
 
                                     // تعیین مقدار پیش‌فرض بر اساس استراتژی نام کاربری
                                     $defaultValue = old($fid);
@@ -164,6 +203,27 @@
                                             $defaultValue = $registerUsername;
                                         }
                                     }
+
+                                    // پارس گزینه‌ها برای select / radio / checkbox
+                                    $opts = [];
+                                    if (!empty($field['options_json'])) {
+                                        $parsed = json_decode($field['options_json'], true);
+                                        if (is_array($parsed)) {
+                                            $opts = $parsed;
+                                        } else {
+                                            $lines = array_filter(array_map('trim', explode("\n", $field['options_json'])));
+                                            foreach ($lines as $line) {
+                                                if (str_contains($line, ':')) {
+                                                    [$okey, $oval] = array_map('trim', explode(':', $line, 2));
+                                                    $opts[$okey] = $oval;
+                                                } else {
+                                                    $opts[$line] = $line;
+                                                }
+                                            }
+                                        }
+                                    } elseif (!empty($field['options']) && is_array($field['options'])) {
+                                        $opts = $field['options'];
+                                    }
                                 @endphp
                                 
                                 <div>
@@ -174,37 +234,236 @@
                                         @endif
                                     </label>
                                     
-                                    @if($field['type'] === 'textarea')
-                                        <textarea name="{{ $fid }}" {{ $isRequired ? 'required' : '' }}
-                                                  class="block w-full rounded-xl border-gray-200 bg-gray-50 py-2.5 px-4 text-sm text-gray-900 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 dark:border-gray-700 dark:bg-gray-900/50 dark:text-gray-100">{{ $defaultValue }}</textarea>
-                                    @elseif($field['type'] === 'select')
-                                        @php
-                                            $options = [];
-                                            if (!empty($field['options_json'])) {
-                                                $lines = array_filter(array_map('trim', explode("\n", $field['options_json'])));
-                                                foreach ($lines as $line) {
-                                                    if (str_contains($line, ':')) {
-                                                        [$okey, $oval] = array_map('trim', explode(':', $line, 2));
-                                                        $options[$okey] = $oval;
-                                                    } else {
-                                                        $options[$line] = $line;
-                                                    }
-                                                }
-                                            }
-                                        @endphp
-                                        <select name="{{ $fid }}" {{ $isRequired ? 'required' : '' }}
-                                                class="block w-full rounded-xl border-gray-200 bg-gray-50 py-2.5 px-4 text-sm text-gray-900 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 dark:border-gray-700 dark:bg-gray-900/50 dark:text-gray-100">
-                                            <option value="">انتخاب کنید...</option>
-                                            @foreach($options as $okey => $oval)
-                                                <option value="{{ $okey }}" {{ old($fid, $defaultValue) == $okey ? 'selected' : '' }}>{{ $oval }}</option>
+                                    @if($fieldType === 'textarea')
+                                        <textarea name="{{ $fid }}" rows="3" {{ $isRequired ? 'required' : '' }}
+                                                  placeholder="{{ $field['placeholder'] ?? '' }}"
+                                                  class="block w-full rounded-xl border-gray-200 bg-gray-50 py-2.5 px-4 text-sm text-gray-900 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 dark:border-gray-700 dark:bg-gray-900/50 dark:text-gray-100 resize-y min-h-[80px]">{{ $defaultValue }}</textarea>
+
+                                    @elseif($fieldType === 'date')
+                                        <div class="relative">
+                                            <input type="text" name="{{ $fid }}" value="{{ $defaultValue }}" {{ $isRequired ? 'required' : '' }}
+                                                   placeholder="{{ $field['placeholder'] ?? 'مثلاً: 1403/01/01' }}"
+                                                   data-jdp-only-date
+                                                   class="block w-full rounded-xl border-gray-200 bg-gray-50 py-2.5 px-4 text-sm text-gray-900 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 dark:border-gray-700 dark:bg-gray-900/50 dark:text-gray-100">
+                                            <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">
+                                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                                </svg>
+                                            </div>
+                                        </div>
+
+                                    @elseif($fieldType === 'select')
+                                        @if(!empty($field['multiple']))
+                                            @php
+                                                $selectedVals = is_array($defaultValue) ? $defaultValue : (is_string($defaultValue) && str_starts_with(trim($defaultValue), '[') ? (json_decode($defaultValue, true) ?: []) : ($defaultValue ? [$defaultValue] : []));
+                                            @endphp
+                                            <select name="{{ $fid }}[]" multiple {{ $isRequired ? 'required' : '' }}
+                                                    class="block w-full rounded-xl border-gray-200 bg-gray-50 py-2.5 px-4 text-sm text-gray-900 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 dark:border-gray-700 dark:bg-gray-900/50 dark:text-gray-100 min-h-[90px]">
+                                                @foreach($opts as $okey => $oval)
+                                                    @php $v = is_string($okey) ? $okey : $oval; $l = is_string($oval) ? $oval : $okey; @endphp
+                                                    <option value="{{ $v }}" {{ in_array($v, $selectedVals) ? 'selected' : '' }}>{{ $l }}</option>
+                                                @endforeach
+                                            </select>
+                                            <p class="mt-1 text-[11px] text-gray-500 dark:text-gray-400">برای انتخاب چند مورد کلید Ctrl یا Cmd را نگه دارید.</p>
+                                        @else
+                                            <div class="relative">
+                                                <select name="{{ $fid }}" {{ $isRequired ? 'required' : '' }}
+                                                        class="block w-full appearance-none rounded-xl border-gray-200 bg-gray-50 py-2.5 pl-10 pr-4 text-sm text-gray-900 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 dark:border-gray-700 dark:bg-gray-900/50 dark:text-gray-100">
+                                                    <option value="">{{ $field['placeholder'] ?? 'انتخاب کنید...' }}</option>
+                                                    @foreach($opts as $okey => $oval)
+                                                        @php $v = is_string($okey) ? $okey : $oval; $l = is_string($oval) ? $oval : $okey; @endphp
+                                                        <option value="{{ $v }}" {{ (string)$defaultValue === (string)$v ? 'selected' : '' }}>{{ $l }}</option>
+                                                    @endforeach
+                                                </select>
+                                                <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">
+                                                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                                                    </svg>
+                                                </div>
+                                            </div>
+                                        @endif
+
+                                    @elseif($fieldType === 'radio')
+                                        <div class="flex flex-wrap gap-4 pt-1">
+                                            @foreach($opts as $okey => $oval)
+                                                @php $v = is_string($okey) ? $okey : $oval; $l = is_string($oval) ? $oval : $okey; @endphp
+                                                <label class="inline-flex items-center gap-2 cursor-pointer group">
+                                                    <input type="radio" name="{{ $fid }}" value="{{ $v }}" {{ (string)$defaultValue === (string)$v ? 'checked' : '' }}
+                                                           {{ $isRequired ? 'required' : '' }}
+                                                           class="w-4 h-4 text-indigo-600 border-gray-300 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-800 transition-colors cursor-pointer">
+                                                    <span class="text-xs font-medium text-gray-700 dark:text-gray-300 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">{{ $l }}</span>
+                                                </label>
                                             @endforeach
-                                        </select>
+                                        </div>
+
+                                    @elseif($fieldType === 'checkbox')
+                                        @if(!empty($opts))
+                                            @php
+                                                $selectedVals = is_array($defaultValue) ? $defaultValue : (is_string($defaultValue) && str_starts_with(trim($defaultValue), '[') ? (json_decode($defaultValue, true) ?: []) : ($defaultValue ? [$defaultValue] : []));
+                                            @endphp
+                                            <div class="flex flex-wrap gap-4 pt-1">
+                                                @foreach($opts as $okey => $oval)
+                                                    @php $v = is_string($okey) ? $okey : $oval; $l = is_string($oval) ? $oval : $okey; @endphp
+                                                    <label class="inline-flex items-center gap-2 cursor-pointer group">
+                                                        <input type="checkbox" name="{{ $fid }}[]" value="{{ $v }}" {{ in_array($v, $selectedVals) ? 'checked' : '' }}
+                                                               class="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-800 transition-colors cursor-pointer">
+                                                        <span class="text-xs font-medium text-gray-700 dark:text-gray-300 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">{{ $l }}</span>
+                                                    </label>
+                                                @endforeach
+                                            </div>
+                                        @else
+                                            <div class="flex items-center gap-2 pt-1">
+                                                <input type="hidden" name="{{ $fid }}" value="0">
+                                                <input type="checkbox" id="field_{{ $fid }}" name="{{ $fid }}" value="1" {{ !empty($defaultValue) ? 'checked' : '' }}
+                                                       class="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-800 transition-colors cursor-pointer">
+                                                <label for="field_{{ $fid }}" class="text-xs font-medium text-gray-700 dark:text-gray-300 cursor-pointer select-none">
+                                                    {{ $field['placeholder'] ?: 'تأیید و موافقت' }}
+                                                </label>
+                                            </div>
+                                        @endif
+
+                                    @elseif($fieldType === 'select-province-city')
+                                        @php
+                                            $currentVal = $defaultValue;
+                                            if (is_string($currentVal)) {
+                                                $currentVal = json_decode($currentVal, true) ?? [];
+                                            }
+                                            if (!is_array($currentVal)) {
+                                                $currentVal = [];
+                                            }
+                                            $selectedProvince = $currentVal['province'] ?? '';
+                                            $selectedCity = $currentVal['city'] ?? '';
+                                            $cities = ($selectedProvince && isset($provincesData[$selectedProvince])) ? $provincesData[$selectedProvince] : [];
+                                        @endphp
+                                        <div class="grid grid-cols-2 gap-2" x-data="{
+                                            province: @js($selectedProvince),
+                                            city: @js($selectedCity),
+                                            provinces: @js($provinces),
+                                            cities: @js($cities),
+                                            provincesData: @js($provincesData),
+                                            searchProvince: '',
+                                            searchCity: '',
+                                            openProvince: false,
+                                            openCity: false,
+                                            init() {
+                                                if (this.province && this.provincesData[this.province]) {
+                                                    this.cities = this.provincesData[this.province];
+                                                }
+                                            },
+                                            updateCities() {
+                                                if (this.province && this.provincesData[this.province]) {
+                                                    this.cities = this.provincesData[this.province];
+                                                    this.city = '';
+                                                    this.searchCity = '';
+                                                    this.updateValue();
+                                                } else {
+                                                    this.cities = [];
+                                                    this.city = '';
+                                                    this.searchCity = '';
+                                                    this.updateValue();
+                                                }
+                                            },
+                                            updateValue() {
+                                                $refs.hiddenInput.value = JSON.stringify({province: this.province || '', city: this.city || ''});
+                                            },
+                                            get filteredProvinces() {
+                                                if (!this.searchProvince) return this.provinces;
+                                                return this.provinces.filter(p => p.includes(this.searchProvince));
+                                            },
+                                            get filteredCities() {
+                                                if (!this.searchCity) return this.cities;
+                                                return this.cities.filter(c => c.includes(this.searchCity));
+                                            }
+                                        }">
+                                            <input type="hidden" name="{{ $fid }}" x-ref="hiddenInput" value="{{ is_string($defaultValue) ? $defaultValue : json_encode($currentVal) }}">
+
+                                            {{-- استان --}}
+                                            <div class="relative" @click.outside="openProvince = false">
+                                                <div @click="openProvince = !openProvince"
+                                                     class="flex items-center justify-between cursor-pointer rounded-xl border border-gray-200 bg-gray-50 py-2.5 px-3 text-xs text-gray-900 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 dark:border-gray-700 dark:bg-gray-900/50 dark:text-gray-100">
+                                                    <span x-text="province ? province : 'انتخاب استان...'" :class="{'text-gray-400 dark:text-gray-500': !province}" class="truncate"></span>
+                                                    <svg class="h-3.5 w-3.5 text-gray-400 transition-transform duration-200 shrink-0 mr-1" :class="{'rotate-180': openProvince}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                                    </svg>
+                                                </div>
+
+                                                <div x-show="openProvince" x-transition x-cloak
+                                                     class="absolute z-50 mt-1 w-full overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xl dark:border-gray-700 dark:bg-gray-800">
+                                                    <div class="p-2 border-b border-gray-100 dark:border-gray-700">
+                                                        <input type="text" x-model="searchProvince" placeholder="جستجوی استان..."
+                                                               class="w-full rounded-lg border-gray-200 bg-gray-50 px-2 py-1 text-xs text-gray-900 focus:border-indigo-500 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+                                                               @click.stop>
+                                                    </div>
+                                                    <ul class="max-h-48 overflow-y-auto p-1 scrollbar-thin">
+                                                        <template x-for="prov in filteredProvinces" :key="prov">
+                                                            <li @click="province = prov; updateCities(); openProvince = false; searchProvince = ''"
+                                                                class="cursor-pointer select-none py-1.5 px-2.5 text-xs rounded-lg transition-colors hover:bg-gray-100 dark:hover:bg-gray-700/50"
+                                                                :class="{'bg-indigo-50 text-indigo-700 font-medium dark:bg-indigo-900/30 dark:text-indigo-300': province === prov, 'text-gray-700 dark:text-gray-200': province !== prov}">
+                                                                <span x-text="prov"></span>
+                                                            </li>
+                                                        </template>
+                                                        <li x-show="filteredProvinces.length === 0" class="py-2 px-2 text-[11px] text-gray-400 text-center">
+                                                            یافت نشد
+                                                        </li>
+                                                    </ul>
+                                                </div>
+                                            </div>
+
+                                            {{-- شهر --}}
+                                            <div class="relative" @click.outside="openCity = false">
+                                                <div @click="if(province && cities.length > 0) openCity = !openCity"
+                                                     class="flex items-center justify-between cursor-pointer rounded-xl border border-gray-200 bg-gray-50 py-2.5 px-3 text-xs text-gray-900 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 dark:border-gray-700 dark:bg-gray-900/50 dark:text-gray-100"
+                                                     :class="{'opacity-50 cursor-not-allowed': !province || cities.length === 0}">
+                                                    <span x-text="city ? city : 'انتخاب شهر...'" :class="{'text-gray-400 dark:text-gray-500': !city}" class="truncate"></span>
+                                                    <svg class="h-3.5 w-3.5 text-gray-400 transition-transform duration-200 shrink-0 mr-1" :class="{'rotate-180': openCity}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                                    </svg>
+                                                </div>
+
+                                                <div x-show="openCity" x-transition x-cloak
+                                                     class="absolute z-50 mt-1 w-full overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xl dark:border-gray-700 dark:bg-gray-800">
+                                                    <div class="p-2 border-b border-gray-100 dark:border-gray-700">
+                                                        <input type="text" x-model="searchCity" placeholder="جستجوی شهر..."
+                                                               class="w-full rounded-lg border-gray-200 bg-gray-50 px-2 py-1 text-xs text-gray-900 focus:border-indigo-500 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+                                                               @click.stop>
+                                                    </div>
+                                                    <ul class="max-h-48 overflow-y-auto p-1 scrollbar-thin">
+                                                        <template x-for="(cityItem, index) in filteredCities" :key="index">
+                                                            <li @click="city = cityItem; updateValue(); openCity = false; searchCity = ''"
+                                                                class="cursor-pointer select-none py-1.5 px-2.5 text-xs rounded-lg transition-colors hover:bg-gray-100 dark:hover:bg-gray-700/50"
+                                                                :class="{'bg-indigo-50 text-indigo-700 font-medium dark:bg-indigo-900/30 dark:text-indigo-300': city === cityItem, 'text-gray-700 dark:text-gray-200': city !== cityItem}">
+                                                                <span x-text="cityItem"></span>
+                                                            </li>
+                                                        </template>
+                                                        <li x-show="filteredCities.length === 0" class="py-2 px-2 text-[11px] text-gray-400 text-center">
+                                                            یافت نشد
+                                                        </li>
+                                                    </ul>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                    @elseif($fieldType === 'file' || $fieldType === 'profile-photo')
+                                        <input type="file" name="{{ $fid }}" {{ $isRequired ? 'required' : '' }}
+                                               class="block w-full text-xs text-gray-500 file:ml-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 dark:file:bg-indigo-900/30 dark:file:text-indigo-300 cursor-pointer transition-all border border-gray-200 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-900/50">
+
+                                    @elseif($fieldType === 'email')
+                                        <input type="email" name="{{ $fid }}" value="{{ $defaultValue }}" {{ $isRequired ? 'required' : '' }}
+                                               dir="ltr" placeholder="{{ $field['placeholder'] ?? 'info@example.com' }}"
+                                               class="block w-full rounded-xl border-gray-200 bg-gray-50 py-2.5 px-4 text-sm text-gray-900 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 dark:border-gray-700 dark:bg-gray-900/50 dark:text-gray-100">
+
+                                    @elseif($fieldType === 'number')
+                                        <input type="number" name="{{ $fid }}" value="{{ $defaultValue }}" {{ $isRequired ? 'required' : '' }}
+                                               placeholder="{{ $field['placeholder'] ?? '' }}"
+                                               class="block w-full rounded-xl border-gray-200 bg-gray-50 py-2.5 px-4 text-sm text-gray-900 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 dark:border-gray-700 dark:bg-gray-900/50 dark:text-gray-100">
+
                                     @else
-                                        <input type="{{ $field['type'] === 'email' ? 'email' : ($field['type'] === 'number' ? 'number' : 'text') }}"
+                                        <input type="{{ $fieldType === 'tel' ? 'tel' : 'text' }}"
                                                name="{{ $fid }}"
                                                value="{{ $defaultValue }}"
+                                               placeholder="{{ $field['placeholder'] ?? '' }}"
                                                {{ $isRequired ? 'required' : '' }}
-                                               class="block w-full rounded-xl border-gray-200 bg-gray-50 py-3 px-4 text-sm text-gray-900 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 dark:border-gray-700 dark:bg-gray-900/50 dark:text-gray-100">
+                                               class="block w-full rounded-xl border-gray-200 bg-gray-50 py-2.5 px-4 text-sm text-gray-900 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 dark:border-gray-700 dark:bg-gray-900/50 dark:text-gray-100">
                                     @endif
                                     
                                     @error($fid)
@@ -212,14 +471,6 @@
                                     @enderror
                                 </div>
                             @endforeach
-
-                            @if($viaOtp)
-                                <div>
-                                    <label class="block text-xs font-bold text-gray-400 mb-1.5">شماره موبایل (تایید شده)</label>
-                                    <input type="text" name="phone" value="{{ $registerUsername }}" readonly
-                                           class="block w-full rounded-xl border-gray-200 bg-gray-100 py-3 px-4 text-sm text-gray-400 dark:border-gray-700 dark:bg-gray-800 dir-ltr">
-                                </div>
-                            @endif
 
                             <button type="submit"
                                     class="group relative flex w-full justify-center rounded-xl bg-indigo-600 py-3 px-4 text-sm font-semibold text-white shadow-lg shadow-indigo-600/30 hover:bg-indigo-700 hover:shadow-indigo-600/40 focus:outline-none focus:ring-2 focus:ring-indigo-500/40 focus:ring-offset-2 transition-all active:scale-[0.98]">
@@ -253,6 +504,8 @@
                             dashboardUrl: @js(route('client.dashboard')),
                             oldUsername: @js(old('username', '')),
                             hasErrors: @js($errors->any()),
+                            usernameLabelOtp: @js($usernameLabelOtp),
+                            usernameLabelPassword: @js($usernameLabelPassword),
                          })"
                          x-init="init()"
                     >
@@ -333,7 +586,7 @@
                                          <div class="rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/60 dark:bg-gray-900/30 px-4 py-3 text-xs text-gray-600 dark:text-gray-300 flex justify-between items-center">
                                              <div>
                                                  <span class="font-medium">{{ $usernameLabelPassword }}:</span>
-                                                 <span class="font-mono dir-ltr ml-1" x-text="pwd.username"></span>
+                                                 <span class="font-sans dir-ltr ml-1" x-text="pwd.username"></span>
                                              </div>
                                              <button type="button" @click="prevStep()" class="text-xs text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300 font-bold transition-colors">
                                                  تغییر
@@ -457,9 +710,14 @@
 
                             {{-- مرحله ۲: تایید کد --}}
                             <div x-show="otp.sent" class="py-6 space-y-5">
-                                <div class="rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/60 dark:bg-gray-900/30 px-4 py-3 text-xs text-gray-600 dark:text-gray-300">
-                                    نام کاربری:
-                                    <span class="font-mono dir-ltr" x-text="otp.username"></span>
+                                <div class="rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/60 dark:bg-gray-900/30 px-4 py-3 text-xs text-gray-600 dark:text-gray-300 flex justify-between items-center">
+                                    <div>
+                                        <span class="font-medium">{{ $usernameLabelOtp }}:</span>
+                                        <span class="font-sans dir-ltr ml-1" x-text="otp.username"></span>
+                                    </div>
+                                    <button type="button" @click="resetOtp()" class="text-xs text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300 font-bold transition-colors">
+                                        تغییر
+                                    </button>
                                 </div>
 
                                 <div>
@@ -509,7 +767,7 @@
                                 <button type="button"
                                         @click="resetOtp()"
                                         class="w-full text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition">
-                                    تغییر نام کاربری
+                                    تغییر {{ $usernameLabelOtp }}
                                 </button>
 
                                 <div class="pt-4 mt-2 border-t border-dashed border-gray-200 dark:border-gray-700 text-center">
@@ -617,7 +875,7 @@
                                     this.otp.username = this.toEnglishDigits(this.otp.username).trim();
 
                                     if (!this.otp.username) {
-                                        this.setAlert('error', 'نام کاربری را وارد کنید.');
+                                        this.setAlert('error', 'لطفاً ' + (cfg.usernameLabelOtp || 'شماره موبایل') + ' را وارد کنید.');
                                         return;
                                     }
 
@@ -675,7 +933,7 @@
                                     this.otp.code = this.toEnglishDigits(this.otp.code).trim();
 
                                     if (!this.otp.username) {
-                                        this.setAlert('error', 'نام کاربری را وارد کنید.');
+                                        this.setAlert('error', 'لطفاً ' + (cfg.usernameLabelOtp || 'شماره موبایل') + ' را وارد کنید.');
                                         return;
                                     }
 
@@ -736,7 +994,7 @@
                                         this.pwd.username = this.toEnglishDigits(this.pwd.username).trim();
 
                                         if (!this.pwd.username) {
-                                            this.setAlert('error', 'لطفاً نام کاربری را وارد کنید.');
+                                            this.setAlert('error', 'لطفاً ' + (cfg.usernameLabelPassword || 'نام کاربری') + ' را وارد کنید.');
                                             return;
                                         }
 

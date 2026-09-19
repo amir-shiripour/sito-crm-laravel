@@ -42,11 +42,28 @@ class CampaignLeadManager extends Component
         $user = User::find($this->assignToUserId);
         if (!$user) return;
 
+        $salesAgentFieldId = \Modules\Sales\App\Models\CampaignContact::getOrCreateSalesAgentFieldId();
+
         foreach ($this->selectedClientIds as $clientId) {
             $client = Client::find($clientId);
             if ($client) {
-                // Sync the client to this user (allocate)
+                // Sync the client to this user (allocate in pivot)
                 $client->users()->sync([$this->assignToUserId]);
+
+                // Update custom field and lead status in meta
+                $meta = $client->meta ?? [];
+                if ($salesAgentFieldId) {
+                    $meta[$salesAgentFieldId] = (string) $this->assignToUserId;
+                }
+                if (!isset($meta['sales_lead_status'])) {
+                    $meta['sales_lead_status'] = 'pending';
+                }
+                $client->meta = $meta;
+                $client->save();
+
+                // If this client has any CampaignContact, update its assigned_to
+                \Modules\Sales\App\Models\CampaignContact::where('client_id', $clientId)
+                    ->update(['assigned_to' => $this->assignToUserId]);
             }
         }
 

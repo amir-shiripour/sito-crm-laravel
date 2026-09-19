@@ -21,7 +21,8 @@
 
     <div class="flex items-center justify-between border-b border-gray-100 dark:border-gray-700 pb-3">
         <h3 class="text-xs font-black text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
-            🎯 {{ $isManager ? 'مدیریت اهداف کارشناسان' : 'اهداف عملکردی من' }}
+            <svg class="w-4 h-4 text-indigo-600 dark:text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+            {{ $isManager ? 'مدیریت اهداف کارشناسان' : 'اهداف عملکردی من' }}
         </h3>
         <button wire:click="openCreateModal" class="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-[10px] font-bold shadow-sm transition-colors">
             ＋ تعریف هدف
@@ -52,16 +53,16 @@
 
                 <div class="flex items-center gap-1.5">
                     <!-- Toggle active -->
-                    <button wire:click="toggleGoalActive({{ $goal->id }})" class="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg" title="تغییر وضعیت فعال بودن">
-                        {{ $goal->is_active ? '🟢' : '⚫' }}
+                    <button wire:click="toggleGoalActive({{ $goal->id }})" class="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg flex items-center justify-center" title="تغییر وضعیت فعال بودن">
+                        <span class="w-2.5 h-2.5 rounded-full {{ $goal->is_active ? 'bg-emerald-500' : 'bg-gray-400' }}"></span>
                     </button>
                     <!-- Edit -->
-                    <button wire:click="editGoal({{ $goal->id }})" class="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 text-indigo-600 rounded-lg text-xs" title="ویرایش">
-                        ✏️
+                    <button wire:click="editGoal({{ $goal->id }})" class="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 text-indigo-600 dark:text-indigo-400 rounded-lg transition-colors" title="ویرایش">
+                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
                     </button>
                     <!-- Delete -->
-                    <button onclick="confirm('آیا از حذف این هدف مطمئن هستید؟') || event.stopImmediatePropagation()" wire:click="deleteGoal({{ $goal->id }})" class="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 text-rose-600 rounded-lg text-xs" title="حذف">
-                        🗑️
+                    <button onclick="confirm('آیا از حذف این هدف مطمئن هستید؟') || event.stopImmediatePropagation()" wire:click="deleteGoal({{ $goal->id }})" class="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 text-rose-600 dark:text-rose-400 rounded-lg transition-colors" title="حذف">
+                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                     </button>
                 </div>
             </div>
@@ -81,8 +82,9 @@
                     <div class="inline-block align-bottom relative bg-white dark:bg-gray-800 rounded-2xl text-right overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-xl sm:w-full border border-gray-200 dark:border-gray-700">
                         <div class="p-6">
                             <div class="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 pb-4 mb-5">
-                                <h3 class="text-lg font-bold text-gray-900 dark:text-white" id="modal-title">
-                                    {{ $editingGoalId ? '✏️ ویرایش هدف عملکردی' : '🎯 تعریف هدف عملکردی جدید' }}
+                                <h3 class="text-lg font-bold text-gray-900 dark:text-white inline-flex items-center gap-2" id="modal-title">
+                                    <svg class="w-5 h-5 text-indigo-600 dark:text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                                    {{ $editingGoalId ? 'ویرایش هدف عملکردی' : 'تعریف هدف عملکردی جدید' }}
                                 </h3>
                                 <button x-on:click="show = false" type="button" class="text-gray-400 hover:text-rose-500 bg-gray-50 hover:bg-rose-50 dark:bg-gray-900/50 dark:hover:bg-rose-500/20 p-2 rounded-xl transition-colors">
                                     <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>

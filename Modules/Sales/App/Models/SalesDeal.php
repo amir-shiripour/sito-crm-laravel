@@ -44,6 +44,15 @@ final class SalesDeal extends Model
         'custom_fields' => 'array',
     ];
 
+    protected static function booted(): void
+    {
+        static::saving(function (SalesDeal $deal) {
+            if (!empty($deal->title)) {
+                $deal->title = trim(preg_replace('/^(پرونده\s*:\s*)+/u', '', $deal->title));
+            }
+        });
+    }
+
     /**
      * رابطه با مشتری
      */
@@ -89,6 +98,9 @@ final class SalesDeal extends Model
      */
     public function calls(): HasMany
     {
+        if (class_exists(\Modules\ClientCalls\Entities\ClientCall::class)) {
+            return $this->hasMany(\Modules\ClientCalls\Entities\ClientCall::class, 'deal_id');
+        }
         return $this->hasMany(SalesCall::class, 'deal_id');
     }
 
