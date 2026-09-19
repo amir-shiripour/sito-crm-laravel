@@ -46,6 +46,9 @@ class Campaign extends Model
 
     public function calls(): HasMany
     {
+        if (class_exists(\Modules\ClientCalls\Entities\ClientCall::class)) {
+            return $this->hasMany(\Modules\ClientCalls\Entities\ClientCall::class, 'campaign_id');
+        }
         return $this->hasMany(SalesCall::class, 'campaign_id');
     }
 }

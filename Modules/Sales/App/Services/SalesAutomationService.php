@@ -23,24 +23,25 @@ final class SalesAutomationService
             }
 
             // تشخیص ناموفق بودن تماس
-            $isUnsuccessful = false;
-            if ($isClientCall) {
-                // در کلاینت‌کالز اگر موفقیت غیر از 'done' باشد
-                $isUnsuccessful = $call->status !== 'done';
-            } elseif ($isSalesCall) {
-                // در سیلزکالز اگر وضعیت در آرایه زیر باشد
-                $isUnsuccessful = in_array($call->status, ['no_answer', 'busy', 'failed', 'cancelled'], true);
-            }
+            $isUnsuccessful = in_array($call->status, ['failed', 'no_answer', 'busy', 'cancelled', 'canceled'], true);
 
             $nextAction = $call->next_action ?? null;
             $nextActionDate = $call->next_action_date ?? null;
 
-            // تشخیص وجود پرونده فروش (Deal) مرتبط
-            $dealId = $call->deal_id ?? null;
-            $clientId = $call->client_id ?? null;
+            // تشخیص کلاینت و پرونده فروش (Deal) مرتبط
+            $dealId = $call->deal_id ? (int) $call->deal_id : null;
+            $clientId = $call->client_id ? (int) $call->client_id : null;
 
-            $relatedType = $dealId ? 'DEAL' : 'CLIENT';
-            $relatedId = $dealId ?: $clientId;
+            if (!$clientId && $dealId && class_exists(\Modules\Sales\App\Models\SalesDeal::class)) {
+                $deal = \Modules\Sales\App\Models\SalesDeal::find($dealId);
+                if ($deal && $deal->client_id) {
+                    $clientId = (int) $deal->client_id;
+                }
+            }
+
+            $relatedType = $clientId ? Task::RELATED_TYPE_CLIENT : ($dealId ? 'DEAL' : null);
+            $relatedId = $clientId ?: $dealId;
+            $meta = $dealId ? ['deal_id' => $dealId] : [];
 
             if (!$relatedId) {
                 return;
@@ -49,22 +50,40 @@ final class SalesAutomationService
             $assigneeId = $call->user_id ?? auth()->id();
             
             if ($nextAction && $nextActionDate) {
-                // سناریو ۱: کارشناس اقدام بعدی و تاریخ را ثبت کرده است
-                Task::create([
-                    'title' => $nextAction,
-                    'description' => 'پیگیری خودکار ثبت شده بر اساس اقدام تعریف شده در تماس قبلی.',
-                    'task_type' => Task::TYPE_FOLLOW_UP,
-                    'assignee_id' => $assigneeId,
-                    'creator_id' => auth()->id() ?: $assigneeId,
-                    'status' => Task::STATUS_TODO,
-                    'priority' => Task::PRIORITY_HIGH,
-                    'due_at' => $nextActionDate,
-                    'related_type' => $relatedType,
-                    'related_id' => $relatedId,
-                ]);
+                // سناریو ۱: کارشناس اقدام بعدی و تاریخ را ثبت کرده است (بررسی عدم وجود تسک تکراری)
+                $alreadyExists = Task::where('title', $nextAction)
+                    ->where(function ($q) use ($relatedType, $relatedId, $dealId) {
+                        $q->where(function ($sub) use ($relatedType, $relatedId) {
+                            $sub->where('related_type', $relatedType)
+                                ->where('related_id', $relatedId);
+                        });
+                        if ($dealId) {
+                            $q->orWhere(function ($sub) use ($dealId) {
+                                $sub->where('related_type', 'DEAL')
+                                    ->where('related_id', $dealId);
+                            });
+                        }
+                    })
+                    ->whereDate('due_at', $nextActionDate)
+                    ->exists();
 
-                Log::info("[Sales Automation] Auto-scheduled followup task for planned action: {$nextAction} on {$nextActionDate}");
+                if (!$alreadyExists) {
+                    Task::create([
+                        'title'        => $nextAction,
+                        'description'  => 'پیگیری خودکار ثبت شده بر اساس اقدام تعریف شده در تماس قبلی.',
+                        'task_type'    => Task::TYPE_FOLLOW_UP,
+                        'assignee_id'  => $assigneeId,
+                        'creator_id'   => auth()->id() ?: $assigneeId,
+                        'status'       => Task::STATUS_TODO,
+                        'priority'     => Task::PRIORITY_HIGH,
+                        'due_at'       => $nextActionDate,
+                        'related_type' => $relatedType,
+                        'related_id'   => $relatedId,
+                        'meta'         => $meta,
+                    ]);
 
+                    Log::info("[Sales Automation] Auto-scheduled followup task for planned action: {$nextAction} on {$nextActionDate} for client ID: {$clientId}");
+                }
             } elseif ($isUnsuccessful) {
                 // سناریو ۲: تماس ناموفق بوده و کارشناس اقدامی مشخص نکرده است -> ایجاد تسک پیش‌فرض فردا
                 $title = 'پیگیری تماس ناموفق';

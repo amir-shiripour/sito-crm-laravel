@@ -1,12 +1,15 @@
 <div x-data="{ 
-        isDrawerOpen: @entangle('selectedClientId').live 
+        isDrawerOpen: @entangle('isDrawerOpen').live 
     }" 
     @keydown.window="
         if ($event.altKey && $event.key === 'c') { $event.preventDefault(); $wire.switchTab('calls'); }
         if ($event.altKey && $event.key === 't') { $event.preventDefault(); $wire.switchTab('tasks'); }
         if ($event.altKey && $event.key === 's') { $event.preventDefault(); document.getElementById('global-search').focus(); }
         if ($event.altKey && $event.key === 'n') { $event.preventDefault(); $wire.initiateCall(); }
-        if ($event.key === 'Escape' && isDrawerOpen) { $wire.clearSelection(); }
+        if ($event.key === 'Escape') {
+            if (isDrawerOpen) { $wire.closeDrawer(); }
+            $wire.clearGlobalSearch();
+        }
     " 
     class="flex flex-col h-[calc(100vh-theme(spacing.16))] overflow-hidden bg-[#F8FAFC] dark:bg-[#0F172A] relative font-sans text-right" dir="rtl">
 
@@ -16,7 +19,7 @@
     <header class="flex-shrink-0 px-4 md:px-8 py-4 z-20 flex flex-col xl:flex-row xl:items-center justify-between gap-4">
         
         <!-- Left Section (Global Search) -->
-        <div class="w-full xl:w-auto xl:min-w-[320px] relative group order-2 xl:order-1">
+        <div class="w-full xl:w-auto xl:min-w-[320px] relative group order-2 xl:order-1" @click.outside="$wire.clearGlobalSearch()">
             <div class="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none">
                 <svg class="h-5 w-5 text-gray-400 group-focus-within:text-indigo-500 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
@@ -24,86 +27,92 @@
             </div>
             <input type="text" id="global-search" wire:model.live.debounce.300ms="globalSearch" 
                    class="block w-full pr-12 pl-16 py-3 bg-white dark:bg-gray-800/80 border border-gray-200 dark:border-gray-700/80 focus:bg-white dark:focus:bg-gray-900 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 rounded-2xl text-sm text-gray-900 dark:text-white placeholder-gray-400 transition-all shadow-sm focus:shadow-md outline-none" 
-                   placeholder="جستجوی سریع در میزکار..." dir="rtl">
+                   placeholder="جستجوی سریع مشتری یا معامله..." dir="rtl">
             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <kbd class="hidden sm:inline-flex items-center gap-0.5 px-2 py-1 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-[10px] font-mono font-bold text-gray-400 shadow-[0_2px_0_rgba(0,0,0,0.05)] dark:shadow-none">
-                    Alt+S
-                </kbd>
+                <div wire:loading wire:target="globalSearch">
+                    <svg class="animate-spin h-4 w-4 text-indigo-500" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                    </svg>
+                </div>
+                <div wire:loading.remove wire:target="globalSearch">
+                    <kbd class="hidden sm:inline-flex items-center gap-0.5 px-2 py-1 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-[10px] font-mono font-bold text-gray-400 shadow-[0_2px_0_rgba(0,0,0,0.05)] dark:shadow-none">
+                        Alt+S
+                    </kbd>
+                </div>
             </div>
+
+            <!-- Global Search Results Dropdown -->
+            @if(!empty($searchResults))
+                <div class="absolute top-full mt-2 w-full bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700 overflow-hidden z-50 divide-y divide-gray-100 dark:divide-gray-700/60 animate-fade-in" dir="rtl">
+                    @foreach($searchResults as $res)
+                        <button wire:click="selectSearchResult('{{ $res['type'] }}', {{ $res['id'] }})"
+                                class="w-full text-right px-4 py-3 hover:bg-indigo-50/70 dark:hover:bg-indigo-950/30 transition-colors flex items-center justify-between gap-3 group">
+                            <div class="flex items-center gap-2.5 min-w-0">
+                                <div class="w-8 h-8 rounded-xl bg-gray-100 dark:bg-gray-700 group-hover:bg-indigo-100 dark:group-hover:bg-indigo-900/50 flex items-center justify-center flex-shrink-0 text-gray-500 group-hover:text-indigo-600 dark:text-gray-300 dark:group-hover:text-indigo-400">
+                                    @if($res['type'] === 'deal')
+                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                                    @else
+                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                                    @endif
+                                </div>
+                                <div class="truncate">
+                                    <div class="text-xs font-bold text-gray-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 truncate">{{ $res['title'] }}</div>
+                                    <div class="text-[10px] text-gray-400 truncate mt-0.5" dir="ltr">{{ $res['subtitle'] }}</div>
+                                </div>
+                            </div>
+                            <span class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 flex-shrink-0">
+                                {{ $res['badge'] }}
+                            </span>
+                        </button>
+                    @endforeach
+                    <div class="p-2 text-center bg-gray-50/50 dark:bg-gray-900/30">
+                        <button wire:click="clearGlobalSearch" class="text-[10px] text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">بستن نتایج</button>
+                    </div>
+                </div>
+            @endif
         </div>
 
-        <!-- Center Section (Floating Glass Segmented Control) -->
+        <!-- Center Section (Panel-aligned Segmented Control) -->
         <div class="flex-1 flex justify-center order-1 xl:order-2">
-            <nav class="inline-flex items-center bg-white/70 dark:bg-gray-800/50 backdrop-blur-xl border border-white/40 dark:border-gray-700/50 p-1.5 rounded-[1.5rem] shadow-sm overflow-x-auto scrollbar-hide max-w-full">
-                
-                <!-- Today Feed -->
-                <button wire:click="switchTab('today')" 
-                        class="relative px-5 py-2.5 rounded-[1.25rem] text-sm font-bold transition-all duration-300 flex items-center gap-2 whitespace-nowrap {{ $activeTab == 'today' ? 'text-indigo-700 dark:text-indigo-300 shadow-sm' : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100/50 dark:hover:bg-gray-700/30' }}">
-                    @if($activeTab == 'today')
-                        <div class="absolute inset-0 bg-white dark:bg-gray-800 rounded-[1.25rem] shadow-[0_2px_8px_rgba(0,0,0,0.04)] -z-10 transition-all"></div>
-                        <div class="absolute bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-indigo-500 rounded-full"></div>
-                    @endif
-                    <svg class="w-4 h-4 {{ $activeTab == 'today' ? 'text-indigo-500' : '' }}" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-                    امروز من
-                </button>
+            <nav class="inline-flex items-center bg-gray-100/80 dark:bg-gray-800/80 p-1.5 rounded-2xl border border-gray-200/60 dark:border-gray-700/60 shadow-inner max-w-full overflow-x-auto scrollbar-hide gap-1">
+                @php
+                    $navTabs = [
+                        ['id' => 'today', 'label' => 'امروز من', 'icon' => 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z'],
+                        ['id' => 'deals', 'label' => 'پرونده‌ها', 'icon' => 'M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z'],
+                        ['id' => 'calls', 'label' => 'مرکز تماس', 'icon' => 'M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z'],
+                        ['id' => 'tasks', 'label' => 'پیگیری‌ها', 'icon' => 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2'],
+                        ['id' => 'campaign_leads', 'label' => 'لیدها', 'icon' => 'M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z'],
+                        ['id' => 'goals', 'label' => 'اهداف', 'icon' => 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2'],
+                    ];
+                @endphp
 
-                <!-- Deals (Briefcase icon) -->
-                <button wire:click="switchTab('deals')" 
-                        class="relative px-5 py-2.5 rounded-[1.25rem] text-sm font-bold transition-all duration-300 flex items-center gap-2 whitespace-nowrap {{ $activeTab == 'deals' ? 'text-blue-700 dark:text-blue-300 shadow-sm' : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100/50 dark:hover:bg-gray-700/30' }}">
-                    @if($activeTab == 'deals')
-                        <div class="absolute inset-0 bg-white dark:bg-gray-800 rounded-[1.25rem] shadow-[0_2px_8px_rgba(0,0,0,0.04)] -z-10 transition-all"></div>
-                        <div class="absolute bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-blue-500 rounded-full"></div>
-                    @endif
-                    <svg class="w-4 h-4 {{ $activeTab == 'deals' ? 'text-blue-500' : '' }}" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
-                    پرونده‌ها
-                </button>
-
-                <!-- Calls -->
-                <button wire:click="switchTab('calls')" 
-                        class="relative px-5 py-2.5 rounded-[1.25rem] text-sm font-bold transition-all duration-300 flex items-center gap-2 whitespace-nowrap {{ $activeTab == 'calls' ? 'text-amber-700 dark:text-amber-300 shadow-sm' : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100/50 dark:hover:bg-gray-700/30' }}">
-                    @if($activeTab == 'calls')
-                        <div class="absolute inset-0 bg-white dark:bg-gray-800 rounded-[1.25rem] shadow-[0_2px_8px_rgba(0,0,0,0.04)] -z-10 transition-all"></div>
-                        <div class="absolute bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-amber-500 rounded-full"></div>
-                    @endif
-                    <svg class="w-4 h-4 {{ $activeTab == 'calls' ? 'text-amber-500' : '' }}" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg>
-                    مرکز تماس
-                </button>
-
-                <!-- Tasks -->
-                <button wire:click="switchTab('tasks')" 
-                        class="relative px-5 py-2.5 rounded-[1.25rem] text-sm font-bold transition-all duration-300 flex items-center gap-2 whitespace-nowrap {{ $activeTab == 'tasks' ? 'text-rose-700 dark:text-rose-300 shadow-sm' : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100/50 dark:hover:bg-gray-700/30' }}">
-                    @if($activeTab == 'tasks')
-                        <div class="absolute inset-0 bg-white dark:bg-gray-800 rounded-[1.25rem] shadow-[0_2px_8px_rgba(0,0,0,0.04)] -z-10 transition-all"></div>
-                        <div class="absolute bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-rose-500 rounded-full"></div>
-                    @endif
-                    <svg class="w-4 h-4 {{ $activeTab == 'tasks' ? 'text-rose-500' : '' }}" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
-                    تسک‌ها
-                    @if(($stats['pending_tasks'] ?? 0) > 0)
-                        <span class="absolute top-1.5 left-2 w-2 h-2 bg-rose-500 rounded-full shadow-[0_0_8px_rgba(244,63,94,0.6)]"></span>
-                    @endif
-                </button>
-
-                <!-- Campaigns -->
-                <button wire:click="switchTab('campaign_leads')" 
-                        class="relative px-5 py-2.5 rounded-[1.25rem] text-sm font-bold transition-all duration-300 flex items-center gap-2 whitespace-nowrap {{ $activeTab == 'campaign_leads' ? 'text-emerald-700 dark:text-emerald-300 shadow-sm' : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100/50 dark:hover:bg-gray-700/30' }}">
-                    @if($activeTab == 'campaign_leads')
-                        <div class="absolute inset-0 bg-white dark:bg-gray-800 rounded-[1.25rem] shadow-[0_2px_8px_rgba(0,0,0,0.04)] -z-10 transition-all"></div>
-                        <div class="absolute bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-emerald-500 rounded-full"></div>
-                    @endif
-                    <svg class="w-4 h-4 {{ $activeTab == 'campaign_leads' ? 'text-emerald-500' : '' }}" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
-                    سرنخ‌های من
-                </button>
-
-                <!-- Goals -->
-                <button wire:click="switchTab('goals')" 
-                        class="relative px-5 py-2.5 rounded-[1.25rem] text-sm font-bold transition-all duration-300 flex items-center gap-2 whitespace-nowrap {{ $activeTab == 'goals' ? 'text-purple-700 dark:text-purple-300 shadow-sm' : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100/50 dark:hover:bg-gray-700/30' }}">
-                    @if($activeTab == 'goals')
-                        <div class="absolute inset-0 bg-white dark:bg-gray-800 rounded-[1.25rem] shadow-[0_2px_8px_rgba(0,0,0,0.04)] -z-10 transition-all"></div>
-                        <div class="absolute bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-purple-500 rounded-full"></div>
-                    @endif
-                    <svg class="w-4 h-4 {{ $activeTab == 'goals' ? 'text-purple-500' : '' }}" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2"/></svg>
-                    اهداف
-                </button>
+                @foreach($navTabs as $tab)
+                    @php
+                        $isActive = ($activeTab === $tab['id']);
+                    @endphp
+                    <button wire:click="switchTab('{{ $tab['id'] }}')" 
+                            wire:loading.attr="disabled"
+                            class="relative px-4 py-2 rounded-xl text-xs font-bold transition-all duration-200 flex items-center gap-2 whitespace-nowrap {{ $isActive ? 'bg-white dark:bg-gray-900 text-indigo-600 dark:text-indigo-400 shadow-xs border border-gray-200/50 dark:border-gray-700/60' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-white/50 dark:hover:bg-gray-700/40' }}">
+                        <span wire:loading.remove wire:target="switchTab('{{ $tab['id'] }}')">
+                            <svg class="w-4 h-4 shrink-0 {{ $isActive ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-400 dark:text-gray-500' }}" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="{{ $tab['icon'] }}"/>
+                            </svg>
+                        </span>
+                        <span wire:loading wire:target="switchTab('{{ $tab['id'] }}')">
+                            <svg class="w-4 h-4 shrink-0 animate-spin text-indigo-600 dark:text-indigo-400" viewBox="0 0 24 24" fill="none">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                            </svg>
+                        </span>
+                        <span>{{ $tab['label'] }}</span>
+                        @if($tab['id'] === 'tasks' && ($stats['pending_tasks'] ?? 0) > 0)
+                            <span class="inline-flex items-center justify-center px-1.5 py-0.5 text-[10px] font-bold rounded-full {{ $isActive ? 'bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300' }}">
+                                {{ $stats['pending_tasks'] }}
+                            </span>
+                        @endif
+                    </button>
+                @endforeach
             </nav>
         </div>
 
@@ -136,17 +145,89 @@
          ========================================== -->
     <main class="flex-1 overflow-auto p-4 md:px-8 md:pb-8 relative z-10 scrollbar-hide">
         
-        <!-- Loading Indicator overlay -->
-        <div wire:loading.delay class="absolute inset-0 bg-white/40 dark:bg-[#0F172A]/40 z-50 flex flex-col items-center justify-center backdrop-blur-sm transition-all duration-300 rounded-[2rem]">
-            <div class="flex items-center gap-3 bg-white/90 dark:bg-gray-800/90 px-6 py-4 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700 backdrop-blur-md">
-                <div class="w-5 h-5 border-2 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
-                <span class="text-sm font-bold text-gray-700 dark:text-gray-300">لطفاً صبر کنید...</span>
-            </div>
-        </div>
-
         <div class="h-full flex flex-col" dir="rtl">
+            @if($selectedClient)
+                <!-- ACTIVE CLIENT FOCUS BAR -->
+                <div class="mb-5 bg-white dark:bg-gray-800/95 border border-indigo-100 dark:border-indigo-900/40 rounded-2xl p-4 shadow-sm backdrop-blur-md flex flex-col lg:flex-row lg:items-center justify-between gap-4 transition-all animate-fade-in" dir="rtl">
+                    <!-- Client Identity & Info -->
+                    <div class="flex items-center gap-3.5">
+                        <div class="w-11 h-11 rounded-2xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-100/80 dark:border-indigo-800/50 flex items-center justify-center font-black text-lg text-indigo-600 dark:text-indigo-400 shadow-sm flex-shrink-0">
+                            {{ mb_substr($selectedClient->full_name, 0, 1) }}
+                        </div>
+                        <div>
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <span class="text-xs font-bold text-gray-400 uppercase tracking-wider">مشتری فعال میز کار:</span>
+                                <button wire:click="openDrawer" class="text-sm font-black text-gray-900 dark:text-white hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
+                                    {{ $selectedClient->full_name }}
+                                </button>
+                                @if($selectedClient->status)
+                                    <span class="px-2 py-0.5 rounded-md text-[10px] font-bold" 
+                                          style="background-color: {{ ($selectedClient->status->color ?? '#6366f1') . '15' }}; color: {{ $selectedClient->status->color ?? '#6366f1' }}; border: 1px solid {{ ($selectedClient->status->color ?? '#6366f1') . '30' }}">
+                                        {{ $selectedClient->status->label ?? $selectedClient->status->name }}
+                                    </span>
+                                @endif
+                                @if($selectedDeal)
+                                    <span class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/50 inline-flex items-center gap-1">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                        پرونده: {{ $selectedDeal->title }} ({{ $selectedDeal->stage?->name ?? 'مرحله اول' }})
+                                    </span>
+                                @endif
+                            </div>
+                            <div class="flex items-center gap-4 mt-1 text-[11px] text-gray-500 dark:text-gray-400 flex-wrap">
+                                @if($selectedClient->phone)
+                                    <span class="inline-flex items-center gap-1 font-semibold text-gray-700 dark:text-gray-300" dir="ltr">
+                                        <svg class="w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg>
+                                        {{ $selectedClient->phone }}
+                                    </span>
+                                @endif
+                                @if($selectedClient->case_number)
+                                    <span>شماره پرونده: <span class="font-bold tabular-nums">{{ $selectedClient->case_number }}</span></span>
+                                @endif
+                                @if($selectedClient->users->isNotEmpty())
+                                    <span>کارشناس: <span class="font-bold text-gray-700 dark:text-gray-300">{{ $selectedClient->users->pluck('name')->join('، ') }}</span></span>
+                                @endif
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Quick Actions Toolbar -->
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <!-- Direct Call -->
+                        @if($selectedClient->phone)
+                            <button wire:click="initiateCall" title="برقراری تماس VoIP" class="px-3 py-2 rounded-xl bg-blue-50 dark:bg-blue-950/20 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors flex items-center gap-1.5 text-xs font-bold">
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg>
+                                <span>تماس</span>
+                            </button>
+                        @endif
+
+                        <!-- Add Task / Follow-up -->
+                        <button wire:click="$dispatch('openCreateFollowupModal')" title="ثبت وظیفه / پیگیری" class="px-3 py-2 rounded-xl bg-rose-50 dark:bg-rose-950/20 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/30 transition-colors flex items-center gap-1.5 text-xs font-bold">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+                            <span>پیگیری جدید</span>
+                        </button>
+
+                        <!-- Deal button -->
+                        <button wire:click="switchTab('deals')" title="مشاهده یا ثبت معامله" class="px-3 py-2 rounded-xl bg-indigo-50 dark:bg-indigo-950/20 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/30 transition-colors flex items-center gap-1.5 text-xs font-bold">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                            <span>معاملات</span>
+                        </button>
+
+                        <!-- Toggle Drawer -->
+                        <button wire:click="toggleDrawer" title="باز / بستن کشوی سوابق" class="px-3 py-2 rounded-xl bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors flex items-center gap-1.5 text-xs font-bold">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"/></svg>
+                            <span>کشوی سوابق</span>
+                        </button>
+
+                        <!-- Clear Active Client (Focus Exit) -->
+                        <button wire:click="clearActiveClient" title="خروج از حالت کلاینت فعال (مشاهده کل کارها)" class="p-2 rounded-xl text-gray-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors">
+                            <svg class="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+                    </div>
+                </div>
+            @endif
+
             @if($activeTab === 'deals')
-                @livewire('sales::deal-tab', ['selectedDealId' => $selectedDealId], key('deal-tab'))
+                @livewire('sales::deal-tab', ['selectedDealId' => $selectedDealId, 'selectedClientId' => $selectedClientId], key('deal-tab-'.($selectedClientId ?: 'none').'-'.($selectedDealId ?: 'none')))
             @elseif($activeTab === 'calls')
                 @livewire('sales::call-center-tab', ['selectedClientId' => $selectedClientId], key('call-tab-'.($selectedClientId ?: 'none')))
             @elseif($activeTab === 'tasks')
@@ -154,7 +235,7 @@
             @elseif($activeTab === 'today')
                 @livewire('sales::today-tab', ['selectedClientId' => $selectedClientId], key('today-tab-'.($selectedClientId ?: 'none')))
             @elseif($activeTab === 'campaign_leads')
-                @livewire('sales::campaign-leads-tab', [], key('camp-leads-tab'))
+                @livewire('sales::campaign-leads-tab', ['selectedClientId' => $selectedClientId], key('camp-leads-tab-'.($selectedClientId ?: 'none')))
             @elseif($activeTab === 'goals')
                 @livewire('sales::cockpit-goal-manager', [], key('goals-tab'))
             @endif
@@ -164,29 +245,35 @@
     <!-- ==========================================
          3. SLIDE-OVER DETAIL DRAWER (Left Side)
          ========================================== -->
-    <!-- Backdrop Overlay -->
-    <div x-show="isDrawerOpen" 
-         x-transition:enter="transition-opacity ease-linear duration-300"
-         x-transition:enter-start="opacity-0"
-         x-transition:enter-end="opacity-100"
-         x-transition:leave="transition-opacity ease-linear duration-300"
-         x-transition:leave-start="opacity-100"
-         x-transition:leave-end="opacity-0"
-         class="fixed inset-0 bg-gray-900/40 dark:bg-black/60 z-30 backdrop-blur-sm" 
-         @click="$wire.clearSelection()"></div>
+    <template x-teleport="body">
+        <div x-show="isDrawerOpen" class="fixed inset-0 z-[100]" role="dialog" aria-modal="true" style="display: none;">
+            <!-- Backdrop Overlay (covers the entire screen including the header) -->
+            <div x-show="isDrawerOpen" 
+                 x-transition:enter="transition-opacity ease-linear duration-300"
+                 x-transition:enter-start="opacity-0"
+                 x-transition:enter-end="opacity-100"
+                 x-transition:leave="transition-opacity ease-linear duration-300"
+                 x-transition:leave-start="opacity-100"
+                 x-transition:leave-end="opacity-0"
+                 class="fixed inset-0 bg-gray-950/60 dark:bg-black/75 z-[100] backdrop-blur-sm" 
+                 @click="$wire.closeDrawer()"></div>
 
-    <!-- The Drawer Panel -->
-    <div x-data="{ drawerTab: 'summary' }" 
-         @client-changed.window="drawerTab = 'summary'"
-         class="fixed inset-y-0 left-0 w-full sm:w-[420px] lg:w-[480px] bg-white dark:bg-gray-900 shadow-[-20px_0_40px_rgba(0,0,0,0.08)] dark:shadow-[-20px_0_40px_rgba(0,0,0,0.5)] z-40 border-r border-gray-200/50 dark:border-gray-800/80 transform transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] flex flex-col"
-         :class="isDrawerOpen ? 'translate-x-0' : '-translate-x-full'" dir="rtl">
+            <!-- The Drawer Panel -->
+            <div x-data="{ drawerTab: 'summary' }" 
+                 @client-changed.window="drawerTab = 'summary'"
+                 class="fixed inset-y-0 left-0 w-full sm:w-[420px] lg:w-[480px] bg-white dark:bg-gray-900 shadow-[-20px_0_50px_rgba(0,0,0,0.25)] dark:shadow-[-20px_0_50px_rgba(0,0,0,0.7)] z-[101] border-r border-gray-200/50 dark:border-gray-800/80 transform transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] flex flex-col"
+                 :class="isDrawerOpen ? 'translate-x-0' : '-translate-x-full'" dir="rtl">
         
         @if($selectedClient)
             <!-- Drawer Header (Sticky) -->
             <div class="flex-shrink-0 px-6 py-5 bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border-b border-gray-100 dark:border-gray-800/80 sticky top-0 z-10 flex items-center justify-between">
                 <div class="flex items-center gap-4">
                     <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-indigo-950/40 dark:to-blue-950/40 border border-indigo-100/50 dark:border-indigo-900/50 flex items-center justify-center font-black text-xl text-indigo-600 dark:text-indigo-400 shadow-sm">
-                        {{ $selectedDeal ? '💼' : mb_substr($selectedClient->full_name, 0, 1) }}
+                        @if($selectedDeal)
+                            <svg class="w-6 h-6 text-indigo-600 dark:text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                        @else
+                            {{ mb_substr($selectedClient->full_name, 0, 1) }}
+                        @endif
                     </div>
                     <div>
                         <h2 class="text-base font-extrabold text-gray-900 dark:text-white leading-tight">
@@ -218,11 +305,13 @@
                     </div>
                 </div>
                 <!-- Close Button -->
-                <button wire:click="clearSelection" class="p-2 rounded-xl text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500/50">
-                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                </button>
+                <div class="flex items-center gap-1">
+                    <button wire:click="closeDrawer" title="بستن کشو (کلاینت در میز کار فعال می‌ماند)" class="p-2 rounded-xl text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500/50">
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
             </div>
 
             <!-- Internal Sub-Tabs Navigation -->
@@ -399,8 +488,47 @@
 
                         <!-- Call logs -->
                         @foreach($lastCalls as $call)
+                            @php
+                                $isSuccess = in_array($call->status, ['done', 'answered']);
+                                $isPlanned = $call->status === 'planned';
+                                $isNoAnswer = $call->status === 'no_answer';
+                                $isBusy = $call->status === 'busy';
+                                $isCancelled = in_array($call->status, ['cancelled', 'canceled']);
+
+                                if ($isSuccess) {
+                                    $iconBorder = 'border-emerald-400 dark:border-emerald-500 text-emerald-500';
+                                    $badgeClass = 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400';
+                                    $dotClass = 'bg-emerald-500';
+                                    $badgeLabel = 'مکالمه موفق';
+                                } elseif ($isPlanned) {
+                                    $iconBorder = 'border-blue-400 dark:border-blue-500 text-blue-500';
+                                    $badgeClass = 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400';
+                                    $dotClass = 'bg-blue-500';
+                                    $badgeLabel = 'در انتظار تماس';
+                                } elseif ($isNoAnswer) {
+                                    $iconBorder = 'border-rose-400 dark:border-rose-500 text-rose-500';
+                                    $badgeClass = 'bg-rose-50 dark:bg-rose-900/20 text-rose-700 dark:text-rose-400';
+                                    $dotClass = 'bg-rose-500';
+                                    $badgeLabel = 'بدون پاسخ';
+                                } elseif ($isBusy) {
+                                    $iconBorder = 'border-amber-400 dark:border-amber-500 text-amber-500';
+                                    $badgeClass = 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400';
+                                    $dotClass = 'bg-amber-500';
+                                    $badgeLabel = 'اشغال';
+                                } elseif ($isCancelled) {
+                                    $iconBorder = 'border-gray-400 dark:border-gray-500 text-gray-500';
+                                    $badgeClass = 'bg-gray-100 dark:bg-gray-700/50 text-gray-700 dark:text-gray-300';
+                                    $dotClass = 'bg-gray-500';
+                                    $badgeLabel = 'لغو شده';
+                                } else {
+                                    $iconBorder = 'border-red-400 dark:border-red-500 text-red-500';
+                                    $badgeClass = 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400';
+                                    $dotClass = 'bg-red-500';
+                                    $badgeLabel = 'ناموفق';
+                                }
+                            @endphp
                             <div class="relative pr-12 pb-6 group">
-                                <div class="absolute right-0 top-0 w-8 h-8 rounded-full bg-white dark:bg-gray-900 border-2 {{ $call->status === 'done' ? 'border-emerald-400 dark:border-emerald-500 text-emerald-500' : 'border-blue-400 dark:border-blue-500 text-blue-500' }} flex items-center justify-center z-10 shadow-sm group-hover:scale-110 transition-transform">
+                                <div class="absolute right-0 top-0 w-8 h-8 rounded-full bg-white dark:bg-gray-900 border-2 {{ $iconBorder }} flex items-center justify-center z-10 shadow-sm group-hover:scale-110 transition-transform">
                                     <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg>
                                 </div>
                                 <div class="bg-gray-50 dark:bg-gray-800/30 rounded-2xl p-4 border border-gray-100 dark:border-gray-800/80">
@@ -408,12 +536,14 @@
                                         <span class="font-extrabold text-xs text-gray-900 dark:text-white">
                                             تماس {{ $call->direction === 'inbound' ? 'ورودی' : 'خروجی' }}
                                         </span>
-                                        <span class="text-[10px] font-bold text-gray-400 tabular-nums" dir="ltr">{{ $call->call_date->format('Y/m/d') }}</span>
+                                        <span class="text-[10px] font-bold text-gray-400 tabular-nums dir-ltr">
+                                            {{ $call->call_date ? \Morilog\Jalali\Jalalian::fromDateTime($call->call_date)->format('Y/m/d') : '-' }}
+                                        </span>
                                     </div>
-                                    <p class="text-xs text-gray-600 dark:text-gray-400 leading-relaxed mb-2">{{ $call->reason }}</p>
-                                    <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg {{ $call->status === 'done' ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400' : 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400' }} text-[10px] font-bold">
-                                        <span class="w-1.5 h-1.5 rounded-full {{ $call->status === 'done' ? 'bg-emerald-500' : 'bg-blue-500' }}"></span>
-                                        {{ $call->result ?: ($call->status === 'done' ? 'مکالمه موفق' : 'در انتظار تماس') }}
+                                    <p class="text-xs text-gray-600 dark:text-gray-400 leading-relaxed mb-2">{{ $call->reason ?: 'بدون موضوع' }}</p>
+                                    <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg {{ $badgeClass }} text-[10px] font-bold">
+                                        <span class="w-1.5 h-1.5 rounded-full {{ $dotClass }}"></span>
+                                        {{ $call->result ?: $badgeLabel }}
                                     </div>
                                 </div>
                             </div>
@@ -450,6 +580,8 @@
             </div>
         @endif
     </div>
+        </div>
+    </template>
 
     <!-- Script wrapper for VoIP -->
     <script>

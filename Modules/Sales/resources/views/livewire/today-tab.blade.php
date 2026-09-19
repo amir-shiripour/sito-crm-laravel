@@ -7,7 +7,7 @@
         
         <div class="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
             <div>
-                <h1 class="text-3xl font-black text-white mb-2 drop-shadow-sm tracking-tight">سلام {{ auth()->user()->name }} 👋</h1>
+                <h1 class="text-3xl font-black text-white mb-2 drop-shadow-sm tracking-tight">سلام {{ auth()->user()->name }}</h1>
                 <p class="text-indigo-100 font-medium text-sm">امروز {{ \Morilog\Jalali\Jalalian::now()->format('%A، %d %B %Y') }} است. بیایید یک روز پرفروش دیگر بسازیم!</p>
             </div>
             
@@ -117,7 +117,7 @@
                         <div class="w-16 h-16 bg-gray-50 dark:bg-gray-900 rounded-full flex items-center justify-center text-gray-300 dark:text-gray-600 mb-4">
                             <svg class="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
                         </div>
-                        <p class="text-xs font-bold text-gray-400">تمام تسک‌های امروز انجام شده‌اند 🎉</p>
+                        <p class="text-xs font-bold text-gray-400">تمام تسک‌های امروز انجام شده‌اند.</p>
                     </div>
                 @endforelse
             </div>

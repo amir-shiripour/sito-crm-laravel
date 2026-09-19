@@ -51,13 +51,30 @@
         </div>
     </div>
 
+    @if($selectedClient)
+        <div class="flex items-center justify-between px-4 py-2.5 bg-indigo-50/70 dark:bg-indigo-950/30 border border-indigo-100 dark:border-indigo-900/40 rounded-xl text-xs" dir="rtl">
+            <div class="flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-indigo-600 animate-pulse"></span>
+                <span class="font-bold text-indigo-900 dark:text-indigo-200">
+                    معاملات مشتری فعال: {{ $selectedClient->full_name }}
+                </span>
+            </div>
+            <div class="flex items-center gap-2">
+                <button wire:click="$set('filterClientMode', '{{ $filterClientMode === 'active' ? 'all' : 'active' }}')" 
+                        class="px-2.5 py-1 rounded-lg text-[11px] font-bold transition-colors {{ $filterClientMode === 'active' ? 'bg-indigo-600 text-white shadow-sm' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700' }}">
+                    {{ $filterClientMode === 'active' ? 'نمایش همه معاملات' : 'فقط معاملات این مشتری' }}
+                </button>
+            </div>
+        </div>
+    @endif
+
     <!-- Compact List -->
-    <div class="flex flex-col gap-2" dir="rtl">
+    <div wire:loading.class.delay.100ms="opacity-50 pointer-events-none" class="flex flex-col gap-2 transition-opacity duration-200" dir="rtl">
         @forelse($deals as $deal)
             <div wire:click="selectDeal({{ $deal->id }})" class="group cursor-pointer p-3 rounded-xl border transition-colors flex items-center justify-between {{ $selectedDealId == $deal->id ? 'border-indigo-600 bg-indigo-50/50 dark:bg-indigo-900/30 dark:border-indigo-500 shadow-sm' : 'border-gray-100 dark:border-gray-800 hover:border-indigo-300 dark:hover:border-indigo-600 bg-white dark:bg-gray-800 hover:shadow-sm' }}">
                 <div class="flex items-center gap-3">
                     <div class="w-9 h-9 rounded-xl bg-gray-50 group-hover:bg-indigo-50 dark:bg-gray-900 dark:group-hover:bg-indigo-900/30 flex items-center justify-center text-gray-500 group-hover:text-indigo-600 dark:text-gray-400 dark:group-hover:text-indigo-400 font-extrabold text-sm transition-colors">
-                        💼
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
                     </div>
                     <div>
                         <div class="flex items-center gap-2">
@@ -149,8 +166,9 @@
                     <div class="inline-block align-bottom relative bg-white dark:bg-gray-800 rounded-2xl text-right overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full border border-gray-200 dark:border-gray-700">
                         <div class="p-6">
                             <div class="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 pb-4 mb-5">
-                                <h3 class="text-lg font-bold text-gray-900 dark:text-white" id="modal-title">
-                                    {{ $editingDealId ? '📝 ویرایش پرونده فروش' : '💼 ثبت پرونده فروش جدید' }}
+                                <h3 class="text-lg font-bold text-gray-900 dark:text-white inline-flex items-center gap-2" id="modal-title">
+                                    <svg class="w-5 h-5 text-indigo-600 dark:text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                                    {{ $editingDealId ? 'ویرایش پرونده فروش' : 'ثبت پرونده فروش جدید' }}
                                 </h3>
                                 <button x-on:click="show = false" type="button" class="text-gray-400 hover:text-rose-500 bg-gray-50 hover:bg-rose-50 dark:bg-gray-900/50 dark:hover:bg-rose-500/20 p-2 rounded-xl transition-colors">
                                     <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
@@ -216,7 +234,10 @@
                                 <!-- CLIENT CONNECTION AREA -->
                                 <div class="bg-gray-50 dark:bg-gray-900/30 p-4 rounded-2xl border border-gray-200 dark:border-gray-700/80 space-y-4">
                                     <div class="flex items-center justify-between border-b border-gray-200 dark:border-gray-700/80 pb-3">
-                                        <h4 class="text-xs font-black text-gray-900 dark:text-white">👤 اتصال مشتری به پرونده</h4>
+                                        <h4 class="text-xs font-black text-gray-900 dark:text-white inline-flex items-center gap-1.5">
+                                            <svg class="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                                            اتصال مشتری به پرونده
+                                        </h4>
                                         
                                         @if(!$editingDealId)
                                             <!-- Mode Switch Toggle -->

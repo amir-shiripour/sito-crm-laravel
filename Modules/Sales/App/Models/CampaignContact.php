@@ -238,7 +238,7 @@ class CampaignContact extends Model
                 }
                 
                 \Modules\Sales\App\Models\SalesDeal::create([
-                    'title' => 'پرونده: ' . ($this->name ?: $client->full_name),
+                    'title' => ($this->name ?: $client->full_name),
                     'client_id' => $client->id,
                     'pipeline_stage_id' => $firstStage->id,
                     'user_id' => $assignedToUserId ?? auth()->id(),

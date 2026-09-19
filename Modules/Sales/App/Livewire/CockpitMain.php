@@ -15,6 +15,8 @@ class CockpitMain extends Component
     public string $activeTab = 'deals'; // 'deals', 'calls', 'tasks', 'today'
     public ?int $selectedClientId = null;
     public ?int $selectedDealId = null;
+    public bool $isDrawerOpen = false;
+    public array $searchResults = [];
     public bool $showNewClientModal = false;
     public bool $showNewCallModal = false;
     public bool $showNewFollowupModal = false;
@@ -78,11 +80,11 @@ class CockpitMain extends Component
             $myAnsweredToday = 0;
             if (class_exists(ClientCall::class)) {
                 $myCallsToday = ClientCall::where('user_id', $userId)->today()->count();
-                $myAnsweredToday = ClientCall::where('user_id', $userId)->today()->answered()->count();
+                $myAnsweredToday = ClientCall::where('user_id', $userId)->today()->whereIn('status', ['done', 'answered'])->count();
                 
-                if ($user->hasRole('super-admin') || $user->can('sales.calls.view.all') || $user->can('sales.manage')) {
+                if ($user->hasRole('super-admin') || $user->can('sales.calls.view.all') || $user->can('client-calls.view.all') || $user->can('sales.manage')) {
                     $callsToday = ClientCall::today()->count();
-                    $answeredToday = ClientCall::today()->answered()->count();
+                    $answeredToday = ClientCall::today()->whereIn('status', ['done', 'answered'])->count();
                 } else {
                     $callsToday = $myCallsToday;
                     $answeredToday = $myAnsweredToday;
@@ -161,15 +163,30 @@ class CockpitMain extends Component
         $this->loadStats();
     }
 
-    #[On('dealSelected')]
-    public function selectDeal($dealId)
+    #[On('openDrawer')]
+    public function openDrawer(): void
     {
-        $this->selectedDealId = $dealId;
-        $this->selectedClientId = null;
+        $this->isDrawerOpen = true;
+    }
+
+    public function closeDrawer(): void
+    {
+        $this->isDrawerOpen = false;
+    }
+
+    public function toggleDrawer(): void
+    {
+        $this->isDrawerOpen = !$this->isDrawerOpen;
+    }
+
+    #[On('dealSelected')]
+    public function selectDeal($dealId, bool $openDrawer = false)
+    {
+        $this->selectedDealId = $dealId ? (int) $dealId : null;
         $this->quickNote = null;
 
-        if ($dealId) {
-            $deal = \Modules\Sales\App\Models\SalesDeal::with('client')->find($dealId);
+        if ($this->selectedDealId) {
+            $deal = \Modules\Sales\App\Models\SalesDeal::with('client')->find($this->selectedDealId);
             if ($deal) {
                 $this->selectedClientId = $deal->client_id;
                 if ($deal->client) {
@@ -178,42 +195,60 @@ class CockpitMain extends Component
             }
         }
 
+        if ($openDrawer) {
+            $this->isDrawerOpen = true;
+        }
+
         $this->dispatch('clientChanged', clientId: $this->selectedClientId);
         $this->dispatch('dealChanged', dealId: $this->selectedDealId);
     }
 
     #[On('clientSelected')]
-    public function selectClient($clientId)
+    public function selectClient($clientId, bool $openDrawer = false)
     {
-        $this->selectedClientId = $clientId;
-        
+        $this->selectedClientId = $clientId ? (int) $clientId : null;
         $this->quickNote = null;
-        if ($clientId && class_exists(\Modules\Clients\Entities\Client::class)) {
-            $client = \Modules\Clients\Entities\Client::find($clientId);
+
+        if ($this->selectedClientId && class_exists(\Modules\Clients\Entities\Client::class)) {
+            $client = \Modules\Clients\Entities\Client::find($this->selectedClientId);
             if ($client) {
                 $this->quickNote = $client->notes;
             }
         }
-        
-        // Find latest deal for this client if any
-        if ($clientId) {
-            $latestDeal = \Modules\Sales\App\Models\SalesDeal::where('client_id', $clientId)->latest()->first();
+
+        // Find latest active deal for this client if any
+        if ($this->selectedClientId) {
+            $latestDeal = \Modules\Sales\App\Models\SalesDeal::where('client_id', $this->selectedClientId)
+                ->whereIn('status', ['open', 'won'])
+                ->latest()
+                ->first();
             $this->selectedDealId = $latestDeal ? $latestDeal->id : null;
         } else {
             $this->selectedDealId = null;
         }
-        
-        $this->dispatch('clientChanged', clientId: $clientId);
+
+        if ($openDrawer) {
+            $this->isDrawerOpen = true;
+        }
+
+        $this->dispatch('clientChanged', clientId: $this->selectedClientId);
         $this->dispatch('dealChanged', dealId: $this->selectedDealId);
     }
 
-    public function clearSelection()
+    public function clearActiveClient(): void
     {
         $this->selectedClientId = null;
         $this->selectedDealId = null;
         $this->quickNote = null;
+        $this->isDrawerOpen = false;
         $this->dispatch('clientChanged', clientId: null);
         $this->dispatch('dealChanged', dealId: null);
+        $this->dispatch('notify', message: 'از حالت کلاینت فعال خارج شدید.', type: 'info');
+    }
+
+    public function clearSelection(): void
+    {
+        $this->clearActiveClient();
     }
 
     #[On('transferTab')]
@@ -228,6 +263,13 @@ class CockpitMain extends Component
     public function startCallFromToday()
     {
         $this->initiateCall();
+    }
+
+    public function openCreateModal()
+    {
+        if ($this->activeTab === 'calls') {
+            $this->dispatch('openCreateCallModal');
+        }
     }
 
     public function saveQuickNote()
@@ -281,14 +323,15 @@ class CockpitMain extends Component
             if ($client) {
                 if (class_exists(ClientCall::class)) {
                     ClientCall::create([
-                        'client_id' => $this->selectedClientId,
-                        'user_id'   => auth()->id(),
-                        'call_date' => today()->format('Y-m-d'),
-                        'call_time' => now()->format('H:i'),
-                        'direction' => 'outbound',
-                        'status'    => 'planned',
+                        'client_id'     => $this->selectedClientId,
+                        'deal_id'       => $this->selectedDealId,
+                        'user_id'       => auth()->id(),
+                        'call_date'     => today()->format('Y-m-d'),
+                        'call_time'     => now()->format('H:i'),
+                        'direction'     => 'outbound',
+                        'status'        => 'planned',
                         'contact_phone' => $client->phone,
-                        'reason'    => 'تماس خروجی سیستم',
+                        'reason'        => 'تماس خروجی سیستم',
                     ]);
                 }
 
@@ -308,9 +351,78 @@ class CockpitMain extends Component
         return ['has_goal' => false];
     }
 
-    public function updatedGlobalSearch()
+    public function updatedGlobalSearch(): void
     {
+        $term = trim($this->globalSearch);
+        if (mb_strlen($term) < 2) {
+            $this->searchResults = [];
+            return;
+        }
+
+        $results = [];
+
+        // Search Clients
+        if (class_exists(\Modules\Clients\Entities\Client::class)) {
+            $clients = \Modules\Clients\Entities\Client::query()
+                ->visibleForUser(auth()->user())
+                ->where(function($q) use ($term) {
+                    $q->where('full_name', 'like', "%{$term}%")
+                      ->orWhere('phone', 'like', "%{$term}%")
+                      ->orWhere('username', 'like', "%{$term}%")
+                      ->orWhere('case_number', 'like', "%{$term}%");
+                })
+                ->take(5)
+                ->get();
+
+            foreach ($clients as $cl) {
+                $results[] = [
+                    'type' => 'client',
+                    'id' => $cl->id,
+                    'title' => $cl->full_name,
+                    'subtitle' => $cl->phone ?: ($cl->username ? '@' . $cl->username : 'بدون شماره'),
+                    'badge' => $cl->status?->label ?? 'مشتری',
+                ];
+            }
+        }
+
+        // Search Deals
+        $deals = \Modules\Sales\App\Models\SalesDeal::query()
+            ->visibleForUser(auth()->user())
+            ->where('title', 'like', "%{$term}%")
+            ->with(['stage', 'client'])
+            ->take(5)
+            ->get();
+
+        foreach ($deals as $deal) {
+            $results[] = [
+                'type' => 'deal',
+                'id' => $deal->id,
+                'client_id' => $deal->client_id,
+                'title' => $deal->title,
+                'subtitle' => $deal->client?->full_name ?? 'بدون مشتری',
+                'badge' => $deal->stage?->name ?? 'معامله',
+            ];
+        }
+
+        $this->searchResults = $results;
         $this->dispatch('globalSearchTriggered', search: $this->globalSearch);
+    }
+
+    public function selectSearchResult(string $type, int $id): void
+    {
+        if ($type === 'deal') {
+            $this->selectDeal($id, false);
+        } else {
+            $this->selectClient($id, false);
+        }
+        $this->globalSearch = '';
+        $this->searchResults = [];
+    }
+
+    public function clearGlobalSearch(): void
+    {
+        $this->globalSearch = '';
+        $this->searchResults = [];
     }
 
     public function render()
@@ -326,7 +438,15 @@ class CockpitMain extends Component
         }
 
         if ($this->selectedClientId && class_exists(\Modules\Clients\Entities\Client::class)) {
-            $selectedClient = \Modules\Clients\Entities\Client::find($this->selectedClientId);
+            $selectedClient = \Modules\Clients\Entities\Client::with(['status', 'users'])->find($this->selectedClientId);
+
+            if ($selectedClient && !$selectedDeal) {
+                $selectedDeal = \Modules\Sales\App\Models\SalesDeal::where('client_id', $this->selectedClientId)
+                    ->whereIn('status', ['open', 'won'])
+                    ->with('stage')
+                    ->latest()
+                    ->first();
+            }
             
             if ($selectedClient) {
                 if (class_exists(ClientCall::class)) {
