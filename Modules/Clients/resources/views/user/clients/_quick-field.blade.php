@@ -88,7 +88,7 @@
 @if($type === 'password')
     <div class="flex items-center gap-2" x-data="{ show: false }">
         <div class="relative flex-1">
-            <input x-bind:type="show ? 'text' : 'password'" class="{{ $baseInputClass }} pr-9 font-mono"
+            <input x-bind:type="show ? 'text' : 'password'" class="{{ $baseInputClass }} pr-9 dir-ltr"
                    wire:model.defer="password" placeholder="{{ $placeholder !== '...' ? $placeholder : 'رمز عبور امن...' }}"
                    autocomplete="new-password">
             <button type="button"
@@ -143,13 +143,32 @@
 
 @elseif($type === 'checkbox')
     {{-- checkbox --}}
-    <div class="flex items-center h-full pt-1.5">
-        <input type="checkbox" id="qc-chk-{{ $fid }}" value="1" wire:model.defer="quick.{{ $fid }}"
-               class="w-4 h-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 dark:border-gray-600 dark:bg-gray-800 cursor-pointer transition-colors" />
-        <label for="qc-chk-{{ $fid }}" class="mr-2 text-xs text-gray-600 dark:text-gray-400 cursor-pointer select-none">
-            {{ $placeholder !== '...' ? $placeholder : 'فعال / انتخاب' }}
-        </label>
-    </div>
+    @if(!empty($opts))
+        <div class="flex flex-wrap gap-3 pt-1">
+            @foreach($opts as $ov => $ol)
+                @php
+                    $val = is_string($ov) ? $ov : $ol;
+                    $lab = is_string($ol) ? $ol : $ov;
+                @endphp
+                <label class="inline-flex items-center gap-2 cursor-pointer group">
+                    <input type="checkbox"
+                           class="w-4 h-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 dark:border-gray-600 dark:bg-gray-800 cursor-pointer transition-colors"
+                           wire:model.defer="quick.{{ $fid }}" value="{{ $val }}">
+                    <span class="text-xs text-gray-700 group-hover:text-emerald-600 dark:text-gray-300 transition-colors">
+                        {{ $lab }}
+                    </span>
+                </label>
+            @endforeach
+        </div>
+    @else
+        <div class="flex items-center h-full pt-1.5">
+            <input type="checkbox" id="qc-chk-{{ $fid }}" value="1" wire:model.defer="quick.{{ $fid }}"
+                   class="w-4 h-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 dark:border-gray-600 dark:bg-gray-800 cursor-pointer transition-colors" />
+            <label for="qc-chk-{{ $fid }}" class="mr-2 text-xs text-gray-600 dark:text-gray-400 cursor-pointer select-none">
+                {{ $placeholder !== '...' ? $placeholder : 'فعال / انتخاب' }}
+            </label>
+        </div>
+    @endif
 
 @elseif($type === 'radio')
     {{-- radio --}}

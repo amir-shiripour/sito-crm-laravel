@@ -2,6 +2,15 @@
     $otpSent      = (bool) ($otpSent ?? false);
     $otpUsername  = $otpUsername ?? old('username', '');
     $otpResendIn  = (int) ($otpResendIn ?? 60);
+
+    $usernameStrategy = \Modules\Clients\Entities\ClientSetting::getValue('username_strategy')
+        ?? \Modules\Clients\Entities\ClientSetting::getValue('username.strategy', 'email_local');
+    $usernameLabel = match ($usernameStrategy) {
+        'mobile' => 'شماره موبایل',
+        'email_local', 'email' => 'ایمیل',
+        'national_code' => 'کد ملی',
+        default => 'نام کاربری',
+    };
 @endphp
 
 {{-- پیام‌های خطای otp --}}
@@ -27,7 +36,7 @@
         @csrf
 
         <div>
-            <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">نام کاربری</label>
+            <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">{{ $usernameLabel }}</label>
             <div class="relative">
                 <input type="text"
                        name="username"
@@ -38,7 +47,7 @@
                        class="block w-full rounded-xl border-gray-200 bg-gray-50 py-3 pl-10 pr-4 text-sm text-gray-900
                               placeholder-gray-400 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20
                               transition-all dark:border-gray-700 dark:bg-gray-900/50 dark:text-gray-100 dark:focus:bg-gray-900 dir-ltr"
-                       placeholder="Username">
+                       placeholder="{{ $usernameStrategy === 'mobile' ? 'مثلاً: 09123456789' : 'Username' }}">
                 <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">
                     <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -47,7 +56,7 @@
                 </div>
             </div>
             <p class="mt-2 text-[11px] text-gray-500 dark:text-gray-400">
-                کد یکبار مصرف به شماره موبایل ثبت‌شده برای این کاربر ارسال می‌شود.
+                کد یکبار مصرف به {{ $usernameStrategy === 'mobile' ? 'این شماره موبایل' : 'شماره موبایل ثبت‌شده برای این کاربر' }} ارسال می‌شود.
             </p>
         </div>
 
@@ -73,9 +82,11 @@
 
         <input type="hidden" name="username" value="{{ $otpUsername }}">
 
-        <div class="rounded-xl bg-gray-50 dark:bg-gray-900/30 border border-gray-200 dark:border-gray-700 p-3 text-xs text-gray-600 dark:text-gray-300">
-            نام کاربری:
-            <span class="font-mono dir-ltr">{{ $otpUsername }}</span>
+        <div class="rounded-xl bg-gray-50 dark:bg-gray-900/30 border border-gray-200 dark:border-gray-700 p-3 text-xs text-gray-600 dark:text-gray-300 flex justify-between items-center">
+            <div>
+                <span class="font-medium">{{ $usernameLabel }}:</span>
+                <span class="font-sans dir-ltr ml-1">{{ $otpUsername }}</span>
+            </div>
         </div>
 
         <div>
