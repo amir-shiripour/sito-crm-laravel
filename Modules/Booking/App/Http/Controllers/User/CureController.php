@@ -56,7 +56,12 @@ class CureController extends Controller
     private function applyRoundingSettings(BookingSetting $settings): BookingSetting
     {
         $rows = DB::table('settings')
-            ->whereIn('key', ['installment_rounding_mode', 'installment_rounding_factor'])
+            ->whereIn('key', [
+                'installment_rounding_mode',
+                'installment_rounding_factor',
+                'installment_due_days',
+                'installment_min_cheque_amount',
+            ])
             ->pluck('value', 'key');
 
         // ── Rounding Mode ──
@@ -81,10 +86,59 @@ class CureController extends Controller
                 : (is_numeric($rawFactor) ? (int)$rawFactor : 1000);
         }
 
+        // ── Due Days ──
+        $rawDueDays = $rows['installment_due_days'] ?? null;
+        if ($rawDueDays !== null) {
+            $decoded = json_decode($rawDueDays, true);
+            $settings->installment_due_days = is_array($decoded) ? $decoded : [];
+        }
+
+        // ── Minimum Cheque Amount ──
+        $rawMinCheque = $rows['installment_min_cheque_amount'] ?? null;
+        $minCheque = 0;
+        if ($rawMinCheque !== null) {
+            $decoded = json_decode($rawMinCheque, true);
+            $minCheque = is_numeric($decoded)
+                ? (float)$decoded
+                : (is_numeric($rawMinCheque) ? (float)$rawMinCheque : 0);
+        }
+
         $settings->installment_rounding_mode = $mode;
         $settings->installment_rounding_factor = $factor;
+        $settings->installment_min_cheque_amount = $minCheque;
 
         return $settings;
+    }
+
+    private function validateMinimumChequeAmount(array $data, BookingSetting $setting): ?string
+    {
+        if (empty($data['generated_cheques']) || !is_array($data['generated_cheques'])) {
+            return null;
+        }
+
+        $minChequeAmount = 0;
+        try {
+            $minRow = DB::table('settings')->where('key', 'installment_min_cheque_amount')->value('value');
+            if ($minRow !== null) {
+                $decoded = json_decode($minRow, true);
+                $minChequeAmount = is_numeric($decoded) ? (float)$decoded : (is_numeric($minRow) ? (float)$minRow : 0);
+            }
+        } catch (\Exception $e) {}
+
+        if ($minChequeAmount <= 0) {
+            return null;
+        }
+
+        $currencyLabel = ($setting->currency_unit ?? 'IRT') === 'IRR' ? 'ریال' : 'تومان';
+        foreach ($data['generated_cheques'] as $idx => $chk) {
+            $chkAmt = (float)($chk['amount'] ?? 0);
+            if ($chkAmt < $minChequeAmount) {
+                $chkNum = $chk['number'] ?? ($idx + 1);
+                return "مبلغ چک شماره {$chkNum} (" . number_format($chkAmt) . " {$currencyLabel}) نمی‌تواند کمتر از حداقل مجاز یعنی " . number_format($minChequeAmount) . " {$currencyLabel} باشد.";
+            }
+        }
+
+        return null;
     }
 
     private function planValidationRules(): array
@@ -438,6 +492,14 @@ class CureController extends Controller
                     ], 403);
                 }
             }
+        }
+
+        $minChequeError = $this->validateMinimumChequeAmount($data, $setting);
+        if ($minChequeError) {
+            return response()->json([
+                'success' => false,
+                'message' => $minChequeError
+            ], 422);
         }
 
         $currency = $setting->currency_unit ?? 'IRT';
@@ -1013,6 +1075,14 @@ class CureController extends Controller
                 'success' => false,
                 'message' => 'شما دسترسی کافی برای ثبت/تغییر وضعیت طرح درمان به "' . $statusName . '" را ندارید.'
             ], 403);
+        }
+
+        $minChequeError = $this->validateMinimumChequeAmount($data, $setting);
+        if ($minChequeError) {
+            return response()->json([
+                'success' => false,
+                'message' => $minChequeError
+            ], 422);
         }
 
         $planData = $this->buildPlanData($data);

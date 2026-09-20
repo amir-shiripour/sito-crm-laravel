@@ -41,14 +41,40 @@
         items: [],
         notify(e) {
             const id = Date.now() + Math.random();
-            const detail = e.detail || e; // Support both event detail and direct object
-            this.items.push({
-                id,
-                type: detail.type || 'info',
-                text: detail.text || detail.message || '',
-            });
-            // auto hide
-            setTimeout(() => this.remove(id), 5000);
+            const detail = (e && e.detail !== undefined) ? e.detail : e;
+            const validTypes = ['success', 'error', 'warning', 'info', 'danger'];
+            let type = 'info';
+            let text = '';
+            let duration = 5000;
+
+            if (typeof detail === 'string') {
+                text = detail;
+            } else if (typeof detail === 'object' && detail !== null) {
+                let rawType = detail.type ? String(detail.type).toLowerCase() : '';
+                let rawText = detail.text || detail.message || detail.title || '';
+                duration = detail.duration || 5000;
+
+                if (validTypes.includes(rawType)) {
+                    type = rawType === 'danger' ? 'error' : rawType;
+                    text = rawText;
+                } else if (validTypes.includes(String(rawText).toLowerCase())) {
+                    type = String(rawText).toLowerCase() === 'danger' ? 'error' : String(rawText).toLowerCase();
+                    text = detail.type || '';
+                } else {
+                    type = 'info';
+                    text = rawText || detail.type || '';
+                }
+            }
+
+            if (!text) {
+                text = typeof detail === 'string' ? detail : (detail?.message || detail?.text || '');
+            }
+
+            this.items.push({ id, type, text });
+
+            setTimeout(() => {
+                this.remove(id);
+            }, duration);
         },
         remove(id) {
             this.items = this.items.filter(i => i.id !== id);
@@ -75,30 +101,73 @@
             @endforeach
         @endif
     "
-    class="fixed right-3 top-3 z-50 w-80 max-w-[90vw] space-y-2" style="z-index: 9999"
+    class="fixed top-5 right-5 sm:right-6 z-[99999] w-96 max-w-[calc(100vw-2.5rem)] space-y-3 pointer-events-none font-sans"
+    dir="rtl"
 >
     <template x-for="item in items" :key="item.id">
         <div
             x-show="true"
-            x-transition
-            class="rounded-2xl px-4 py-3 text-sm shadow-lg border backdrop-blur bg-white/90 dark:bg-gray-900/90"
+            x-transition:enter="transition ease-out duration-300 transform"
+            x-transition:enter-start="-translate-y-4 opacity-0 scale-95"
+            x-transition:enter-end="translate-y-0 opacity-100 scale-100"
+            x-transition:leave="transition ease-in duration-200 transform"
+            x-transition:leave-start="opacity-100 scale-100"
+            x-transition:leave-end="translate-x-4 opacity-0 scale-95"
+            class="pointer-events-auto flex items-start gap-3 p-4 rounded-2xl shadow-xl border backdrop-blur-md transition-all font-sans"
             :class="{
-                'border-emerald-200 text-emerald-800 dark:border-emerald-500/60 dark:text-emerald-200': item.type === 'success',
-                'border-red-200 text-red-800 dark:border-red-500/60 dark:text-red-200': item.type === 'error',
-                'border-blue-200 text-blue-800 dark:border-blue-500/60 dark:text-blue-200': item.type === 'info',
-                'border-amber-200 text-amber-800 dark:border-amber-500/60 dark:text-amber-200': item.type === 'warning',
+                'bg-emerald-50/95 dark:bg-slate-800/95 border-emerald-200 dark:border-emerald-500/40 text-emerald-950 dark:text-emerald-100 shadow-emerald-500/10': item.type === 'success',
+                'bg-rose-50/95 dark:bg-slate-800/95 border-rose-200 dark:border-rose-500/40 text-rose-950 dark:text-rose-100 shadow-rose-500/10': item.type === 'error',
+                'bg-amber-50/95 dark:bg-slate-800/95 border-amber-200 dark:border-amber-500/40 text-amber-950 dark:text-amber-100 shadow-amber-500/10': item.type === 'warning',
+                'bg-indigo-50/95 dark:bg-slate-800/95 border-indigo-200 dark:border-indigo-500/40 text-indigo-950 dark:text-indigo-100 shadow-indigo-500/10': item.type === 'info',
             }"
         >
-            <div class="flex items-start justify-between gap-3">
-                <p class="leading-relaxed" x-text="item.text"></p>
-                <button
-                    type="button"
-                    class="text-xs opacity-60 hover:opacity-100"
-                    @click="remove(item.id)"
-                >
-                    ✕
-                </button>
+            {{-- Icon Container --}}
+            <div
+                class="shrink-0 w-8 h-8 rounded-xl flex items-center justify-center shadow-inner"
+                :class="{
+                    'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400': item.type === 'success',
+                    'bg-rose-500/15 text-rose-600 dark:text-rose-400': item.type === 'error',
+                    'bg-amber-500/15 text-amber-600 dark:text-amber-400': item.type === 'warning',
+                    'bg-indigo-500/15 text-indigo-600 dark:text-indigo-400': item.type === 'info',
+                }"
+            >
+                {{-- Success Icon --}}
+                <svg x-show="item.type === 'success'" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                </svg>
+
+                {{-- Error Icon --}}
+                <svg x-show="item.type === 'error'" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+
+                {{-- Warning Icon --}}
+                <svg x-show="item.type === 'warning'" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                </svg>
+
+                {{-- Info Icon --}}
+                <svg x-show="item.type === 'info'" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
+                </svg>
             </div>
+
+            {{-- Message text --}}
+            <div class="flex-1 pt-0.5 min-w-0">
+                <p class="text-xs sm:text-sm font-semibold leading-relaxed break-words font-sans" x-text="item.text"></p>
+            </div>
+
+            {{-- Close button --}}
+            <button
+                type="button"
+                class="shrink-0 p-1 rounded-lg text-slate-400 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
+                @click="remove(item.id)"
+                aria-label="بستن"
+            >
+                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
         </div>
     </template>
 </div>
@@ -165,8 +234,30 @@
 
 {{-- Alpine helpers --}}
 <script>
-    window.showToast = function(type, message) {
-        window.dispatchEvent(new CustomEvent('notify', { detail: { type: type || 'info', text: message || '' } }));
+    window.showToast = function(param1, param2, duration = 5000) {
+        const validTypes = ['success', 'error', 'warning', 'info', 'danger'];
+        let type = 'info';
+        let message = '';
+
+        if (typeof param1 === 'string' && validTypes.includes(param1.toLowerCase())) {
+            type = param1.toLowerCase() === 'danger' ? 'error' : param1.toLowerCase();
+            message = param2 || '';
+        } else if (typeof param2 === 'string' && validTypes.includes(param2.toLowerCase())) {
+            type = param2.toLowerCase() === 'danger' ? 'error' : param2.toLowerCase();
+            message = param1 || '';
+        } else if (typeof param1 === 'object' && param1 !== null) {
+            let t = param1.type ? String(param1.type).toLowerCase() : '';
+            type = validTypes.includes(t) ? (t === 'danger' ? 'error' : t) : 'info';
+            message = param1.text || param1.message || param1.title || '';
+            if (param1.duration) duration = param1.duration;
+        } else {
+            message = param1 || '';
+            type = (typeof param2 === 'string' && validTypes.includes(param2.toLowerCase())) ? (param2.toLowerCase() === 'danger' ? 'error' : param2.toLowerCase()) : 'info';
+        }
+
+        window.dispatchEvent(new CustomEvent('notify', {
+            detail: { type: type, text: message, message: message, duration: duration }
+        }));
     };
 
     function dashboardLayout() {

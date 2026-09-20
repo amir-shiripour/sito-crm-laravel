@@ -298,33 +298,6 @@
             border-top-color: #1e293b;
         }
 
-        .toast {
-            position: fixed;
-            bottom: 24px;
-            left: 50%;
-            transform: translateX(-50%) translateY(80px);
-            z-index: 9999;
-            padding: 12px 24px;
-            border-radius: 14px;
-            font-size: 14px;
-            font-weight: 600;
-            color: #fff;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, .18);
-            transition: transform .3s cubic-bezier(.34, 1.56, .64, 1), opacity .3s;
-            opacity: 0;
-            pointer-events: none;
-            white-space: nowrap;
-        }
-
-        .toast.show {
-            transform: translateX(-50%) translateY(0);
-            opacity: 1;
-        }
-
-        .toast-success { background: linear-gradient(135deg, #10b981, #059669); }
-        .toast-error { background: linear-gradient(135deg, #ef4444, #dc2626); }
-        .toast-info { background: linear-gradient(135deg, #6366f1, #8b5cf6); }
-
         .inst-badge {
             display: inline-flex;
             align-items: center;
@@ -448,8 +421,6 @@
             opacity: 0.7;
         }
     </style>
-
-    <div id="cure-toast" class="toast"></div>
 
     <div
         x-data="treatmentPlanApp(
@@ -1865,8 +1836,8 @@
                                                                     </template>
                                                                     <span x-show="!item.teeth || item.teeth.length === 0" class="text-gray-400">-</span>
                                                                 </td>
-                                                                <td class="px-5 py-3.5 text-center font-mono font-bold text-gray-500 dark:text-gray-400" x-text="item.quantity"></td>
-                                                                <td class="px-5 py-3.5 text-left font-mono font-black text-gray-800 dark:text-gray-300" x-text="formatPrice(item.price * item.quantity) + ' ' + currencyLabel"></td>
+                                                                    <td class="px-5 py-3.5 text-center font-sans font-bold text-gray-500 dark:text-gray-400" x-text="item.quantity"></td>
+                                                                    <td class="px-5 py-3.5 text-left font-sans font-black text-gray-800 dark:text-gray-300" x-text="formatPrice(item.price * item.quantity) + ' ' + currencyLabel"></td>
                                                             </tr>
                                                         </template>
                                                         <tr x-show="!snap.items || snap.items.length === 0">
@@ -1885,25 +1856,33 @@
                 </div>
             </div>
         </div>
-        {{-- ══════════════════ FINANCIAL SUMMARY (Compact) ══════════════════ --}}
-        <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden mt-5">
-            <div class="px-5 py-4 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between bg-gradient-to-l from-emerald-50/50 to-transparent dark:from-emerald-900/10">
+        {{-- ══════════════════ FINANCIAL SUMMARY (Redesigned Full-Width & Side-by-Side) ══════════════════ --}}
+        <div class="bg-white dark:bg-gray-800 rounded-3xl border border-gray-200/90 dark:border-gray-700/80 shadow-md overflow-hidden mt-6 transition-all">
+            {{-- Header --}}
+            <div class="px-6 py-4 border-b border-gray-100 dark:border-gray-700/80 flex items-center justify-between bg-gradient-to-l from-indigo-50/60 via-slate-50/30 to-transparent dark:from-indigo-950/30 dark:via-gray-800 dark:to-transparent">
                 <div class="flex items-center gap-3">
-                    <div class="w-9 h-9 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0">
+                    <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-indigo-600 to-indigo-500 text-white flex items-center justify-center shadow-md shadow-indigo-500/20 shrink-0">
                         <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" /></svg>
                     </div>
-                    <h2 class="font-bold text-gray-800 dark:text-white">خلاصه مالی</h2>
+                    <div>
+                        <h2 class="font-black text-gray-900 dark:text-gray-100 text-base">خلاصه مالی و تسویه</h2>
+                        <p class="text-xs text-slate-600 dark:text-slate-300 font-medium mt-0.5">تعیین روش پرداخت، محاسبات تخفیف و اقساط، و صدور چک‌ها</p>
+                    </div>
                 </div>
             </div>
 
-            <div class="p-5">
-                <div class="grid grid-cols-1 lg:grid-cols-[2fr_3fr] gap-5 items-start">
+            <div class="p-6 space-y-6">
 
-                    {{-- ══════ RIGHT: روش پرداخت ══════ --}}
-                    <div class="space-y-3">
-                        <label class="block text-xs font-bold text-gray-500 dark:text-gray-400">روش پرداخت</label>
+                {{-- ══════ 1. TOP: انتخاب روش پرداخت و طرح‌های اقساطی ══════ --}}
+                <div class="space-y-4 pb-6 border-b border-gray-100 dark:border-gray-700/70">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div>
+                            <label class="block text-xs font-bold text-gray-800 dark:text-gray-200">روش پرداخت</label>
+                            <span class="text-[11px] text-slate-500 dark:text-slate-400">روش مورد نظر برای تسویه این طرح درمان را انتخاب کنید</span>
+                        </div>
 
-                        <div class="payment-pill-group relative">
+                        {{-- Sliding Pill Switcher --}}
+                        <div class="payment-pill-group relative w-full sm:w-80">
                             <!-- Sliding Indicator -->
                             <div class="absolute top-[6px] bottom-[6px] w-[calc(50%-8px)] rounded-xl transition-all duration-300 cubic-bezier(0.4, 0, 0.2, 1) z-0 shadow-md"
                                  :class="!useInstallment ? 'right-[6px] bg-emerald-600 shadow-emerald-500/25 dark:shadow-emerald-950/50' : 'left-[6px] bg-indigo-600 shadow-indigo-500/25 dark:shadow-indigo-950/50'">
@@ -1911,498 +1890,634 @@
 
                             <button type="button" @click="useInstallment = false; selectedInstallmentOptionId = null"
                                     class="payment-pill-btn"
-                                    :class="!useInstallment ? 'text-white' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'">
+                                    :class="!useInstallment ? 'text-white' : 'text-slate-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-gray-200'">
                                 <svg class="w-4 h-4 transition-transform duration-300" :class="!useInstallment ? 'scale-110' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
-                                <span class="relative font-bold text-xs md:text-sm">نقدی</span>
+                                <span class="relative font-bold text-xs md:text-sm">پرداخت نقدی</span>
                             </button>
                             <button type="button" @click="useInstallment = true"
                                     class="payment-pill-btn relative"
-                                    :class="useInstallment ? 'text-white' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'">
+                                    :class="useInstallment ? 'text-white' : 'text-slate-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-gray-200'">
                                 <span x-show="installmentTypes.length > 0" class="absolute -top-1.5 -left-1.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-rose-500 text-white border border-white dark:border-gray-800" x-text="installmentTypes.length"></span>
                                 <svg class="w-4 h-4 transition-transform duration-300" :class="useInstallment ? 'scale-110' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
-                                <span class="relative font-bold text-xs md:text-sm">اقساطی</span>
+                                <span class="relative font-bold text-xs md:text-sm">پرداخت اقساطی</span>
                             </button>
-                        </div>
-
-                        {{-- لیست طرح‌های قسطی --}}
-                        <div x-show="useInstallment" x-transition class="space-y-1.5">
-                            <!-- پیام در صورت خالی بودن طرح درمان -->
-                            <template x-if="planItems.length === 0">
-                                <div class="p-2.5 rounded-lg bg-gray-50 dark:bg-gray-700/40 border border-gray-100 dark:border-gray-700 text-[11px] text-gray-500 dark:text-gray-400 text-center">
-                                    ابتدا دندان‌ها و سرویس‌ها را به طرح درمان اضافه کنید.
-                                </div>
-                            </template>
-
-                            <!-- پیام در صورتی که آیتم وجود دارد اما طرح اقساطی برای آن یافت نشد -->
-                            <template x-if="planItems.length > 0 && eligibleInstallmentOptions.length === 0">
-                                <div class="p-2.5 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 text-[11px] text-amber-700 dark:text-amber-400">
-                                    برندهای انتخاب‌شده مشمول اقساط نمی‌شوند یا مبلغ طرح در بازه مجاز نیست.
-                                </div>
-                            </template>
-
-                            <!-- نمایش لیست طرح‌های اقساطی -->
-                            <template x-if="eligibleInstallmentOptions.length > 0">
-                                <div class="space-y-2 max-h-56 overflow-y-auto sc-thin pr-1">
-                                    <template x-for="option in eligibleInstallmentOptions" :key="option.id">
-                                        <div @click="selectedInstallmentOptionId = option.id"
-                                             class="flex items-center justify-between gap-3 p-3.5 rounded-2xl border-2 cursor-pointer transition-all hover:shadow-sm"
-                                             :class="selectedInstallmentOptionId === option.id ? 'border-indigo-500 bg-indigo-50/30 dark:bg-indigo-950/15 shadow-inner' : 'border-gray-100 dark:border-gray-700/60 hover:border-indigo-200 dark:hover:border-indigo-900 bg-white/40 dark:bg-gray-800/40'">
-
-                                             <div class="flex-1 min-w-0">
-                                                 <p class="font-bold text-gray-800 dark:text-white text-xs truncate" x-text="option.title || 'طرح بدون نام'"></p>
-                                                 <div class="flex flex-wrap gap-1.5 mt-1.5">
-                                                     <span class="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-gray-100 dark:bg-gray-700/60 text-gray-600 dark:text-gray-300">
-                                                         پیش‌پرداخت: <b x-text="getPlanSummaryInfo(option).dp + '%'"></b>
-                                                     </span>
-                                                     <span class="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-gray-100 dark:bg-gray-700/60 text-gray-600 dark:text-gray-300">
-                                                         مدت: <b x-text="getPlanSummaryInfo(option).months + ' ماه'"></b>
-                                                     </span>
-                                                     <span class="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400">
-                                                         تقسیط: <b x-text="getPlanSummaryInfo(option).stages + ' مرحله'"></b>
-                                                     </span>
-                                                 </div>
-                                             </div>
-
-                                             <div class="w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors"
-                                                  :class="selectedInstallmentOptionId === option.id ? 'border-indigo-600 bg-indigo-600 text-white' : 'border-gray-300 dark:border-gray-600'">
-                                                 <svg x-show="selectedInstallmentOptionId === option.id" class="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
-                                                     <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
-                                                 </svg>
-                                             </div>
-                                        </div>
-                                    </template>
-                                </div>
-                            </template>
                         </div>
                     </div>
 
-                    {{-- ══════ LEFT: جزئیات روش انتخاب‌شده ══════ --}}
-                    <div x-transition class="bg-gray-50/60 dark:bg-gray-900/20 rounded-2xl border border-gray-100 dark:border-gray-700 p-4 min-h-[320px] flex flex-col justify-between transition-all">
+                    {{-- لیست طرح‌های قسطی فعال در بالا --}}
+                    <div x-show="useInstallment" x-transition class="space-y-3 pt-2">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-bold text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
+                                <svg class="w-4 h-4 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
+                                انتخاب طرح اقساطی
+                            </span>
+                            <span x-show="eligibleInstallmentOptions.length > 0" class="text-[11px] text-indigo-600 dark:text-indigo-400 font-bold">
+                                <span x-text="eligibleInstallmentOptions.length"></span> طرح واجد شرایط
+                            </span>
+                        </div>
 
-                        {{-- حالت نقدی --}}
-                        <template x-if="!useInstallment">
-                            <div class="space-y-3">
-                                <div class="flex items-center gap-2 text-emerald-600 dark:text-emerald-450 font-bold mb-2">
-                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
-                                    <span class="text-xs">جزئیات پرداخت نقدی</span>
-                                </div>
-
-                                <div class="rounded-2xl border border-gray-200 dark:border-gray-700/80 overflow-hidden bg-white/40 dark:bg-gray-900/40 divide-y divide-gray-100 dark:divide-gray-800">
-                                    <div class="receipt-row">
-                                        <span class="text-xs text-gray-500 dark:text-gray-400">جمع کل خدمات</span>
-                                        <span class="font-bold text-gray-700 dark:text-gray-200" x-text="formatPrice(totalPrice) + ' ' + currencyLabel"></span>
-                                    </div>
-
-                                    <div x-show="settings.cure.allow_discount" class="p-4 space-y-3 bg-white/30 dark:bg-gray-900/20">
-                                        <div class="flex items-center justify-between">
-                                            <span class="text-xs font-bold text-gray-500 dark:text-gray-400">تخفیف طرح درمان</span>
-                                            <div x-show="settings.cure.discount_type === 'both' && !isReadOnly" class="flex bg-gray-100 dark:bg-gray-800 rounded-lg p-0.5 border border-gray-200/50 dark:border-gray-700">
-                                                <button type="button" @click="discountType = 'amount'" class="px-3 py-1 rounded-md text-[10px] font-bold transition-all" :class="discountType === 'amount' ? 'bg-white dark:bg-gray-700 text-rose-600 dark:text-rose-400 shadow-sm' : 'text-gray-500 dark:text-gray-400'">مبلغ</button>
-                                                <button type="button" @click="discountType = 'percent'" class="px-3 py-1 rounded-md text-[10px] font-bold transition-all" :class="discountType === 'percent' ? 'bg-white dark:bg-gray-700 text-rose-600 dark:text-rose-400 shadow-sm' : 'text-gray-500 dark:text-gray-400'">درصد</button>
-                                            </div>
-                                        </div>
-                                        <template x-if="!isReadOnly">
-                                            <div>
-                                                <div class="relative">
-                                                    <input x-show="discountType === 'percent'" type="number" min="0" :max="settings.cure.max_discount_percent" x-model.number="discountAmount" @input="if (discountAmount > settings.cure.max_discount_percent) discountAmount = settings.cure.max_discount_percent; if (discountAmount < 0) discountAmount = 0;" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 text-xs text-gray-800 dark:text-gray-100 dir-ltr text-left focus:outline-none focus:border-rose-400 focus:ring-2 focus:ring-rose-100 dark:focus:ring-rose-950/30 transition-all pl-12" placeholder="0">
-                                                    <input x-show="discountType !== 'percent'" type="text" inputmode="numeric" x-model="discountAmountDisplay" @input="onDiscountAmountInput($event)" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 text-xs text-gray-800 dark:text-gray-100 dir-ltr text-left focus:outline-none focus:border-rose-400 focus:ring-2 focus:ring-rose-100 dark:focus:ring-rose-950/30 transition-all pl-12" placeholder="0">
-                                                    <div class="absolute inset-y-0 left-4 flex items-center pointer-events-none text-gray-500 text-xs font-bold">
-                                                        <span x-text="discountType === 'percent' ? '%' : currencyLabel"></span>
-                                                    </div>
-                                                </div>
-                                                <p x-show="discountType === 'percent'" class="text-[10px] text-gray-400 dark:text-gray-500 mt-1">حداکثر مجاز: <span class="font-bold text-rose-500" x-text="settings.cure.max_discount_percent"></span>%</p>
-                                            </div>
-                                        </template>
-                                        <div x-show="isReadOnly" class="text-xs text-gray-600 dark:text-gray-300">
-                                            <span x-text="discountType === 'percent' ? discountAmount + '%' : formatPrice(discountAmount) + ' ' + currencyLabel"></span>
-                                        </div>
-                                    </div>
-
-                                    <div x-show="discountValue > 0" class="receipt-row text-xs bg-rose-50/40 dark:bg-rose-950/10">
-                                        <span class="text-rose-500 font-bold">مبلغ تخفیف اعمال‌شده</span>
-                                        <span class="font-bold text-rose-600 dark:text-rose-400" x-text="'−' + formatPrice(discountValue) + ' ' + currencyLabel"></span>
-                                    </div>
-
-                                    <div class="payable-spotlight p-4 rounded-b-2xl flex justify-between items-center relative overflow-hidden">
-                                        <div class="absolute -right-6 -top-6 w-16 h-16 bg-emerald-500/10 dark:bg-emerald-500/15 rounded-full blur-xl pointer-events-none"></div>
-                                        <span class="text-emerald-750 dark:text-emerald-400 font-bold text-sm relative">مبلغ قابل پرداخت</span>
-                                        <span class="text-emerald-600 dark:text-emerald-400 font-black text-xl relative" x-text="formatPrice(finalPayable) + ' ' + currencyLabel"></span>
-                                    </div>
-                                </div>
+                        <!-- پیام در صورت خالی بودن طرح درمان -->
+                        <template x-if="planItems.length === 0">
+                            <div class="p-4 rounded-2xl bg-slate-50 dark:bg-gray-700/30 border border-slate-200 dark:border-gray-700 text-xs text-slate-600 dark:text-slate-300 text-center flex items-center justify-center gap-2">
+                                <svg class="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                <span>ابتدا دندان‌ها و سرویس‌ها را به طرح درمان اضافه کنید.</span>
                             </div>
                         </template>
 
-                        {{-- حالت قسطی، هنوز طرحی انتخاب نشده --}}
-                        <template x-if="useInstallment && !selectedInstallmentOption">
-                            <div class="h-full flex flex-col items-center justify-center text-center py-6 gap-2">
-                                <svg class="w-10 h-10 text-gray-300 dark:text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
-                                <p class="text-xs font-medium text-gray-400 dark:text-gray-500">یک طرح اقساطی را از سمت راست انتخاب کنید</p>
+                        <!-- پیام در صورتی که آیتم وجود دارد اما طرح اقساطی برای آن یافت نشد -->
+                        <template x-if="planItems.length > 0 && eligibleInstallmentOptions.length === 0">
+                            <div class="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50 text-xs text-amber-800 dark:text-amber-300 flex items-center gap-2">
+                                <svg class="w-4 h-4 text-amber-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                                <span>برندهای انتخاب‌شده مشمول اقساط نمی‌شوند یا مبلغ طرح در بازه مجاز هیچ طرح اقساطی قرار ندارد.</span>
                             </div>
                         </template>
 
-                        {{-- حالت قسطی، طرح انتخاب شده --}}
-                        <template x-if="useInstallment && selectedInstallmentOption">
-                            <div class="space-y-3">
-                                <div class="flex items-center gap-2 text-indigo-600 dark:text-indigo-400 mb-2">
-                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
-                                    <span class="text-xs font-bold" x-text="selectedInstallmentOption.title || 'صورت‌حساب قسطی'"></span>
-                                </div>
+                        <!-- نمایش کارت‌های طرح‌های اقساطی به صورت گرید مدرن -->
+                        <template x-if="eligibleInstallmentOptions.length > 0">
+                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                                <template x-for="option in eligibleInstallmentOptions" :key="option.id">
+                                    <div @click="selectedInstallmentOptionId = option.id"
+                                         class="relative p-4 rounded-2xl border-2 cursor-pointer transition-all hover:shadow-md flex flex-col justify-between gap-3"
+                                         :class="selectedInstallmentOptionId === option.id
+                                             ? 'border-indigo-600 bg-indigo-50/40 dark:bg-indigo-950/30 ring-2 ring-indigo-500/20 dark:ring-indigo-400/20 shadow-sm'
+                                             : 'border-gray-200 dark:border-gray-700 hover:border-indigo-300 dark:hover:border-indigo-600 bg-white dark:bg-gray-800/60'">
 
-                                {{-- انتخاب مدت بازپرداخت --}}
-                                <div x-show="availableInstallmentMonths.length > 0" class="bg-white dark:bg-gray-800 rounded-lg p-2.5 border border-gray-100 dark:border-gray-700">
-                                    <span class="text-[10px] text-gray-500 dark:text-gray-400 block mb-1.5">حداکثر مدت بازپرداخت (ماه)</span>
-                                    <div class="flex flex-wrap gap-1.5">
-                                        <template x-for="m in availableInstallmentMonths" :key="m">
-                                            <button type="button" @click="selectedInstallmentMonths = m" class="px-3 py-1.5 rounded-lg border-2 text-xs font-bold transition-all" :class="selectedInstallmentMonths === m ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-400 shadow-sm' : 'border-gray-200 dark:border-gray-700 text-gray-500 hover:border-indigo-300'">
-                                                <span x-text="toFa(m) + ' ماه'"></span>
-                                            </button>
-                                        </template>
-                                    </div>
-                                </div>
+                                         <div class="flex items-start justify-between gap-2">
+                                             <div class="min-w-0 flex-1">
+                                                 <p class="font-black text-gray-900 dark:text-white text-sm truncate" x-text="option.title || 'طرح بدون نام'"></p>
+                                                 <p class="text-xs text-slate-600 dark:text-slate-300 mt-1" x-show="option.description" x-text="option.description"></p>
+                                             </div>
+                                             <div class="w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 transition-all"
+                                                  :class="selectedInstallmentOptionId === option.id ? 'border-indigo-600 bg-indigo-600 text-white shadow-sm' : 'border-gray-300 dark:border-gray-600'">
+                                                 <svg x-show="selectedInstallmentOptionId === option.id" class="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+                                                     <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                                                 </svg>
+                                             </div>
+                                         </div>
 
-                                {{-- برندهای مشمول و غیرمشمول --}}
-                                <div x-show="mixedPaymentBreakdown.covered.length > 0 || mixedPaymentBreakdown.uncovered.length > 0" class="space-y-2 p-2.5 bg-white dark:bg-gray-800 rounded-lg border border-gray-100 dark:border-gray-700">
-                                    <div x-show="mixedPaymentBreakdown.covered.length > 0">
-                                        <span class="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold mb-1.5 block">مشمول اقساط</span>
-                                        <div class="flex flex-wrap gap-1.5">
-                                            <template x-for="item in mixedPaymentBreakdown.covered" :key="'c-'+item.brandName">
-                                                <div class="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800/40">
-                                                    <span class="text-[10px] font-semibold text-emerald-700 dark:text-emerald-400" x-text="item.brandName"></span>
-                                                    <span class="text-[10px] font-bold text-emerald-600 dark:text-emerald-300" x-text="formatPrice(item.price) + ' ' + currencyLabel"></span>
-                                                </div>
-                                            </template>
-                                        </div>
+                                         <div class="flex flex-wrap gap-2 pt-2.5 border-t border-gray-100 dark:border-gray-700/60 font-sans">
+                                             <span class="text-xs font-bold px-2.5 py-1 rounded-xl bg-gray-100 dark:bg-gray-700/80 text-slate-700 dark:text-slate-200">
+                                                 پیش‌پرداخت: <b class="font-black text-indigo-600 dark:text-indigo-400" x-text="getPlanSummaryInfo(option).dp + '%'"></b>
+                                             </span>
+                                             <span class="text-xs font-bold px-2.5 py-1 rounded-xl bg-gray-100 dark:bg-gray-700/80 text-slate-700 dark:text-slate-200">
+                                                 مدت: <b class="font-black text-indigo-600 dark:text-indigo-400" x-text="getPlanSummaryInfo(option).months + ' ماه'"></b>
+                                             </span>
+                                             <span class="text-xs font-bold px-2.5 py-1 rounded-xl bg-indigo-50 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 border border-indigo-100 dark:border-indigo-800/40">
+                                                 تقسیط: <b class="font-black" x-text="getPlanSummaryInfo(option).stages + ' مرحله'"></b>
+                                             </span>
+                                         </div>
                                     </div>
-                                    <div x-show="mixedPaymentBreakdown.uncovered.length > 0" class="border-t border-gray-100 dark:border-gray-700 pt-2 mt-1">
-                                        <span class="text-[10px] text-amber-600 dark:text-amber-400 font-bold mb-1.5 block">غیرمشمول (نقدی)</span>
-                                        <div class="flex flex-wrap gap-1.5">
-                                            <template x-for="item in mixedPaymentBreakdown.uncovered" :key="'u-'+item.brandName">
-                                                <div class="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/40">
-                                                    <span class="text-[10px] font-semibold text-amber-700 dark:text-amber-400" x-text="item.brandName"></span>
-                                                    <span class="text-[10px] font-bold text-amber-600 dark:text-amber-300" x-text="formatPrice(item.price) + ' ' + currencyLabel"></span>
-                                                </div>
-                                            </template>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {{-- خلاصه مالی --}}
-                                <div class="rounded-2xl border border-gray-200 dark:border-gray-700/80 overflow-hidden bg-white/40 dark:bg-gray-900/40 divide-y divide-gray-100 dark:divide-gray-800">
-                                    <!-- مبلغ نقدی (غیرمشمول) -->
-                                    <div x-show="uncoveredTotal > 0" class="receipt-row text-xs bg-amber-50/20 dark:bg-amber-950/5">
-                                        <span class="text-amber-600 dark:text-amber-400">مبلغ نقدی (غیرمشمول)</span>
-                                        <span class="font-bold text-amber-700 dark:text-amber-300" x-text="formatPrice(uncoveredTotal) + ' ' + currencyLabel"></span>
-                                    </div>
-                                    <!-- مبلغ مشمول اقساط -->
-                                    <div class="receipt-row text-xs">
-                                        <span class="text-gray-500">مبلغ مشمول اقساط</span>
-                                        <span class="font-bold text-gray-800 dark:text-gray-100" x-text="formatPrice(installmentTotalAmount) + ' ' + currencyLabel"></span>
-                                    </div>
-                                    <!-- پیش‌پرداخت -->
-                                    <div class="receipt-row text-xs bg-indigo-50/10 dark:bg-indigo-950/5">
-                                        <span class="text-indigo-600 dark:text-indigo-400">پیش‌پرداخت (<span x-text="effectiveDownPaymentPct + '%'"></span>)</span>
-                                        <span class="font-bold text-indigo-700 dark:text-indigo-300" x-text="formatPrice(downPaymentAmount) + ' ' + currencyLabel"></span>
-                                    </div>
-                                    <!-- مانده اصل (پس از کسر پیش‌پرداخت) -->
-                                    <div class="receipt-row text-xs bg-blue-50/10 dark:bg-blue-950/5">
-                                        <span class="text-blue-600 dark:text-blue-400 flex items-center gap-1.5">
-                                            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
-                                            مانده اصل
-                                        </span>
-                                        <span class="font-black text-blue-600 dark:text-blue-400" x-text="formatPrice(installmentTotalAmount - downPaymentAmount) + ' ' + currencyLabel"></span>
-                                    </div>
-                                    <!-- سود اقساط با جزئیات -->
-                                    <div x-show="effectiveFeePct > 0 || annualFeePct > 0" class="receipt-row text-xs bg-rose-50/20 dark:bg-rose-950/5">
-                                        <span class="text-rose-600 dark:text-rose-400 flex items-center gap-1">
-                                            <template x-if="effectiveMonths >= 12 && annualFeePct > 0">
-                                                 <span>کارمزد سالانه (<span x-text="annualFeePct"></span>% × <span x-text="(effectiveMonths / 12).toFixed(1)"></span> سال)</span>
-                                            </template>
-                                            <template x-if="!(effectiveMonths >= 12 && annualFeePct > 0)">
-                                                 <span>سود اقساط (<span x-text="effectiveFeePct"></span>% × <span x-text="effectiveMonths"></span> ماه)</span>
-                                            </template>
-                                        </span>
-                                        <span class="font-bold text-rose-600 dark:text-rose-400" x-text="formatPrice(installmentFeeValue) + ' ' + currencyLabel"></span>
-                                    </div>
-                                    <!-- جمع کل اقساط -->
-                                    <div class="receipt-row text-xs bg-indigo-50/25 dark:bg-indigo-950/10">
-                                         <span class="text-indigo-600 dark:text-indigo-400 font-bold flex items-center gap-1.5">
-                                             <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
-                                             جمع کل اقساط
-                                         </span>
-                                         <span class="text-indigo-600 dark:text-indigo-400 font-black" x-text="formatPrice(targetChequesTotal) + ' ' + currencyLabel"></span>
-                                    </div>
-                                    <!-- مبلغ هر قسط -->
-                                    <div class="payable-spotlight p-4 rounded-b-2xl flex justify-between items-center relative overflow-hidden">
-                                        <div class="absolute -right-6 -top-6 w-16 h-16 bg-emerald-500/10 dark:bg-emerald-500/15 rounded-full blur-xl pointer-events-none"></div>
-                                        <div class="text-emerald-750 dark:text-emerald-400 font-bold text-sm flex items-center gap-1.5 relative">
-                                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-                                            مبلغ هر قسط
-                                        </div>
-                                        <div class="text-left relative">
-                                            <span class="text-emerald-600 dark:text-emerald-400 font-black text-xl" x-text="formatPrice(monthlyPaymentAmount) + ' ' + currencyLabel"></span>
-                                            <span class="text-[10px] text-gray-400 dark:text-gray-400 block text-left" x-text="toFa(numberOfCheques) + ' قسط'"></span>
-                                        </div>
-                                    </div>
-                                </div>
-                                {{-- دکمه تاگل بخش چک‌ها --}}
-                                <button type="button" @click="showChequeSection = !showChequeSection" class="w-full px-4 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-500 text-white font-bold text-sm flex items-center justify-center gap-2 hover:shadow-lg transition-all mt-2">
-                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                                    <span x-text="showChequeSection ? 'بستن بخش چک‌ها' : 'تایید و ساخت چک‌ها'"></span>
-                                </button>
-
-                                {{-- ══════ بخش مخفی چک‌ها ══════ --}}
-                                <div x-show="showChequeSection" x-transition class="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-100 dark:border-gray-700 space-y-4 mt-2">
-
-                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-stretch">
-                                        {{-- تعداد چک‌ها --}}
-                                        <div x-show="selectedInstallmentMonths > 0" class="relative overflow-hidden rounded-2xl p-4 border border-indigo-100 dark:border-indigo-800/30 bg-gradient-to-br from-indigo-50 to-violet-50/60 dark:from-indigo-900/15 dark:to-violet-900/10">
-                                            <div class="absolute -left-6 -top-6 w-24 h-24 bg-indigo-300/10 dark:bg-indigo-500/10 rounded-full blur-2xl pointer-events-none"></div>
-                                            <div class="relative flex items-center justify-between mb-3">
-                                                <span class="text-xs font-bold text-indigo-700 dark:text-indigo-300 flex items-center gap-1.5">
-                                                    <span class="w-6 h-6 rounded-lg bg-indigo-600 text-white flex items-center justify-center shrink-0 shadow-sm shadow-indigo-500/30">
-                                                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                                                    </span>
-                                                    تعداد چک‌ها
-                                                </span>
-                                                <span class="text-[10px] font-bold text-indigo-400 dark:text-indigo-400/80 bg-white/70 dark:bg-gray-900/40 px-2 py-0.5 rounded-full">از ۱ تا <span x-text="toFa(selectedInstallmentMonths)"></span> عدد</span>
-                                            </div>
-                                            <input type="number" min="1" :max="selectedInstallmentMonths" x-model.number="numberOfCheques"
-                                                   class="relative w-full px-4 py-2.5 rounded-xl border-2 border-indigo-200 dark:border-indigo-700/50 bg-white dark:bg-gray-900 text-base text-indigo-700 dark:text-indigo-300 dir-ltr text-center focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 dark:focus:ring-indigo-900/30 transition-all font-black shadow-sm">
-                                            <p class="relative text-[10.5px] text-indigo-500/80 dark:text-indigo-400/70 mt-2.5 leading-relaxed flex items-center gap-1 flex-wrap">
-                                                <svg class="w-3 h-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                                                <span>فرمول: (کل − پیش‌پرداخت + سود) ÷ <b x-text="numberOfCheques || '؟'"></b> =</span>
-                                                <b class="text-indigo-700 dark:text-indigo-300" x-text="formatPrice(monthlyPaymentAmount) + ' ' + currencyLabel"></b>
-                                            </p>
-                                        </div>
-                                        {{-- نام بانک --}}
-                                        <div class="relative overflow-hidden rounded-2xl p-4 border border-emerald-100 dark:border-emerald-800/30 bg-gradient-to-br from-emerald-50 to-teal-50/60 dark:from-emerald-900/15 dark:to-teal-900/10">
-                                            <div class="absolute -left-6 -top-6 w-24 h-24 bg-emerald-300/10 dark:bg-emerald-500/10 rounded-full blur-2xl pointer-events-none"></div>
-                                            <label class="relative text-xs font-bold text-emerald-700 dark:text-emerald-300 flex items-center gap-1.5 mb-3">
-                                                <span class="w-6 h-6 rounded-lg bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-sm shadow-emerald-500/30">
-                                                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 21h18M3 10h18M5 6l7-3 7 3M4 10v11m16-11v11M8 14v3m4-3v3m4-3v3"/></svg>
-                                                </span>
-                                                نام بانک (برای چک‌های خودکار)
-                                            </label>
-                                            <div class="relative">
-                                                <input type="text" x-model="chequeBankName"
-                                                       class="w-full pl-4 pr-10 py-2.5 rounded-xl border-2 border-emerald-200 dark:border-emerald-700/50 bg-white dark:bg-gray-900 text-sm text-emerald-700 dark:text-emerald-300 font-bold focus:outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100 dark:focus:ring-emerald-900/30 transition-all shadow-sm"
-                                                       placeholder="مثال: ملت، صادرات...">
-                                                <svg class="absolute top-1/2 -translate-y-1/2 right-3 w-4 h-4 text-emerald-400 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
-                                            </div>
-                                            <p class="relative text-[10.5px] text-emerald-500/80 dark:text-emerald-400/70 mt-2.5">این نام برای تمام چک‌هایی که به‌صورت خودکار تولید می‌شوند ثبت خواهد شد.</p>
-                                        </div>
-                                    </div>
-
-                                    {{-- تقویم جلالی --}}
-                                    <div>
-                                        <label class="block text-xs font-bold text-gray-600 dark:text-gray-400 mb-2">تاریخ شروع اقساط</label>
-                                        <div class="max-w-md mx-auto">
-                                            <div class="flex items-center justify-between bg-white dark:bg-gray-900 rounded-2xl p-2 shadow-sm border border-gray-200 dark:border-gray-700 mb-4">
-                                                <button type="button" @click="!isReadOnly && prevInstMonth()" class="p-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300" :disabled="isReadOnly">
-                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
-                                                </button>
-                                                <div class="text-lg font-black text-indigo-600 dark:text-indigo-400" x-text="jalaliMonthNames[instCalMonth - 1] + ' ' + toFaDigits(instCalYear)"></div>
-                                                <button type="button" @click="!isReadOnly && nextInstMonth()" class="p-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300" :disabled="isReadOnly">
-                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7 -7 7-7" /></svg>
-                                                </button>
-                                            </div>
-                                            <div class="bg-white dark:bg-gray-900 rounded-2xl p-4 border border-gray-200 dark:border-gray-700 shadow-sm">
-                                                <div class="grid grid-cols-7 gap-2 mb-4 text-center text-xs font-bold text-gray-400" dir="rtl">
-                                                    <template x-for="w in ['ش', 'ی', 'د', 'س', 'چ', 'پ', 'ج']" :key="w">
-                                                        <div class="py-2 border-b border-gray-100 dark:border-gray-800" x-text="w"></div>
-                                                    </template>
-                                                </div>
-                                                <div class="grid grid-cols-7 gap-2 text-center">
-                                                    <template x-for="(dayObj, idx) in instCalDays" :key="idx">
-                                                        <div class="aspect-square">
-                                                            <div x-show="dayObj.empty" class="w-full h-full"></div>
-                                                            <button x-show="!dayObj.empty" type="button" @click="!isReadOnly && selectInstDate(dayObj)"
-                                                                    class="w-full h-full aspect-square rounded-xl flex items-center justify-center font-bold text-sm transition-all duration-300"
-                                                                    :class="dayObj.selected ? 'bg-indigo-600 text-white shadow-lg scale-105 ring-2 ring-indigo-200' : (dayObj.valid ? 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-indigo-50 dark:hover:bg-indigo-900/50 border border-gray-100 dark:border-gray-600 cursor-pointer' : 'bg-gray-50 dark:bg-gray-800 text-gray-300 dark:text-gray-600 cursor-not-allowed')"
-                                                                    :disabled="!dayObj.valid || isReadOnly" x-text="toFaDigits(dayObj.day)">
-                                                            </button>
-                                                        </div>
-                                                    </template>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {{-- دکمه‌های تولید چک --}}
-                                    <div class="flex flex-col gap-2 pt-2 border-t border-gray-100 dark:border-gray-700">
-                                        <div x-show="!isReadOnly" class="grid grid-cols-2 gap-3">
-                                            <button type="button" @click="generateCheques()" class="w-full px-4 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 hover:shadow-lg transition-all">
-                                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                                                <span>تولید خودکار <span x-text="toFa(numberOfCheques)"></span> چک</span>
-                                            </button>
-                                            <button type="button" @click="showManualChequeForm = !showManualChequeForm" class="w-full px-4 py-2.5 rounded-xl bg-white dark:bg-gray-700 border-2 border-indigo-200 dark:border-indigo-700 text-indigo-600 dark:text-indigo-300 font-bold text-xs flex items-center justify-center gap-1.5 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-all">
-                                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
-                                                <span x-text="showManualChequeForm ? 'بستن فرم دستی' : 'ثبت چک دستی'"></span>
-                                            </button>
-                                        </div>
-                                    </div>
-
-                                    {{-- فرم ثبت/ویرایش چک دستی --}}
-                                    <div x-show="showManualChequeForm && !isReadOnly" x-transition class="bg-gray-50 dark:bg-gray-700/20 rounded-xl p-4 border-2 border-dashed border-indigo-200 dark:border-indigo-700 space-y-3">
-                                        <h4 class="text-xs font-black text-indigo-600 dark:text-indigo-400 flex items-center gap-1.5">
-                                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
-                                            <span x-text="editingManualChequeIndex === null ? 'ثبت چک دستی' : 'ویرایش چک دستی'"></span>
-                                        </h4>
-                                        <div class="grid grid-cols-2 gap-3">
-                                            <div>
-                                                <label class="block text-[10px] font-bold text-gray-600 dark:text-gray-400 mb-1">شماره چک</label>
-                                                <input type="text" x-model="manualChequeNumber" class="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-xs text-gray-800 dark:text-gray-100 focus:outline-none focus:border-indigo-400 transition-all dir-ltr text-left" placeholder="123456">
-                                            </div>
-                                            <div>
-                                                <label class="block text-[10px] font-bold text-gray-600 dark:text-gray-400 mb-1">مبلغ چک</label>
-                                                <div class="relative">
-                                                    <input type="text" inputmode="numeric" x-model="manualChequeAmountDisplay" @input="onManualChequeAmountInput($event)"
-                                                           class="w-full pl-14 pr-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-xs text-gray-800 dark:text-gray-100 focus:outline-none focus:border-indigo-400 transition-all dir-ltr text-left font-bold" placeholder="500,000">
-                                                    <span class="absolute top-1/2 -translate-y-1/2 left-2 text-[10px] font-bold text-gray-400" x-text="currencyLabel"></span>
-                                                </div>
-                                            </div>
-                                            <div>
-                                                <label class="block text-[10px] font-bold text-gray-600 dark:text-gray-400 mb-1">نام بانک</label>
-                                                <input type="text" x-model="manualChequeBankName" class="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-xs text-gray-800 dark:text-gray-100 focus:outline-none focus:border-indigo-400 transition-all" placeholder="ملت">
-                                            </div>
-                                            <div class="relative">
-                                                <label class="block text-[10px] font-bold text-gray-600 dark:text-gray-400 mb-1">تاریخ سررسید</label>
-                                                <button type="button" @click="openManualCal()"
-                                                        class="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-xs text-gray-800 dark:text-gray-100 focus:outline-none focus:border-indigo-400 transition-all flex items-center justify-between"
-                                                        :class="showManualChequeCalendar ? 'border-indigo-400 ring-1 ring-indigo-100' : ''">
-                                                    <span x-text="manualChequeDate ? toFaDigits(manualChequeDate) : 'انتخاب تاریخ...'"></span>
-                                                    <svg class="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                                                </button>
-                                            </div>
-
-                                            <!-- مودال مرکزی تقویم (برای جلوگیری از بریدگی) -->
-                                            <div x-show="showManualChequeCalendar"
-                                                 x-transition.opacity
-                                                 class="fixed inset-0 z-[100] bg-black/50 flex items-center justify-center p-4"
-                                                 @click.self="showManualChequeCalendar = false"
-                                                 style="display: none;">
-
-                                                <div class="bg-white dark:bg-gray-800 rounded-2xl p-5 border border-gray-200 dark:border-gray-700 shadow-2xl w-full max-w-xs" x-transition.scale>
-
-                                                    <!-- هدر تقویم -->
-                                                    <div class="flex items-center justify-between mb-4">
-                                                        <button type="button" @click="changeManualMonth(-1)" class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300">
-                                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
-                                                        </button>
-                                                        <div class="text-lg font-black text-indigo-600 dark:text-indigo-400" x-text="jalaliMonthNames[manualChequeCalMonth - 1] + ' ' + toFaDigits(manualChequeCalYear)"></div>                                                        <button type="button" @click="changeManualMonth(1)" class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300">
-                                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7 -7 7-7" /></svg>
-                                                        </button>
-                                                    </div>
-
-                                                    <!-- نام روزهای هفته -->
-                                                    <div class="grid grid-cols-7 gap-1 mb-2 text-center">
-                                                        <template x-for="w in ['ش', 'ی', 'د', 'س', 'چ', 'پ', 'ج']" :key="w">
-                                                            <div class="text-[10px] font-bold text-gray-400 dark:text-gray-500 py-1" x-text="w"></div>
-                                                        </template>
-                                                    </div>
-
-                                                    <!-- روزهای ماه -->
-                                                    <div class="grid grid-cols-7 gap-1 text-center">
-                                                        <template x-for="(dayObj, idx) in manualChequeCalDays" :key="idx">
-                                                            <div class="aspect-square w-full">
-                                                                <div x-show="dayObj.empty" class="w-full h-full"></div>
-                                                                <button x-show="!dayObj.empty" type="button" @click="pickManualDate(dayObj)"
-                                                                        class="w-full h-full flex items-center justify-center rounded-lg text-xs font-bold transition-all"
-                                                                        :class="dayObj.selected
-                                    ? 'bg-indigo-600 text-white shadow-lg scale-105'
-                                    : (dayObj.valid
-                                        ? 'text-gray-700 dark:text-gray-200 hover:bg-indigo-50 dark:hover:bg-indigo-900/40 cursor-pointer'
-                                        : 'text-gray-300 dark:text-gray-700 cursor-not-allowed')"
-                                                                        :disabled="!dayObj.valid" x-text="toFaDigits(dayObj.day)">
-                                                                </button>
-                                                            </div>
-                                                        </template>
-                                                    </div>
-
-                                                    <!-- دکمه بستن -->
-                                                    <button type="button" @click="showManualChequeCalendar = false" class="w-full mt-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-xs font-bold hover:bg-gray-200 dark:hover:bg-gray-600 transition">
-                                                        بستن تقویم
-                                                    </button>
-                                                </div>
-                                            </div>                                        </div>
-                                        <div class="flex items-center gap-2">
-                                            <button type="button" @click="editingManualChequeIndex === null ? addManualCheque() : saveManualChequeEdit()" class="flex-1 px-4 py-2 rounded-lg bg-emerald-600 text-white font-bold text-xs flex items-center justify-center gap-1.5 hover:bg-emerald-700 transition-all">
-                                                <svg x-show="editingManualChequeIndex === null" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
-                                                <svg x-show="editingManualChequeIndex !== null" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
-                                                <span x-text="editingManualChequeIndex === null ? 'افزودن این چک به لیست' : 'تایید ویرایش'"></span>
-                                            </button>
-                                            <button x-show="editingManualChequeIndex !== null" type="button" @click="cancelManualChequeEdit()" class="px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-300 font-bold text-xs hover:bg-gray-200 dark:hover:bg-gray-600 transition-all">
-                                                انصراف
-                                            </button>
-                                        </div>
-                                    </div>
-
-                                    {{-- لیست چک‌ها --}}
-                                    <div x-show="generatedCheques.length > 0" class="mt-3 space-y-2 max-h-60 overflow-y-auto sc-thin pr-1">
-                                        <div class="flex justify-between items-center px-2 mb-1 gap-2 flex-wrap">
-                                            <span class="text-[10px] font-bold text-gray-500 shrink-0">لیست چک‌ها</span>
-                                            <div class="flex gap-2 items-center text-[10px] shrink-0">
-                                                <span class="text-indigo-500 whitespace-nowrap flex items-center gap-2">
-                                                    <span>مجموع چک‌ها: <b x-text="formatPrice(totalChequesAmount) + ' ' + currencyLabel"></b></span>
-                                                    <span x-show="Math.abs(targetChequesTotal - totalChequesAmount) > 1" class="text-rose-500">
-                                                        (<span x-text="(targetChequesTotal - totalChequesAmount) > 0 ? 'کمبود:' : 'اضافه:'"></span>
-                                                        <b x-text="formatPrice(Math.abs(targetChequesTotal - totalChequesAmount)) + ' ' + currencyLabel"></b>)
-                                                    </span>
-                                                </span>                                                <button x-show="!isReadOnly" type="button" @click="clearAllCheques()" class="flex items-center gap-1 px-2 py-1 rounded-lg bg-rose-50 dark:bg-rose-900/20 text-rose-500 hover:bg-rose-100 dark:hover:bg-rose-900/30 font-bold transition-all whitespace-nowrap">
-                                                    <svg class="w-3 h-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-                                                    پاک کردن همه
-                                                </button>
-                                            </div>
-                                        </div>
-                                        <template x-for="(cheque, index) in generatedCheques" :key="cheque.id || index">
-                                            <div class="flex items-start justify-between gap-3 p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 hover:border-indigo-300 transition-all group relative">
-                                                <div class="flex items-start gap-3 min-w-0 flex-1">
-                                                    <div class="w-9 h-9 rounded-full flex items-center justify-center font-bold text-[11px] shrink-0 mt-0.5"
-                                                         :class="cheque.isManual ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600' : 'bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600'">
-                                                        <span x-text="cheque.isManual ? 'د' : toFaDigits(cheque.number)"></span>
-                                                    </div>
-                                                    <div class="min-w-0 flex-1">
-                                                        <p class="text-xs font-bold text-gray-800 dark:text-gray-100 flex items-center gap-1.5 flex-wrap">
-                                                            <span x-text="cheque.isManual ? ('چک شماره ' + cheque.number) : ('قسط ' + toFaDigits(cheque.number))" class="truncate"></span>
-                                                            <span x-show="cheque.number && !cheque.isManual" class="text-gray-400 font-normal shrink-0">از <span x-text="toFaDigits(cheque.total)"></span></span>
-                                                        </p>
-                                                        <div class="flex items-center flex-wrap gap-x-2 gap-y-1 text-[11px] text-gray-500 dark:text-gray-400 mt-1">
-                                                            <span class="flex items-center gap-1">
-                                                                <svg class="w-3 h-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-                                                                <span x-text="cheque.display_date || cheque.date"></span>
-                                                            </span>
-                                                            <span x-show="cheque.bankName" class="px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-indigo-500 font-bold text-[10px] whitespace-nowrap">بانک <span x-text="cheque.bankName"></span></span>
-                                                        </div>
-                                                        <div x-show="!cheque.isManual" class="mt-1.5 flex items-center gap-1.5">
-                                                            <span class="text-[10px] text-gray-400 shrink-0">شماره چک:</span>
-                                                            <input type="text" x-model="cheque.chequeNumber" :disabled="isReadOnly"
-                                                                   placeholder="اختیاری"
-                                                                   class="w-28 px-2 py-1 text-[11px] rounded-md border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-200 dir-ltr text-left focus:outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-100 dark:focus:ring-indigo-900/30 transition-all disabled:opacity-60 disabled:cursor-not-allowed">
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div class="flex items-start gap-1.5 shrink-0">
-                                                    <div class="text-left shrink-0">
-                                                        <p class="text-sm font-black text-emerald-600 whitespace-nowrap" x-text="formatPrice(cheque.amount)"></p>
-                                                        <p class="text-[10px] text-gray-400 text-left" x-text="currencyLabel"></p>
-                                                    </div>
-                                                    <div class="flex items-center gap-0.5">
-                                                        <button x-show="!isReadOnly && cheque.isManual" @click="editManualCheque(index)" title="ویرایش" class="opacity-0 group-hover:opacity-100 transition-all text-indigo-400 hover:text-indigo-600 p-1">
-                                                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
-                                                        </button>
-                                                        <button x-show="!isReadOnly" @click="removeCheque(index)" class="opacity-0 group-hover:opacity-100 transition-all text-rose-400 hover:text-rose-600 p-1">
-                                                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </template>
-                                    </div>
-                                </div>
+                                </template>
                             </div>
                         </template>
                     </div>
                 </div>
+
+                {{-- ══════ 2. BOTTOM: جزئیات تمام‌عرض ══════ --}}
+
+                {{-- حالت نقدی (تمام‌عرض) --}}
+                <template x-if="!useInstallment">
+                    <div class="space-y-4 max-w-2xl mx-auto py-2">
+                        <div class="flex items-center gap-2 text-emerald-700 dark:text-emerald-400 font-bold mb-1">
+                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+                            <span class="text-base font-black">صورت‌حساب و جزئیات پرداخت نقدی</span>
+                        </div>
+
+                        <div class="rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden bg-white dark:bg-gray-900/60 divide-y divide-gray-100 dark:divide-gray-800 shadow-xs">
+                            <div class="receipt-row py-4 px-5">
+                                <span class="text-sm font-bold text-slate-700 dark:text-slate-200">جمع کل خدمات</span>
+                                <span class="font-black text-base md:text-lg text-gray-900 dark:text-gray-100 font-sans" x-text="formatPrice(totalPrice) + ' ' + currencyLabel"></span>
+                            </div>
+
+                            <div x-show="settings.cure.allow_discount" class="p-5 space-y-3 bg-slate-50/50 dark:bg-gray-800/40">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <span class="text-sm font-bold text-gray-900 dark:text-gray-100">تخفیف طرح درمان</span>
+                                        <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">در صورت تمایل مبلغ یا درصد تخفیف را وارد کنید</p>
+                                    </div>
+                                    <div x-show="settings.cure.discount_type === 'both' && !isReadOnly" class="flex bg-gray-200/80 dark:bg-gray-700 rounded-xl p-0.5 border border-gray-200 dark:border-gray-600">
+                                        <button type="button" @click="discountType = 'amount'" class="px-3.5 py-1 rounded-lg text-xs font-bold transition-all" :class="discountType === 'amount' ? 'bg-white dark:bg-gray-800 text-rose-600 dark:text-rose-400 shadow-sm' : 'text-slate-600 dark:text-slate-400'">مبلغ</button>
+                                        <button type="button" @click="discountType = 'percent'" class="px-3.5 py-1 rounded-lg text-xs font-bold transition-all" :class="discountType === 'percent' ? 'bg-white dark:bg-gray-800 text-rose-600 dark:text-rose-400 shadow-sm' : 'text-slate-600 dark:text-slate-400'">درصد</button>
+                                    </div>
+                                </div>
+                                <template x-if="!isReadOnly">
+                                    <div class="pt-1">
+                                        <div class="relative">
+                                            <input x-show="discountType === 'percent'" type="number" min="0" :max="settings.cure.max_discount_percent" x-model.number="discountAmount" @input="if (discountAmount > settings.cure.max_discount_percent) discountAmount = settings.cure.max_discount_percent; if (discountAmount < 0) discountAmount = 0;" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 text-base font-black text-gray-800 dark:text-gray-100 dir-ltr text-left focus:outline-none focus:border-rose-400 focus:ring-2 focus:ring-rose-100 dark:focus:ring-rose-950/30 transition-all pl-12 font-sans" placeholder="0">
+                                            <input x-show="discountType !== 'percent'" type="text" inputmode="numeric" x-model="discountAmountDisplay" @input="onDiscountAmountInput($event)" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 text-base font-black text-gray-800 dark:text-gray-100 dir-ltr text-left focus:outline-none focus:border-rose-400 focus:ring-2 focus:ring-rose-100 dark:focus:ring-rose-950/30 transition-all pl-12 font-sans" placeholder="0">
+                                            <div class="absolute inset-y-0 left-4 flex items-center pointer-events-none text-slate-500 text-xs font-bold">
+                                                <span x-text="discountType === 'percent' ? '%' : currencyLabel"></span>
+                                            </div>
+                                        </div>
+                                        <p x-show="discountType === 'percent'" class="text-xs text-slate-500 dark:text-slate-400 mt-1.5 flex items-center gap-1 font-sans">
+                                            <span>حداکثر تخفیف مجاز:</span>
+                                            <span class="font-black text-rose-500" x-text="settings.cure.max_discount_percent"></span>%
+                                        </p>
+                                    </div>
+                                </template>
+                                <div x-show="isReadOnly" class="text-sm text-slate-800 dark:text-slate-100 font-black font-sans">
+                                    <span x-text="discountType === 'percent' ? discountAmount + '%' : formatPrice(discountAmount) + ' ' + currencyLabel"></span>
+                                </div>
+                            </div>
+
+                            <div x-show="discountValue > 0" class="receipt-row py-3.5 px-5 text-sm bg-rose-50/40 dark:bg-rose-950/20">
+                                <span class="text-rose-700 dark:text-rose-300 font-bold">مبلغ تخفیف اعمال‌شده</span>
+                                <span class="font-black text-rose-600 dark:text-rose-400 text-base font-sans" x-text="'−' + formatPrice(discountValue) + ' ' + currencyLabel"></span>
+                            </div>
+
+                            <div class="payable-spotlight p-5 rounded-b-2xl flex justify-between items-center relative overflow-hidden">
+                                <div class="absolute -right-6 -top-6 w-20 h-20 bg-emerald-500/10 dark:bg-emerald-500/15 rounded-full blur-xl pointer-events-none"></div>
+                                <div>
+                                    <span class="text-emerald-900 dark:text-emerald-200 font-black text-base block relative">مبلغ نهایی قابل پرداخت نقدی</span>
+                                    <span class="text-xs text-slate-500 dark:text-slate-400 relative">تسویه به صورت یکجا</span>
+                                </div>
+                                <span class="text-emerald-600 dark:text-emerald-400 font-black text-2xl md:text-3xl relative font-sans" x-text="formatPrice(finalPayable) + ' ' + currencyLabel"></span>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+
+                {{-- حالت اقساطی: هنوز طرحی انتخاب نشده --}}
+                <template x-if="useInstallment && !selectedInstallmentOption">
+                    <div class="py-12 flex flex-col items-center justify-center text-center gap-3 bg-slate-50/50 dark:bg-gray-900/30 rounded-2xl border border-dashed border-gray-200 dark:border-gray-700">
+                        <div class="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-950/50 text-indigo-500 flex items-center justify-center">
+                            <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+                        </div>
+                        <p class="text-xs font-bold text-slate-600 dark:text-slate-300">لطفاً از بین طرح‌های بالا، یک طرح اقساطی را برای مشاهده محاسبات و ثبت چک‌ها انتخاب کنید.</p>
+                    </div>
+                </template>
+
+                {{-- حالت اقساطی: طرح انتخاب شده -> چیدمان دوناحیه‌ای چپ و راست (Side-by-Side) --}}
+                <template x-if="useInstallment && selectedInstallmentOption">
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+
+                        {{-- ══════ ستون راست: بخش محاسبات و مشخصات اقساط ══════ --}}
+                        <div class="space-y-4 bg-slate-50/70 dark:bg-gray-900/40 rounded-2xl border border-gray-200 dark:border-gray-700 p-5">
+                            <div class="flex items-center justify-between pb-3 border-b border-gray-200/80 dark:border-gray-700">
+                                <div class="flex items-center gap-2.5 text-indigo-700 dark:text-indigo-400">
+                                    <div class="w-8 h-8 rounded-xl bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-300 flex items-center justify-center shrink-0 shadow-xs">
+                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+                                    </div>
+                                    <div>
+                                        <span class="text-sm font-black block text-gray-900 dark:text-gray-100" x-text="selectedInstallmentOption.title || 'صورت‌حساب اقساطی'"></span>
+                                        <span class="text-xs text-slate-500 dark:text-slate-400">محاسبات مالی و تفکیک مبالغ</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {{-- انتخاب مدت بازپرداخت --}}
+                            <div x-show="availableInstallmentMonths.length > 0" class="bg-white dark:bg-gray-800 rounded-xl p-3.5 border border-gray-200 dark:border-gray-700">
+                                <span class="text-xs font-bold text-slate-700 dark:text-slate-200 block mb-2.5">مدت بازپرداخت (ماه)</span>
+                                <div class="flex flex-wrap gap-2">
+                                    <template x-for="m in availableInstallmentMonths" :key="m">
+                                        <button type="button" @click="selectedInstallmentMonths = m" class="px-4 py-2 rounded-xl border-2 text-xs md:text-sm font-bold transition-all" :class="selectedInstallmentMonths === m ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 shadow-sm' : 'border-gray-200 dark:border-gray-700 text-slate-600 dark:text-slate-400 hover:border-indigo-300'">
+                                            <span x-text="toFa(m) + ' ماه'"></span>
+                                        </button>
+                                    </template>
+                                </div>
+                            </div>
+
+                            {{-- برندهای مشمول و غیرمشمول --}}
+                            <div x-show="mixedPaymentBreakdown.covered.length > 0 || mixedPaymentBreakdown.uncovered.length > 0" class="space-y-2.5 p-3.5 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 font-sans">
+                                <div x-show="mixedPaymentBreakdown.covered.length > 0">
+                                    <span class="text-xs text-emerald-700 dark:text-emerald-400 font-bold mb-1.5 block">مشمول اقساط</span>
+                                    <div class="flex flex-wrap gap-2">
+                                        <template x-for="item in mixedPaymentBreakdown.covered" :key="'c-'+item.brandName">
+                                            <div class="flex items-center gap-2 px-2.5 py-1 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800/40">
+                                                <span class="text-xs font-bold text-emerald-800 dark:text-emerald-300" x-text="item.brandName"></span>
+                                                <span class="text-xs font-black text-emerald-600 dark:text-emerald-400" x-text="formatPrice(item.price) + ' ' + currencyLabel"></span>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </div>
+                                <div x-show="mixedPaymentBreakdown.uncovered.length > 0" class="border-t border-gray-100 dark:border-gray-700 pt-2.5 mt-1">
+                                    <span class="text-xs text-amber-700 dark:text-amber-400 font-bold mb-1.5 block">غیرمشمول (نقدی)</span>
+                                    <div class="flex flex-wrap gap-2">
+                                        <template x-for="item in mixedPaymentBreakdown.uncovered" :key="'u-'+item.brandName">
+                                            <div class="flex items-center gap-2 px-2.5 py-1 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/40">
+                                                <span class="text-xs font-bold text-amber-800 dark:text-amber-300" x-text="item.brandName"></span>
+                                                <span class="text-xs font-black text-amber-600 dark:text-amber-400" x-text="formatPrice(item.price) + ' ' + currencyLabel"></span>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {{-- جدول فاکتور محاسبات --}}
+                            <div class="rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden bg-white dark:bg-gray-800 divide-y divide-gray-100 dark:divide-gray-700/60 shadow-xs font-sans">
+                                <!-- مبلغ نقدی (غیرمشمول) -->
+                                <div x-show="uncoveredTotal > 0" class="receipt-row text-sm bg-amber-50/30 dark:bg-amber-950/15 py-3.5 px-5">
+                                    <span class="text-amber-800 dark:text-amber-300 font-bold">مبلغ نقدی (غیرمشمول)</span>
+                                    <span class="font-black text-base text-amber-700 dark:text-amber-400" x-text="formatPrice(uncoveredTotal) + ' ' + currencyLabel"></span>
+                                </div>
+                                <!-- مبلغ مشمول اقساط -->
+                                <div class="receipt-row text-sm py-3.5 px-5">
+                                    <span class="text-slate-700 dark:text-slate-200 font-bold">مبلغ مشمول اقساط</span>
+                                    <span class="font-black text-base text-gray-900 dark:text-gray-100" x-text="formatPrice(installmentTotalAmount) + ' ' + currencyLabel"></span>
+                                </div>
+                                <!-- پیش‌پرداخت -->
+                                <div class="receipt-row text-sm bg-indigo-50/20 dark:bg-indigo-950/10 py-3.5 px-5">
+                                    <span class="text-indigo-800 dark:text-indigo-300 font-bold">پیش‌پرداخت (<span x-text="effectiveDownPaymentPct + '%'"></span>)</span>
+                                    <span class="font-black text-base text-indigo-700 dark:text-indigo-400" x-text="formatPrice(downPaymentAmount) + ' ' + currencyLabel"></span>
+                                </div>
+                                <!-- مانده اصل (پس از کسر پیش‌پرداخت) -->
+                                <div class="receipt-row text-sm bg-blue-50/20 dark:bg-blue-950/10 py-3.5 px-5">
+                                    <span class="text-blue-800 dark:text-blue-300 font-bold flex items-center gap-2">
+                                        <svg class="w-4 h-4 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+                                        مانده اصل
+                                    </span>
+                                    <span class="font-black text-base text-blue-700 dark:text-blue-400" x-text="formatPrice(installmentTotalAmount - downPaymentAmount) + ' ' + currencyLabel"></span>
+                                </div>
+                                <!-- سود اقساط با جزئیات -->
+                                <div x-show="effectiveFeePct > 0 || annualFeePct > 0" class="receipt-row text-sm bg-rose-50/20 dark:bg-rose-950/10 py-3.5 px-5">
+                                    <span class="text-rose-700 dark:text-rose-300 font-bold flex items-center gap-1.5">
+                                        <template x-if="effectiveMonths >= 12 && annualFeePct > 0">
+                                             <span>کارمزد سالانه (<span x-text="annualFeePct"></span>% × <span x-text="(effectiveMonths / 12).toFixed(1)"></span> سال)</span>
+                                        </template>
+                                        <template x-if="!(effectiveMonths >= 12 && annualFeePct > 0)">
+                                             <span>سود اقساط (<span x-text="effectiveFeePct"></span>% × <span x-text="effectiveMonths"></span> ماه)</span>
+                                        </template>
+                                    </span>
+                                    <span class="font-black text-base text-rose-600 dark:text-rose-400" x-text="formatPrice(installmentFeeValue) + ' ' + currencyLabel"></span>
+                                </div>
+                                <!-- جمع کل اقساط (اسپات‌لایت نهایی صورت‌حساب، مستقل از تعداد چک‌ها) -->
+                                <div class="payable-spotlight p-5 rounded-b-2xl flex justify-between items-center relative overflow-hidden">
+                                    <div class="absolute -right-6 -top-6 w-20 h-20 bg-indigo-500/10 dark:bg-indigo-500/15 rounded-full blur-xl pointer-events-none"></div>
+                                    <div>
+                                        <span class="text-indigo-950 dark:text-indigo-200 font-black text-sm md:text-base block relative">جمع کل اقساط (مبلغ چک‌ها)</span>
+                                        <span class="text-xs text-slate-500 dark:text-slate-400 relative" x-text="'طرح بازپرداخت ' + toFa(selectedInstallmentMonths) + ' ماهه'"></span>
+                                    </div>
+                                    <div class="text-left relative">
+                                        <span class="text-indigo-600 dark:text-indigo-400 font-black text-xl md:text-2xl font-sans" x-text="formatPrice(targetChequesTotal) + ' ' + currencyLabel"></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {{-- ══════ ستون چپ: مرحله و تنظیمات چک‌ها ══════ --}}
+                        <div class="space-y-4 bg-slate-50/70 dark:bg-gray-900/40 rounded-2xl border border-gray-200 dark:border-gray-700 p-5">
+                            <div class="flex items-center justify-between pb-3 border-b border-gray-200/80 dark:border-gray-700">
+                                <div class="flex items-center gap-2.5 text-indigo-700 dark:text-indigo-400">
+                                    <div class="w-8 h-8 rounded-xl bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-300 flex items-center justify-center shrink-0 shadow-xs">
+                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                                    </div>
+                                    <div>
+                                        <span class="text-sm font-black block text-gray-900 dark:text-gray-100">مرحله صدور و تنظیم چک‌ها</span>
+                                        <span class="text-xs text-slate-500 dark:text-slate-400">تولید خودکار یا دستی و تطبیق اقساط</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {{-- فیلدهای تنظیم تعداد چک، تاریخ سررسید قسط اول و بانک --}}
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 items-stretch">
+                                {{-- تعداد چک‌ها --}}
+                                <div x-show="selectedInstallmentMonths > 0" class="relative overflow-hidden rounded-2xl p-3.5 border border-indigo-100 dark:border-indigo-800/30 bg-white dark:bg-gray-800 shadow-xs flex flex-col justify-between">
+                                    <div>
+                                        <div class="relative flex items-center justify-between mb-2">
+                                            <span class="text-xs font-bold text-indigo-700 dark:text-indigo-300 flex items-center gap-1.5">
+                                                تعداد چک‌ها
+                                            </span>
+                                            <span class="text-[10px] font-bold text-indigo-600 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-900/50 px-2 py-0.5 rounded-full">۱ تا <span x-text="toFa(selectedInstallmentMonths)"></span></span>
+                                        </div>
+                                        <input type="number" min="1" :max="selectedInstallmentMonths" x-model.number="numberOfCheques"
+                                               class="relative w-full px-3 py-2 rounded-xl border-2 border-indigo-200 dark:border-indigo-700/50 bg-slate-50/50 dark:bg-gray-900 text-base text-indigo-700 dark:text-indigo-300 dir-ltr text-center focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 dark:focus:ring-indigo-900/30 transition-all font-black"
+                                               :disabled="isReadOnly">
+                                    </div>
+                                    <p class="relative text-[11px] text-slate-500 dark:text-slate-400 mt-2 leading-tight">
+                                        <span>مبنای تقسیط:</span>
+                                        <b class="text-indigo-700 dark:text-indigo-300 font-bold" x-text="toFa(numberOfCheques) + ' برگ'"></b>
+                                    </p>
+                                </div>
+
+                                {{-- تاریخ سررسید اولین قسط --}}
+                                <div class="relative overflow-hidden rounded-2xl p-3.5 border border-purple-100 dark:border-purple-800/30 bg-white dark:bg-gray-800 shadow-xs flex flex-col justify-between">
+                                    <div>
+                                        <label class="relative text-xs font-bold text-purple-700 dark:text-purple-300 flex items-center gap-1.5 mb-2">
+                                            سررسید اولین قسط
+                                        </label>
+                                        <button type="button" @click="!isReadOnly && openInstCal()"
+                                                class="w-full px-3 py-2 rounded-xl border-2 border-purple-200 dark:border-purple-700/50 bg-slate-50/50 dark:bg-gray-900 text-xs font-black text-purple-700 dark:text-purple-300 focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-100 dark:focus:ring-purple-900/30 transition-all flex items-center justify-between gap-1.5 cursor-pointer"
+                                                :class="showInstDateModal ? 'border-purple-500 ring-2 ring-purple-100 dark:ring-purple-900/50' : ''"
+                                                :disabled="isReadOnly">
+                                            <span x-text="installmentStartDate ? toFaDigits(installmentStartDate) : 'انتخاب تاریخ...'"></span>
+                                            <svg class="w-4 h-4 text-purple-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                                        </button>
+                                    </div>
+                                    <p class="relative text-[10px] text-slate-500 dark:text-slate-400 mt-2 leading-tight">مبنای محاسبه سررسید چک‌ها</p>
+                                </div>
+
+                                {{-- نام بانک پیش‌فرض --}}
+                                <div class="relative overflow-hidden rounded-2xl p-3.5 border border-emerald-100 dark:border-emerald-800/30 bg-white dark:bg-gray-800 shadow-xs flex flex-col justify-between">
+                                    <div>
+                                        <label class="relative text-xs font-bold text-emerald-700 dark:text-emerald-300 flex items-center gap-1.5 mb-2">
+                                            بانک پیش‌فرض
+                                        </label>
+                                        <div class="relative">
+                                            <input type="text" x-model="chequeBankName"
+                                                   class="w-full pl-3 pr-8 py-2 rounded-xl border-2 border-emerald-200 dark:border-emerald-700/50 bg-slate-50/50 dark:bg-gray-900 text-xs text-emerald-700 dark:text-emerald-300 font-bold focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 dark:focus:ring-emerald-900/30 transition-all"
+                                                   placeholder="مثال: ملت، ملی..."
+                                                   :disabled="isReadOnly">
+                                            <svg class="absolute top-1/2 -translate-y-1/2 right-2.5 w-3.5 h-3.5 text-emerald-400 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+                                        </div>
+                                    </div>
+                                    <p class="relative text-[10px] text-slate-500 dark:text-slate-400 mt-2 leading-tight">برای چک‌های خودکار</p>
+                                </div>
+                            </div>
+
+                            {{-- ══════ کارت اختصاصی محاسبات زنده اقساط در ستون چپ (خودکفا و بدون نیاز به ستون راست) ══════ --}}
+                            <div class="p-4 rounded-2xl bg-gradient-to-br from-indigo-50/90 via-white to-emerald-50/30 dark:from-indigo-950/40 dark:via-gray-800 dark:to-emerald-950/20 border-2 border-indigo-200/80 dark:border-indigo-700/60 shadow-sm space-y-3 font-sans">
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center gap-2">
+                                        <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                                        <span class="text-xs font-black text-slate-800 dark:text-slate-100">محاسبه زنده اقساط:</span>
+                                    </div>
+                                    <span class="text-xs font-bold text-indigo-700 dark:text-indigo-300 bg-indigo-100/80 dark:bg-indigo-900/60 px-2.5 py-0.5 rounded-full"
+                                          x-text="toFa(numberOfCheques) + ' قسط (سررسید هر ' + toFa(realIntervalMonths) + ' ماه یک‌بار)'"></span>
+                                </div>
+
+                                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 bg-white/95 dark:bg-gray-900/80 rounded-xl border border-indigo-100 dark:border-indigo-900/50 shadow-xs">
+                                    <div>
+                                        <span class="text-xs font-bold text-slate-600 dark:text-slate-300 block">مبلغ هر قسط / هر برگ چک:</span>
+                                        <span class="text-[11px] text-slate-400 dark:text-slate-500">محاسبه بر مبنای کل اقساط و تعداد چک انتخابی</span>
+                                    </div>
+                                    <div class="text-left">
+                                        <span class="text-xl md:text-2xl font-black text-emerald-600 dark:text-emerald-400 font-sans" x-text="formatPrice(monthlyPaymentAmount) + ' ' + currencyLabel"></span>
+                                    </div>
+                                </div>
+
+                                {{-- مقایسه با کف مجاز و جمع کل --}}
+                                <div class="flex flex-wrap items-center justify-between gap-2 text-xs pt-1 border-t border-indigo-100 dark:border-indigo-900/40">
+                                    <div class="flex items-center gap-1.5 text-slate-700 dark:text-slate-200 font-bold">
+                                        <span>جمع کل اقساط:</span>
+                                        <b class="font-black text-indigo-700 dark:text-indigo-300 font-sans" x-text="formatPrice(targetChequesTotal) + ' ' + currencyLabel"></b>
+                                    </div>
+                                    <template x-if="settings.min_cheque_amount > 0">
+                                        <div class="flex items-center gap-1 font-bold text-xs"
+                                             :class="monthlyPaymentAmount >= settings.min_cheque_amount ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'">
+                                            <svg x-show="monthlyPaymentAmount >= settings.min_cheque_amount" class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
+                                            <svg x-show="monthlyPaymentAmount < settings.min_cheque_amount" class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/></svg>
+                                            <span>کف مجاز هر چک: <b x-text="formatPrice(settings.min_cheque_amount) + ' ' + currencyLabel"></b></span>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+
+                            <!-- مودال مرکزی تقویم شروع اقساط -->
+                            <div x-show="showInstDateModal"
+                                 x-transition.opacity
+                                 class="fixed inset-0 z-[100] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4"
+                                 @click.self="showInstDateModal = false"
+                                 style="display: none;">
+
+                                <div class="bg-white dark:bg-gray-800 rounded-3xl p-5 border border-gray-200 dark:border-gray-700 shadow-2xl w-full max-w-xs" x-transition.scale>
+                                    <div class="flex items-center justify-between mb-4">
+                                        <button type="button" @click="!isReadOnly && prevInstMonth()" class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-slate-600 dark:text-slate-300">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+                                        </button>
+                                        <div class="text-sm font-black text-indigo-600 dark:text-indigo-400" x-text="jalaliMonthNames[instCalMonth - 1] + ' ' + toFaDigits(instCalYear)"></div>
+                                        <button type="button" @click="!isReadOnly && nextInstMonth()" class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-slate-600 dark:text-slate-300">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7 -7 7-7" /></svg>
+                                        </button>
+                                    </div>
+
+                                    <div class="grid grid-cols-7 gap-1 mb-2 text-center" dir="rtl">
+                                        <template x-for="w in ['ش', 'ی', 'د', 'س', 'چ', 'پ', 'ج']" :key="w">
+                                            <div class="text-[10px] font-bold text-slate-400 dark:text-slate-500 py-1" x-text="w"></div>
+                                        </template>
+                                    </div>
+
+                                    <div class="grid grid-cols-7 gap-1 text-center">
+                                        <template x-for="(dayObj, idx) in instCalDays" :key="idx">
+                                            <div class="aspect-square w-full">
+                                                <div x-show="dayObj.empty" class="w-full h-full"></div>
+                                                <button x-show="!dayObj.empty" type="button" @click="!isReadOnly && selectInstDate(dayObj)"
+                                                        class="w-full h-full flex items-center justify-center rounded-lg text-xs font-bold transition-all"
+                                                        :class="dayObj.selected
+                                                            ? 'bg-indigo-600 text-white shadow-md scale-105'
+                                                            : (dayObj.valid
+                                                                ? 'text-slate-700 dark:text-slate-200 hover:bg-indigo-50 dark:hover:bg-indigo-900/40 cursor-pointer'
+                                                                : 'text-slate-300 dark:text-gray-600 cursor-not-allowed')"
+                                                        :disabled="!dayObj.valid || isReadOnly" x-text="toFaDigits(dayObj.day)">
+                                                </button>
+                                            </div>
+                                        </template>
+                                    </div>
+
+                                    <button type="button" @click="showInstDateModal = false" class="w-full mt-4 py-2.5 rounded-xl bg-slate-100 dark:bg-gray-700 text-slate-700 dark:text-slate-200 text-xs font-bold hover:bg-slate-200 dark:hover:bg-gray-600 transition">
+                                        بستن تقویم
+                                    </button>
+                                </div>
+                            </div>
+
+                            {{-- دکمه‌های اقدام ساخت چک --}}
+                            <div x-show="!isReadOnly" class="grid grid-cols-2 gap-3 pt-2">
+                                <button type="button" @click="generateCheques()" class="w-full px-4 py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-700 hover:to-indigo-600 text-white font-black text-xs md:text-sm flex items-center justify-center gap-2 shadow-sm hover:shadow-md transition-all">
+                                    <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                                    <span>تولید خودکار <span x-text="toFa(numberOfCheques)"></span> چک</span>
+                                </button>
+                                <button type="button" @click="showManualChequeForm = !showManualChequeForm" class="w-full px-4 py-3 rounded-xl bg-white dark:bg-gray-800 border-2 border-indigo-200 dark:border-indigo-700/60 text-indigo-600 dark:text-indigo-300 font-black text-xs md:text-sm flex items-center justify-center gap-2 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-all">
+                                    <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+                                    <span x-text="showManualChequeForm ? 'بستن فرم دستی' : 'ثبت چک دستی'"></span>
+                                </button>
+                            </div>
+
+                            {{-- فرم ثبت/ویرایش چک دستی --}}
+                            <div x-show="showManualChequeForm && !isReadOnly" x-transition class="bg-indigo-50/40 dark:bg-gray-800/80 rounded-2xl p-4 border-2 border-dashed border-indigo-200 dark:border-indigo-700/60 space-y-3 font-sans">
+                                <h4 class="text-xs font-black text-indigo-700 dark:text-indigo-300 flex items-center gap-1.5">
+                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+                                    <span x-text="editingManualChequeIndex === null ? 'ثبت چک دستی' : 'ویرایش چک دستی'"></span>
+                                </h4>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <div>
+                                        <label class="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">شماره چک</label>
+                                        <input type="text" x-model="manualChequeNumber" class="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-900 text-xs text-gray-800 dark:text-gray-100 focus:outline-none focus:border-indigo-400 transition-all dir-ltr text-left font-bold" placeholder="123456">
+                                    </div>
+                                    <div>
+                                        <label class="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">مبلغ چک</label>
+                                        <div class="relative">
+                                            <input type="text" inputmode="numeric" x-model="manualChequeAmountDisplay" @input="onManualChequeAmountInput($event)"
+                                                   class="w-full pl-12 pr-3 py-2 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-900 text-xs text-gray-800 dark:text-gray-100 focus:outline-none focus:border-indigo-400 transition-all dir-ltr text-left font-bold" placeholder="500,000">
+                                            <span class="absolute top-1/2 -translate-y-1/2 left-2 text-[10px] font-bold text-slate-400" x-text="currencyLabel"></span>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label class="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">نام بانک</label>
+                                        <input type="text" x-model="manualChequeBankName" class="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-900 text-xs text-gray-800 dark:text-gray-100 focus:outline-none focus:border-indigo-400 transition-all font-bold" placeholder="ملت">
+                                    </div>
+                                    <div class="relative">
+                                        <label class="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">تاریخ سررسید</label>
+                                        <button type="button" @click="openManualCal()"
+                                                class="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-900 text-xs font-bold text-gray-800 dark:text-gray-100 focus:outline-none focus:border-indigo-400 transition-all flex items-center justify-between"
+                                                :class="showManualChequeCalendar ? 'border-indigo-400 ring-2 ring-indigo-100 dark:ring-indigo-900/50' : ''">
+                                            <span x-text="manualChequeDate ? toFaDigits(manualChequeDate) : 'انتخاب تاریخ...'"></span>
+                                            <svg class="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                                        </button>
+                                    </div>
+
+                                    <!-- مودال مرکزی تقویم دستی -->
+                                    <div x-show="showManualChequeCalendar"
+                                         x-transition.opacity
+                                         class="fixed inset-0 z-[100] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4"
+                                         @click.self="showManualChequeCalendar = false"
+                                         style="display: none;">
+
+                                        <div class="bg-white dark:bg-gray-800 rounded-3xl p-5 border border-gray-200 dark:border-gray-700 shadow-2xl w-full max-w-xs" x-transition.scale>
+                                            <div class="flex items-center justify-between mb-4">
+                                                <button type="button" @click="changeManualMonth(-1)" class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-slate-600 dark:text-slate-300">
+                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+                                                </button>
+                                                <div class="text-sm font-black text-indigo-600 dark:text-indigo-400" x-text="jalaliMonthNames[manualChequeCalMonth - 1] + ' ' + toFaDigits(manualChequeCalYear)"></div>
+                                                <button type="button" @click="changeManualMonth(1)" class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-slate-600 dark:text-slate-300">
+                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7 -7 7-7" /></svg>
+                                                </button>
+                                            </div>
+
+                                            <div class="grid grid-cols-7 gap-1 mb-2 text-center">
+                                                <template x-for="w in ['ش', 'ی', 'د', 'س', 'چ', 'پ', 'ج']" :key="w">
+                                                    <div class="text-[10px] font-bold text-slate-400 dark:text-slate-500 py-1" x-text="w"></div>
+                                                </template>
+                                            </div>
+
+                                            <div class="grid grid-cols-7 gap-1 text-center">
+                                                <template x-for="(dayObj, idx) in manualChequeCalDays" :key="idx">
+                                                    <div class="aspect-square w-full">
+                                                        <div x-show="dayObj.empty" class="w-full h-full"></div>
+                                                        <button x-show="!dayObj.empty" type="button" @click="pickManualDate(dayObj)"
+                                                                class="w-full h-full flex items-center justify-center rounded-lg text-xs font-bold transition-all"
+                                                                :class="dayObj.selected
+                                                                    ? 'bg-indigo-600 text-white shadow-md scale-105'
+                                                                    : (dayObj.valid
+                                                                        ? 'text-slate-700 dark:text-slate-200 hover:bg-indigo-50 dark:hover:bg-indigo-900/40 cursor-pointer'
+                                                                        : 'text-slate-300 dark:text-gray-600 cursor-not-allowed')"
+                                                                :disabled="!dayObj.valid" x-text="toFaDigits(dayObj.day)">
+                                                        </button>
+                                                    </div>
+                                                </template>
+                                            </div>
+
+                                            <button type="button" @click="showManualChequeCalendar = false" class="w-full mt-4 py-2.5 rounded-xl bg-slate-100 dark:bg-gray-700 text-slate-700 dark:text-slate-200 text-xs font-bold hover:bg-slate-200 dark:hover:bg-gray-600 transition">
+                                                بستن تقویم
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="flex items-center gap-2 pt-1">
+                                    <button type="button" @click="editingManualChequeIndex === null ? addManualCheque() : saveManualChequeEdit()" class="flex-1 px-4 py-2.5 rounded-xl bg-emerald-600 text-white font-bold text-xs flex items-center justify-center gap-1.5 hover:bg-emerald-700 transition-all shadow-sm">
+                                        <svg x-show="editingManualChequeIndex === null" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+                                        <svg x-show="editingManualChequeIndex !== null" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                                        <span x-text="editingManualChequeIndex === null ? 'افزودن این چک به لیست' : 'تایید ویرایش'"></span>
+                                    </button>
+                                    <button x-show="editingManualChequeIndex !== null" type="button" @click="cancelManualChequeEdit()" class="px-4 py-2.5 rounded-xl bg-slate-200 dark:bg-gray-700 text-slate-700 dark:text-slate-200 font-bold text-xs hover:bg-slate-300 dark:hover:bg-gray-600 transition-all">
+                                        انصراف
+                                    </button>
+                                </div>
+                            </div>
+
+                            {{-- ══════ لیست چک‌های ثبت شده (طراحی دلباز، ارگونومیک و بدون فشردگی) ══════ --}}
+                            <div x-show="generatedCheques.length > 0" class="mt-5 space-y-3 font-sans">
+                                {{-- سربرگ لیست چک‌ها --}}
+                                <div class="flex items-center justify-between px-1 py-2 border-b border-gray-200/80 dark:border-gray-700 flex-wrap gap-2">
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-sm font-black text-gray-900 dark:text-gray-100">لیست چک‌های ثبت شده</span>
+                                        <span class="text-xs font-black px-2 py-0.5 rounded-lg bg-indigo-100 dark:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300" x-text="toFa(generatedCheques.length) + ' برگ'"></span>
+                                    </div>
+                                    <div class="flex items-center gap-3">
+                                        <div class="text-xs font-bold bg-slate-100 dark:bg-gray-800 px-3 py-1 rounded-xl border border-gray-200 dark:border-gray-700 text-slate-700 dark:text-slate-200">
+                                            <span>مجموع چک‌ها: </span>
+                                            <b class="text-indigo-600 dark:text-indigo-400 font-black" x-text="formatPrice(totalChequesAmount) + ' ' + currencyLabel"></b>
+                                        </div>
+                                        <button x-show="!isReadOnly" type="button" @click="if(confirm('آیا از حذف تمام چک‌های ثبت‌شده اطمینان دارید؟')) clearAllCheques()" class="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/50 font-bold text-xs transition-all">
+                                            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                            پاک کردن همه
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {{-- کارت‌های هر چک با ارتفاع مناسب و اسکرول روان --}}
+                                <div class="space-y-2.5 max-h-[500px] overflow-y-auto sc-thin pr-1">
+                                    <template x-for="(cheque, index) in generatedCheques" :key="cheque.id || index">
+                                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-indigo-300 dark:hover:border-indigo-600 transition-all shadow-xs group">
+                                            <div class="flex items-center gap-3 min-w-0 flex-1">
+                                                {{-- نشانگر شماره چک / قسط --}}
+                                                <div class="w-10 h-10 rounded-xl flex items-center justify-center font-black text-sm shrink-0 shadow-xs"
+                                                     :class="cheque.isManual ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/50' : 'bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800/50'">
+                                                    <span x-text="cheque.isManual ? 'دستی' : toFaDigits(cheque.number)"></span>
+                                                </div>
+
+                                                {{-- مشخصات تاریخ و بانک --}}
+                                                <div class="min-w-0 flex-1">
+                                                    <div class="flex items-center gap-2 flex-wrap">
+                                                        <span class="text-sm font-black text-gray-900 dark:text-gray-100" x-text="cheque.isManual ? ('چک شماره ' + cheque.number) : ('قسط ' + toFaDigits(cheque.number))"></span>
+                                                        <span x-show="cheque.number && !cheque.isManual" class="text-xs text-slate-400 font-bold">از <span x-text="toFaDigits(cheque.total)"></span></span>
+                                                        <span x-show="cheque.bankName" class="px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-gray-700 text-indigo-700 dark:text-indigo-300 font-bold text-xs">بانک <span x-text="cheque.bankName"></span></span>
+                                                    </div>
+
+                                                    <div class="flex items-center flex-wrap gap-x-4 gap-y-1.5 text-xs text-slate-600 dark:text-slate-300 mt-1.5">
+                                                        <span class="flex items-center gap-1.5 font-bold">
+                                                            <svg class="w-4 h-4 text-purple-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                                                            <span>سررسید: </span>
+                                                            <b class="text-purple-700 dark:text-purple-300" x-text="cheque.display_date || cheque.date"></b>
+                                                        </span>
+
+                                                        <div x-show="!cheque.isManual" class="flex items-center gap-1.5">
+                                                            <span class="text-[11px] font-bold text-slate-500 dark:text-slate-400">کد صیادی:</span>
+                                                            <input type="text" x-model="cheque.chequeNumber" :disabled="isReadOnly"
+                                                                   placeholder="اختیاری..."
+                                                                   class="w-32 px-2.5 py-1 text-xs rounded-lg border border-gray-200 dark:border-gray-600 bg-slate-50 dark:bg-gray-900 text-gray-800 dark:text-gray-100 dir-ltr text-left font-bold focus:outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-100 dark:focus:ring-indigo-900/30 transition-all disabled:opacity-60 disabled:cursor-not-allowed">
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {{-- مبلغ و کلیدهای اقدام (ویرایش و حذف با دسترسی مستقیم و آسان) --}}
+                                            <div class="flex items-center justify-between sm:justify-end gap-3 pt-2 sm:pt-0 border-t sm:border-t-0 border-gray-100 dark:border-gray-700/60">
+                                                <div class="text-left">
+                                                    <span class="text-base md:text-lg font-black text-emerald-600 dark:text-emerald-400 font-sans" x-text="formatPrice(cheque.amount)"></span>
+                                                    <span class="text-xs text-slate-400 mr-1" x-text="currencyLabel"></span>
+                                                </div>
+
+                                                <div class="flex items-center gap-1.5">
+                                                    <button x-show="!isReadOnly && cheque.isManual" @click="editManualCheque(index)" type="button" title="ویرایش چک" class="p-2 rounded-xl text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 transition-all shadow-2xs">
+                                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+                                                    </button>
+                                                    <button x-show="!isReadOnly" @click="removeCheque(index)" type="button" title="حذف چک" class="p-2 rounded-xl text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-900/30 hover:bg-rose-100 dark:hover:bg-rose-900/60 transition-all shadow-2xs">
+                                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </template>
+                                </div>
+
+                                {{-- بنر تطبیق و وضعیت نهایی چک‌ها --}}
+                                <div class="p-3.5 rounded-2xl border flex items-center justify-between text-xs font-bold"
+                                     :class="{
+                                         'bg-emerald-50/80 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800/50 text-emerald-800 dark:text-emerald-300': Math.abs(targetChequesTotal - totalChequesAmount) <= 1,
+                                         'bg-rose-50/80 dark:bg-rose-950/30 border-rose-200 dark:border-rose-800/50 text-rose-800 dark:text-rose-300': (targetChequesTotal - totalChequesAmount) > 1,
+                                         'bg-amber-50/80 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800/50 text-amber-800 dark:text-amber-300': (totalChequesAmount - targetChequesTotal) > 1,
+                                     }">
+                                    <div class="flex items-center gap-2">
+                                        <svg x-show="Math.abs(targetChequesTotal - totalChequesAmount) <= 1" class="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
+                                        <svg x-show="(targetChequesTotal - totalChequesAmount) > 1" class="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/></svg>
+                                        <svg x-show="(totalChequesAmount - targetChequesTotal) > 1" class="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"/></svg>
+
+                                        <span x-show="Math.abs(targetChequesTotal - totalChequesAmount) <= 1">مجموع مبالغ چک‌ها دقیقاً برابر با مبلغ کل اقساط بوده و تسویه شد.</span>
+                                        <span x-show="(targetChequesTotal - totalChequesAmount) > 1">
+                                            کسری مبلغ: <b class="font-black" x-text="formatPrice(targetChequesTotal - totalChequesAmount) + ' ' + currencyLabel"></b> دیگر نیاز است تا اقساط تکمیل شود.
+                                        </span>
+                                        <span x-show="(totalChequesAmount - targetChequesTotal) > 1">
+                                            اضافه مبلغ: مجموع چک‌ها <b class="font-black" x-text="formatPrice(totalChequesAmount - targetChequesTotal) + ' ' + currencyLabel"></b> از سقف کل اقساط بیشتر است.
+                                        </span>
+                                    </div>
+                                    <span class="text-xs font-black hidden sm:inline" x-text="Math.round((totalChequesAmount / (targetChequesTotal || 1)) * 100) + '%'"></span>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </template>
+
             </div>
         </div>
         <!-- Workflow Binding Modal -->
@@ -2571,16 +2686,6 @@
     </div>{{-- /x-data --}}
 
     <script>
-        function showToast(msg, type = 'info', duration = 3000) {
-            const el = document.getElementById('cure-toast');
-            el.textContent = msg;
-            el.className = `toast toast-${type}`;
-            requestAnimationFrame(() => {
-                requestAnimationFrame(() => el.classList.add('show'));
-            });
-            setTimeout(() => el.classList.remove('show'), duration);
-        }
-
         function treatmentPlanApp(services, existingPlan = null, isReadOnly = false, clients = [], appSettings = null, installmentTypesRaw = [], assignableRolesWithUsers = [], cureStatuses = []) {
 
             // استخراج امن روزهای مجاز از تنظیمات
@@ -2778,6 +2883,7 @@ snapshots: existingPlan?.snapshots || [],
                     },
                     rounding_mode: String(appSettings?.installment_rounding_mode ?? 'none').trim().toLowerCase(),
                     rounding_factor: Number(appSettings?.installment_rounding_factor) || 0,
+                    min_cheque_amount: Number(appSettings?.installment_min_cheque_amount) || 0,
 
                 },
 
@@ -2796,6 +2902,7 @@ snapshots: existingPlan?.snapshots || [],
                 instCalYear: null,
                 instCalMonth: null,
                 instCalDays: [],
+                showInstDateModal: false,
                 showChequeSection: false,
                 chequeBankName: '',
                 showManualChequeForm: false,
@@ -3252,6 +3359,10 @@ snapshots: existingPlan?.snapshots || [],
                     return this.effectiveInterval || 1;
                 },
 
+                get installmentIntervalMonths() {
+                    return this.realIntervalMonths;
+                },
+
                 get installmentsCount() {
                     if (!this.selectedInstallmentOption) return 0;
                     const bd = this.installmentBrandBreakdown;
@@ -3336,6 +3447,12 @@ snapshots: existingPlan?.snapshots || [],
                     }
 
                     const newAmount = Number(this.manualChequeAmount);
+
+                    if (this.settings.min_cheque_amount > 0 && newAmount < this.settings.min_cheque_amount) {
+                        showToast(`حداقل مبلغ مجاز برای هر برگ چک، ${this.formatPrice(this.settings.min_cheque_amount)} ${this.currencyLabel} است`, 'error', 5000);
+                        return;
+                    }
+
                     const newTotal = this.totalChequesAmount + newAmount;
 
                     if (newTotal > this.targetChequesTotal) {
@@ -3396,6 +3513,12 @@ snapshots: existingPlan?.snapshots || [],
 
                     const oldAmount = Number(this.generatedCheques[this.editingManualChequeIndex].amount || 0);
                     const newAmount = Number(this.manualChequeAmount);
+
+                    if (this.settings.min_cheque_amount > 0 && newAmount < this.settings.min_cheque_amount) {
+                        showToast(`حداقل مبلغ مجاز برای هر برگ چک، ${this.formatPrice(this.settings.min_cheque_amount)} ${this.currencyLabel} است`, 'error', 5000);
+                        return;
+                    }
+
                     const currentTotalWithoutOld = this.totalChequesAmount - oldAmount;
                     const newTotal = currentTotalWithoutOld + newAmount;
 
@@ -3720,11 +3843,17 @@ snapshots: existingPlan?.snapshots || [],
                     this.buildInstCalendar();
                 },
 
+                openInstCal() {
+                    this.initInstCalendar();
+                    this.showInstDateModal = true;
+                },
+
                 selectInstDate(dayObj) {
                     if (!dayObj.valid) return;
                     this.installmentStartDate = dayObj.date;
                     this.selectedDueDay = dayObj.day;
                     this.buildInstCalendar();
+                    this.showInstDateModal = false;
                 },
                 updateManualCal() {
                     if (!this.manualChequeCalYear) return;
@@ -3815,6 +3944,13 @@ snapshots: existingPlan?.snapshots || [],
                         lastChequeAmount = Math.max(0, targetTotal - sumBaseAmounts);
                     } else {
                         lastChequeAmount = Math.max(0, targetTotal - sumBaseAmounts);
+                    }
+
+                    if (this.settings.min_cheque_amount > 0) {
+                        if (useBaseAmount < this.settings.min_cheque_amount || (this.numberOfCheques > 1 && lastChequeAmount < this.settings.min_cheque_amount)) {
+                            showToast(`مبلغ هر برگ چک نمی‌تواند کمتر از ${this.formatPrice(this.settings.min_cheque_amount)} ${this.currencyLabel} باشد. لطفاً تعداد چک‌ها را کاهش دهید یا پیش‌پرداخت را افزایش دهید.`, 'error', 6000);
+                            return;
+                        }
                     }
 
                     for (let i = 1; i <= this.numberOfCheques; i++) {
@@ -4246,10 +4382,10 @@ snapshots: existingPlan?.snapshots || [],
 
                 getQuadrantClasses(id) {
                     switch(this.getToothLabel(id).pos) {
-                        case 'UR': return '!border-r-4 !border-t-4 !border-cyan-600 dark:!border-cyan-600';
-                        case 'UL': return '!border-l-4 !border-t-4 !border-cyan-600 dark:!border-cyan-600';
-                        case 'LR': return '!border-r-4 !border-b-4 !border-cyan-600 dark:!border-cyan-600';
-                        case 'LL': return '!border-l-4 !border-b-4 !border-cyan-600 dark:!border-cyan-600';
+                        case 'UR': return '!border-l-4 !border-b-4 !border-cyan-600 dark:!border-cyan-600';
+                        case 'UL': return '!border-r-4 !border-b-4 !border-cyan-600 dark:!border-cyan-600';
+                        case 'LR': return '!border-l-4 !border-t-4 !border-cyan-600 dark:!border-cyan-600';
+                        case 'LL': return '!border-r-4 !border-t-4 !border-cyan-600 dark:!border-cyan-600';
                         default: return '';
                     }
                 },

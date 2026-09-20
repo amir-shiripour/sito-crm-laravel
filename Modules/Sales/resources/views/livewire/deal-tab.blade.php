@@ -56,13 +56,13 @@
             <div class="flex items-center gap-2">
                 <span class="w-2 h-2 rounded-full bg-indigo-600 animate-pulse"></span>
                 <span class="font-bold text-indigo-900 dark:text-indigo-200">
-                    معاملات مشتری فعال: {{ $selectedClient->full_name }}
+                    پرونده‌های مشتری فعال: {{ $selectedClient->full_name }}
                 </span>
             </div>
             <div class="flex items-center gap-2">
                 <button wire:click="$set('filterClientMode', '{{ $filterClientMode === 'active' ? 'all' : 'active' }}')" 
                         class="px-2.5 py-1 rounded-lg text-[11px] font-bold transition-colors {{ $filterClientMode === 'active' ? 'bg-indigo-600 text-white shadow-sm' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700' }}">
-                    {{ $filterClientMode === 'active' ? 'نمایش همه معاملات' : 'فقط معاملات این مشتری' }}
+                    {{ $filterClientMode === 'active' ? 'نمایش همه پرونده‌ها' : 'فقط پرونده‌های این مشتری' }}
                 </button>
             </div>
         </div>
@@ -306,7 +306,7 @@
                                 <!-- Deal Description -->
                                 <div>
                                     <label class="{{ $labelClass }}">توضیحات پرونده</label>
-                                    <textarea wire:model="newDealDescription" rows="3" class="{{ $inputClass }} resize-none" placeholder="جزئیات و توضیحات بیشتر درباره این معامله..."></textarea>
+                                    <textarea wire:model="newDealDescription" rows="3" class="{{ $inputClass }} resize-none" placeholder="جزئیات و توضیحات بیشتر درباره این پرونده..."></textarea>
                                     @error('newDealDescription') <span class="text-rose-500 text-[10px] mt-1.5 block font-semibold">{{ $message }}</span> @enderror
                                 </div>
 

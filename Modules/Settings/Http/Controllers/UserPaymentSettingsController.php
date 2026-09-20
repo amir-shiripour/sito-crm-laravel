@@ -167,6 +167,9 @@ class UserPaymentSettingsController extends Controller
                     $value = 'none';
                 }
             }
+            if ($key === 'installment_min_cheque_amount' && is_string($value)) {
+                $value = str_replace(',', '', trim($value));
+            }
             if (in_array($key, ['pos_devices', 'bank_transfer_accounts']) && is_array($value)) {
                 $value = array_values($value);
 
