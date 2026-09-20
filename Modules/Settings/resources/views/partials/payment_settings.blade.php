@@ -671,6 +671,54 @@
                                     @endfor
                                 </div>
                             </div>
+
+                            {{-- Minimum cheque amount setting (حداقل مبلغ هر برگ چک) --}}
+                            @php
+                                $rawMinChequeVal = $settings['installment_min_cheque_amount'] ?? '';
+                                if (is_string($rawMinChequeVal)) {
+                                    $rawMinChequeVal = str_replace(',', '', trim($rawMinChequeVal));
+                                }
+                                $formattedMinChequeVal = (is_numeric($rawMinChequeVal) && (float)$rawMinChequeVal > 0) ? number_format((float)$rawMinChequeVal) : '';
+                                $cleanMinChequeVal = (is_numeric($rawMinChequeVal) && (float)$rawMinChequeVal > 0) ? (string)$rawMinChequeVal : '';
+                            @endphp
+                            <div class="mt-4 p-4 bg-emerald-50/50 dark:bg-emerald-900/10 rounded-xl border border-emerald-100 dark:border-emerald-800/30">
+                                <div class="flex items-center justify-between mb-1.5">
+                                    <label for="installment_min_cheque_amount_display" class="{{ $labelClass }} !mb-0 text-emerald-800 dark:text-emerald-300">
+                                        حداقل مبلغ هر برگ چک
+                                    </label>
+                                    <span class="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-100/60 dark:bg-emerald-900/40 px-2 py-0.5 rounded-full">
+                                        اختیاری
+                                    </span>
+                                </div>
+                                <p class="text-[11px] text-gray-500 dark:text-gray-400 mb-3 leading-relaxed">
+                                    کف مبلغ مجاز برای هر برگ چک در بخش «خلاصه مالی و تسویه» طرح درمان (مثال: ۱۰,۰۰۰,۰۰۰ تومان یا ۱۰۰,۰۰۰,۰۰۰ ریال). در صورت خالی یا ۰ بودن، هیچ محدودیتی اعمال نمی‌شود.
+                                </p>
+                                <div class="relative max-w-xs"
+                                     x-data="{
+                                         rawVal: '{{ $cleanMinChequeVal }}',
+                                         displayVal: '{{ $formattedMinChequeVal }}',
+                                         onInput(e) {
+                                             const digits = e.target.value.replace(/[^\d]/g, '');
+                                             this.rawVal = digits;
+                                             this.displayVal = digits ? Number(digits).toLocaleString('en-US') : '';
+                                         }
+                                     }">
+                                    <input type="hidden" name="installment_min_cheque_amount" :value="rawVal">
+                                    <input type="text"
+                                           inputmode="numeric"
+                                           id="installment_min_cheque_amount_display"
+                                           x-model="displayVal"
+                                           @input="onInput($event)"
+                                           placeholder="مثال: ۱۰,۰۰۰,۰۰۰"
+                                           class="{{ $inputClass }} dir-ltr text-left font-bold pl-16">
+                                    <div class="absolute inset-y-0 left-3 flex items-center pointer-events-none">
+                                        <span class="text-[10px] font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-900/30 px-2 py-1 rounded-md">
+                                            {{ ($settings['payment_currency'] ?? 'toman') == 'rial' ? 'ریال' : 'تومان' }}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+
                             <div class="mt-4 rounded-2xl border border-purple-100 dark:border-purple-800/30 overflow-hidden shadow-sm">
                                 <div class="px-5 py-4 bg-gradient-to-l from-purple-50 to-fuchsia-50/40 dark:from-purple-900/20 dark:to-fuchsia-900/10 border-b border-purple-100 dark:border-purple-800/30 flex items-center gap-3">
                                     <div class="w-9 h-9 rounded-xl bg-purple-600 text-white flex items-center justify-center shrink-0 shadow-md shadow-purple-500/30">

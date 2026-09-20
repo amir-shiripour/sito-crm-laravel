@@ -239,19 +239,6 @@
             navigator.clipboard.writeText(tokenText);
         }
 
-        function showToast(message) {
-            const toast = document.createElement('div');
-            toast.className = 'fixed bottom-6 right-6 bg-gray-900 dark:bg-white text-white dark:text-gray-900 px-5 py-3 rounded-xl shadow-2xl text-sm font-medium z-50 transition-all duration-300 transform translate-y-0 opacity-100';
-            toast.innerText = message;
-            document.body.appendChild(toast);
-            
-            setTimeout(() => {
-                toast.classList.remove('translate-y-0', 'opacity-100');
-                toast.classList.add('translate-y-4', 'opacity-0');
-                setTimeout(() => toast.remove(), 300);
-            }, 2500);
-        }
-
         // Initialize with default blocks
         window.addEventListener('DOMContentLoaded', () => {
             addBlock('header', { title: 'سند قرارداد طرح درمان' });

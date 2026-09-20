@@ -27,7 +27,7 @@
             </div>
             <input type="text" id="global-search" wire:model.live.debounce.300ms="globalSearch" 
                    class="block w-full pr-12 pl-16 py-3 bg-white dark:bg-gray-800/80 border border-gray-200 dark:border-gray-700/80 focus:bg-white dark:focus:bg-gray-900 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 rounded-2xl text-sm text-gray-900 dark:text-white placeholder-gray-400 transition-all shadow-sm focus:shadow-md outline-none" 
-                   placeholder="جستجوی سریع مشتری یا معامله..." dir="rtl">
+                   placeholder="جستجوی سریع مشتری یا پرونده..." dir="rtl">
             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <div wire:loading wire:target="globalSearch">
                     <svg class="animate-spin h-4 w-4 text-indigo-500" fill="none" viewBox="0 0 24 24">
@@ -36,7 +36,7 @@
                     </svg>
                 </div>
                 <div wire:loading.remove wire:target="globalSearch">
-                    <kbd class="hidden sm:inline-flex items-center gap-0.5 px-2 py-1 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-[10px] font-mono font-bold text-gray-400 shadow-[0_2px_0_rgba(0,0,0,0.05)] dark:shadow-none">
+                    <kbd class="hidden sm:inline-flex items-center gap-0.5 px-2 py-1 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-[10px] font-sans font-bold text-gray-400 shadow-[0_2px_0_rgba(0,0,0,0.05)] dark:shadow-none">
                         Alt+S
                     </kbd>
                 </div>
@@ -83,7 +83,7 @@
                         ['id' => 'calls', 'label' => 'مرکز تماس', 'icon' => 'M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z'],
                         ['id' => 'tasks', 'label' => 'پیگیری‌ها', 'icon' => 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2'],
                         ['id' => 'campaign_leads', 'label' => 'لیدها', 'icon' => 'M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z'],
-                        ['id' => 'goals', 'label' => 'اهداف', 'icon' => 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2'],
+                        ['id' => 'goals', 'label' => 'اهداف', 'icon' => 'M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9'],
                     ];
                 @endphp
 
@@ -148,7 +148,7 @@
         <div class="h-full flex flex-col" dir="rtl">
             @if($selectedClient)
                 <!-- ACTIVE CLIENT FOCUS BAR -->
-                <div class="mb-5 bg-white dark:bg-gray-800/95 border border-indigo-100 dark:border-indigo-900/40 rounded-2xl p-4 shadow-sm backdrop-blur-md flex flex-col lg:flex-row lg:items-center justify-between gap-4 transition-all animate-fade-in" dir="rtl">
+                <div class="mb-5 bg-gradient-to-l from-indigo-50/50 via-white to-white dark:from-indigo-950/30 dark:via-gray-800/95 dark:to-gray-800/95 border border-indigo-200/80 dark:border-indigo-800/60 border-r-4 border-r-indigo-500 dark:border-r-indigo-400 rounded-2xl p-4 shadow-xs shadow-indigo-100/30 dark:shadow-none backdrop-blur-md flex flex-col lg:flex-row lg:items-center justify-between gap-4 transition-all animate-fade-in" dir="rtl">
                     <!-- Client Identity & Info -->
                     <div class="flex items-center gap-3.5">
                         <div class="w-11 h-11 rounded-2xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-100/80 dark:border-indigo-800/50 flex items-center justify-center font-black text-lg text-indigo-600 dark:text-indigo-400 shadow-sm flex-shrink-0">
@@ -156,7 +156,13 @@
                         </div>
                         <div>
                             <div class="flex items-center gap-2 flex-wrap">
-                                <span class="text-xs font-bold text-gray-400 uppercase tracking-wider">مشتری فعال میز کار:</span>
+                                <span class="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">
+                                    <span class="relative flex h-2 w-2 shrink-0">
+                                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
+                                        <span class="relative inline-flex rounded-full h-2 w-2 bg-indigo-500"></span>
+                                    </span>
+                                    <span>مشتری فعال میز کار:</span>
+                                </span>
                                 <button wire:click="openDrawer" class="text-sm font-black text-gray-900 dark:text-white hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
                                     {{ $selectedClient->full_name }}
                                 </button>
@@ -207,9 +213,9 @@
                         </button>
 
                         <!-- Deal button -->
-                        <button wire:click="switchTab('deals')" title="مشاهده یا ثبت معامله" class="px-3 py-2 rounded-xl bg-indigo-50 dark:bg-indigo-950/20 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/30 transition-colors flex items-center gap-1.5 text-xs font-bold">
+                        <button wire:click="switchTab('deals')" title="مشاهده یا ثبت پرونده" class="px-3 py-2 rounded-xl bg-indigo-50 dark:bg-indigo-950/20 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/30 transition-colors flex items-center gap-1.5 text-xs font-bold">
                             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
-                            <span>معاملات</span>
+                            <span>پرونده‌ها</span>
                         </button>
 
                         <!-- Toggle Drawer -->

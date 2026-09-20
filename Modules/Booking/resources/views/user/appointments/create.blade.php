@@ -2389,10 +2389,10 @@
                 getQuadrantClasses(id) {
                     const tooth = this.getToothLabel(id);
                     switch(tooth.pos) {
-                        case 'UR': return '!border-r-4 !border-t-4 !border-cyan-600 dark:!border-cyan-600';
-                        case 'UL': return '!border-l-4 !border-t-4 !border-cyan-600 dark:!border-cyan-600';
-                        case 'LR': return '!border-r-4 !border-b-4 !border-cyan-600 dark:!border-cyan-600';
-                        case 'LL': return '!border-l-4 !border-b-4 !border-cyan-600 dark:!border-cyan-600';
+                        case 'UR': return '!border-l-4 !border-b-4 !border-cyan-600 dark:!border-cyan-600';
+                        case 'UL': return '!border-r-4 !border-b-4 !border-cyan-600 dark:!border-cyan-600';
+                        case 'LR': return '!border-l-4 !border-t-4 !border-cyan-600 dark:!border-cyan-600';
+                        case 'LL': return '!border-r-4 !border-t-4 !border-cyan-600 dark:!border-cyan-600';
                         default:   return '';
                     }
                 },

@@ -9,33 +9,6 @@
         .sc-thin::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
         .dark .sc-thin::-webkit-scrollbar-thumb { background: #334155; }
         
-        .toast {
-            position: fixed;
-            top: 24px;
-            left: 50%;
-            transform: translateX(-50%) translateY(-20px);
-            z-index: 9999;
-            background: rgba(15, 23, 42, 0.95);
-            backdrop-filter: blur(8px);
-            color: #fff;
-            padding: 12px 24px;
-            border-radius: 12px;
-            font-size: 13px;
-            font-weight: 700;
-            box-shadow: 0 10px 25px -5px rgba(0,0,0,.15);
-            opacity: 0;
-            pointer-events: none;
-            transition: transform .25s cubic-bezier(0.34, 1.56, 0.64, 1), opacity .25s;
-            border: 1px solid rgba(255,255,255,0.1);
-        }
-        .toast.show {
-            opacity: 1;
-            pointer-events: auto;
-            transform: translateX(-50%) translateY(0);
-        }
-        .toast-success { border-left: 4px solid #10b981; }
-        .toast-error { border-left: 4px solid #ef4444; }
-        
         /* Modern Dot Grid Pattern - Adjusted for scaling */
         .bg-grid-pattern {
             background-size: 24px 24px;
@@ -59,8 +32,6 @@
         .canvas-container { cursor: grab; }
         .canvas-container:active { cursor: grabbing; }
     </style>
-
-    <div id="cure-toast" class="toast"></div>
 
     <div class="container mx-auto px-4 py-6 max-w-7xl" x-data="workflowManagerApp(@js($planJs))" x-cloak>
         <!-- Page Header -->
@@ -558,16 +529,6 @@
     </div>
 
     <script>
-        function showToast(msg, type = 'info', duration = 3000) {
-            const el = document.getElementById('cure-toast');
-            el.textContent = msg;
-            el.className = `toast toast-${type}`;
-            requestAnimationFrame(() => {
-                requestAnimationFrame(() => el.classList.add('show'));
-            });
-            setTimeout(() => el.classList.remove('show'), duration);
-        }
-
         function workflowManagerApp(existingPlan = null) {
             return {
                 patientName: existingPlan?.patient_name || 'نامشخص',

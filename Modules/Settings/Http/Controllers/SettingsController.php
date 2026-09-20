@@ -242,6 +242,10 @@ class SettingsController extends Controller
                 }
             }
 
+            if ($key === 'installment_min_cheque_amount' && is_string($value)) {
+                $value = str_replace(',', '', trim($value));
+            }
+
             // Handle file uploads
             if ($request->hasFile($key)) {
                 $file = $request->file($key);
