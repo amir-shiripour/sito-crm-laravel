@@ -225,7 +225,7 @@
                                         @error('newDealUserId') <span class="text-rose-500 text-[10px] mt-1.5 block font-semibold">{{ $message }}</span> @enderror
                                     </div>
                                     <div>
-                                        <label class="{{ $labelClass }}">منبع سرنخ</label>
+                                        <label class="{{ $labelClass }}">منبع لید</label>
                                         <input type="text" wire:model="newDealSource" class="{{ $inputClass }}" placeholder="مثلاً: سایت، معرفی">
                                         @error('newDealSource') <span class="text-rose-500 text-[10px] mt-1.5 block font-semibold">{{ $message }}</span> @enderror
                                     </div>

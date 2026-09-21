@@ -2957,6 +2957,9 @@ snapshots: existingPlan?.snapshots || [],
                             const max = Number(t.max_price) || Infinity;
                             return checkAmount >= min && checkAmount <= max;
                         });
+                    let defaultCfg = plan.default_tier_config;
+                    if (typeof defaultCfg === 'string') {
+                        try { defaultCfg = JSON.parse(defaultCfg); } catch (e) { defaultCfg = null; }
                     }
 
                     const extractConfig = (tierCfg) => {
@@ -2967,20 +2970,23 @@ snapshots: existingPlan?.snapshots || [],
                         let feesMap = tierCfg.fees_map || {};
                         if (typeof feesMap === 'string') { try { feesMap = JSON.parse(feesMap); } catch (e) { feesMap = {}; } }
 
+                        const calcMode = (tierCfg.calculation_mode && tierCfg.calculation_mode !== 'inherit')
+                            ? tierCfg.calculation_mode
+                            : (defaultCfg?.calculation_mode || plan.calculation_mode || 'default');
+
+                        const customFormula = tierCfg.custom_formula || defaultCfg?.custom_formula || plan.custom_formula || '';
+
                         return {
                             max_months: Number(tierCfg.max_months) || 0,
                             payment_stages: Number(tierCfg.payment_stages) || 1,
                             down_payments_map: downPaymentsMap,
                             fees_map: feesMap,
                             down_payment: Number(tierCfg.down_payment) || 0,
-                            annual_fee_percent: Number(tierCfg.annual_fee_percent) || 0
+                            annual_fee_percent: Number(tierCfg.annual_fee_percent) || 0,
+                            calculation_mode: calcMode,
+                            custom_formula: customFormula
                         };
                     };
-
-                    let defaultCfg = plan.default_tier_config;
-                    if (typeof defaultCfg === 'string') {
-                        try { defaultCfg = JSON.parse(defaultCfg); } catch (e) { defaultCfg = null; }
-                    }
 
                     let configs = plan.brand_configs || {};
                     if (typeof configs === 'string') { try { configs = JSON.parse(configs); } catch (e) { configs = {}; } }
@@ -3041,6 +3047,44 @@ snapshots: existingPlan?.snapshots || [],
 
                     return extracted;
                 },
+
+                evaluateCustomFormula(formula, vars) {
+                    if (!formula || typeof formula !== 'string') return null;
+                    try {
+                        let sanitized = formula
+                            .replace(/[\u06F0-\u06F9]/g, d => String.fromCharCode(d.charCodeAt(0) - 1728))
+                            .replace(/[\u0660-\u0669]/g, d => String.fromCharCode(d.charCodeAt(0) - 1584))
+                            .replace(/\{مانده\}|\[مانده\]|مانده/g, ' remaining ')
+                            .replace(/\{کارمزد\}|\[کارمزد\]|کارمزد/g, ' fee_percent ')
+                            .replace(/\{تعداد_ماه\}|\{ماه\}|\[ماه\]|ماه/g, ' months ')
+                            .replace(/\{تعداد_اقساط\}|\{اقساط\}|\[اقساط\]|اقساط/g, ' installments ')
+                            .replace(/\{remaining\}|\[remaining\]/g, ' remaining ')
+                            .replace(/\{fee_percent\}|\[fee_percent\]/g, ' fee_percent ')
+                            .replace(/\{months\}|\[months\]/g, ' months ')
+                            .replace(/\{installments\}|\[installments\]/g, ' installments ');
+
+                        const remVal = Number(vars.remaining) || 0;
+                        const feeVal = Number(vars.fee_percent) || 0;
+                        const mVal = Number(vars.months) || 1;
+                        const instVal = Number(vars.installments) || 1;
+
+                        sanitized = sanitized
+                            .replace(/\bremaining\b/g, `(${remVal})`)
+                            .replace(/\bfee_percent\b/g, `(${feeVal})`)
+                            .replace(/\bmonths\b/g, `(${mVal})`)
+                            .replace(/\binstallments\b/g, `(${instVal})`);
+
+                        if (!/^[0-9+\-*/().\s]+$/.test(sanitized)) {
+                            return null;
+                        }
+
+                        const result = Function(`'use strict'; return (${sanitized});`)();
+                        return (result !== null && !isNaN(result) && isFinite(result)) ? Number(result) : null;
+                    } catch (e) {
+                        return null;
+                    }
+                },
+
                 isPlanApplicable(plan, amount) {
                     if (!amount || amount <= 0) return false;
                     const planBrands = this.getPlanInstallmentBrands();
@@ -3280,7 +3324,9 @@ snapshots: existingPlan?.snapshots || [],
                                 resultMap[b.brandName] = {
                                     brandName: b.brandName, price: 0, qty: 0,
                                     down_payment: downPct, fee: feePct, annual_fee: annualFeePct,
-                                    interval: interval, installments: installments
+                                    interval: interval, installments: installments,
+                                    calculation_mode: tier?.calculation_mode || opt.default_tier_config?.calculation_mode || opt.calculation_mode || 'default',
+                                    custom_formula: tier?.custom_formula || opt.default_tier_config?.custom_formula || opt.custom_formula || ''
                                 };
                             }
                             resultMap[b.brandName].price += totalPrice;
@@ -3377,9 +3423,27 @@ snapshots: existingPlan?.snapshots || [],
                     const months = this.effectiveMonths || 1;
                     const isAnnualActive = months >= 12;
                     const years = months / 12;
+                    const chequesCount = this.numberOfCheques || this.installmentsCount || 1;
 
                     const rawFee = bd.reduce((s, r) => {
                         const remainingPrincipal = r.price - (r.price * (r.down_payment / 100));
+
+                        if (r.calculation_mode === 'flat_rate') {
+                            const feeRate = r.annual_fee > 0 ? r.annual_fee : (r.fee || 0);
+                            return s + (remainingPrincipal * (feeRate / 100));
+                        } else if (r.calculation_mode === 'custom' && r.custom_formula) {
+                            const feeRate = r.annual_fee > 0 ? r.annual_fee : (r.fee || 0);
+                            const evaluatedMonthly = this.evaluateCustomFormula(r.custom_formula, {
+                                remaining: remainingPrincipal,
+                                fee_percent: feeRate,
+                                months: months,
+                                installments: chequesCount
+                            });
+                            if (evaluatedMonthly !== null) {
+                                const totalWithFee = evaluatedMonthly * chequesCount;
+                                return s + Math.max(0, totalWithFee - remainingPrincipal);
+                            }
+                        }
 
                         if (isAnnualActive && r.annual_fee > 0) {
                             return s + (remainingPrincipal * (r.annual_fee / 100) * years);
@@ -4862,8 +4926,28 @@ snapshots: existingPlan?.snapshots || [],
                     const months = this.effectiveMonths || 1;
                     const isAnnualActive = months >= 12 && this.annualFeePct > 0;
 
+                    const calcMode = opt.default_tier_config?.calculation_mode || opt.calculation_mode || 'default';
+                    const customFormula = opt.default_tier_config?.custom_formula || opt.custom_formula || '';
+
                     let itemFee = 0;
-                    if (isAnnualActive) {
+                    if (calcMode === 'flat_rate') {
+                        const feeRate = this.annualFeePct > 0 ? this.annualFeePct : (this.effectiveFeePct || 0);
+                        itemFee = totalRemaining * (feeRate / 100);
+                    } else if (calcMode === 'custom' && customFormula) {
+                        const feeRate = this.annualFeePct > 0 ? this.annualFeePct : (this.effectiveFeePct || 0);
+                        const evaluatedMonthly = this.evaluateCustomFormula(customFormula, {
+                            remaining: totalRemaining,
+                            fee_percent: feeRate,
+                            months: months,
+                            installments: count
+                        });
+                        if (evaluatedMonthly !== null) {
+                            const totalWithFee = evaluatedMonthly * count;
+                            itemFee = Math.max(0, totalWithFee - totalRemaining);
+                        } else {
+                            itemFee = isAnnualActive ? (totalRemaining * (this.annualFeePct / 100) * (months / 12)) : (totalRemaining * (this.effectiveFeePct / 100));
+                        }
+                    } else if (isAnnualActive) {
                         const years = months / 12;
                         itemFee = totalRemaining * (this.annualFeePct / 100) * years;
                     } else {
