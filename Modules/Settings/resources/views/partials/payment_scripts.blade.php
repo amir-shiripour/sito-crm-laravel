@@ -286,10 +286,12 @@
                 if (!t.brand_configs || typeof t.brand_configs !== 'object') t.brand_configs = {};
                 if (!Array.isArray(t.price_tiers)) t.price_tiers = [];
                 if (!t.default_tier_config || typeof t.default_tier_config !== 'object') {
-                    t.default_tier_config = { max_months: '', payment_stages: '', down_payments_map: {}, fees_map: {} };
+                    t.default_tier_config = { max_months: '', payment_stages: '', down_payments_map: {}, fees_map: {}, calculation_mode: 'default', custom_formula: '' };
                 }
                 if (!t.default_tier_config.down_payments_map) t.default_tier_config.down_payments_map = {};
                 if (!t.default_tier_config.fees_map) t.default_tier_config.fees_map = {};
+                if (!t.default_tier_config.calculation_mode) t.default_tier_config.calculation_mode = 'default';
+                if (!t.default_tier_config.custom_formula) t.default_tier_config.custom_formula = '';
 
                 // Ensure tiers have IDs
                 t.price_tiers.forEach(pt => {
@@ -408,6 +410,8 @@
                 const cfg = plan.default_tier_config;
                 if (!cfg.down_payments_map) cfg.down_payments_map = {};
                 if (!cfg.fees_map) cfg.fees_map = {};
+                if (!cfg.calculation_mode) cfg.calculation_mode = 'default';
+                if (!cfg.custom_formula) cfg.custom_formula = '';
 
                 container.innerHTML = `
                 <div class="grid grid-cols-3 gap-3 mb-3">
@@ -424,6 +428,36 @@
                         <input type="number" min="0" max="100" data-default-tier-field="annual_fee_percent" name="installment_types[${planIndex}][default_tier_config][annual_fee_percent]" value="${cfg.annual_fee_percent || ''}" class="${inputClass} dir-ltr text-left text-xs py-2" placeholder="20">
                     </div>
                 </div>
+                
+                <!-- روش محاسبه کارمزد و اقساط -->
+                <div class="mb-3 p-3 bg-indigo-50/50 dark:bg-indigo-950/20 rounded-xl border border-indigo-100 dark:border-indigo-900/30">
+                    <div class="flex items-center justify-between mb-1.5">
+                        <label class="block text-[10px] font-bold text-indigo-700 dark:text-indigo-300">روش محاسبه کارمزد و اقساط</label>
+                        <span class="text-[9px] text-indigo-500 dark:text-indigo-400 font-medium">نحوه اعمال درصد یا فرمول</span>
+                    </div>
+                    <select data-default-tier-field="calculation_mode" data-calculation-mode-select name="installment_types[${planIndex}][default_tier_config][calculation_mode]" class="${inputClass} text-xs py-1.5">
+                        <option value="default" ${cfg.calculation_mode === 'default' || !cfg.calculation_mode ? 'selected' : ''}>پیش‌فرض سیستم (تناسبی سالانه برای ۱۲+ ماه / جدول بازه‌ها)</option>
+                        <option value="flat_rate" ${cfg.calculation_mode === 'flat_rate' ? 'selected' : ''}>کارمزد مقطوع مستقیم بر کل مانده (Flat Total Fee)</option>
+                        <option value="custom" ${cfg.calculation_mode === 'custom' ? 'selected' : ''}>فرمول محاسباتی اختصاصی کاربر (Custom Formula)</option>
+                    </select>
+
+                    <div class="custom-formula-wrapper mt-2.5 space-y-2" style="display: ${cfg.calculation_mode === 'custom' ? 'block' : 'none'};">
+                        <div class="flex items-center justify-between">
+                            <label class="block text-[9px] font-bold text-gray-700 dark:text-gray-300">فرمول اختصاصی محاسبه مبلغ هر قسط:</label>
+                            <span class="text-[9px] text-gray-400 font-sans">مثال: (remaining * 1.20) / months</span>
+                        </div>
+                        <input type="text" data-default-tier-field="custom_formula" name="installment_types[${planIndex}][default_tier_config][custom_formula]" value="${cfg.custom_formula || ''}" class="${inputClass} dir-ltr text-left text-xs py-1.5 font-sans" placeholder="(remaining * (1 + fee_percent / 100)) / months">
+                        
+                        <div class="flex flex-wrap items-center gap-1.5 text-[9px] text-gray-500 dark:text-gray-400 pt-1">
+                            <span class="font-bold text-gray-700 dark:text-gray-300">متغیرهای مجاز:</span>
+                            <button type="button" data-insert-token="remaining" class="token-insert-btn bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 px-1.5 py-0.5 rounded text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition-colors font-sans font-medium" title="مانده اصل (کل منهای پیش‌پرداخت)">remaining</button>
+                            <button type="button" data-insert-token="fee_percent" class="token-insert-btn bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 px-1.5 py-0.5 rounded text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition-colors font-sans font-medium" title="درصد کارمزد">fee_percent</button>
+                            <button type="button" data-insert-token="months" class="token-insert-btn bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 px-1.5 py-0.5 rounded text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition-colors font-sans font-medium" title="تعداد ماه‌ها">months</button>
+                            <button type="button" data-insert-token="installments" class="token-insert-btn bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 px-1.5 py-0.5 rounded text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition-colors font-sans font-medium" title="تعداد اقساط">installments</button>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="default-down-payments-grid grid grid-cols-4 gap-2 mt-2"></div>
                 <div class="default-fees-grid grid grid-cols-4 gap-2 mt-2"></div>
             `;
@@ -868,7 +902,7 @@
             }
 
             addInstallmentBtn.addEventListener('click', () => {
-                installmentTypes.push({id: generateUniqueId('inst'), brand_configs: {}, price_tiers: [], default_tier_config: { max_months: '', payment_stages: '', down_payments_map: {}, fees_map: {} }});
+                installmentTypes.push({id: generateUniqueId('inst'), brand_configs: {}, price_tiers: [], default_tier_config: { max_months: '', payment_stages: '', down_payments_map: {}, fees_map: {}, calculation_mode: 'default', custom_formula: '' }});
                 renderInstallmentTypes();
             });
 
@@ -991,6 +1025,27 @@
                     return;
                 }
 
+                // Token insertion for custom formula
+                const tokenBtn = e.target.closest('[data-insert-token]');
+                if (tokenBtn) {
+                    const token = tokenBtn.getAttribute('data-insert-token');
+                    const card = tokenBtn.closest('[data-index]');
+                    if (card) {
+                        const planIndex = parseInt(card.getAttribute('data-index'));
+                        const input = card.querySelector('[data-default-tier-field="custom_formula"]');
+                        if (input) {
+                            const curVal = input.value.trim();
+                            input.value = curVal ? (curVal + ' ' + token) : token;
+                            if (!installmentTypes[planIndex].default_tier_config) {
+                                installmentTypes[planIndex].default_tier_config = { max_months: '', payment_stages: '', down_payments_map: {}, fees_map: {}, calculation_mode: 'default', custom_formula: '' };
+                            }
+                            installmentTypes[planIndex].default_tier_config.custom_formula = input.value;
+                            input.focus();
+                        }
+                    }
+                    return;
+                }
+
                 const quickFillBrandDp = e.target.closest('[data-action="copy-brand-first-dp"]');
                 if (quickFillBrandDp) {
                     const block = quickFillBrandDp.closest('[data-brand-block]');
@@ -1107,6 +1162,22 @@
                     }
                     return;
                 }
+
+                if (e.target.hasAttribute('data-calculation-mode-select')) {
+                    const card = e.target.closest('[data-index]');
+                    if (card) {
+                        const index = parseInt(card.getAttribute('data-index'));
+                        if (!installmentTypes[index].default_tier_config) {
+                            installmentTypes[index].default_tier_config = { max_months: '', payment_stages: '', down_payments_map: {}, fees_map: {}, calculation_mode: 'default', custom_formula: '' };
+                        }
+                        installmentTypes[index].default_tier_config.calculation_mode = e.target.value;
+                        const wrapper = card.querySelector('.custom-formula-wrapper');
+                        if (wrapper) {
+                            wrapper.style.display = e.target.value === 'custom' ? 'block' : 'none';
+                        }
+                    }
+                    return;
+                }
             });
 
             installmentContainer.addEventListener('input', (e) => {
@@ -1153,7 +1224,7 @@
                 if (e.target.hasAttribute('data-default-tier-field')) {
                     const field = e.target.getAttribute('data-default-tier-field');
                     if (!installmentTypes[index].default_tier_config) {
-                        installmentTypes[index].default_tier_config = { max_months: '', payment_stages: '', down_payments_map: {}, fees_map: {} };
+                        installmentTypes[index].default_tier_config = { max_months: '', payment_stages: '', down_payments_map: {}, fees_map: {}, calculation_mode: 'default', custom_formula: '' };
                     }
                     const cfg = installmentTypes[index].default_tier_config;
 
@@ -1163,6 +1234,12 @@
                         cfg[field][month] = e.target.value;
                     } else {
                         cfg[field] = e.target.value;
+                        if (field === 'calculation_mode') {
+                            const wrapper = card.querySelector('.custom-formula-wrapper');
+                            if (wrapper) {
+                                wrapper.style.display = e.target.value === 'custom' ? 'block' : 'none';
+                            }
+                        }
                         if (e.target.hasAttribute('data-default-tier-trigger')) {
                             const container = card.querySelector('.default-tier-config-container');
                             renderDefaultTierDynamicMaps(container, index);
