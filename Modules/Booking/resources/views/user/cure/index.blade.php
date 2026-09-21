@@ -2957,6 +2957,7 @@ snapshots: existingPlan?.snapshots || [],
                             const max = Number(t.max_price) || Infinity;
                             return checkAmount >= min && checkAmount <= max;
                         });
+                    }
                     let defaultCfg = plan.default_tier_config;
                     if (typeof defaultCfg === 'string') {
                         try { defaultCfg = JSON.parse(defaultCfg); } catch (e) { defaultCfg = null; }
