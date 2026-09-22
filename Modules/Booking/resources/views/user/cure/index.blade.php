@@ -128,6 +128,9 @@
             background: #f8fafc;
             transition: border-color .15s, box-shadow .15s, transform .12s, background-color .15s;
             position: relative;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-user-drag: none;
         }
 
         .dark .svc-card {
@@ -719,7 +722,17 @@
                                 (<span x-text="Object.keys(servicePlanCounts).length"></span> سرویس انتخاب شده)
                             </span>
                         </h2>
-                        <div class="flex items-center gap-3 flex-wrap">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <div class="hidden sm:flex items-center gap-1">
+                                <button type="button" @click="scrollServices('right')" title="اسکرول به راست"
+                                        class="w-8 h-8 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50 text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 flex items-center justify-center transition-all cursor-pointer">
+                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+                                </button>
+                                <button type="button" @click="scrollServices('left')" title="اسکرول به چپ"
+                                        class="w-8 h-8 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50 text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 flex items-center justify-center transition-all cursor-pointer">
+                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+                                </button>
+                            </div>
                             <div class="relative">
                                 <svg class="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
@@ -730,7 +743,7 @@
                         </div>
                     </div>
                     @if(count($categories ?? []) > 1)
-                    <div class="flex gap-2 overflow-x-auto sc-thin pb-1">
+                    <div class="flex gap-2 overflow-x-auto sc-thin pb-1" style="touch-action: pan-x pan-y; -webkit-overflow-scrolling: touch; overscroll-behavior-x: contain;">
                         <button @click="filterCategory = null"
                                 :class="filterCategory === null ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-300/40' : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'"
                                 class="px-4 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all shrink-0">
@@ -746,7 +759,10 @@
                     </div>
                     @endif
                 </div>
-                <div class="px-4 py-4 flex gap-3 overflow-x-auto sc-thin">
+                <div x-ref="serviceSlider"
+                     x-init="initServiceDrag($refs.serviceSlider)"
+                     class="px-4 py-4 flex gap-3 overflow-x-auto sc-thin select-none cursor-grab active:cursor-grabbing"
+                     style="touch-action: pan-x pan-y; -webkit-overflow-scrolling: touch; overscroll-behavior-x: contain;">
                     <template x-for="service in filteredServices" :key="service.id">
                         <div @click="selectService(service)" :class="['svc-card', selectedService && selectedService.id === service.id ? 'svc-active' : '']">
                             <span x-show="servicePlanCounts[service.id]" class="svc-badge" x-text="servicePlanCounts[service.id]"></span>
@@ -2047,12 +2063,12 @@
                     </div>
                 </template>
 
-                {{-- حالت اقساطی: طرح انتخاب شده -> چیدمان دوناحیه‌ای چپ و راست (Side-by-Side) --}}
+                {{-- حالت اقساطی: طرح انتخاب شده -> چیدمان دوناحیه‌ای چپ و راست (۴۰٪ محاسبات / ۶۰٪ صدور چک‌ها) --}}
                 <template x-if="useInstallment && selectedInstallmentOption">
-                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+                    <div class="grid grid-cols-1 lg:grid-cols-5 gap-6 items-start">
 
-                        {{-- ══════ ستون راست: بخش محاسبات و مشخصات اقساط ══════ --}}
-                        <div class="space-y-4 bg-slate-50/70 dark:bg-gray-900/40 rounded-2xl border border-gray-200 dark:border-gray-700 p-5">
+                        {{-- ══════ ستون راست (۴۰٪): بخش محاسبات و مشخصات اقساط ══════ --}}
+                        <div class="lg:col-span-2 space-y-4 bg-slate-50/70 dark:bg-gray-900/40 rounded-2xl border border-gray-200 dark:border-gray-700 p-5">
                             <div class="flex items-center justify-between pb-3 border-b border-gray-200/80 dark:border-gray-700">
                                 <div class="flex items-center gap-2.5 text-indigo-700 dark:text-indigo-400">
                                     <div class="w-8 h-8 rounded-xl bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-300 flex items-center justify-center shrink-0 shadow-xs">
@@ -2154,8 +2170,8 @@
                             </div>
                         </div>
 
-                        {{-- ══════ ستون چپ: مرحله و تنظیمات چک‌ها ══════ --}}
-                        <div class="space-y-4 bg-slate-50/70 dark:bg-gray-900/40 rounded-2xl border border-gray-200 dark:border-gray-700 p-5">
+                        {{-- ══════ ستون چپ (۶۰٪): مرحله و تنظیمات چک‌ها ══════ --}}
+                        <div class="lg:col-span-3 space-y-4 bg-slate-50/70 dark:bg-gray-900/40 rounded-2xl border border-gray-200 dark:border-gray-700 p-5">
                             <div class="flex items-center justify-between pb-3 border-b border-gray-200/80 dark:border-gray-700">
                                 <div class="flex items-center gap-2.5 text-indigo-700 dark:text-indigo-400">
                                     <div class="w-8 h-8 rounded-xl bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-300 flex items-center justify-center shrink-0 shadow-xs">
@@ -2168,59 +2184,54 @@
                                 </div>
                             </div>
 
-                            {{-- فیلدهای تنظیم تعداد چک، تاریخ سررسید قسط اول و بانک --}}
+                            {{-- فیلدهای تنظیم فاصله چک، تاریخ سررسید قسط اول و بانک --}}
                             <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 items-stretch">
-                                {{-- تعداد چک‌ها --}}
-                                <div x-show="selectedInstallmentMonths > 0" class="relative overflow-hidden rounded-2xl p-3.5 border border-indigo-100 dark:border-indigo-800/30 bg-white dark:bg-gray-800 shadow-xs flex flex-col justify-between">
-                                    <div>
-                                        <div class="relative flex items-center justify-between mb-2">
-                                            <span class="text-xs font-bold text-indigo-700 dark:text-indigo-300 flex items-center gap-1.5">
-                                                تعداد چک‌ها
-                                            </span>
-                                            <span class="text-[10px] font-bold text-indigo-600 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-900/50 px-2 py-0.5 rounded-full">۱ تا <span x-text="toFa(selectedInstallmentMonths)"></span></span>
-                                        </div>
-                                        <input type="number" min="1" :max="selectedInstallmentMonths" x-model.number="numberOfCheques"
-                                               class="relative w-full px-3 py-2 rounded-xl border-2 border-indigo-200 dark:border-indigo-700/50 bg-slate-50/50 dark:bg-gray-900 text-base text-indigo-700 dark:text-indigo-300 dir-ltr text-center focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 dark:focus:ring-indigo-900/30 transition-all font-black"
-                                               :disabled="isReadOnly">
+                                {{-- فاصله چک‌ها --}}
+                                <div x-show="selectedInstallmentMonths > 0" class="relative overflow-hidden rounded-2xl p-3.5 border border-indigo-100 dark:border-indigo-800/30 bg-white dark:bg-gray-800 shadow-xs">
+                                    <div class="relative flex items-center justify-between mb-2">
+                                        <span class="text-xs font-bold text-indigo-700 dark:text-indigo-300 flex items-center gap-1.5">
+                                            فاصله چک‌ها
+                                        </span>
+                                        <span class="text-[10px] font-bold text-indigo-600 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-900/50 px-2 py-0.5 rounded-full">
+                                            ۱ تا <span x-text="toFa(maxChequeInterval)"></span> ماه
+                                        </span>
                                     </div>
-                                    <p class="relative text-[11px] text-slate-500 dark:text-slate-400 mt-2 leading-tight">
-                                        <span>مبنای تقسیط:</span>
-                                        <b class="text-indigo-700 dark:text-indigo-300 font-bold" x-text="toFa(numberOfCheques) + ' برگ'"></b>
-                                    </p>
+                                    <select x-model.number="chequeIntervalMonths"
+                                            @change="onChequeIntervalChange()"
+                                            class="relative w-full px-3 py-2 rounded-xl border-2 border-indigo-200 dark:border-indigo-700/50 bg-slate-50/50 dark:bg-gray-900 text-xs font-black text-indigo-700 dark:text-indigo-300 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 dark:focus:ring-indigo-900/30 transition-all font-sans cursor-pointer"
+                                            :disabled="isReadOnly">
+                                        <template x-for="item in availableChequeIntervals" :key="item.interval">
+                                            <option :value="item.interval" x-text="item.label" :selected="chequeIntervalMonths === item.interval"></option>
+                                        </template>
+                                    </select>
                                 </div>
 
                                 {{-- تاریخ سررسید اولین قسط --}}
-                                <div class="relative overflow-hidden rounded-2xl p-3.5 border border-purple-100 dark:border-purple-800/30 bg-white dark:bg-gray-800 shadow-xs flex flex-col justify-between">
-                                    <div>
-                                        <label class="relative text-xs font-bold text-purple-700 dark:text-purple-300 flex items-center gap-1.5 mb-2">
-                                            سررسید اولین قسط
-                                        </label>
-                                        <button type="button" @click="!isReadOnly && openInstCal()"
-                                                class="w-full px-3 py-2 rounded-xl border-2 border-purple-200 dark:border-purple-700/50 bg-slate-50/50 dark:bg-gray-900 text-xs font-black text-purple-700 dark:text-purple-300 focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-100 dark:focus:ring-purple-900/30 transition-all flex items-center justify-between gap-1.5 cursor-pointer"
-                                                :class="showInstDateModal ? 'border-purple-500 ring-2 ring-purple-100 dark:ring-purple-900/50' : ''"
-                                                :disabled="isReadOnly">
-                                            <span x-text="installmentStartDate ? toFaDigits(installmentStartDate) : 'انتخاب تاریخ...'"></span>
-                                            <svg class="w-4 h-4 text-purple-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                                        </button>
-                                    </div>
-                                    <p class="relative text-[10px] text-slate-500 dark:text-slate-400 mt-2 leading-tight">مبنای محاسبه سررسید چک‌ها</p>
+                                <div class="relative overflow-hidden rounded-2xl p-3.5 border border-purple-100 dark:border-purple-800/30 bg-white dark:bg-gray-800 shadow-xs">
+                                    <label class="relative text-xs font-bold text-purple-700 dark:text-purple-300 flex items-center gap-1.5 mb-2">
+                                        سررسید اولین قسط
+                                    </label>
+                                    <button type="button" @click="!isReadOnly && openInstCal()"
+                                            class="w-full px-3 py-2 rounded-xl border-2 border-purple-200 dark:border-purple-700/50 bg-slate-50/50 dark:bg-gray-900 text-xs font-black text-purple-700 dark:text-purple-300 focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-100 dark:focus:ring-purple-900/30 transition-all flex items-center justify-between gap-1.5 cursor-pointer"
+                                            :class="showInstDateModal ? 'border-purple-500 ring-2 ring-purple-100 dark:ring-purple-900/50' : ''"
+                                            :disabled="isReadOnly">
+                                        <span x-text="installmentStartDate ? toFaDigits(installmentStartDate) : 'انتخاب تاریخ...'"></span>
+                                        <svg class="w-4 h-4 text-purple-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                                    </button>
                                 </div>
 
                                 {{-- نام بانک پیش‌فرض --}}
-                                <div class="relative overflow-hidden rounded-2xl p-3.5 border border-emerald-100 dark:border-emerald-800/30 bg-white dark:bg-gray-800 shadow-xs flex flex-col justify-between">
-                                    <div>
-                                        <label class="relative text-xs font-bold text-emerald-700 dark:text-emerald-300 flex items-center gap-1.5 mb-2">
-                                            بانک پیش‌فرض
-                                        </label>
-                                        <div class="relative">
-                                            <input type="text" x-model="chequeBankName"
-                                                   class="w-full pl-3 pr-8 py-2 rounded-xl border-2 border-emerald-200 dark:border-emerald-700/50 bg-slate-50/50 dark:bg-gray-900 text-xs text-emerald-700 dark:text-emerald-300 font-bold focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 dark:focus:ring-emerald-900/30 transition-all"
-                                                   placeholder="مثال: ملت، ملی..."
-                                                   :disabled="isReadOnly">
-                                            <svg class="absolute top-1/2 -translate-y-1/2 right-2.5 w-3.5 h-3.5 text-emerald-400 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
-                                        </div>
+                                <div class="relative overflow-hidden rounded-2xl p-3.5 border border-emerald-100 dark:border-emerald-800/30 bg-white dark:bg-gray-800 shadow-xs">
+                                    <label class="relative text-xs font-bold text-emerald-700 dark:text-emerald-300 flex items-center gap-1.5 mb-2">
+                                        بانک پیش‌فرض
+                                    </label>
+                                    <div class="relative">
+                                        <input type="text" x-model="chequeBankName"
+                                               class="w-full pl-3 pr-8 py-2 rounded-xl border-2 border-emerald-200 dark:border-emerald-700/50 bg-slate-50/50 dark:bg-gray-900 text-xs text-emerald-700 dark:text-emerald-300 font-bold focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 dark:focus:ring-emerald-900/30 transition-all"
+                                               placeholder="مثال: ملت، ملی..."
+                                               :disabled="isReadOnly">
+                                        <svg class="absolute top-1/2 -translate-y-1/2 right-2.5 w-3.5 h-3.5 text-emerald-400 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
                                     </div>
-                                    <p class="relative text-[10px] text-slate-500 dark:text-slate-400 mt-2 leading-tight">برای چک‌های خودکار</p>
                                 </div>
                             </div>
 
@@ -2892,6 +2903,7 @@ snapshots: existingPlan?.snapshots || [],
                 useInstallment: false,
                 selectedInstallmentOptionId: null,
                 selectedInstallmentMonths: null,
+                chequeIntervalMonths: 1,
                 numberOfCheques: 0,
                 dueDays: parsedDueDays,
                 selectedDueDay: parsedDueDays.length > 0 ? parsedDueDays[0] : null,
@@ -3121,6 +3133,49 @@ snapshots: existingPlan?.snapshots || [],
                     });
 
                     return commonMonths ? Array.from(commonMonths).sort((a, b) => a - b) : [];
+                },
+
+                get availableChequeIntervals() {
+                    const months = Number(this.selectedInstallmentMonths) || 0;
+                    if (months <= 0) return [];
+
+                    const intervals = [];
+                    for (let i = 1; i < months; i++) {
+                        if (months % i === 0) {
+                            const count = Math.round(months / i);
+                            if (count >= 2) {
+                                intervals.push({
+                                    interval: i,
+                                    count: count,
+                                    label: `هر ${this.toFa(i)} ماه یک‌بار (${this.toFa(count)} برگ چک)`
+                                });
+                            }
+                        }
+                    }
+
+                    if (intervals.length === 0 && months > 0) {
+                        intervals.push({
+                            interval: 1,
+                            count: months,
+                            label: `هر ۱ ماه یک‌بار (${this.toFa(months)} برگ چک)`
+                        });
+                    }
+
+                    return intervals;
+                },
+
+                get maxChequeInterval() {
+                    const list = this.availableChequeIntervals;
+                    return list.length > 0 ? Math.max(...list.map(o => o.interval)) : 1;
+                },
+
+                onChequeIntervalChange() {
+                    const months = Number(this.selectedInstallmentMonths) || 0;
+                    const interval = Number(this.chequeIntervalMonths) || 1;
+                    if (months > 0 && interval > 0) {
+                        this.numberOfCheques = Math.max(1, Math.round(months / interval));
+                    }
+                    this.generatedCheques = [];
                 },
 
                 getPlanInstallmentBrands() {
@@ -3397,6 +3452,9 @@ snapshots: existingPlan?.snapshots || [],
                             const computed = Math.round(span / (autoCheques.length - 1));
                             if (computed > 0) return computed;
                         }
+                    }
+                    if (this.chequeIntervalMonths > 0) {
+                        return this.chequeIntervalMonths;
                     }
                     // اگر هنوز چکی تولید نشده (مثلاً پیش از تولید، برای پیش‌نمایش فرمول)، از مدت کل ÷ تعداد چک استفاده می‌کنیم.
                     if (this.numberOfCheques > 0) {
@@ -3997,7 +4055,7 @@ snapshots: existingPlan?.snapshots || [],
 
                     const targetTotal = Math.max(0, this.targetChequesTotal);
                     let useBaseAmount = this.monthlyPaymentAmount;
-                    const intervalMonths = this.realIntervalMonths;
+                    const intervalMonths = this.chequeIntervalMonths || this.realIntervalMonths || 1;
 
                     const chequeCountForBase = Math.max(0, this.numberOfCheques - 1);
                     let sumBaseAmounts = useBaseAmount * chequeCountForBase;
@@ -4085,6 +4143,10 @@ snapshots: existingPlan?.snapshots || [],
                             this.selectedInstallmentOptionId = existingPlan.installment_option_id;
                             this.selectedInstallmentMonths = existingPlan.installment_months || null;
                             this.numberOfCheques = existingPlan.installment_count || existingPlan.installment_months || 0;
+                            if (this.selectedInstallmentMonths > 0 && this.numberOfCheques > 0) {
+                                const compInt = Math.round(this.selectedInstallmentMonths / this.numberOfCheques);
+                                this.chequeIntervalMonths = compInt > 0 ? compInt : 1;
+                            }
                             this.installmentStartDate = existingPlan.installment_start_date || '';
                             this.generatedCheques = existingPlan.generated_cheques || [];
                             if (this.isReadOnly) {
@@ -4107,16 +4169,23 @@ snapshots: existingPlan?.snapshots || [],
                         if (val) {
                             const months = this.availableInstallmentMonths;
                             this.selectedInstallmentMonths = months.length ? months[months.length - 1] : null;
+                            this.chequeIntervalMonths = 1;
                             this.numberOfCheques = this.selectedInstallmentMonths || 0;
                         } else {
                             this.selectedInstallmentMonths = null;
+                            this.chequeIntervalMonths = 1;
                             this.numberOfCheques = 0;
                         }
                         this.generatedCheques = [];
                     });
                     this.$watch('selectedInstallmentMonths', (val) => {
                         if (this.isInitializing) return;
-                        this.numberOfCheques = val || 0;
+                        const validIntervals = this.availableChequeIntervals.map(i => i.interval);
+                        if (!validIntervals.includes(this.chequeIntervalMonths)) {
+                            this.chequeIntervalMonths = 1;
+                        }
+                        const months = Number(val) || 0;
+                        this.numberOfCheques = months > 0 ? Math.max(1, Math.round(months / this.chequeIntervalMonths)) : 0;
                         this.generatedCheques = [];
                     });
                     this.$watch('numberOfCheques', () => {
@@ -4479,8 +4548,101 @@ snapshots: existingPlan?.snapshots || [],
                 },
 
                 get filteredServices() {
-                    const q = this.serviceSearch.toLowerCase();
-                    return this.services.filter(s => (!q || s.name.toLowerCase().includes(q)) && (this.filterCategory === null || (s.category_ids && s.category_ids.includes(this.filterCategory)) || s.category_id === this.filterCategory));
+                    const q = this.serviceSearch.toLowerCase().trim();
+                    return this.services
+                        .filter(s => (!q || s.name.toLowerCase().includes(q)) && (this.filterCategory === null || (s.category_ids && s.category_ids.includes(this.filterCategory)) || s.category_id === this.filterCategory))
+                        .sort((a, b) => {
+                            const catOrderA = a.category_sort_order ?? 0;
+                            const catOrderB = b.category_sort_order ?? 0;
+                            if (catOrderA !== catOrderB) return catOrderA - catOrderB;
+
+                            const svcOrderA = a.sort_order ?? 0;
+                            const svcOrderB = b.sort_order ?? 0;
+                            if (svcOrderA !== svcOrderB) return svcOrderA - svcOrderB;
+
+                            return (a.name || '').localeCompare(b.name || '', 'fa');
+                        });
+                },
+
+                serviceDragMoved: false,
+
+                initServiceDrag(slider) {
+                    if (!slider) return;
+                    let isDown = false;
+                    let startX = 0;
+                    let scrollLeft = 0;
+                    let moved = false;
+
+                    // Mouse drag support
+                    slider.addEventListener('mousedown', (e) => {
+                        if (e.button !== 0) return;
+                        isDown = true;
+                        moved = false;
+                        startX = e.pageX;
+                        scrollLeft = slider.scrollLeft;
+                    });
+
+                    window.addEventListener('mousemove', (e) => {
+                        if (!isDown) return;
+                        const dx = e.pageX - startX;
+                        if (Math.abs(dx) > 5) {
+                            moved = true;
+                            this.serviceDragMoved = true;
+                        }
+                        slider.scrollLeft = scrollLeft - dx;
+                    });
+
+                    const endMouseDrag = () => {
+                        if (!isDown) return;
+                        isDown = false;
+                        if (moved) {
+                            setTimeout(() => {
+                                this.serviceDragMoved = false;
+                            }, 80);
+                        } else {
+                            this.serviceDragMoved = false;
+                        }
+                    };
+
+                    window.addEventListener('mouseup', endMouseDrag);
+
+                    // Touch support for mobile devices
+                    let touchStartX = 0;
+                    let touchStartY = 0;
+                    slider.addEventListener('touchstart', (e) => {
+                        if (e.touches && e.touches.length > 0) {
+                            touchStartX = e.touches[0].pageX;
+                            touchStartY = e.touches[0].pageY;
+                            moved = false;
+                        }
+                    }, { passive: true });
+
+                    slider.addEventListener('touchmove', (e) => {
+                        if (e.touches && e.touches.length > 0) {
+                            const dx = e.touches[0].pageX - touchStartX;
+                            const dy = e.touches[0].pageY - touchStartY;
+                            if (Math.abs(dx) > 8) {
+                                moved = true;
+                                this.serviceDragMoved = true;
+                            }
+                        }
+                    }, { passive: true });
+
+                    slider.addEventListener('touchend', () => {
+                        if (moved) {
+                            setTimeout(() => {
+                                this.serviceDragMoved = false;
+                            }, 100);
+                        } else {
+                            this.serviceDragMoved = false;
+                        }
+                    }, { passive: true });
+                },
+
+                scrollServices(direction) {
+                    if (!this.$refs.serviceSlider) return;
+                    const amount = direction === 'left' ? -280 : 280;
+                    this.$refs.serviceSlider.scrollBy({ left: amount, behavior: 'smooth' });
                 },
 
                 filteredClients(search = '') {
@@ -4528,6 +4690,7 @@ snapshots: existingPlan?.snapshots || [],
 
                 selectService(service) {
                     if (this.isReadOnly) return;
+                    if (this.serviceDragMoved) return;
                     if (this.selectedService && this.selectedService.id === service.id) { this.cancelAssignment(); return; }
                     this.selectedService = service;
                 },

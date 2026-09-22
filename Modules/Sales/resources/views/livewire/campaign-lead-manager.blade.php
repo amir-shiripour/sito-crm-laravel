@@ -104,6 +104,46 @@
                 @endif
             </button>
         </div>
+
+        {{-- نوار وضعیت‌های سازنده کلاینت (سریع، تعاملی و چندانتخابی) --}}
+        @if(isset($clientStatuses) && $clientStatuses->isNotEmpty())
+            <div class="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700/50 flex items-center justify-between gap-3 overflow-x-auto custom-scrollbar">
+                <div class="flex items-center gap-2 text-xs shrink-0">
+                    <span class="text-[11px] font-bold text-gray-500 dark:text-gray-400 shrink-0 flex items-center gap-1.5">
+                        <svg class="w-3.5 h-3.5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        <span>وضعیت‌های کلاینت:</span>
+                    </span>
+
+                    @foreach($clientStatuses as $cStatus)
+                        @php
+                            $isSelected = in_array($cStatus->id, $selectedClientStatuses, true);
+                        @endphp
+                        <button type="button"
+                                wire:click="toggleClientStatus({{ $cStatus->id }})"
+                                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition-all active:scale-95 shadow-2xs {{ $isSelected ? 'bg-indigo-50/90 dark:bg-indigo-950/60 border-indigo-300 dark:border-indigo-700 text-indigo-900 dark:text-indigo-200 ring-1 ring-indigo-500/20' : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700/60' }}">
+                            <span class="w-2 h-2 rounded-full shrink-0" style="background-color: {{ $cStatus->color ?: '#6366f1' }}"></span>
+                            <span>{{ $cStatus->label }}</span>
+                            @if($isSelected)
+                                <svg class="w-3 h-3 text-indigo-600 dark:text-indigo-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+                                </svg>
+                            @endif
+                        </button>
+                    @endforeach
+
+                    <button type="button"
+                            wire:click="selectAllClientStatuses"
+                            class="text-[11px] font-bold text-gray-500 hover:text-indigo-600 dark:text-gray-400 dark:hover:text-indigo-300 px-2 py-1 transition-colors shrink-0">
+                        {{ count($selectedClientStatuses) === count($clientStatuses) ? 'حالت اول' : 'همه وضعیت‌ها' }}
+                    </button>
+                </div>
+
+                <a href="{{ route('user.settings.clients.statuses') }}" target="_blank" class="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline shrink-0 hidden md:inline-flex items-center gap-1">
+                    <span>تنظیم وضعیت‌ها</span>
+                    <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+                </a>
+            </div>
+        @endif
     </div>
 
     <!-- ==========================================
@@ -202,7 +242,7 @@
                         <label class="{{ $labelClass }}">جستجوی متن</label>
                         <div class="relative">
                             <input type="text" wire:model.live.debounce.300ms="search"
-                                   placeholder="نام، شماره تماس، ایمیل یا نام کاربری..."
+                                   placeholder="نام، شماره، کدملی، کد پرونده یا نام‌کاربری..."
                                    class="{{ $inputClass }} pl-9 pr-3.5">
                             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
                                 <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
@@ -254,6 +294,46 @@
                                 <option value="{{ $camp->id }}">{{ $camp->name }}</option>
                             @endforeach
                         </select>
+                    </div>
+                </div>
+
+                {{-- انتخاب چندگانه وضعیت‌های کلاینت (متصل به /user/settings/clients/statuses) --}}
+                <div class="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700/60">
+                    <div class="flex flex-wrap items-center justify-between gap-2.5 mb-2.5">
+                        <div class="flex items-center gap-2">
+                            <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                            <span class="text-xs font-bold text-gray-800 dark:text-gray-200">
+                                وضعیت‌های فعال کلاینت (فیلتر چندگانه وضعیت‌ساز):
+                            </span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button type="button" wire:click="selectAllClientStatuses" class="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline">
+                                {{ count($selectedClientStatuses) === count($clientStatuses) ? 'بازنشانی به حالت پیش‌فرض' : 'انتخاب همه وضعیت‌ها' }}
+                            </button>
+                            <a href="{{ route('user.settings.clients.statuses') }}" target="_blank" class="text-[11px] text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 inline-flex items-center gap-1">
+                                <span>مدیریت وضعیت‌ها</span>
+                                <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+                            </a>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-2 flex-wrap">
+                        @foreach($clientStatuses as $cStatus)
+                            @php
+                                $isActive = in_array($cStatus->id, $selectedClientStatuses, true);
+                            @endphp
+                            <button type="button"
+                                    wire:click="toggleClientStatus({{ $cStatus->id }})"
+                                    class="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold border transition-all active:scale-95 shadow-2xs {{ $isActive ? 'bg-white dark:bg-gray-900 border-indigo-500 text-indigo-700 dark:text-indigo-300 ring-2 ring-indigo-500/20' : 'bg-gray-50/70 dark:bg-gray-800/60 border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-white dark:hover:bg-gray-800' }}">
+                                <span class="w-2.5 h-2.5 rounded-full shrink-0" style="background-color: {{ $cStatus->color ?: '#6366f1' }}"></span>
+                                <span>{{ $cStatus->label }}</span>
+                                @if($isActive)
+                                    <svg class="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+                                    </svg>
+                                @endif
+                            </button>
+                        @endforeach
                     </div>
                 </div>
             </div>
@@ -341,8 +421,7 @@
                     <tr>
                         <th class="py-3.5 px-4 w-12 text-center">
                             <input type="checkbox" 
-                                   wire:click="toggleSelectAll(@js($pageKeys))"
-                                   {{ count(array_intersect($pageKeys, $selectedKeys)) === count($pageKeys) && count($pageKeys) > 0 ? 'checked' : '' }}
+                                   wire:model.live="selectAll"
                                    class="rounded text-indigo-600 focus:ring-indigo-500 border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 cursor-pointer">
                         </th>
                         <th class="py-3.5 px-4">مشخصات لید</th>
@@ -376,9 +455,21 @@
                                         <span class="font-bold text-gray-900 dark:text-white block">
                                             {{ $lead->name }}
                                         </span>
-                                        @if(!empty($lead->username))
-                                            <span class="text-[10px] text-gray-400 dark:text-gray-500 block font-sans" dir="ltr">@<span>{{ $lead->username }}</span></span>
-                                        @endif
+                                        <div class="flex items-center gap-1.5 flex-wrap mt-0.5">
+                                            @if(!empty($lead->case_number))
+                                                <span class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200/60 dark:border-amber-900/40 font-sans" title="کد پرونده">
+                                                    پرونده: {{ $lead->case_number }}
+                                                </span>
+                                            @endif
+                                            @if(!empty($lead->national_code))
+                                                <span class="text-[9px] font-medium px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 font-sans" title="کد ملی">
+                                                    کدملی: {{ $lead->national_code }}
+                                                </span>
+                                            @endif
+                                            @if(!empty($lead->username))
+                                                <span class="text-[10px] text-gray-400 dark:text-gray-500 font-sans" dir="ltr">@<span>{{ $lead->username }}</span></span>
+                                            @endif
+                                        </div>
                                     </div>
                                 </div>
                             </td>
@@ -419,12 +510,20 @@
                                         <span>{{ $lead->source_label }}</span>
                                     </span>
                                 @else
-                                    <span class="px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300 text-[10px] font-bold inline-flex items-center gap-1.5 border border-indigo-100/60 dark:border-indigo-900/40">
-                                        <svg class="w-3 h-3 text-indigo-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                                        </svg>
-                                        <span>{{ $lead->source_label }}</span>
-                                    </span>
+                                    <div class="flex items-center gap-1.5">
+                                        <span class="px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300 text-[10px] font-bold inline-flex items-center gap-1.5 border border-indigo-100/60 dark:border-indigo-900/40">
+                                            <svg class="w-3 h-3 text-indigo-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                            </svg>
+                                            <span>{{ $lead->source_label }}</span>
+                                        </span>
+                                        @if(!empty($lead->client_status_label))
+                                            <span class="px-2 py-0.5 rounded-md text-[9px] font-bold border border-gray-200/80 dark:border-gray-700/80 bg-gray-50/90 dark:bg-gray-800 text-gray-700 dark:text-gray-300 inline-flex items-center gap-1">
+                                                <span class="w-1.5 h-1.5 rounded-full shrink-0" style="background-color: {{ $lead->client_status_color ?? '#6366f1' }}"></span>
+                                                <span>{{ $lead->client_status_label }}</span>
+                                            </span>
+                                        @endif
+                                    </div>
                                 @endif
                             </td>
 

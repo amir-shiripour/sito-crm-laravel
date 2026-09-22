@@ -275,19 +275,30 @@ class CureController extends Controller
         ];
     }
 
-    public function index(Request $request)
+    /**
+     * Get sorted categories for cure treatment plan by display order.
+     */
+    private function getCategoriesForCure(BookingSetting $settings): \Illuminate\Database\Eloquent\Collection
     {
-        abort_unless(
-            auth()->user()->can('booking.cure.create') || auth()->user()->can('booking.cure.manage'),
-            403
-        );
-
-        $settings = BookingSetting::current();
-        $settings = $this->applyRoundingSettings($settings);
-        $installmentTypes = $this->getInstallmentTypes($settings);
-
         $allowedCategories = $settings->cure_allowed_categories ?? [];
-        $servicesQuery = BookingService::with(['category', 'categories'])->orderBy('name');
+        $categoriesQuery = BookingCategory::orderBy('sort_order', 'asc')
+            ->orderBy('name', 'asc');
+
+        if (!empty($allowedCategories)) {
+            $categoriesQuery->whereIn('id', $allowedCategories);
+        }
+
+        return $categoriesQuery->get();
+    }
+
+    /**
+     * Get sorted services for cure treatment plan ordered by category sort_order, category name, service sort_order, service name.
+     */
+    private function getServicesForCure(BookingSetting $settings): \Illuminate\Support\Collection
+    {
+        $allowedCategories = $settings->cure_allowed_categories ?? [];
+        $servicesQuery = BookingService::with(['category', 'categories']);
+
         if (!empty($allowedCategories)) {
             $servicesQuery->where(function ($q) use ($allowedCategories) {
                 $q->whereIn('category_id', $allowedCategories)
@@ -297,13 +308,20 @@ class CureController extends Controller
             });
         }
 
-        $services = $servicesQuery->get()
+        return $servicesQuery->get()
+            ->sortBy([
+                fn ($a, $b) => ($a->category?->sort_order ?? 999999) <=> ($b->category?->sort_order ?? 999999),
+                fn ($a, $b) => strcmp($a->category?->name ?? '', $b->category?->name ?? ''),
+                fn ($a, $b) => ($a->sort_order ?? 0) <=> ($b->sort_order ?? 0),
+                fn ($a, $b) => strcmp($a->name, $b->name),
+            ])
+            ->values()
             ->map(function ($s) {
                 $cp = $s->custom_prices ?? [];
                 if (!isset($cp['tabs']) && !isset($cp->tabs)) {
                     $cp = ['tabs' => []];
                 }
-                
+
                 $categoryIds = $s->categories->pluck('id')->toArray();
                 if ($s->category_id && !in_array((int)$s->category_id, $categoryIds)) {
                     $categoryIds[] = (int)$s->category_id;
@@ -318,15 +336,26 @@ class CureController extends Controller
                     'category_id' => $s->category_id,
                     'category_ids' => $categoryIds,
                     'category_name' => $s->category?->name,
+                    'category_sort_order' => (int)($s->category?->sort_order ?? 0),
+                    'sort_order' => (int)($s->sort_order ?? 0),
                     'custom_prices' => $cp,
                 ];
             });
+    }
 
-        $categoriesQuery = BookingCategory::orderBy('name');
-        if (!empty($allowedCategories)) {
-            $categoriesQuery->whereIn('id', $allowedCategories);
-        }
-        $categories = $categoriesQuery->get();
+    public function index(Request $request)
+    {
+        abort_unless(
+            auth()->user()->can('booking.cure.create') || auth()->user()->can('booking.cure.manage'),
+            403
+        );
+
+        $settings = BookingSetting::current();
+        $settings = $this->applyRoundingSettings($settings);
+        $installmentTypes = $this->getInstallmentTypes($settings);
+
+        $services = $this->getServicesForCure($settings);
+        $categories = $this->getCategoriesForCure($settings);
 
         $clients = [];
 
@@ -602,40 +631,8 @@ class CureController extends Controller
         $settings = $this->applyRoundingSettings($settings);
         $installmentTypes = $this->getInstallmentTypes($settings);
 
-        $allowedCategories = $settings->cure_allowed_categories ?? [];
-        $servicesQuery = BookingService::with('category')->orderBy('name');
-        if (!empty($allowedCategories)) {
-            $servicesQuery->where(function ($q) use ($allowedCategories) {
-                $q->whereIn('category_id', $allowedCategories)
-                  ->orWhereHas('categories', function ($q2) use ($allowedCategories) {
-                      $q2->whereIn('booking_categories.id', $allowedCategories);
-                  });
-            });
-        }
-
-        $services = $servicesQuery->get()
-            ->map(function ($s) {
-                $cp = $s->custom_prices ?? [];
-                if (!isset($cp['tabs']) && !isset($cp->tabs)) {
-                    $cp = ['tabs' => []];
-                }
-                return [
-                    'id' => $s->id,
-                    'name' => $s->name,
-                    'base_price' => (float)$s->base_price,
-                    'base_price_mode' => $s->base_price_mode ?? 'per_unit',
-                    'requires_tooth_selection' => $s->requires_tooth_selection !== false,
-                    'category_id' => $s->category_id,
-                    'category_name' => $s->category?->name,
-                    'custom_prices' => $cp,
-                ];
-            });
-
-        $categoriesQuery = BookingCategory::orderBy('name');
-        if (!empty($allowedCategories)) {
-            $categoriesQuery->whereIn('id', $allowedCategories);
-        }
-        $categories = $categoriesQuery->get();
+        $services = $this->getServicesForCure($settings);
+        $categories = $this->getCategoriesForCure($settings);
 
         $clients = [];
         if ($cure->client) {
@@ -787,40 +784,8 @@ class CureController extends Controller
 
         $installmentTypes = $this->getInstallmentTypes($settings);
 
-        $allowedCategories = $settings->cure_allowed_categories ?? [];
-        $servicesQuery = BookingService::with('category')->orderBy('name');
-        if (!empty($allowedCategories)) {
-            $servicesQuery->where(function ($q) use ($allowedCategories) {
-                $q->whereIn('category_id', $allowedCategories)
-                  ->orWhereHas('categories', function ($q2) use ($allowedCategories) {
-                      $q2->whereIn('booking_categories.id', $allowedCategories);
-                  });
-            });
-        }
-
-        $services = $servicesQuery->get()
-            ->map(function ($s) {
-                $cp = $s->custom_prices ?? [];
-                if (!isset($cp['tabs']) && !isset($cp->tabs)) {
-                    $cp = ['tabs' => []];
-                }
-                return [
-                    'id' => $s->id,
-                    'name' => $s->name,
-                    'base_price' => (float)$s->base_price,
-                    'base_price_mode' => $s->base_price_mode ?? 'per_unit',
-                    'requires_tooth_selection' => $s->requires_tooth_selection !== false,
-                    'category_id' => $s->category_id,
-                    'category_name' => $s->category?->name,
-                    'custom_prices' => $cp,
-                ];
-            });
-
-        $categoriesQuery = BookingCategory::orderBy('name');
-        if (!empty($allowedCategories)) {
-            $categoriesQuery->whereIn('id', $allowedCategories);
-        }
-        $categories = $categoriesQuery->get();
+        $services = $this->getServicesForCure($settings);
+        $categories = $this->getCategoriesForCure($settings);
 
         $clients = [];
         if ($cure->client) {
@@ -936,40 +901,8 @@ class CureController extends Controller
 
         $installmentTypes = $this->getInstallmentTypes($settings);
 
-        $allowedCategories = $settings->cure_allowed_categories ?? [];
-        $servicesQuery = BookingService::with('category')->orderBy('name');
-        if (!empty($allowedCategories)) {
-            $servicesQuery->where(function ($q) use ($allowedCategories) {
-                $q->whereIn('category_id', $allowedCategories)
-                  ->orWhereHas('categories', function ($q2) use ($allowedCategories) {
-                      $q2->whereIn('booking_categories.id', $allowedCategories);
-                  });
-            });
-        }
-
-        $services = $servicesQuery->get()
-            ->map(function ($s) {
-                $cp = $s->custom_prices ?? [];
-                if (!isset($cp['tabs']) && !isset($cp->tabs)) {
-                    $cp = ['tabs' => []];
-                }
-                return [
-                    'id' => $s->id,
-                    'name' => $s->name,
-                    'base_price' => (float)$s->base_price,
-                    'base_price_mode' => $s->base_price_mode ?? 'per_unit',
-                    'requires_tooth_selection' => $s->requires_tooth_selection !== false,
-                    'category_id' => $s->category_id,
-                    'category_name' => $s->category?->name,
-                    'custom_prices' => $cp,
-                ];
-            });
-
-        $categoriesQuery = BookingCategory::orderBy('name');
-        if (!empty($allowedCategories)) {
-            $categoriesQuery->whereIn('id', $allowedCategories);
-        }
-        $categories = $categoriesQuery->get();
+        $services = $this->getServicesForCure($settings);
+        $categories = $this->getCategoriesForCure($settings);
 
         $clients = [];
         if ($cure->client) {
