@@ -31,6 +31,7 @@ class CampaignLeadManager extends Component
     public bool $filterOpen = false;
 
     // Bulk selection & Actions
+    public bool $selectAll = false;
     public array $selectedKeys = [];
     public ?int $assignToUserId = null;
     public ?int $assignToCampaignId = null;
@@ -47,6 +48,9 @@ class CampaignLeadManager extends Component
     public string $new_status = 'pending';
     public ?string $new_note = null;
 
+    // Client Statuses multi-selection from /user/settings/clients/statuses
+    public array $selectedClientStatuses = [];
+
     protected $queryString = [
         'search' => ['except' => ''],
         'filterStatus' => ['except' => 'all'],
@@ -55,6 +59,39 @@ class CampaignLeadManager extends Component
         'filterCampaign' => ['except' => 'all'],
         'sort' => ['except' => 'newest'],
     ];
+
+    public function mount(): void
+    {
+        if (empty($this->selectedClientStatuses)) {
+            $firstStatus = ClientStatus::active()->first();
+            if ($firstStatus) {
+                $this->selectedClientStatuses = [$firstStatus->id];
+            }
+        }
+    }
+
+    public function toggleClientStatus(int $statusId): void
+    {
+        if (in_array($statusId, $this->selectedClientStatuses, true)) {
+            $this->selectedClientStatuses = array_values(array_diff($this->selectedClientStatuses, [$statusId]));
+        } else {
+            $this->selectedClientStatuses[] = $statusId;
+        }
+        $this->resetPage();
+    }
+
+    public function selectAllClientStatuses(): void
+    {
+        $allIds = ClientStatus::active()->pluck('id')->toArray();
+        if (count($this->selectedClientStatuses) === count($allIds)) {
+            // If all are selected, reset back to first status
+            $firstStatus = ClientStatus::active()->first();
+            $this->selectedClientStatuses = $firstStatus ? [$firstStatus->id] : [];
+        } else {
+            $this->selectedClientStatuses = $allIds;
+        }
+        $this->resetPage();
+    }
 
     public function updatedSearch(): void
     {
@@ -89,6 +126,8 @@ class CampaignLeadManager extends Component
     public function clearFilters(): void
     {
         $this->reset(['search', 'filterStatus', 'filterSource', 'filterAgent', 'filterCampaign', 'sort']);
+        $firstStatus = ClientStatus::active()->first();
+        $this->selectedClientStatuses = $firstStatus ? [$firstStatus->id] : [];
         $this->resetPage();
         $this->dispatch('notify', message: 'فیلترها با موفقیت پاک‌سازی شدند.', type: 'info');
     }
@@ -116,8 +155,15 @@ class CampaignLeadManager extends Component
             sum(case when status = 'converted' then 1 else 0 end) as converted
         ")->first();
 
-        // 2. Direct Clients Stats
+        // 2. Direct Clients Stats (based on selected client statuses)
         $clientQuery = Client::query();
+        if (!empty($this->selectedClientStatuses)) {
+            $clientQuery->whereIn('status_id', $this->selectedClientStatuses);
+        } else {
+            // If user explicitly deselected all statuses, show 0 direct clients
+            $clientQuery->whereRaw('1 = 0');
+        }
+
         $linkedClientIds = CampaignContact::whereNotNull('client_id')->pluck('client_id')->filter()->toArray();
         if (!empty($linkedClientIds)) {
             $clientQuery->whereNotIn('id', $linkedClientIds);
@@ -164,14 +210,28 @@ class CampaignLeadManager extends Component
         ];
     }
 
-    public function toggleSelectAll(array $pageKeys): void
+    public function updatedSelectAll($value): void
     {
-        $allSelected = count(array_intersect($pageKeys, $this->selectedKeys)) === count($pageKeys);
-        if ($allSelected) {
-            $this->selectedKeys = array_values(array_diff($this->selectedKeys, $pageKeys));
-        } else {
+        $pageKeys = $this->getCurrentPageKeys();
+        if ($value) {
             $this->selectedKeys = array_values(array_unique(array_merge($this->selectedKeys, $pageKeys)));
+        } else {
+            $this->selectedKeys = array_values(array_diff($this->selectedKeys, $pageKeys));
         }
+    }
+
+    public function updatedSelectedKeys(): void
+    {
+        $pageKeys = $this->getCurrentPageKeys();
+        $this->selectAll = !empty($pageKeys) && count(array_intersect($pageKeys, $this->selectedKeys)) === count($pageKeys);
+    }
+
+    protected function getCurrentPageKeys(): array
+    {
+        $items = $this->getFilteredLeadsQuery();
+        $perPage = 15;
+        $page = $this->getPage();
+        return $items->slice(($page - 1) * $perPage, $perPage)->pluck('key')->toArray();
     }
 
     public function bulkAssign(): void
@@ -616,8 +676,8 @@ class CampaignLeadManager extends Component
                 'added_at' => now(),
             ]);
         } else {
-            // Create Direct Client Lead
-            $prospectStatus = ClientStatus::whereIn('key', ['prospect', 'lead', 'prospects', 'leads'])->first();
+            // Create Direct Client Lead with Option 1 status from Client Statuses builder
+            $firstStatus = ClientStatus::active()->first();
             $meta = [
                 'sales_lead_status' => $this->new_status,
                 'lead_note' => $this->new_note,
@@ -632,7 +692,7 @@ class CampaignLeadManager extends Component
                 'full_name' => $this->new_name,
                 'phone' => $this->new_phone ?: null,
                 'email' => $this->new_email ?: null,
-                'status_id' => $prospectStatus?->id,
+                'status_id' => $firstStatus?->id,
                 'created_by' => auth()->id(),
                 'meta' => $meta,
                 'notes' => $this->new_note,
@@ -648,7 +708,7 @@ class CampaignLeadManager extends Component
         $this->dispatch('notify', message: 'لید جدید با موفقیت ثبت شد.', type: 'success');
     }
 
-    public function render()
+    protected function getFilteredLeadsQuery()
     {
         $items = collect();
 
@@ -706,17 +766,27 @@ class CampaignLeadManager extends Component
         if ($this->filterSource === 'all' || $this->filterSource === 'direct') {
             $clientQuery = Client::query()->with(['status', 'users']);
 
+            // Filter by selected Client Statuses from /user/settings/clients/statuses
+            if (!empty($this->selectedClientStatuses)) {
+                $clientQuery->whereIn('status_id', $this->selectedClientStatuses);
+            } else {
+                $clientQuery->whereRaw('1 = 0');
+            }
+
             $linkedClientIds = CampaignContact::whereNotNull('client_id')->pluck('client_id')->filter()->toArray();
             if (!empty($linkedClientIds)) {
                 $clientQuery->whereNotIn('id', $linkedClientIds);
             }
 
             if (!empty($this->search)) {
-                $clientQuery->where(function($q) {
-                    $q->where('full_name', 'like', '%' . $this->search . '%')
-                      ->orWhere('phone', 'like', '%' . $this->search . '%')
-                      ->orWhere('email', 'like', '%' . $this->search . '%')
-                      ->orWhere('username', 'like', '%' . $this->search . '%');
+                $search = trim($this->search);
+                $clientQuery->where(function($q) use ($search) {
+                    $q->where('full_name', 'like', "%{$search}%")
+                      ->orWhere('phone', 'like', "%{$search}%")
+                      ->orWhere('email', 'like', "%{$search}%")
+                      ->orWhere('username', 'like', "%{$search}%")
+                      ->orWhere('national_code', 'like', "%{$search}%")
+                      ->orWhere('case_number', 'like', "%{$search}%");
                 });
             }
 
@@ -765,10 +835,14 @@ class CampaignLeadManager extends Component
                             'username' => $cl->username,
                             'phone' => $cl->phone,
                             'email' => $cl->email,
+                            'national_code' => $cl->national_code,
+                            'case_number' => $cl->case_number,
                             'source_label' => 'مشتریان مستقیم',
                             'source_type' => 'direct',
                             'campaign_id' => null,
+                            'client_status_id' => $cl->status_id,
                             'client_status_label' => $cl->status?->label ?? $cl->status?->name,
+                            'client_status_color' => $cl->status?->color ?? '#3b82f6',
                             'status' => $status,
                             'is_converted' => ($status === 'converted'),
                             'date' => $cl->created_at,
@@ -781,12 +855,17 @@ class CampaignLeadManager extends Component
         }
 
         // Sorting
-        $sortedItems = match($this->sort) {
+        return match($this->sort) {
             'oldest' => $items->sortBy(fn($i) => $i->date ? $i->date->timestamp : 0)->values(),
             'name_asc' => $items->sortBy('name')->values(),
             'name_desc' => $items->sortByDesc('name')->values(),
             default => $items->sortByDesc(fn($i) => $i->date ? $i->date->timestamp : 0)->values(),
         };
+    }
+
+    public function render()
+    {
+        $sortedItems = $this->getFilteredLeadsQuery();
 
         // Pagination
         $perPage = 15;
@@ -804,14 +883,19 @@ class CampaignLeadManager extends Component
 
         $pageKeys = $sliced->pluck('key')->toArray();
 
+        // Synchronize selectAll based on current visible page items
+        $this->selectAll = !empty($pageKeys) && count(array_intersect($pageKeys, $this->selectedKeys)) === count($pageKeys);
+
         $salesAgents = User::orderBy('name')->get(['id', 'name']);
         $campaigns = Campaign::orderBy('name')->get(['id', 'name', 'status']);
+        $clientStatuses = ClientStatus::active()->get();
 
         return view('sales::livewire.campaign-lead-manager', [
             'leads' => $leads,
             'pageKeys' => $pageKeys,
             'salesAgents' => $salesAgents,
             'campaigns' => $campaigns,
+            'clientStatuses' => $clientStatuses,
             'leadStats' => $this->leadStats,
             'activeFiltersCount' => $this->activeFiltersCount,
         ]);
