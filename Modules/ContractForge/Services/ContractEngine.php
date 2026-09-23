@@ -64,19 +64,19 @@ class ContractEngine
     public static function generate(ContractTemplate $template, object $entity, ?int $ruleId = null, ?int $userId = null): Contract
     {
         $blocks = $template->blocks ?: [];
+        $number = self::generateNextContractNumber();
+        $extraTokens = ['contract_number' => $number];
         
         if (!empty($blocks)) {
-            $renderedBody = self::renderBlocks($blocks, $entity);
+            $renderedBody = self::renderBlocks($blocks, $entity, $extraTokens);
         } else {
-            $renderedBody = TokenResolver::resolve($template->body ?? '', $entity);
+            $renderedBody = TokenResolver::resolve($template->body ?? '', $entity, $extraTokens);
         }
 
         // Add template css if exists
         if (!empty($template->css_style)) {
             $renderedBody = "<style>{$template->css_style}</style>\n" . $renderedBody;
         }
-
-        $number = self::generateNextContractNumber();
 
         $clientId = method_exists($entity, 'getContractClientId') ? $entity->getContractClientId() : null;
         $title = $template->name . ' - ' . (method_exists($entity, 'getContractTitle') ? $entity->getContractTitle() : '');
@@ -101,23 +101,54 @@ class ContractEngine
     /**
      * Render blocks with tokens substituted.
      */
-    public static function renderBlocks(array $blocks, object $entity): string
+    public static function renderBlocks(array $blocks, object $entity, array $extraTokens = []): string
     {
         $html = '<div class="contract-container" style="direction: rtl; text-align: right; font-family: inherit;">';
         foreach ($blocks as $block) {
             $type = $block['type'] ?? 'text';
             switch ($type) {
                 case 'header':
-                    $title = TokenResolver::resolve($block['title'] ?? '', $entity);
-                    $html .= "<div class='contract-header text-center mb-6' style='text-align: center; margin-bottom: 24px;'><h2 class='text-xl font-bold' style='font-size: 20px; font-weight: bold;'>{$title}</h2></div>";
+                    $title = TokenResolver::resolve($block['title'] ?? '', $entity, $extraTokens);
+                    $subtitle = TokenResolver::resolve($block['subtitle'] ?? '', $entity, $extraTokens);
+                    $align = in_array($block['align'] ?? '', ['right', 'left', 'center']) ? $block['align'] : 'center';
+                    $hasBorder = !isset($block['show_border']) || filter_var($block['show_border'], FILTER_VALIDATE_BOOLEAN) || $block['show_border'] === '1' || $block['show_border'] === 1;
+                    $borderClass = $hasBorder ? 'border-b border-gray-200 dark:border-gray-700 pb-3' : 'pb-1';
+                    $borderStyle = $hasBorder ? 'border-bottom: 1px solid #e2e8f0; padding-bottom: 12px;' : 'padding-bottom: 4px;';
+                    $subtitleHtml = !empty($subtitle)
+                        ? "<div class='contract-header-subtitle mt-1.5 text-sm text-gray-600 dark:text-gray-400' style='margin-top: 6px; font-size: 13px; color: #64748b; font-weight: normal; text-align: {$align};'>{$subtitle}</div>"
+                        : '';
+                    $html .= "<div class='contract-header mb-6 {$borderClass}' style='text-align: {$align}; margin-bottom: 24px; {$borderStyle}'>
+                        <h2 class='text-xl font-bold text-gray-900 dark:text-gray-100' style='font-size: 20px; font-weight: bold; margin: 0;'>{$title}</h2>
+                        {$subtitleHtml}
+                    </div>";
+                    break;
+                case 'heading':
+                    $title = TokenResolver::resolve($block['title'] ?? '', $entity, $extraTokens);
+                    $level = in_array($block['level'] ?? '', ['h2', 'h3']) ? $block['level'] : 'h2';
+                    $align = in_array($block['align'] ?? '', ['right', 'center', 'left']) ? $block['align'] : 'right';
+                    $showBorder = !isset($block['show_border']) || filter_var($block['show_border'], FILTER_VALIDATE_BOOLEAN) || $block['show_border'] === '1' || $block['show_border'] === 1;
+                    $fontSize = $level === 'h2' ? '16px' : '14px';
+                    $borderStyle = '';
+                    if ($showBorder) {
+                        $borderStyle = $level === 'h2'
+                            ? 'border-right: 4px solid #4f46e5; padding-right: 8px;'
+                            : 'border-right: 3px solid #6366f1; padding-right: 6px;';
+                    }
+                    $html .= "<div class='contract-heading my-4' style='text-align: {$align}; margin: 18px 0 10px;'>
+                        <{$level} class='font-bold text-gray-900 dark:text-gray-100' style='font-size: {$fontSize}; font-weight: bold; {$borderStyle} margin: 0; display: inline-block;'>{$title}</{$level}>
+                    </div>";
                     break;
                 case 'text':
-                    $content = TokenResolver::resolve($block['content'] ?? '', $entity);
-                    $html .= "<div class='contract-text mb-4 leading-relaxed text-justify' style='margin-bottom: 16px; line-height: 1.8; text-align: justify; white-space: pre-wrap;'>" . $content . "</div>";
+                    $content = TokenResolver::resolve($block['content'] ?? '', $entity, $extraTokens);
+                    $align = in_array($block['align'] ?? '', ['right', 'center', 'left', 'justify']) ? $block['align'] : 'justify';
+                    $html .= "<div class='contract-text mb-4 leading-relaxed' style='margin-bottom: 16px; line-height: 1.8; text-align: {$align}; white-space: pre-wrap;'>" . $content . "</div>";
                     break;
                 case 'table':
                     $tokenKey = $block['content'] ?? '';
                     $tokens = method_exists($entity, 'getContractTokens') ? $entity->getContractTokens() : [];
+                    if (!empty($extraTokens)) {
+                        $tokens = array_merge($tokens, $extraTokens);
+                    }
                     $tableHtml = $tokens[$tokenKey] ?? '';
                     $html .= "<div class='contract-table my-4' style='margin: 16px 0;'>{$tableHtml}</div>";
                     break;
@@ -125,8 +156,9 @@ class ContractEngine
                     $html .= "<div class='page-break' style='page-break-after: always;'></div>";
                     break;
                 case 'footer':
-                    $content = TokenResolver::resolve($block['content'] ?? '', $entity);
-                    $html .= "<div class='contract-footer mt-8 border-t pt-4 text-sm text-gray-500' style='margin-top: 32px; border-top: 1px solid #e5e7eb; padding-top: 16px; font-size: 14px; color: #6b7280; white-space: pre-wrap;'>{$content}</div>";
+                    $content = TokenResolver::resolve($block['content'] ?? '', $entity, $extraTokens);
+                    $align = in_array($block['align'] ?? '', ['right', 'center', 'left', 'justify']) ? $block['align'] : 'center';
+                    $html .= "<div class='contract-footer mt-8 border-t pt-4 text-sm text-gray-600 dark:text-gray-400' style='margin-top: 32px; border-top: 1px solid #e5e7eb; padding-top: 16px; font-size: 14px; text-align: {$align}; white-space: pre-wrap;'>{$content}</div>";
                     break;
             }
         }

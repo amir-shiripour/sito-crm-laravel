@@ -71,7 +71,7 @@
                     <tbody class="divide-y divide-gray-200 dark:divide-gray-700 text-sm">
                         @forelse($contracts as $contract)
                             <tr class="hover:bg-gray-50/50 dark:hover:bg-gray-900/10 transition-colors">
-                                <td class="p-4 font-mono text-xs font-bold text-gray-900 dark:text-gray-100">
+                                <td class="p-4 font-sans text-xs font-bold text-gray-900 dark:text-gray-100">
                                     {{ $contract->contract_number }}
                                 </td>
                                 <td class="p-4 text-gray-700 dark:text-gray-300 font-medium">

@@ -20,29 +20,45 @@
                 $catSortMap[$c->name] = (int) ($c->sort_order ?? 0);
             }
 
-            // Group services by category name for display (supports multiple categories per service)
+            // Group services by category name for display
             $groupedArray = [];
+            $filteredCategoryId = request('category_id');
+            $filteredCategoryName = null;
+            if ($filteredCategoryId) {
+                $foundCat = $categories->firstWhere('id', (int)$filteredCategoryId);
+                $filteredCategoryName = $foundCat?->name;
+            }
+
             foreach ($services->getCollection() as $service) {
-                if ($service->categories && $service->categories->count() > 0) {
-                    foreach ($service->categories as $cat) {
-                        $groupedArray[$cat->name][] = $service;
-                        if (!isset($catSortMap[$cat->name])) {
-                            $catSortMap[$cat->name] = (int) ($cat->sort_order ?? 0);
-                        }
-                    }
-                } elseif ($service->category) {
-                    // Fallback to single category if no pivot is found
-                    $groupedArray[$service->category->name][] = $service;
-                    if (!isset($catSortMap[$service->category->name])) {
-                        $catSortMap[$service->category->name] = (int) ($service->category->sort_order ?? 0);
-                    }
+                if ($filteredCategoryName) {
+                    // When user filtered by a specific category, only group under that category!
+                    $groupedArray[$filteredCategoryName][] = $service;
                 } else {
-                    $groupedArray['بدون دسته‌بندی'][] = $service;
+                    if ($service->categories && $service->categories->count() > 0) {
+                        foreach ($service->categories as $cat) {
+                            $groupedArray[$cat->name][] = $service;
+                            if (!isset($catSortMap[$cat->name])) {
+                                $catSortMap[$cat->name] = (int) ($cat->sort_order ?? 0);
+                            }
+                        }
+                    } elseif ($service->category) {
+                        // Fallback to single category if no pivot is found
+                        $groupedArray[$service->category->name][] = $service;
+                        if (!isset($catSortMap[$service->category->name])) {
+                            $catSortMap[$service->category->name] = (int) ($service->category->sort_order ?? 0);
+                        }
+                    } else {
+                        $groupedArray['بدون دسته‌بندی'][] = $service;
+                    }
                 }
             }
 
             // Sort grouped categories according to category sort_order, with 'بدون دسته‌بندی' at the end
-            uksort($groupedArray, function ($a, $b) use ($catSortMap) {
+            uksort($groupedArray, function ($a, $b) use ($catSortMap, $filteredCategoryName) {
+                if ($filteredCategoryName) {
+                    if ($a === $filteredCategoryName) return -1;
+                    if ($b === $filteredCategoryName) return 1;
+                }
                 if ($a === 'بدون دسته‌بندی') return 1;
                 if ($b === 'بدون دسته‌بندی') return -1;
                 $orderA = $catSortMap[$a] ?? 0;
@@ -91,7 +107,7 @@
 
         <!-- Filter Bar -->
         <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700/60 shadow-sm p-4">
-            <form method="GET" action="{{ route('user.booking.services.index') }}" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <form method="GET" action="{{ route('user.booking.services.index') }}" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
                 
                 <!-- Search -->
                 <div class="relative">
@@ -99,12 +115,12 @@
                         <svg class="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                     </div>
                     <input type="text" name="search" value="{{ request('search') }}" placeholder="جستجوی نام یا کد {{ $serviceLabel }}..."
-                        class="w-full pl-3 pr-10 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 text-sm transition-colors">
+                        class="w-full pl-3 pr-10 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 text-sm transition-colors font-sans">
                 </div>
 
                 <!-- Category Filter -->
                 <div>
-                    <select name="category_id" class="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 text-sm transition-colors">
+                    <select name="category_id" class="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 text-sm transition-colors font-sans">
                         <option value="">همه دسته‌بندی‌ها</option>
                         @foreach($categories as $category)
                             <option value="{{ $category->id }}" {{ request('category_id') == $category->id ? 'selected' : '' }}>
@@ -116,21 +132,30 @@
 
                 <!-- Status Filter -->
                 <div>
-                    <select name="status" class="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 text-sm transition-colors">
+                    <select name="status" class="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 text-sm transition-colors font-sans">
                         <option value="">همه وضعیت‌ها</option>
                         <option value="ACTIVE" {{ request('status') === 'ACTIVE' ? 'selected' : '' }}>فعال</option>
                         <option value="INACTIVE" {{ request('status') === 'INACTIVE' ? 'selected' : '' }}>غیرفعال</option>
                     </select>
                 </div>
 
+                <!-- Per Page -->
+                <div>
+                    <select name="per_page" class="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 text-sm transition-colors font-sans">
+                        <option value="20" {{ request('per_page', 20) == 20 ? 'selected' : '' }}>۲۰ مورد در هر صفحه</option>
+                        <option value="50" {{ request('per_page') == 50 ? 'selected' : '' }}>۵۰ مورد در هر صفحه</option>
+                        <option value="100" {{ request('per_page') == 100 ? 'selected' : '' }}>۱۰۰ مورد در هر صفحه</option>
+                    </select>
+                </div>
+
                 <!-- Action Buttons -->
                 <div class="flex items-center gap-2">
-                    <button type="submit" class="flex-1 inline-flex justify-center items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-800 dark:bg-slate-700 hover:bg-slate-900 dark:hover:bg-slate-600 text-white text-sm font-medium transition-colors">
+                    <button type="submit" class="flex-1 inline-flex justify-center items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-800 dark:bg-slate-700 hover:bg-slate-900 dark:hover:bg-slate-600 text-white text-sm font-medium transition-colors cursor-pointer">
                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
                         فیلتر
                     </button>
-                    @if(request()->hasAny(['search', 'category_id', 'status']))
-                        <a href="{{ route('user.booking.services.index') }}" class="inline-flex items-center justify-center p-2.5 rounded-xl bg-rose-50 text-rose-600 hover:bg-rose-100 dark:bg-rose-500/10 dark:text-rose-400 dark:hover:bg-rose-500/20 transition-colors" title="حذف فیلترها">
+                    @if(request()->hasAny(['search', 'category_id', 'status', 'per_page']))
+                        <a href="{{ route('user.booking.services.index') }}" class="inline-flex items-center justify-center p-2.5 rounded-xl bg-rose-50 text-rose-600 hover:bg-rose-100 dark:bg-rose-500/10 dark:text-rose-400 dark:hover:bg-rose-500/20 transition-colors cursor-pointer" title="حذف فیلترها">
                             <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
                         </a>
                     @endif
@@ -274,11 +299,27 @@
             </div>
         @endforelse
 
-        <!-- Pagination -->
-        @if($services->hasPages())
-            <div class="flex justify-center mt-8">
-                {{ $services->links() }}
+        <!-- Pagination & Summary -->
+        <div class="mt-8 flex flex-col sm:flex-row items-center justify-between gap-4 bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700/60 shadow-xs font-sans">
+            <div class="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                @if($services->total() > 0)
+                    نمایش
+                    <span class="font-bold text-slate-800 dark:text-slate-200">{{ $services->firstItem() }}</span>
+                    تا
+                    <span class="font-bold text-slate-800 dark:text-slate-200">{{ $services->lastItem() }}</span>
+                    از مجموع
+                    <span class="font-bold text-indigo-600 dark:text-indigo-400">{{ $services->total() }}</span>
+                    {{ $serviceLabel }}
+                @else
+                    موردی برای نمایش وجود ندارد
+                @endif
             </div>
-        @endif
+
+            @if($services->hasPages())
+                <div class="overflow-x-auto sc-thin">
+                    {{ $services->links() }}
+                </div>
+            @endif
+        </div>
     </div>
 @endsection

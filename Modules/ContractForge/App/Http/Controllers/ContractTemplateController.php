@@ -14,14 +14,19 @@ class ContractTemplateController extends Controller
         return view('contractforge::user.templates.index', compact('templates'));
     }
 
-    public function create()
+    public function create(Request $request)
     {
         $entityTypes = [
             'treatment_plan' => 'طرح درمان (نوبت‌دهی)'
         ];
         $tokens = $this->getAvailableTokens('treatment_plan');
 
-        return view('contractforge::user.templates.create', compact('entityTypes', 'tokens'));
+        $sourceTemplate = null;
+        if ($request->filled('duplicate_id')) {
+            $sourceTemplate = ContractTemplate::find($request->duplicate_id);
+        }
+
+        return view('contractforge::user.templates.create', compact('entityTypes', 'tokens', 'sourceTemplate'));
     }
 
     public function store(Request $request)
@@ -95,27 +100,62 @@ class ContractTemplateController extends Controller
     {
         if ($entityType === 'treatment_plan') {
             return [
+                'contract_number' => 'شماره یکتای قرارداد',
                 'patient_name' => 'نام بیمار',
+                'patient_phone' => 'شماره تماس بیمار',
+                'patient_national_code' => 'کد ملی بیمار',
+                'patient_case_number' => 'شماره پرونده بیمار',
+                'patient_email' => 'ایمیل بیمار',
                 'plan_id' => 'شناسه طرح درمان',
                 'plan_status' => 'وضعیت طرح درمان',
-                'plan_total' => 'مبلغ کل طرح درمان',
-                'plan_final_payable' => 'مبلغ نهایی قابل پرداخت',
-                'plan_discount' => 'مبلغ تخفیف',
-                'plan_tax' => 'مبلغ مالیات',
-                'plan_notes' => 'یادداشت‌های طرح درمان',
+                'plan_date' => 'تاریخ طرح درمان (جلالی)',
                 'today_jalali' => 'تاریخ امروز (جلالی)',
                 'system_currency' => 'واحد پول سیستم (تومان/ریال)',
-                'total_cheques' => 'تعداد چک‌های دریافتی',
-                'total_installment_stages' => 'تعداد مراحل پرداخت',
+                'clinic_name' => 'نام کلینیک / مجموعه',
+                'clinic_phone' => 'شماره تماس کلینیک',
+                'clinic_address' => 'آدرس کلینیک',
+                
+                // Monetary amounts in numbers
+                'plan_total' => 'مبلغ کل طرح درمان (عدد)',
+                'plan_final_payable' => 'مبلغ نهایی قابل پرداخت (عدد)',
+                'plan_discount' => 'مبلغ تخفیف (عدد)',
+                'plan_tax' => 'مبلغ مالیات (عدد)',
+                
+                // Monetary amounts in words
+                'plan_total_in_words' => 'مبلغ کل به حروف (مثال: سیصد میلیون تومان)',
+                'plan_final_payable_in_words' => 'مبلغ نهایی قابل پرداخت به حروف',
+                'plan_discount_in_words' => 'مبلغ تخفیف به حروف',
+                'plan_tax_in_words' => 'مبلغ مالیات به حروف',
+                'plan_notes' => 'یادداشت‌های طرح درمان',
+                
+                // Installment tokens
                 'installment_option_title' => 'عنوان روش پرداخت اقساطی',
-                'installment_down_payment' => 'مبلغ پیش‌پرداخت',
-                'installment_monthly_amount' => 'مبلغ اقساط ماهیانه',
+                'installment_down_payment' => 'مبلغ پیش‌پرداخت (عدد)',
+                'installment_down_payment_in_words' => 'مبلغ پیش‌پرداخت به حروف',
+                'installment_down_payment_percent' => 'درصد پیش‌پرداخت (فقط عدد، مثال: 20)',
+                'installment_down_payment_percent_label' => 'درصد پیش‌پرداخت با پسوند (مثال: ۲۰ درصد)',
+                'installment_fee_value' => 'مبلغ سود / کارمزد اقساط (عدد)',
+                'installment_fee_value_in_words' => 'مبلغ سود / کارمزد اقساط به حروف',
+                'installment_fee_percent' => 'درصد سود / کارمزد اقساط (فقط عدد، مثال: 4)',
+                'installment_fee_percent_label' => 'درصد سود / کارمزد اقساط با پسوند (مثال: ۴ درصد)',
+                'installment_profit_amount' => 'مبلغ سود اقساط (مترادف fee_value)',
+                'installment_profit_in_words' => 'مبلغ سود اقساط به حروف',
+                'installment_profit_percent' => 'درصد سود اقساط (فقط عدد)',
+                'installment_profit_percent_label' => 'درصد سود اقساط با پسوند (مثال: ۴ درصد)',
+                'installment_monthly_amount' => 'مبلغ هر قسط ماهیانه (عدد)',
+                'installment_monthly_amount_in_words' => 'مبلغ هر قسط به حروف',
+                'installment_remaining_amount' => 'مبلغ باقیمانده اقساط (عدد)',
+                'installment_remaining_amount_in_words' => 'مبلغ باقیمانده اقساط به حروف',
                 'installment_months' => 'تعداد ماه‌های اقساط',
                 'installment_due_day' => 'روز سررسید اقساط',
                 'installment_start_date' => 'تاریخ شروع اقساط',
-                'plan_items_table' => 'جدول آیتم‌های طرح درمان (HTML)',
-                'installment_breakdown_table' => 'جدول اقساط طرح درمان (HTML)',
+                'total_cheques' => 'تعداد چک‌های دریافتی',
+                'total_installment_stages' => 'تعداد مراحل پرداخت',
+                
+                // Tables
+                'plan_items_table' => 'جدول خدمات و ایمپلنت‌ها (HTML)',
                 'cheques_table' => 'جدول چک‌های دریافتی (HTML)',
+                'installment_breakdown_table' => 'جدول اقساط و مراحل پرداخت (HTML)',
             ];
         }
         return [];

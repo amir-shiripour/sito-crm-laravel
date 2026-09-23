@@ -176,7 +176,7 @@
                             if (client.national_code) subDetails.push(`کدملی: ${client.national_code}`);
                             if (client.username) subDetails.push(`کاربری: ${client.username}`);
                             
-                            const detailsStr = subDetails.length > 0 ? ` <span class="text-gray-400 text-[10px] font-mono">(${subDetails.join(' - ')})</span>` : '';
+                            const detailsStr = subDetails.length > 0 ? ` <span class="text-gray-400 text-[10px] font-sans">(${subDetails.join(' - ')})</span>` : '';
                             
                             option.innerHTML = `<div class="font-semibold text-gray-900 dark:text-gray-100">${client.full_name}</div>${detailsStr}`;
                             option.onclick = () => {
@@ -251,7 +251,7 @@
                 html = `
                     <div class="flex items-center gap-1.5 flex-1 min-w-[200px] relative">
                         <input type="hidden" id="hidden_value_${rowNum}" name="conditions[rules][${rowNum}][value]" value="${cleanValue}">
-                        <input type="text" data-row="${rowNum}" value="${formattedValue}" oninput="formatPriceInput(this)" class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-1.5 text-xs text-gray-900 dark:text-gray-100 placeholder-gray-400 font-mono text-left" placeholder="مثال: 50,000,000">
+                        <input type="text" data-row="${rowNum}" value="${formattedValue}" oninput="formatPriceInput(this)" class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-1.5 text-xs text-gray-900 dark:text-gray-100 placeholder-gray-400 font-sans text-left" placeholder="مثال: 50,000,000">
                         <span class="text-xs text-gray-500 font-bold whitespace-nowrap">${sysCurrency}</span>
                     </div>
                 `;
