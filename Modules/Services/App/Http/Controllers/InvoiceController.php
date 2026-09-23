@@ -242,6 +242,7 @@ class InvoiceController extends Controller
 
     private function parseNumber($val): float
     {
+        if (is_array($val)) return 0.0;
         if (empty($val) && $val !== '0' && $val !== 0) return 0.0;
         if (is_numeric($val)) return floatval($val);
 
@@ -1847,11 +1848,12 @@ class InvoiceController extends Controller
             : collect();
 
         foreach ($items as $item) {
-            $qty = (float)$item['quantity'];
-            $price = (int)$item['unit_price'];
-            $discount = (int)($item['discount'] ?? 0);
+            $qty = $this->parseNumber($item['quantity'] ?? 1);
+            if ($qty <= 0) $qty = 1;
+            $price = (int)round($this->parseNumber($item['unit_price'] ?? 0));
+            $discount = (int)round($this->parseNumber($item['discount'] ?? 0));
             $billingPeriod = $item['billing_period'] ?? null;
-            $itemTaxPercent = $item['tax_percent'] ?? 0;
+            $itemTaxPercent = $this->parseNumber($item['tax_percent'] ?? 0);
 
             $customFieldsValues = $item['custom_fields'] ?? [];
             $customFieldsOld = $item['custom_fields_old'] ?? [];
@@ -1906,9 +1908,9 @@ class InvoiceController extends Controller
                         foreach ($val as $selectedOpt) {
                             $optQty = 1;
                             if (isset($customFieldsQuantities[$field->id]) && is_array($customFieldsQuantities[$field->id])) {
-                                $optQty = (float)($customFieldsQuantities[$field->id][$selectedOpt] ?? $qty);
+                                $optQty = $this->parseNumber($customFieldsQuantities[$field->id][$selectedOpt] ?? $qty);
                             } elseif (isset($customFieldsQuantities[$field->id])) {
-                                $optQty = (float)$customFieldsQuantities[$field->id];
+                                $optQty = $this->parseNumber($customFieldsQuantities[$field->id]);
                             } else {
                                 $optQty = $qty;
                             }
@@ -1917,18 +1919,22 @@ class InvoiceController extends Controller
                             $defaultOptPrice = $field->getOptionPrice($selectedOpt, $price, $useDef);
 
                             if (isset($customFieldsPrices[$field->id]) && is_array($customFieldsPrices[$field->id]) && isset($customFieldsPrices[$field->id][$selectedOpt]) && $customFieldsPrices[$field->id][$selectedOpt] !== '') {
-                                $optAmount = (float)$customFieldsPrices[$field->id][$selectedOpt];
+                                $optAmount = $this->parseNumber($customFieldsPrices[$field->id][$selectedOpt]);
+                                $customFieldsPrices[$field->id][$selectedOpt] = $optAmount;
                             } elseif (isset($customFieldsPrices[$field->id]) && !is_array($customFieldsPrices[$field->id]) && $customFieldsPrices[$field->id] !== '') {
-                                $optAmount = (float)$customFieldsPrices[$field->id];
+                                $optAmount = $this->parseNumber($customFieldsPrices[$field->id]);
+                                $customFieldsPrices[$field->id] = $optAmount;
                             } else {
                                 $optAmount = (float)$defaultOptPrice;
                             }
 
                             $optDiscount = 0;
                             if (isset($customFieldsDiscounts[$field->id]) && is_array($customFieldsDiscounts[$field->id])) {
-                                $optDiscount = (int)($customFieldsDiscounts[$field->id][$selectedOpt] ?? 0);
+                                $optDiscount = (int)round($this->parseNumber($customFieldsDiscounts[$field->id][$selectedOpt] ?? 0));
+                                $customFieldsDiscounts[$field->id][$selectedOpt] = $optDiscount;
                             } elseif (isset($customFieldsDiscounts[$field->id])) {
-                                $optDiscount = (int)$customFieldsDiscounts[$field->id];
+                                $optDiscount = (int)round($this->parseNumber($customFieldsDiscounts[$field->id]));
+                                $customFieldsDiscounts[$field->id] = $optDiscount;
                             }
 
                             $cfRowGross = $optAmount * $optQty;
@@ -1938,16 +1944,16 @@ class InvoiceController extends Controller
                             if ($taxMode === 'item' && $taxApplyCustomFields) {
                                 $cfTaxPercent = 0;
                                 if (isset($customFieldsTaxes[$field->id]) && is_array($customFieldsTaxes[$field->id])) {
-                                    $cfTaxPercent = (float)($customFieldsTaxes[$field->id][$selectedOpt] ?? 0);
+                                    $cfTaxPercent = (float)$this->parseNumber($customFieldsTaxes[$field->id][$selectedOpt] ?? 0);
                                 } elseif (isset($customFieldsTaxes[$field->id])) {
-                                    $cfTaxPercent = (float)$customFieldsTaxes[$field->id];
+                                    $cfTaxPercent = (float)$this->parseNumber($customFieldsTaxes[$field->id]);
                                 }
                                 $customFieldsTaxTotal += $cfRowGross * ($cfTaxPercent / 100);
                             }
                         }
                     } else {
                         $isSelected = match ($field->type) {
-                            'checkbox' => in_array($val, [true, '1', 1], true),
+                            'checkbox' => in_array($val, [true, '1', 1, 'true'], true),
                             'number' => $val !== null && $val !== '' && $this->parseNumber($val) > 0,
                             default => ($val !== null && $val !== ''),
                         };
@@ -1975,19 +1981,24 @@ class InvoiceController extends Controller
                         }
 
                         if (isset($customFieldsPrices[$field->id]) && !is_array($customFieldsPrices[$field->id]) && $customFieldsPrices[$field->id] !== '') {
-                            $amount = (float)$customFieldsPrices[$field->id];
+                            $amount = $this->parseNumber($customFieldsPrices[$field->id]);
+                            $customFieldsPrices[$field->id] = $amount;
                         } else {
                             $amount = (float)$defaultFieldPrice;
                         }
 
-                        $fieldDiscount = (int)($customFieldsDiscounts[$field->id] ?? 0);
+                        $fieldDiscount = 0;
+                        if (isset($customFieldsDiscounts[$field->id])) {
+                            $fieldDiscount = (int)round($this->parseNumber($customFieldsDiscounts[$field->id]));
+                            $customFieldsDiscounts[$field->id] = $fieldDiscount;
+                        }
 
                         $cfRowGross = $amount * $fieldQty;
                         $customFieldsGrossTotal += $cfRowGross;
                         $customFieldsDiscountTotal += $fieldDiscount;
 
                         if ($taxMode === 'item' && $taxApplyCustomFields) {
-                            $cfTaxPercent = (float)($customFieldsTaxes[$field->id] ?? 0);
+                            $cfTaxPercent = (float)$this->parseNumber($customFieldsTaxes[$field->id] ?? 0);
                             $customFieldsTaxTotal += $cfRowGross * ($cfTaxPercent / 100);
                         }
                     }
