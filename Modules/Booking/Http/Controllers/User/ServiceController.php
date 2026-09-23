@@ -66,13 +66,18 @@ class ServiceController extends Controller
             $query->where('booking_services.status', $status);
         }
 
+        $perPage = (int) $request->input('per_page', 20);
+        if (!in_array($perPage, [10, 20, 50, 100], true)) {
+            $perPage = 20;
+        }
+
         $services = $query->orderByRaw('CASE WHEN booking_categories.id IS NULL THEN 1 ELSE 0 END')
             ->orderBy('booking_categories.sort_order', 'asc')
             ->orderBy('booking_categories.name', 'asc')
             ->orderBy('booking_services.sort_order', 'asc')
             ->orderBy('booking_services.name', 'asc')
             ->orderByDesc('booking_services.id')
-            ->paginate(20)
+            ->paginate($perPage)
             ->withQueryString();
 
         $editableServiceIds = [];

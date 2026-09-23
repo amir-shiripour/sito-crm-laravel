@@ -5,8 +5,21 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ $contract->contract_number }} - {{ $contract->title }}</title>
     <style>
+        @font-face {
+            font-family: 'IRANYekanX';
+            src: url('data:font/ttf;base64,{{ base64_encode(file_get_contents(resource_path('fonts/iranYekanX/IRANYekanMediumFaNum.ttf'))) }}') format('truetype');
+            font-weight: normal;
+            font-style: normal;
+        }
+        @font-face {
+            font-family: 'IRANYekanX';
+            src: url('data:font/ttf;base64,{{ base64_encode(file_get_contents(resource_path('fonts/iranYekanX/IRANYekanMediumFaNum.ttf'))) }}') format('truetype');
+            font-weight: bold;
+            font-style: normal;
+        }
+
         body {
-            font-family: Tahoma, Arial, sans-serif;
+            font-family: 'IRANYekanX', Tahoma, Arial, sans-serif;
             font-size: 13px;
             line-height: 1.8;
             color: #1f2937;
@@ -23,6 +36,7 @@
             border: 1px solid #d1d5db;
             padding: 8px 10px;
             text-align: right;
+            font-family: 'IRANYekanX', Tahoma, Arial, sans-serif;
         }
         th {
             background-color: #f3f4f6;

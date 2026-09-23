@@ -286,12 +286,26 @@
                 if (!t.brand_configs || typeof t.brand_configs !== 'object') t.brand_configs = {};
                 if (!Array.isArray(t.price_tiers)) t.price_tiers = [];
                 if (!t.default_tier_config || typeof t.default_tier_config !== 'object') {
-                    t.default_tier_config = { max_months: '', payment_stages: '', down_payments_map: {}, fees_map: {}, calculation_mode: 'default', custom_formula: '' };
+                    t.default_tier_config = { max_months: '', payment_stages: '', down_payments_map: {}, fees_map: {}, calculation_mode: 'default', custom_formula: '', allowed_intervals: [], default_interval: '' };
                 }
                 if (!t.default_tier_config.down_payments_map) t.default_tier_config.down_payments_map = {};
                 if (!t.default_tier_config.fees_map) t.default_tier_config.fees_map = {};
                 if (!t.default_tier_config.calculation_mode) t.default_tier_config.calculation_mode = 'default';
                 if (!t.default_tier_config.custom_formula) t.default_tier_config.custom_formula = '';
+                if (!Array.isArray(t.default_tier_config.allowed_intervals)) {
+                    if (Array.isArray(t.allowed_intervals)) {
+                        t.default_tier_config.allowed_intervals = t.allowed_intervals;
+                    } else if (typeof t.default_tier_config.allowed_intervals === 'string') {
+                        try { t.default_tier_config.allowed_intervals = JSON.parse(t.default_tier_config.allowed_intervals); } catch(e) { t.default_tier_config.allowed_intervals = []; }
+                    } else if (typeof t.allowed_intervals === 'string') {
+                        try { t.default_tier_config.allowed_intervals = JSON.parse(t.allowed_intervals); } catch(e) { t.default_tier_config.allowed_intervals = []; }
+                    } else {
+                        t.default_tier_config.allowed_intervals = [];
+                    }
+                }
+                if (t.default_tier_config.default_interval === undefined || t.default_tier_config.default_interval === null) {
+                    t.default_tier_config.default_interval = t.default_interval || '';
+                }
 
                 // Ensure tiers have IDs
                 t.price_tiers.forEach(pt => {
@@ -413,6 +427,31 @@
                 if (!cfg.calculation_mode) cfg.calculation_mode = 'default';
                 if (!cfg.custom_formula) cfg.custom_formula = '';
 
+                const allowedIntervals = Array.isArray(cfg.allowed_intervals) ? cfg.allowed_intervals.map(Number) : [];
+                const intervalOptions = [
+                    { val: 1, label: '۱ ماهه (ماهانه)' },
+                    { val: 2, label: '۲ ماه یک‌بار' },
+                    { val: 3, label: '۳ ماهه (فصلی)' },
+                    { val: 4, label: '۴ ماه یک‌بار' },
+                    { val: 6, label: '۶ ماه یک‌بار' },
+                    { val: 12, label: '۱۲ ماهه (سالانه)' }
+                ];
+
+                const intervalCheckboxesHtml = intervalOptions.map(opt => {
+                    const isChecked = allowedIntervals.includes(opt.val);
+                    return `
+                    <label class="flex items-center gap-2 p-2 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 cursor-pointer hover:border-indigo-300 dark:hover:border-indigo-600 transition-colors">
+                        <input type="checkbox" 
+                               data-default-tier-interval="${opt.val}"
+                               name="installment_types[${planIndex}][default_tier_config][allowed_intervals][]" 
+                               value="${opt.val}"
+                               class="w-3.5 h-3.5 rounded border-gray-300 dark:border-gray-600 text-indigo-600 focus:ring-indigo-500 dark:bg-gray-900 cursor-pointer"
+                               ${isChecked ? 'checked' : ''}>
+                        <span class="text-[11px] font-bold text-gray-700 dark:text-gray-300">${opt.label}</span>
+                    </label>
+                    `;
+                }).join('');
+
                 container.innerHTML = `
                 <div class="grid grid-cols-3 gap-3 mb-3">
                     <div>
@@ -455,6 +494,36 @@
                             <button type="button" data-insert-token="months" class="token-insert-btn bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 px-1.5 py-0.5 rounded text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition-colors font-sans font-medium" title="تعداد ماه‌ها">months</button>
                             <button type="button" data-insert-token="installments" class="token-insert-btn bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 px-1.5 py-0.5 rounded text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition-colors font-sans font-medium" title="تعداد اقساط">installments</button>
                         </div>
+                    </div>
+                </div>
+
+                <!-- تنظیم فواصل مجاز چک‌ها -->
+                <div class="mb-3 p-3 bg-blue-50/50 dark:bg-blue-950/20 rounded-xl border border-blue-100 dark:border-blue-900/30">
+                    <div class="flex items-center justify-between mb-2">
+                        <label class="block text-[10px] font-bold text-blue-800 dark:text-blue-300">فواصل مجاز برای صدور چک‌ها</label>
+                        <span class="text-[9px] text-blue-600 dark:text-blue-400 font-medium">گزینه‌های قابل انتخاب در طرح درمان</span>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-2.5">
+                        ${intervalCheckboxesHtml}
+                    </div>
+
+                    <div class="flex flex-col sm:flex-row sm:items-center gap-3 pt-2 border-t border-blue-100/80 dark:border-blue-900/30">
+                        <div class="w-full sm:w-1/2">
+                            <label class="block text-[9px] font-bold text-gray-600 dark:text-gray-400 mb-1">فاصله پیش‌فرض چک‌ها:</label>
+                            <select data-default-tier-field="default_interval" name="installment_types[${planIndex}][default_tier_config][default_interval]" class="${inputClass} text-xs py-1.5">
+                                <option value="" ${!cfg.default_interval ? 'selected' : ''}>خودکار (اولین فاصله مجاز یا ۱ ماه)</option>
+                                <option value="1" ${cfg.default_interval == 1 ? 'selected' : ''}>هر ۱ ماه یک‌بار</option>
+                                <option value="2" ${cfg.default_interval == 2 ? 'selected' : ''}>هر ۲ ماه یک‌بار</option>
+                                <option value="3" ${cfg.default_interval == 3 ? 'selected' : ''}>هر ۳ ماه یک‌بار</option>
+                                <option value="4" ${cfg.default_interval == 4 ? 'selected' : ''}>هر ۴ ماه یک‌بار</option>
+                                <option value="6" ${cfg.default_interval == 6 ? 'selected' : ''}>هر ۶ ماه یک‌بار</option>
+                                <option value="12" ${cfg.default_interval == 12 ? 'selected' : ''}>هر ۱۲ ماه یک‌بار</option>
+                            </select>
+                        </div>
+                        <p class="w-full sm:w-1/2 text-[9px] text-gray-500 dark:text-gray-400 leading-tight">
+                            در صورت عدم انتخاب فواصل، تمام مقسوم‌علیه‌های بخش‌پذیر بر ماه‌های طرح به طور خودکار فعال می‌شوند.
+                        </p>
                     </div>
                 </div>
 
@@ -902,7 +971,21 @@
             }
 
             addInstallmentBtn.addEventListener('click', () => {
-                installmentTypes.push({id: generateUniqueId('inst'), brand_configs: {}, price_tiers: [], default_tier_config: { max_months: '', payment_stages: '', down_payments_map: {}, fees_map: {}, calculation_mode: 'default', custom_formula: '' }});
+                installmentTypes.push({
+                    id: generateUniqueId('inst'),
+                    brand_configs: {},
+                    price_tiers: [],
+                    default_tier_config: {
+                        max_months: '',
+                        payment_stages: '',
+                        down_payments_map: {},
+                        fees_map: {},
+                        calculation_mode: 'default',
+                        custom_formula: '',
+                        allowed_intervals: [],
+                        default_interval: ''
+                    }
+                });
                 renderInstallmentTypes();
             });
 
@@ -1168,13 +1251,44 @@
                     if (card) {
                         const index = parseInt(card.getAttribute('data-index'));
                         if (!installmentTypes[index].default_tier_config) {
-                            installmentTypes[index].default_tier_config = { max_months: '', payment_stages: '', down_payments_map: {}, fees_map: {}, calculation_mode: 'default', custom_formula: '' };
+                            installmentTypes[index].default_tier_config = { max_months: '', payment_stages: '', down_payments_map: {}, fees_map: {}, calculation_mode: 'default', custom_formula: '', allowed_intervals: [], default_interval: '' };
                         }
                         installmentTypes[index].default_tier_config.calculation_mode = e.target.value;
                         const wrapper = card.querySelector('.custom-formula-wrapper');
                         if (wrapper) {
                             wrapper.style.display = e.target.value === 'custom' ? 'block' : 'none';
                         }
+                    }
+                    return;
+                }
+
+                if (e.target.hasAttribute('data-default-tier-interval')) {
+                    const card = e.target.closest('[data-index]');
+                    if (card) {
+                        const index = parseInt(card.getAttribute('data-index'));
+                        if (!installmentTypes[index].default_tier_config) {
+                            installmentTypes[index].default_tier_config = { max_months: '', payment_stages: '', down_payments_map: {}, fees_map: {}, calculation_mode: 'default', custom_formula: '', allowed_intervals: [], default_interval: '' };
+                        }
+                        const checkedIntervals = [];
+                        card.querySelectorAll('[data-default-tier-interval]:checked').forEach(cb => {
+                            checkedIntervals.push(parseInt(cb.value, 10));
+                        });
+                        installmentTypes[index].default_tier_config.allowed_intervals = checkedIntervals;
+                        installmentTypes[index].allowed_intervals = checkedIntervals;
+                    }
+                    return;
+                }
+
+                if (e.target.getAttribute('data-default-tier-field') === 'default_interval') {
+                    const card = e.target.closest('[data-index]');
+                    if (card) {
+                        const index = parseInt(card.getAttribute('data-index'));
+                        if (!installmentTypes[index].default_tier_config) {
+                            installmentTypes[index].default_tier_config = { max_months: '', payment_stages: '', down_payments_map: {}, fees_map: {}, calculation_mode: 'default', custom_formula: '', allowed_intervals: [], default_interval: '' };
+                        }
+                        const val = e.target.value ? parseInt(e.target.value, 10) : '';
+                        installmentTypes[index].default_tier_config.default_interval = val;
+                        installmentTypes[index].default_interval = val;
                     }
                     return;
                 }

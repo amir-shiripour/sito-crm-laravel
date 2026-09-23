@@ -743,14 +743,14 @@
                         </div>
                     </div>
                     @if(count($categories ?? []) > 1)
-                    <div class="flex gap-2 overflow-x-auto sc-thin pb-1" style="touch-action: pan-x pan-y; -webkit-overflow-scrolling: touch; overscroll-behavior-x: contain;">
-                        <button @click="filterCategory = null"
+                    <div dir="rtl" class="flex flex-row justify-start gap-2 overflow-x-auto sc-thin pb-1" style="direction: rtl !important; touch-action: pan-x pan-y; -webkit-overflow-scrolling: touch; overscroll-behavior-x: contain;">
+                        <button @click="setCategoryFilter(null)"
                                 :class="filterCategory === null ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-300/40' : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'"
                                 class="px-4 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all shrink-0">
                             همه
                         </button>
                         @foreach($categories ?? [] as $cat)
-                            <button @click="filterCategory = {{ $cat->id }}"
+                            <button @click="setCategoryFilter({{ $cat->id }})"
                                     :class="filterCategory === {{ $cat->id }} ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-300/40' : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'"
                                     class="px-4 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all shrink-0">
                                 {{ $cat->name }}
@@ -761,8 +761,9 @@
                 </div>
                 <div x-ref="serviceSlider"
                      x-init="initServiceDrag($refs.serviceSlider)"
-                     class="px-4 py-4 flex gap-3 overflow-x-auto sc-thin select-none cursor-grab active:cursor-grabbing"
-                     style="touch-action: pan-x pan-y; -webkit-overflow-scrolling: touch; overscroll-behavior-x: contain;">
+                     dir="rtl"
+                     class="px-4 py-4 flex flex-row justify-start items-stretch gap-3 overflow-x-auto sc-thin select-none cursor-grab active:cursor-grabbing"
+                     style="direction: rtl !important; text-align: right; touch-action: pan-x pan-y; -webkit-overflow-scrolling: touch; overscroll-behavior-x: contain;">
                     <template x-for="service in filteredServices" :key="service.id">
                         <div @click="selectService(service)" :class="['svc-card', selectedService && selectedService.id === service.id ? 'svc-active' : '']">
                             <span x-show="servicePlanCounts[service.id]" class="svc-badge" x-text="servicePlanCounts[service.id]"></span>
@@ -3139,9 +3140,27 @@ snapshots: existingPlan?.snapshots || [],
                     const months = Number(this.selectedInstallmentMonths) || 0;
                     if (months <= 0) return [];
 
+                    const opt = this.selectedInstallmentOption;
+                    let allowed = null;
+                    if (opt) {
+                        let raw = opt.default_tier_config?.allowed_intervals;
+                        if (raw === undefined || raw === null || (Array.isArray(raw) && raw.length === 0)) {
+                            raw = opt.allowed_intervals;
+                        }
+                        if (typeof raw === 'string') {
+                            try { raw = JSON.parse(raw); } catch(e) { raw = null; }
+                        }
+                        if (Array.isArray(raw) && raw.length > 0) {
+                            allowed = raw.map(Number).filter(n => !isNaN(n) && n > 0);
+                        }
+                    }
+
                     const intervals = [];
                     for (let i = 1; i < months; i++) {
                         if (months % i === 0) {
+                            if (allowed !== null && allowed.length > 0 && !allowed.includes(i)) {
+                                continue;
+                            }
                             const count = Math.round(months / i);
                             if (count >= 2) {
                                 intervals.push({
@@ -3154,10 +3173,12 @@ snapshots: existingPlan?.snapshots || [],
                     }
 
                     if (intervals.length === 0 && months > 0) {
+                        const fallbackInterval = (allowed && allowed.length > 0 && allowed.includes(months)) ? months : 1;
+                        const count = Math.max(1, Math.round(months / fallbackInterval));
                         intervals.push({
-                            interval: 1,
-                            count: months,
-                            label: `هر ۱ ماه یک‌بار (${this.toFa(months)} برگ چک)`
+                            interval: fallbackInterval,
+                            count: count,
+                            label: fallbackInterval === 1 ? `هر ۱ ماه یک‌بار (${this.toFa(count)} برگ چک)` : `هر ${this.toFa(fallbackInterval)} ماه یک‌بار (${this.toFa(count)} برگ چک)`
                         });
                     }
 
@@ -4169,8 +4190,15 @@ snapshots: existingPlan?.snapshots || [],
                         if (val) {
                             const months = this.availableInstallmentMonths;
                             this.selectedInstallmentMonths = months.length ? months[months.length - 1] : null;
-                            this.chequeIntervalMonths = 1;
-                            this.numberOfCheques = this.selectedInstallmentMonths || 0;
+                            const opt = this.selectedInstallmentOption;
+                            const defInt = Number(opt?.default_tier_config?.default_interval || opt?.default_interval) || 0;
+                            const validIntervals = this.availableChequeIntervals.map(i => i.interval);
+                            if (defInt > 0 && validIntervals.includes(defInt)) {
+                                this.chequeIntervalMonths = defInt;
+                            } else {
+                                this.chequeIntervalMonths = validIntervals.length ? validIntervals[0] : 1;
+                            }
+                            this.numberOfCheques = this.selectedInstallmentMonths > 0 ? Math.max(1, Math.round(this.selectedInstallmentMonths / this.chequeIntervalMonths)) : 0;
                         } else {
                             this.selectedInstallmentMonths = null;
                             this.chequeIntervalMonths = 1;
@@ -4180,9 +4208,13 @@ snapshots: existingPlan?.snapshots || [],
                     });
                     this.$watch('selectedInstallmentMonths', (val) => {
                         if (this.isInitializing) return;
+                        const opt = this.selectedInstallmentOption;
+                        const defInt = Number(opt?.default_tier_config?.default_interval || opt?.default_interval) || 0;
                         const validIntervals = this.availableChequeIntervals.map(i => i.interval);
-                        if (!validIntervals.includes(this.chequeIntervalMonths)) {
-                            this.chequeIntervalMonths = 1;
+                        if (defInt > 0 && validIntervals.includes(defInt)) {
+                            this.chequeIntervalMonths = defInt;
+                        } else if (!validIntervals.includes(this.chequeIntervalMonths)) {
+                            this.chequeIntervalMonths = validIntervals.length ? validIntervals[0] : 1;
                         }
                         const months = Number(val) || 0;
                         this.numberOfCheques = months > 0 ? Math.max(1, Math.round(months / this.chequeIntervalMonths)) : 0;
@@ -4637,6 +4669,19 @@ snapshots: existingPlan?.snapshots || [],
                             this.serviceDragMoved = false;
                         }
                     }, { passive: true });
+
+                    this.$nextTick(() => {
+                        slider.scrollLeft = 0;
+                    });
+                },
+
+                setCategoryFilter(catId) {
+                    this.filterCategory = catId;
+                    this.$nextTick(() => {
+                        if (this.$refs.serviceSlider) {
+                            this.$refs.serviceSlider.scrollLeft = 0;
+                        }
+                    });
                 },
 
                 scrollServices(direction) {

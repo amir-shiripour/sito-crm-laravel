@@ -24,7 +24,7 @@
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div class="md:col-span-2">
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">فرمت شماره‌گذاری قرارداد</label>
-                            <input type="text" name="number_format" value="{{ $settings['number_format'] }}" required class="w-full font-mono rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-4 py-2.5 text-sm">
+                            <input type="text" name="number_format" value="{{ $settings['number_format'] }}" required class="w-full font-sans rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-4 py-2.5 text-sm">
                             <p class="text-[10px] text-gray-400 mt-1.5 leading-relaxed">
                                 توکن‌های مجاز: <br>
                                 <code class="bg-gray-100 dark:bg-gray-900 px-1 py-0.5 rounded">{PREFIX}</code> پیشوند قرارداد<br>

@@ -34,7 +34,7 @@
     <div class="space-y-6">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm p-5">
             <div>
-                <span class="text-xs font-mono font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 px-2.5 py-1 rounded-lg">
+                <span class="text-xs font-sans font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 px-2.5 py-1 rounded-lg">
                     {{ $contract->contract_number }}
                 </span>
                 <h1 class="text-xl font-bold text-gray-900 dark:text-gray-100 mt-2">{{ $contract->title }}</h1>
@@ -154,7 +154,7 @@
                         @if($contract->signed_at)
                             <div class="flex justify-between py-2.5">
                                 <span class="text-gray-500">تاریخ امضا:</span>
-                                <span class="text-gray-900 dark:text-gray-100 font-mono">{{ \Morilog\Jalali\Jalalian::fromCarbon($contract->signed_at)->format('Y/m/d H:i') }}</span>
+                                <span class="text-gray-900 dark:text-gray-100 font-sans">{{ \Morilog\Jalali\Jalalian::fromCarbon($contract->signed_at)->format('Y/m/d H:i') }}</span>
                             </div>
                         @endif
 

@@ -64,7 +64,7 @@
                                         <span class="text-xs text-gray-400">همه وضعیت‌ها</span>
                                     @endif
                                 </td>
-                                <td class="p-4 font-mono text-xs">
+                                <td class="p-4 font-sans text-xs">
                                     {{ $rule->priority }}
                                 </td>
                                 <td class="p-4">
