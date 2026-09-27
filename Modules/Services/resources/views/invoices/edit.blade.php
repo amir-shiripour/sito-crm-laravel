@@ -232,7 +232,7 @@
             'unit'        => $item->unit ?? 'عدد',
             'quantity'    => (float) $item->quantity,
             'unit_price'  => (float) $item->unit_price,
-            'discount'    => (float) $item->discount,
+            'discount'    => min(max(0, (float) $item->discount), max(0, (float) $item->quantity * (float) $item->unit_price)),
             'billing_period' => $meta['billing_period'] ?? null,
             '_priceUnlocked' => ($mode === 'manual'),
             'service_custom_fields' => $customFieldsArray,
@@ -240,12 +240,16 @@
                 $vals = $meta['custom_fields'] ?? [];
                 $qtys = $meta['custom_fields_quantities'] ?? [];
                 foreach ($customFieldsArray as $cf) {
-                    if (($cf['type'] ?? '') === 'number') {
-                        $id = $cf['id'];
+                    $id = $cf['id'];
+                    $type = $cf['type'] ?? '';
+                    if ($type === 'number') {
                         $v = isset($vals[$id]) ? (float)str_replace(['۰','۱','۲','۳','۴','۵','۶','۷','۸','۹'], ['0','1','2','3','4','5','6','7','8','9'], (string)$vals[$id]) : 0;
                         $q = isset($qtys[$id]) ? (float)str_replace(['۰','۱','۲','۳','۴','۵','۶','۷','۸','۹'], ['0','1','2','3','4','5','6','7','8','9'], (string)$qtys[$id]) : 0;
                         if ($v > 0) $vals[$id] = $v;
                         elseif ($q > 0) $vals[$id] = $q;
+                    } elseif ($type === 'checkbox') {
+                        $v = $vals[$id] ?? null;
+                        $vals[$id] = ($v === true || $v === 1 || $v === '1' || $v === 'true' || $v === 'on');
                     }
                 }
                 return $vals;
@@ -266,7 +270,34 @@
                 return $qtys;
             })(),
             'custom_field_custom_prices' => $meta['custom_fields_prices'] ?? [],
-            'custom_field_custom_discounts' => $meta['custom_fields_discounts'] ?? [],
+            'custom_field_custom_discounts' => (function() use ($meta) {
+                $prices = $meta['custom_fields_prices'] ?? [];
+                $qtys = $meta['custom_fields_quantities'] ?? [];
+                $discs = $meta['custom_fields_discounts'] ?? [];
+                if (!is_array($discs)) return [];
+                foreach ($discs as $k => $v) {
+                    if (is_array($v)) {
+                        foreach ($v as $subK => $subV) {
+                            $p = isset($prices[$k][$subK]) ? (float)$prices[$k][$subK] : (float)($prices[$k] ?? 0);
+                            $q = isset($qtys[$k][$subK]) ? (float)$qtys[$k][$subK] : (float)($qtys[$k] ?? 1);
+                            if ($q <= 0) $q = 1;
+                            $rowGross = $p * $q;
+                            if ((float)$subV > $rowGross) {
+                                $discs[$k][$subK] = $rowGross;
+                            }
+                        }
+                    } else {
+                        $p = isset($prices[$k]) ? (float)(is_array($prices[$k]) ? 0 : $prices[$k]) : 0;
+                        $q = isset($qtys[$k]) ? (float)(is_array($qtys[$k]) ? 1 : $qtys[$k]) : 1;
+                        if ($q <= 0) $q = 1;
+                        $rowGross = $p * $q;
+                        if ((float)$v > $rowGross && $rowGross > 0) {
+                            $discs[$k] = $rowGross;
+                        }
+                    }
+                }
+                return $discs;
+            })(),
             'custom_field_tax_percents' => $meta['custom_fields_taxes'] ?? [],
             'custom_field_use_default_price' => $meta['custom_fields_use_default_price'] ?? [],
             'tax_percent' => $item->tax_percent > 0 ? (float) $item->tax_percent : ($defaultTaxRate ?? 9),
@@ -650,9 +681,14 @@
                                                 :class="isDebtInvoiceAdded(inv.id) ? 'bg-emerald-50/70 border-emerald-200 dark:bg-emerald-950/20 dark:border-emerald-800/50' : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700/80 shadow-xs'">
                                                 <div class="min-w-0 flex-1">
                                                     <div class="flex items-center gap-2 flex-wrap">
-                                                        <span
-                                                            class="font-black text-xs sm:text-sm text-gray-800 dark:text-gray-100 tabular-nums"
-                                                            x-text="'فاکتور #' + inv.invoice_number"></span>
+                                                        <a :href="inv.url || ('{{ url('user/services/invoices') }}/' + inv.id)" target="_blank"
+                                                           class="font-black text-xs sm:text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 hover:underline flex items-center gap-1.5 tabular-nums transition-colors group cursor-pointer"
+                                                           title="مشاهده فاکتور در برگه جدید">
+                                                            <span x-text="'فاکتور #' + inv.invoice_number"></span>
+                                                            <svg class="w-3.5 h-3.5 opacity-70 group-hover:opacity-100 transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+                                                            </svg>
+                                                        </a>
                                                         <template x-if="inv.issue_date_jalali">
                                                             <span
                                                                 class="text-[10px] text-gray-400 dark:text-gray-500 tabular-nums"
@@ -668,6 +704,14 @@
                                                     </div>
                                                 </div>
                                                 <div class="shrink-0 ms-3 flex items-center gap-1.5">
+                                                    <a :href="inv.url || ('{{ url('user/services/invoices') }}/' + inv.id)" target="_blank"
+                                                       class="p-1.5 rounded-lg text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 border border-gray-200/60 dark:border-gray-700/60 hover:border-indigo-200 dark:hover:border-indigo-800/40 transition-colors cursor-pointer"
+                                                       title="مشاهده فاکتور در تب جدید">
+                                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                                            <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                                                        </svg>
+                                                    </a>
                                                     <template x-if="isDebtInvoiceAdded(inv.id)">
                                                         <div class="flex items-center gap-1.5">
                                                             <span
@@ -1104,8 +1148,8 @@
                                         <div class="relative w-full">
                                             <input type="text"
                                                    x-effect="if(document.activeElement !== $el) $el.value = formatPriceInput(item.unit_price)"
-                                                   @input="if(item.mode !== 'debt' && !item._isDebt) { let val = parsePriceInput($event.target.value); item.unit_price = val; $event.target.value = val ? formatPriceInput(val) : ''; }"
-                                                   @blur="$el.value = formatPriceInput(item.unit_price)"
+                                                   @input="if(item.mode !== 'debt' && !item._isDebt) { let val = parsePriceInput($event.target.value); item.unit_price = val; let qty = Number(toEnglishNum(String(item.quantity || 1)).replace(/[^\d.]/g, '')) || 1; let maxDisc = val * qty; if(Number(item.discount || 0) > maxDisc) { item.discount = maxDisc; } $event.target.value = val ? formatPriceInput(val) : ''; }"
+                                                   @blur="let up = Number(toEnglishNum(String(item.unit_price || 0)).replace(/[^\d.]/g, '')) || 0; let qty = Number(toEnglishNum(String(item.quantity || 1)).replace(/[^\d.]/g, '')) || 1; let maxDisc = up * qty; if(Number(item.discount || 0) > maxDisc) { item.discount = maxDisc; } $el.value = formatPriceInput(item.unit_price); if(typeof calculateTotals === 'function') calculateTotals();"
                                                    :name="'items[' + index + '][unit_price]'" required
                                                    :readonly="(item.mode === 'debt' || item._isDebt) || (item.mode !== 'manual' && (item.service_id || item.product_id) && !item._priceUnlocked)"
                                                    :class="((item.mode === 'debt' || item._isDebt) || (item.mode !== 'manual' && (item.service_id || item.product_id) && !item._priceUnlocked)) ? 'bg-gray-100/70 dark:bg-gray-800/60 cursor-not-allowed text-gray-500 dark:text-gray-400' : ''"
@@ -1135,8 +1179,11 @@
                                 </td>
                                 <td class="px-4 py-3 align-top">
                                     <div class="relative w-full">
-                                        <input type="text" :value="formatPriceInput(item.discount)"
-                                               @input="let val = parsePriceInput($event.target.value); item.discount = val; $event.target.value = val ? formatPriceInput(val) : '';"
+                                        <input type="text"
+                                               x-effect="let up = Number(toEnglishNum(String(item.unit_price || 0)).replace(/[^\d.]/g, '')) || 0; let qty = Number(toEnglishNum(String(item.quantity || 1)).replace(/[^\d.]/g, '')) || 1; let maxDisc = up * qty; if(Number(item.discount || 0) > maxDisc) item.discount = maxDisc; if(document.activeElement !== $el) $el.value = formatPriceInput(item.discount);"
+                                               :value="formatPriceInput(item.discount)"
+                                               @input="let val = parsePriceInput($event.target.value); let up = Number(toEnglishNum(String(item.unit_price || 0)).replace(/[^\d.]/g, '')) || 0; let qty = Number(toEnglishNum(String(item.quantity || 1)).replace(/[^\d.]/g, '')) || 1; let maxDisc = up * qty; if(val > maxDisc) { val = maxDisc; } item.discount = val; $event.target.value = val ? formatPriceInput(val) : '';"
+                                               @blur="let up = Number(toEnglishNum(String(item.unit_price || 0)).replace(/[^\d.]/g, '')) || 0; let qty = Number(toEnglishNum(String(item.quantity || 1)).replace(/[^\d.]/g, '')) || 1; let maxDisc = up * qty; if(Number(item.discount || 0) > maxDisc) { item.discount = maxDisc; } $el.value = formatPriceInput(item.discount); if(typeof calculateTotals === 'function') calculateTotals();"
                                                :name="'items[' + index + '][discount]'"
                                                class="{{ $inputClass }} py-2.5 text-xs text-center tabular-nums font-medium w-full pe-10"
                                                dir="ltr" placeholder="۰">
@@ -1262,8 +1309,10 @@
                                                 <td class="px-4 py-2.5 align-middle">
                                                     <div class="relative w-full">
                                                         <input type="text"
+                                                               x-effect="if(document.activeElement !== $el) $el.value = formatPriceInput(getCustomFieldDiscount(item, field, opt))"
                                                                :value="formatPriceInput(getCustomFieldDiscount(item, field, opt))"
-                                                               @input="setCustomFieldDiscount(item, field, opt, $event.target.value)"
+                                                               @input="setCustomFieldDiscount(item, field, opt, $event.target.value); $event.target.value = formatPriceInput(getCustomFieldDiscount(item, field, opt));"
+                                                               @blur="$el.value = formatPriceInput(getCustomFieldDiscount(item, field, opt)); if(typeof calculateTotals === 'function') calculateTotals();"
                                                                :name="'items[' + index + '][custom_fields_discounts][' + field.id + '][' + opt + ']'"
                                                                class="{{ $inputClass }} py-2 text-sm text-center tabular-nums font-black w-full pe-14 shadow-none border-gray-200 dark:border-gray-800"
                                                                dir="ltr" placeholder="۰">
@@ -1403,8 +1452,10 @@
                                             <td class="px-4 py-2.5 align-middle">
                                                 <div class="relative w-full">
                                                     <input type="text"
+                                                           x-effect="if(document.activeElement !== $el) $el.value = formatPriceInput(getCustomFieldDiscount(item, field))"
                                                            :value="formatPriceInput(getCustomFieldDiscount(item, field))"
-                                                           @input="setCustomFieldDiscount(item, field, null, $event.target.value)"
+                                                           @input="setCustomFieldDiscount(item, field, null, $event.target.value); $event.target.value = formatPriceInput(getCustomFieldDiscount(item, field));"
+                                                           @blur="$el.value = formatPriceInput(getCustomFieldDiscount(item, field)); if(typeof calculateTotals === 'function') calculateTotals();"
                                                            :disabled="!isFieldSelected(field, item.custom_field_values[field.id])"
                                                            :name="'items[' + index + '][custom_fields_discounts][' + field.id + ']'"
                                                            class="{{ $inputClass }} py-2 text-sm text-center tabular-nums font-black w-full pe-14 shadow-none border-gray-200 dark:border-gray-800"
@@ -2679,6 +2730,16 @@
                                 });
                             }
                         });
+                        this.items.forEach(it => {
+                            if (it.service_custom_fields && it.custom_field_values) {
+                                it.service_custom_fields.forEach(cf => {
+                                    if (cf.type === 'checkbox') {
+                                        const v = it.custom_field_values[cf.id];
+                                        it.custom_field_values[cf.id] = (v === true || v === '1' || v === 1 || String(v) === 'true' || String(v) === 'on');
+                                    }
+                                });
+                            }
+                        });
                         document.addEventListener('jdp:change', (e) => {
                             e.target.dispatchEvent(new Event('input', {bubbles: true}));
                         });
@@ -2720,8 +2781,20 @@
                         this.syncDebtRowState();
                     },
                     removePackage(groupId) {
+                        const pkgItems = this.items.filter(i => i._packageGroupId === groupId);
+                        const pkgTitle = pkgItems.length > 0 ? pkgItems[0]._packageTitle : null;
                         this.items = this.items.filter(i => i._packageGroupId !== groupId);
                         delete this.collapsedPackages[groupId];
+                        if (pkgTitle && this.notesText) {
+                            const header = 'توضیحات پکیج «' + pkgTitle + '»:';
+                            if (this.notesText.includes(header)) {
+                                const hasAnotherSamePkg = this.items.some(i => i._packageTitle === pkgTitle);
+                                if (!hasAnotherSamePkg) {
+                                    const regex = new RegExp('(?:\\n\\n)?' + header.replace(/[.*+?^${}()|[\\]\\]/g, '\\$&') + '[\\s\\S]*?(?=(\\n\\nتوضیحات پکیج «|$))', 'g');
+                                    this.notesText = this.notesText.replace(regex, '').trim();
+                                }
+                            }
+                        }
                     },
                     filteredPackagesList() {
                         const q = this.packageSearch.trim().toLowerCase();
@@ -2826,6 +2899,9 @@
                                         customFieldValues[f.id] = numFromQ;
                                         if (f.has_pricing) customFieldQuantities[f.id] = numFromQ;
                                     }
+                                } else if (f.type === 'checkbox') {
+                                    let rawV = customFieldValues[f.id];
+                                    customFieldValues[f.id] = (rawV === true || rawV === '1' || rawV === 1 || String(rawV) === 'true' || String(rawV) === 'on');
                                 } else if (f.has_pricing) {
                                     if (f.type === 'multiselect') {
                                         if (Array.isArray(customFieldValues[f.id])) {
@@ -2852,17 +2928,41 @@
                                 else if (item.service_id) itemMode = 'service';
                                 else itemMode = 'manual';
                             }
+                            let itemQty = parseFloat(item.quantity) || 1;
                             let itemRowDiscount = 0;
+                            let up = Number(item.unit_price || 0);
+                            let maxItemDiscount = up * itemQty;
                             if (item.discount_amount !== undefined && item.discount_amount !== null && Number(item.discount_amount) > 0) {
-                                itemRowDiscount = parseFloat(item.discount_amount);
+                                itemRowDiscount = Math.min(maxItemDiscount, parseFloat(item.discount_amount));
                             } else if (item.discount_value !== undefined && item.discount_value !== null && Number(item.discount_value) > 0) {
                                 if (item.discount_type === 'percent') {
-                                    let rawBase = (parseFloat(item.unit_price) || 0) * (parseFloat(item.quantity) || 1);
-                                    itemRowDiscount = Math.round((rawBase * Math.min(100, parseFloat(item.discount_value))) / 100);
+                                    itemRowDiscount = Math.min(maxItemDiscount, Math.round((maxItemDiscount * Math.min(100, parseFloat(item.discount_value))) / 100));
                                 } else {
-                                    itemRowDiscount = parseFloat(item.discount_value);
+                                    itemRowDiscount = Math.min(maxItemDiscount, parseFloat(item.discount_value));
                                 }
                             }
+
+                            Object.keys(customFieldCustomDiscounts || {}).forEach(k => {
+                                let p = customFieldCustomPrices ? customFieldCustomPrices[k] : 0;
+                                let q = customFieldQuantities ? customFieldQuantities[k] : 1;
+                                if (typeof customFieldCustomDiscounts[k] === 'object' && customFieldCustomDiscounts[k] !== null) {
+                                    Object.keys(customFieldCustomDiscounts[k]).forEach(subK => {
+                                        let subP = (typeof p === 'object' && p !== null) ? Number(p[subK] || 0) : Number(p || 0);
+                                        let subQ = (typeof q === 'object' && q !== null) ? Number(q[subK] || 1) : Number(q || 1);
+                                        let maxSubDisc = subP * (subQ > 0 ? subQ : 1);
+                                        if (Number(customFieldCustomDiscounts[k][subK] || 0) > maxSubDisc) {
+                                            customFieldCustomDiscounts[k][subK] = maxSubDisc;
+                                        }
+                                    });
+                                } else {
+                                    let singleP = Number(p || 0);
+                                    let singleQ = Number(q || 1);
+                                    let maxSingleDisc = singleP * (singleQ > 0 ? singleQ : 1);
+                                    if (Number(customFieldCustomDiscounts[k] || 0) > maxSingleDisc) {
+                                        customFieldCustomDiscounts[k] = maxSingleDisc;
+                                    }
+                                }
+                            });
 
                             this.items.push({
                                 mode: itemMode,
@@ -2919,6 +3019,17 @@
                         if (pkgDiscAmount > 0) {
                             this.extraDiscountType = 'amount';
                             this.extraDiscountValue = (parseFloat(this.extraDiscountValue) || 0) + pkgDiscAmount;
+                        }
+
+                        if (pkg.description && typeof pkg.description === 'string' && pkg.description.trim()) {
+                            const pkgDesc = pkg.description.trim();
+                            const noteHeader = 'توضیحات پکیج «' + (pkg.name || 'سفارشی') + '»:';
+                            const noteBlock = noteHeader + '\n' + pkgDesc;
+                            if (!this.notesText || !this.notesText.trim()) {
+                                this.notesText = noteBlock;
+                            } else if (!this.notesText.includes(pkgDesc)) {
+                                this.notesText = this.notesText.trim() + '\n\n' + noteBlock;
+                            }
                         }
 
                         this.showPackageDropdown = false;
@@ -3343,6 +3454,14 @@
                                 it.custom_field_values[fId] = num > 0 ? num : (val === '' ? '' : num);
                             }
                         }
+                        if (num > 0) {
+                            let p = this.getCustomFieldPrice(it, f, opt) || 0;
+                            let maxGross = p * num;
+                            let currentDisc = this.getCustomFieldDiscount(it, f, opt);
+                            if (currentDisc > maxGross) {
+                                this.setCustomFieldDiscount(it, f, opt, maxGross);
+                            }
+                        }
                         if (typeof this.calculateTotals === 'function') {
                             this.calculateTotals();
                         }
@@ -3417,34 +3536,61 @@
                         } else {
                             it.custom_field_custom_prices[fId] = num;
                         }
+                        let qty = this.getCustomFieldQuantity(it, f, opt) || 1;
+                        let maxGross = num * (qty > 0 ? qty : 1);
+                        let currentDisc = this.getCustomFieldDiscount(it, f, opt);
+                        if (currentDisc > maxGross) {
+                            this.setCustomFieldDiscount(it, f, opt, maxGross);
+                        }
                         if (typeof this.calculateTotals === 'function') {
                             this.calculateTotals();
                         }
                     },
                     getCustomFieldDiscount(it, f, opt = null) {
+                        const fId = (f && f.id !== undefined) ? f.id : f;
+                        let price = this.getCustomFieldPrice(it, f, opt) || 0;
+                        let qty = this.getCustomFieldQuantity(it, f, opt) || 1;
+                        let maxGross = price * (qty > 0 ? qty : 1);
                         if (opt !== null && opt !== undefined) {
-                            if (it.custom_field_custom_discounts && it.custom_field_custom_discounts[f.id] && typeof it.custom_field_custom_discounts[f.id] === 'object' && it.custom_field_custom_discounts[f.id][opt] !== undefined) {
-                                let d = Number(it.custom_field_custom_discounts[f.id][opt]);
-                                return isNaN(d) ? 0 : d;
+                            if (it.custom_field_custom_discounts && it.custom_field_custom_discounts[fId] && typeof it.custom_field_custom_discounts[fId] === 'object' && it.custom_field_custom_discounts[fId][opt] !== undefined) {
+                                let d = Number(it.custom_field_custom_discounts[fId][opt]);
+                                if (isNaN(d)) d = 0;
+                                if (d > maxGross) {
+                                    d = maxGross;
+                                    it.custom_field_custom_discounts[fId][opt] = maxGross;
+                                }
+                                return d;
                             }
                             return 0;
                         }
-                        if (it.custom_field_custom_discounts && it.custom_field_custom_discounts[f.id] !== undefined && typeof it.custom_field_custom_discounts[f.id] !== 'object') {
-                            let d = Number(it.custom_field_custom_discounts[f.id]);
-                            return isNaN(d) ? 0 : d;
+                        if (it.custom_field_custom_discounts && it.custom_field_custom_discounts[fId] !== undefined && typeof it.custom_field_custom_discounts[fId] !== 'object') {
+                            let d = Number(it.custom_field_discounts ? it.custom_field_discounts[fId] : (it.custom_field_custom_discounts[fId]));
+                            if (isNaN(d)) d = 0;
+                            if (d > maxGross) {
+                                d = maxGross;
+                                it.custom_field_custom_discounts[fId] = maxGross;
+                            }
+                            return d;
                         }
                         return 0;
                     },
                     setCustomFieldDiscount(it, f, opt = null, val) {
                         let num = this.parsePriceInput(val);
+                        const fId = (f && f.id !== undefined) ? f.id : f;
+                        let price = this.getCustomFieldPrice(it, f, opt) || 0;
+                        let qty = this.getCustomFieldQuantity(it, f, opt) || 1;
+                        let maxGross = price * (qty > 0 ? qty : 1);
+                        if (num > maxGross) {
+                            num = maxGross;
+                        }
                         if (!it.custom_field_custom_discounts) it.custom_field_custom_discounts = {};
                         if (opt !== null && opt !== undefined) {
-                            if (typeof it.custom_field_custom_discounts[f.id] !== 'object' || it.custom_field_custom_discounts[f.id] === null) {
-                                it.custom_field_custom_discounts[f.id] = {};
+                            if (typeof it.custom_field_custom_discounts[fId] !== 'object' || it.custom_field_custom_discounts[fId] === null) {
+                                it.custom_field_custom_discounts[fId] = {};
                             }
-                            it.custom_field_custom_discounts[f.id][opt] = num;
+                            it.custom_field_custom_discounts[fId][opt] = num;
                         } else {
-                            it.custom_field_custom_discounts[f.id] = num;
+                            it.custom_field_custom_discounts[fId] = num;
                         }
                         if (typeof this.calculateTotals === 'function') {
                             this.calculateTotals();
@@ -3582,6 +3728,10 @@
                         if (isNaN(q)) q = 0;
                         if (isNaN(p)) p = 0;
                         if (isNaN(d)) d = 0;
+                        if (d > p) {
+                            d = p;
+                            it.discount = p;
+                        }
                         let rB = p * q;
                         let rT = 0;
                         if (this.taxMode === 'item') rT += rB * ((Number(it.tax_percent) || 0) / 100);
@@ -3633,6 +3783,10 @@
                             let q = parseFloat(it.quantity) || 0;
                             let p = parseFloat(it.unit_price) || 0;
                             let d = parseFloat(it.discount) || 0;
+                            if (d > p) {
+                                d = p;
+                                it.discount = p;
+                            }
                             let rB = p * q;
                             bS += rB;
                             iD += d;

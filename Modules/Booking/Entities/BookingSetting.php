@@ -57,6 +57,9 @@ class BookingSetting extends Model
             'queue_max_size',
             'monitoring_quick_status_enabled',
             'monitoring_refresh_interval_seconds',
+            'laboratory_enabled',
+            'laboratory_default_partner',
+            'laboratory_settings',
             'key',
             'value',
         ];
@@ -67,6 +70,8 @@ class BookingSetting extends Model
             'queue_max_size' => 'integer',
             'monitoring_quick_status_enabled' => 'boolean',
             'monitoring_refresh_interval_seconds' => 'integer',
+            'laboratory_enabled' => 'boolean',
+            'laboratory_settings' => 'array',
             'allow_role_service_creation' => 'boolean',
             'allowed_roles' => 'array',
             'statement_roles' => 'array',
@@ -90,6 +95,202 @@ class BookingSetting extends Model
             'ads' => 'array',
             'appointment_statuses' => 'array',
         ];
+
+        public static function isLaboratoryEnabled(): bool
+        {
+            $setting = static::current();
+            return (bool) ($setting->laboratory_enabled ?? false);
+        }
+
+        public function getLaboratoryDefaultPartnerAttribute($value): string
+        {
+            return $value ?: 'آرمان سلامت';
+        }
+
+        public static function defaultLaboratorySettings(): array
+        {
+            return [
+                'types' => [
+                    [
+                        'id' => 'external',
+                        'name' => 'لابراتوار طرف قرارداد (خارجی)',
+                        'default_partner' => 'آرمان سلامت',
+                        'categories' => [
+                            [
+                                'id' => 'units_1_2',
+                                'name' => '۱ تا ۲ واحدی',
+                                'description' => 'پروتزهای تک واحدی و دو واحدی',
+                                'stages' => [
+                                    ['key' => 'followup_1', 'title' => 'پیگیری اول', 'offset' => 7, 'unit' => 'days', 'is_receive' => false],
+                                    ['key' => 'followup_2', 'title' => 'پیگیری دوم', 'offset' => 5, 'unit' => 'days', 'is_receive' => false],
+                                    ['key' => 'receive_work', 'title' => 'دریافت کار (پیگیری ۳)', 'offset' => 3, 'unit' => 'days', 'is_receive' => true],
+                                ],
+                            ],
+                            [
+                                'id' => 'units_3_6',
+                                'name' => '۳ تا ۶ واحدی',
+                                'description' => 'پروتزهای ۳ تا ۶ واحدی',
+                                'stages' => [
+                                    ['key' => 'followup_1', 'title' => 'پیگیری اول', 'offset' => 10, 'unit' => 'days', 'is_receive' => false],
+                                    ['key' => 'followup_2', 'title' => 'پیگیری دوم', 'offset' => 5, 'unit' => 'days', 'is_receive' => false],
+                                    ['key' => 'receive_work', 'title' => 'دریافت کار (پیگیری ۳)', 'offset' => 5, 'unit' => 'days', 'is_receive' => true],
+                                ],
+                            ],
+                            [
+                                'id' => 'units_7_11',
+                                'name' => '۷ تا ۱۱ واحدی',
+                                'description' => 'پروتزهای ۷ تا ۱۱ واحدی',
+                                'stages' => [
+                                    ['key' => 'followup_1', 'title' => 'پیگیری اول', 'offset' => 15, 'unit' => 'days', 'is_receive' => false],
+                                    ['key' => 'followup_2', 'title' => 'پیگیری دوم', 'offset' => 5, 'unit' => 'days', 'is_receive' => false],
+                                    ['key' => 'followup_3', 'title' => 'پیگیری سوم', 'offset' => 5, 'unit' => 'days', 'is_receive' => false],
+                                    ['key' => 'receive_work', 'title' => 'دریافت کار (پیگیری ۴)', 'offset' => 5, 'unit' => 'days', 'is_receive' => true],
+                                ],
+                            ],
+                            [
+                                'id' => 'nodentia',
+                                'name' => 'متد نودنشیا / صبوری',
+                                'description' => 'روش اختصاصی نودنشیا',
+                                'stages' => [
+                                    ['key' => 'followup_1', 'title' => 'پیگیری اول', 'offset' => 3, 'unit' => 'days', 'is_receive' => false],
+                                    ['key' => 'followup_2', 'title' => 'پیگیری دوم', 'offset' => 3, 'unit' => 'days', 'is_receive' => false],
+                                    ['key' => 'receive_work', 'title' => 'دریافت کار (پیگیری ۳)', 'offset' => 4, 'unit' => 'days', 'is_receive' => true],
+                                ],
+                            ],
+                        ],
+                    ],
+                    [
+                        'id' => 'in_house',
+                        'name' => 'لابراتوار دیجیتال مطب (داخلی)',
+                        'default_partner' => 'لابراتوار دیجیتال مطب',
+                        'categories' => [
+                            [
+                                'id' => 'digital_standard',
+                                'name' => 'جریان کامل طراحی و میلینگ سنتر',
+                                'description' => 'طراحی در مطب و ارسال به میلینگ',
+                                'stages' => [
+                                    ['key' => 'scan_delivery', 'title' => 'تحویل اسکن به طراح', 'offset' => 12, 'unit' => 'hours', 'is_receive' => false],
+                                    ['key' => 'initial_design', 'title' => 'طراحی اولیه', 'offset' => 24, 'unit' => 'hours', 'is_receive' => false],
+                                    ['key' => 'qc_review', 'title' => 'بررسی QC', 'offset' => 24, 'unit' => 'hours', 'is_receive' => false],
+                                    ['key' => 'doctor_approval', 'title' => 'تایید پزشک', 'offset' => 24, 'unit' => 'hours', 'is_receive' => false],
+                                    ['key' => 'send_to_milling', 'title' => 'ارسال به میلینگ سنتر', 'offset' => 0, 'unit' => 'days', 'is_receive' => false],
+                                    ['key' => 'receive_from_milling', 'title' => 'دریافت از میلینگ سنتر', 'offset' => 3, 'unit' => 'days', 'is_receive' => true],
+                                ],
+                            ],
+                            [
+                                'id' => 'digital_fast',
+                                'name' => 'سفارش فوری مطب (Chairside)',
+                                'description' => 'طراحی و تراش فوری داخل مطب',
+                                'stages' => [
+                                    ['key' => 'scan_design', 'title' => 'طراحی دیجیتال فوری', 'offset' => 2, 'unit' => 'hours', 'is_receive' => false],
+                                    ['key' => 'milling', 'title' => 'میلینگ و سینتر', 'offset' => 4, 'unit' => 'hours', 'is_receive' => false],
+                                    ['key' => 'finish', 'title' => 'فینیشینگ و آماده تحویل', 'offset' => 2, 'unit' => 'hours', 'is_receive' => true],
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
+            ];
+        }
+
+        public static function convertLegacyLaboratorySettings(array $legacy): array
+        {
+            $defaults = static::defaultLaboratorySettings();
+            $types = $defaults['types'];
+
+            // If legacy external_labs exists, update stages
+            if (!empty($legacy['external_labs'])) {
+                foreach ($types as &$type) {
+                    if ($type['id'] === 'external') {
+                        foreach ($type['categories'] as &$cat) {
+                            if (isset($legacy['external_labs'][$cat['id']]['stages'])) {
+                                $cat['stages'] = $legacy['external_labs'][$cat['id']]['stages'];
+                            }
+                        }
+                    }
+                }
+            }
+
+            return ['types' => $types];
+        }
+
+        public function getLaboratorySettingsAttribute($value): array
+        {
+            $defaults = static::defaultLaboratorySettings();
+            if (empty($value)) {
+                return $defaults;
+            }
+            $decoded = is_string($value) ? json_decode($value, true) : $value;
+            if (!is_array($decoded)) {
+                return $defaults;
+            }
+            if (isset($decoded['types']) && is_array($decoded['types'])) {
+                return $decoded;
+            }
+            return static::convertLegacyLaboratorySettings($decoded);
+        }
+
+        public static function getLaboratoryTypesList(): array
+        {
+            $settings = static::current();
+            $cfg = $settings->laboratory_settings;
+            $types = $cfg['types'] ?? [];
+            return array_map(function ($t) {
+                return [
+                    'id' => $t['id'] ?? '',
+                    'name' => $t['name'] ?? '',
+                    'default_partner' => $t['default_partner'] ?? '',
+                ];
+            }, $types);
+        }
+
+        public static function getLaboratoryCategoriesForType(string $typeId): array
+        {
+            $settings = static::current();
+            $cfg = $settings->laboratory_settings;
+            $types = $cfg['types'] ?? [];
+
+            foreach ($types as $t) {
+                if (($t['id'] ?? '') === $typeId) {
+                    return $t['categories'] ?? [];
+                }
+            }
+
+            return [];
+        }
+
+        public static function findLaboratoryCategory(string $typeId, string $categoryId): ?array
+        {
+            $categories = static::getLaboratoryCategoriesForType($typeId);
+            foreach ($categories as $cat) {
+                if (($cat['id'] ?? '') === $categoryId) {
+                    return $cat;
+                }
+            }
+            // Fallback: search across all types
+            $settings = static::current();
+            $cfg = $settings->laboratory_settings;
+            foreach ($cfg['types'] ?? [] as $t) {
+                foreach ($t['categories'] ?? [] as $cat) {
+                    if (($cat['id'] ?? '') === $categoryId) {
+                        return $cat;
+                    }
+                }
+            }
+            return null;
+        }
+
+        public static function getLaboratoryCategoryStages(string $typeId, string $categoryId): array
+        {
+            $cat = static::findLaboratoryCategory($typeId, $categoryId);
+            return $cat['stages'] ?? [];
+        }
+
+        public static function getLaboratoryCategoryName(string $typeId, string $categoryId): ?string
+        {
+            $cat = static::findLaboratoryCategory($typeId, $categoryId);
+            return $cat['name'] ?? null;
+        }
 
         public function getAdsAttribute($value): array
         {

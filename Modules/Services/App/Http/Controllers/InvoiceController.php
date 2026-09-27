@@ -218,6 +218,7 @@ class InvoiceController extends Controller
                 return [
                     'id' => $inv->id,
                     'invoice_number' => $inv->invoice_number,
+                    'url' => route('services.invoices.show', $inv),
                     'total' => (int)$inv->total,
                     'total_formatted' => number_format((int)$inv->total),
                     'paid_amount' => (int)$inv->calculatePaidAmount(),
@@ -367,12 +368,16 @@ class InvoiceController extends Controller
                         $vals = $meta['custom_fields'] ?? [];
                         $qtys = $meta['custom_fields_quantities'] ?? [];
                         foreach ($customFieldsArray as $cf) {
-                            if (($cf['type'] ?? '') === 'number') {
-                                $id = $cf['id'];
+                            $id = $cf['id'];
+                            $type = $cf['type'] ?? '';
+                            if ($type === 'number') {
                                 $v = isset($vals[$id]) ? (float)str_replace(['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'], ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'], (string)$vals[$id]) : 0;
                                 $q = isset($qtys[$id]) ? (float)str_replace(['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'], ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'], (string)$qtys[$id]) : 0;
                                 if ($v > 0) $vals[$id] = $v;
                                 elseif ($q > 0) $vals[$id] = $q;
+                            } elseif ($type === 'checkbox') {
+                                $v = $vals[$id] ?? null;
+                                $vals[$id] = ($v === true || $v === 1 || $v === '1' || $v === 'true' || $v === 'on');
                             }
                         }
                         return $vals;
@@ -409,7 +414,7 @@ class InvoiceController extends Controller
                         'unit' => $item->unit ?? 'عدد',
                         'quantity' => (float)$item->quantity,
                         'unit_price' => (float)$item->unit_price,
-                        'discount' => (float)$item->discount,
+                        'discount' => min(max(0, (float)$item->discount), max(0, (float)$item->quantity * (float)$item->unit_price)),
                         'billing_period' => $meta['billing_period'] ?? null,
                         '_priceUnlocked' => false,
                         'service_custom_fields' => $customFieldsArray,
@@ -417,7 +422,34 @@ class InvoiceController extends Controller
                         '_showCustomFields' => false,
                         'custom_field_quantities' => $mergedCustomFieldQuantities,
                         'custom_field_custom_prices' => $meta['custom_fields_prices'] ?? [],
-                        'custom_field_custom_discounts' => $meta['custom_fields_discounts'] ?? [],
+                        'custom_field_custom_discounts' => (function() use ($meta) {
+                            $prices = $meta['custom_fields_prices'] ?? [];
+                            $qtys = $meta['custom_fields_quantities'] ?? [];
+                            $discs = $meta['custom_fields_discounts'] ?? [];
+                            if (!is_array($discs)) return [];
+                            foreach ($discs as $k => $v) {
+                                if (is_array($v)) {
+                                    foreach ($v as $subK => $subV) {
+                                        $p = isset($prices[$k][$subK]) ? (float)$prices[$k][$subK] : (float)($prices[$k] ?? 0);
+                                        $q = isset($qtys[$k][$subK]) ? (float)$qtys[$k][$subK] : (float)($qtys[$k] ?? 1);
+                                        if ($q <= 0) $q = 1;
+                                        $rowGross = $p * $q;
+                                        if ((float)$subV > $rowGross && $rowGross > 0) {
+                                            $discs[$k][$subK] = $rowGross;
+                                        }
+                                    }
+                                } else {
+                                    $p = isset($prices[$k]) ? (float)(is_array($prices[$k]) ? 0 : $prices[$k]) : 0;
+                                    $q = isset($qtys[$k]) ? (float)(is_array($qtys[$k]) ? 1 : $qtys[$k]) : 1;
+                                    if ($q <= 0) $q = 1;
+                                    $rowGross = $p * $q;
+                                    if ((float)$v > $rowGross && $rowGross > 0) {
+                                        $discs[$k] = $rowGross;
+                                    }
+                                }
+                            }
+                            return $discs;
+                        })(),
                         'custom_field_tax_percents' => $meta['custom_fields_taxes'] ?? [],
                         'tax_percent' => $item->tax_percent > 0 ? (float)$item->tax_percent : ($defaultTaxRate ?? 9),
                         '_taxUnlocked' => false,
@@ -1370,6 +1402,7 @@ class InvoiceController extends Controller
         try {
             DB::transaction(function () use ($invoice, $payment) {
                 $wasPaid = ($payment->status === 'paid');
+                $payment->refundWalletPayment('رد پرداخت / فیش واریزی');
                 $payment->update(['status' => 'canceled']);
 
                 $invoice->paid_amount = $invoice->calculatePaidAmount();
@@ -1435,6 +1468,7 @@ class InvoiceController extends Controller
 
         try {
             DB::transaction(function () use ($invoice, $payment) {
+                $payment->refundWalletPayment('لغو پرداخت');
                 $payment->update(['status' => 'canceled']);
 
                 $invoice->paid_amount = $invoice->calculatePaidAmount();
@@ -1560,6 +1594,7 @@ class InvoiceController extends Controller
                     $engine = app(AccountingEngine::class);
                     foreach ($invoice->payments as $payment) {
                         if ($payment->status !== 'canceled') {
+                            $payment->refundWalletPayment('تغییر وضعیت فاکتور به ' . $status->name);
                             $payment->update(['status' => 'canceled']);
                             $engine->cancelServicePayment($payment);
                         }
@@ -1608,6 +1643,13 @@ class InvoiceController extends Controller
 
         DB::transaction(function () use ($invoice, $cancelledStatus) {
             $invoice->status_id = $cancelledStatus->id;
+
+            // Refund any wallet payments before updating status to canceled
+            foreach ($invoice->payments as $payment) {
+                if ($payment->status !== 'canceled') {
+                    $payment->refundWalletPayment('لغو فاکتور');
+                }
+            }
 
             if (Module::has('Accounting') && Module::isEnabled('Accounting')) {
                 try {
@@ -1852,6 +1894,7 @@ class InvoiceController extends Controller
             if ($qty <= 0) $qty = 1;
             $price = (int)round($this->parseNumber($item['unit_price'] ?? 0));
             $discount = (int)round($this->parseNumber($item['discount'] ?? 0));
+            $discount = min(max(0, $discount), max(0, (int)round($price * $qty)));
             $billingPeriod = $item['billing_period'] ?? null;
             $itemTaxPercent = $this->parseNumber($item['tax_percent'] ?? 0);
 
@@ -1931,9 +1974,11 @@ class InvoiceController extends Controller
                             $optDiscount = 0;
                             if (isset($customFieldsDiscounts[$field->id]) && is_array($customFieldsDiscounts[$field->id])) {
                                 $optDiscount = (int)round($this->parseNumber($customFieldsDiscounts[$field->id][$selectedOpt] ?? 0));
+                                $optDiscount = min(max(0, $optDiscount), max(0, (int)round($optAmount * $optQty)));
                                 $customFieldsDiscounts[$field->id][$selectedOpt] = $optDiscount;
                             } elseif (isset($customFieldsDiscounts[$field->id])) {
                                 $optDiscount = (int)round($this->parseNumber($customFieldsDiscounts[$field->id]));
+                                $optDiscount = min(max(0, $optDiscount), max(0, (int)round($optAmount * $optQty)));
                                 $customFieldsDiscounts[$field->id] = $optDiscount;
                             }
 
@@ -1990,6 +2035,7 @@ class InvoiceController extends Controller
                         $fieldDiscount = 0;
                         if (isset($customFieldsDiscounts[$field->id])) {
                             $fieldDiscount = (int)round($this->parseNumber($customFieldsDiscounts[$field->id]));
+                            $fieldDiscount = min(max(0, $fieldDiscount), max(0, (int)round($amount * $fieldQty)));
                             $customFieldsDiscounts[$field->id] = $fieldDiscount;
                         }
 

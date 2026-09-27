@@ -58,7 +58,9 @@ class ServicePackageController extends Controller
     {
         $this->authorize('create', Service::class);
 
-        $services = Service::active()->with('customFields')->orderBy('name')->get();
+        $services = Service::active()->with(['customFields' => function ($q) {
+            $q->where('show_in_invoice', true)->orWhereNull('show_in_invoice');
+        }])->orderBy('name')->get();
         $currency = Setting::where('key', 'currency')->value('value') ?? 'toman';
         $marketModuleEnabled = $this->isMarketModuleEnabled();
         $products = $this->getProductsForPackage();
@@ -81,6 +83,9 @@ class ServicePackageController extends Controller
                 $unitPrice = intval($this->parsePrice($item['unit_price'] ?? 0));
                 $discType = $item['discount_type'] ?? 'amount';
                 $discVal = floatval($this->parsePrice($item['discount_value'] ?? ($item['discount'] ?? 0)));
+                if ($discType === 'amount') {
+                    $discVal = min(max(0, $discVal), max(0, $qty * $unitPrice));
+                }
 
                 $rawCustomFields = $item['custom_fields'] ?? [];
                 $customFields = [];
@@ -141,7 +146,9 @@ class ServicePackageController extends Controller
 
                 $cfSubtotal = 0;
                 if (!empty($item['service_id'])) {
-                    $service = Service::with('customFields')->find($item['service_id']);
+                    $service = Service::with(['customFields' => function ($q) {
+                        $q->where('show_in_invoice', true)->orWhereNull('show_in_invoice');
+                    }])->find($item['service_id']);
                     if ($service && !empty($service->customFields)) {
                         foreach ($service->customFields as $cf) {
                             $val = $customFields[$cf->id] ?? null;
@@ -186,6 +193,10 @@ class ServicePackageController extends Controller
                                         $optDisc = is_array($customFieldsDiscounts[$cf->id] ?? null)
                                             ? floatval($this->parsePrice($customFieldsDiscounts[$cf->id][$opt] ?? 0))
                                             : 0;
+                                        $optDisc = min(max(0, $optDisc), max(0, floatval($optPrice) * $optQty));
+                                        if (is_array($customFieldsDiscounts[$cf->id] ?? null)) {
+                                            $customFieldsDiscounts[$cf->id][$opt] = $optDisc;
+                                        }
                                         $optRowTotal = max(0, (floatval($optPrice) * $optQty) - $optDisc);
                                         $cfPriceTotal += $optRowTotal;
                                     }
@@ -215,6 +226,8 @@ class ServicePackageController extends Controller
                                     if ($cfQty <= 0) $cfQty = 1;
                                     $customFieldsQuantities[$cf->id] = $cfQty;
                                     $cfDisc = floatval($this->parsePrice($customFieldsDiscounts[$cf->id] ?? 0));
+                                    $cfDisc = min(max(0, $cfDisc), max(0, floatval($cfPrice) * $cfQty));
+                                    $customFieldsDiscounts[$cf->id] = $cfDisc;
                                     $cfRowTotal = max(0, ($cfPrice * $cfQty) - $cfDisc);
                                     $cfSubtotal += $cfRowTotal;
                                 }
@@ -227,7 +240,9 @@ class ServicePackageController extends Controller
                 if ($discType === 'percent') {
                     $discAmount = round(($rowSubtotal * min(100, max(0, $discVal))) / 100);
                 } else {
-                    $discAmount = min($rowSubtotal, $discVal);
+                    $baseGross = $qty * $unitPrice;
+                    $discVal = min($baseGross, $discVal);
+                    $discAmount = min(min($baseGross, $rowSubtotal), $discVal);
                 }
 
                 $rowTotal = max(0, $rowSubtotal - $discAmount);
@@ -292,7 +307,9 @@ class ServicePackageController extends Controller
     {
         $this->authorize('viewAny', Service::class);
 
-        $package->load(['items.service.customFields']);
+        $package->load(['items.service.customFields' => function ($q) {
+            $q->where('show_in_invoice', true)->orWhereNull('show_in_invoice');
+        }]);
         $currency = Setting::where('key', 'currency')->value('value') ?? 'toman';
 
         return view('services::packages.show', compact('package', 'currency'));
@@ -302,8 +319,12 @@ class ServicePackageController extends Controller
     {
         $this->authorize('update', Service::class);
 
-        $package->load(['items.service.customFields']);
-        $services = Service::active()->with('customFields')->orderBy('name')->get();
+        $package->load(['items.service.customFields' => function ($q) {
+            $q->where('show_in_invoice', true)->orWhereNull('show_in_invoice');
+        }]);
+        $services = Service::active()->with(['customFields' => function ($q) {
+            $q->where('show_in_invoice', true)->orWhereNull('show_in_invoice');
+        }])->orderBy('name')->get();
         $currency = Setting::where('key', 'currency')->value('value') ?? 'toman';
         $marketModuleEnabled = $this->isMarketModuleEnabled();
         $products = $this->getProductsForPackage();
@@ -325,6 +346,9 @@ class ServicePackageController extends Controller
                 $unitPrice = intval($this->parsePrice($item['unit_price'] ?? 0));
                 $discType = $item['discount_type'] ?? 'amount';
                 $discVal = floatval($this->parsePrice($item['discount_value'] ?? ($item['discount'] ?? 0)));
+                if ($discType === 'amount') {
+                    $discVal = min(max(0, $discVal), max(0, $qty * $unitPrice));
+                }
 
                 $rawCustomFields = $item['custom_fields'] ?? [];
                 $customFields = [];
@@ -385,7 +409,9 @@ class ServicePackageController extends Controller
 
                 $cfSubtotal = 0;
                 if (!empty($item['service_id'])) {
-                    $service = Service::with('customFields')->find($item['service_id']);
+                    $service = Service::with(['customFields' => function ($q) {
+                        $q->where('show_in_invoice', true)->orWhereNull('show_in_invoice');
+                    }])->find($item['service_id']);
                     if ($service && !empty($service->customFields)) {
                         foreach ($service->customFields as $cf) {
                             $val = $customFields[$cf->id] ?? null;
@@ -430,6 +456,10 @@ class ServicePackageController extends Controller
                                         $optDisc = is_array($customFieldsDiscounts[$cf->id] ?? null)
                                             ? floatval($this->parsePrice($customFieldsDiscounts[$cf->id][$opt] ?? 0))
                                             : 0;
+                                        $optDisc = min(max(0, $optDisc), max(0, floatval($optPrice) * $optQty));
+                                        if (is_array($customFieldsDiscounts[$cf->id] ?? null)) {
+                                            $customFieldsDiscounts[$cf->id][$opt] = $optDisc;
+                                        }
                                         $optRowTotal = max(0, (floatval($optPrice) * $optQty) - $optDisc);
                                         $cfPriceTotal += $optRowTotal;
                                     }
@@ -459,6 +489,8 @@ class ServicePackageController extends Controller
                                     if ($cfQty <= 0) $cfQty = 1;
                                     $customFieldsQuantities[$cf->id] = $cfQty;
                                     $cfDisc = floatval($this->parsePrice($customFieldsDiscounts[$cf->id] ?? 0));
+                                    $cfDisc = min(max(0, $cfDisc), max(0, floatval($cfPrice) * $cfQty));
+                                    $customFieldsDiscounts[$cf->id] = $cfDisc;
                                     $cfRowTotal = max(0, ($cfPrice * $cfQty) - $cfDisc);
                                     $cfSubtotal += $cfRowTotal;
                                 }
@@ -471,7 +503,9 @@ class ServicePackageController extends Controller
                 if ($discType === 'percent') {
                     $discAmount = round(($rowSubtotal * min(100, max(0, $discVal))) / 100);
                 } else {
-                    $discAmount = min($rowSubtotal, $discVal);
+                    $baseGross = $qty * $unitPrice;
+                    $discVal = min($baseGross, $discVal);
+                    $discAmount = min(min($baseGross, $rowSubtotal), $discVal);
                 }
 
                 $rowTotal = max(0, $rowSubtotal - $discAmount);

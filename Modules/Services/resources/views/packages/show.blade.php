@@ -36,15 +36,11 @@
                         @endif
                     </div>
                     @if($package->code)
-                        <p class="text-xs font-mono font-bold text-indigo-600 dark:text-indigo-400 mt-1">کد
+                        <p class="text-xs font-sans tabular-nums font-bold text-indigo-600 dark:text-indigo-400 mt-1">کد
                             پکیج: {{ $package->code }}</p>
                     @endif
                 </div>
             </div>
-            @if($package->description)
-                <p class="text-xs font-bold text-gray-500 dark:text-gray-400 max-w-3xl leading-relaxed">{{ $package->description }}</p>
-            @endif
-        </div>
 
         <div class="flex flex-wrap items-center gap-3 shrink-0">
             <a href="{{ route('services.packages.edit', $package) }}"
@@ -129,6 +125,23 @@
         </div>
     </div>
 
+    {{-- Package Description Card --}}
+    @if(!empty($package->description))
+        <div class="{{ $cardClass }} p-6 space-y-3">
+            <div class="flex items-center gap-2.5 text-indigo-600 dark:text-indigo-400">
+                <div class="p-2 bg-indigo-50 dark:bg-indigo-500/10 rounded-xl">
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                </div>
+                <h3 class="text-sm font-black text-gray-900 dark:text-white">توضیحات پکیج</h3>
+            </div>
+            <div class="text-sm font-normal text-slate-600 dark:text-slate-300 leading-relaxed whitespace-pre-line bg-gray-50/70 dark:bg-gray-900/30 p-4 rounded-2xl border border-gray-100 dark:border-gray-800">
+                {{ $package->description }}
+            </div>
+        </div>
+    @endif
+
     {{-- Items List Table --}}
     <div class="{{ $cardClass }} overflow-hidden">
         <div
@@ -182,6 +195,7 @@
                                             @if(!empty($cfValue))
                                                 @php
                                                     $cfDef = $item->service ? $item->service->customFields->firstWhere('id', $cfId) : null;
+                                                    if ($cfDef && ($cfDef->show_in_invoice === false || $cfDef->show_in_invoice === 0 || $cfDef->show_in_invoice === '0')) continue;
                                                     $cfLabel = $cfDef ? $cfDef->label : 'فیلد سفارشی';
                                                     $valStr = is_array($cfValue) ? implode('، ', $cfValue) : $cfValue;
 
