@@ -131,7 +131,7 @@
                     $teethCount    = collect($plan->items ?? [])->sum(fn($i) => count($i['teeth'] ?? []));
 
                     $currency      = ($settings->currency_unit ?? $plan->currency) === 'IRR' ? 'ریال' : 'تومان';
-                    $createdJalali = Jalalian::fromDateTime($plan->created_at)->format('Y/m/d');
+                    $createdJalali = $plan->created_at && class_exists('\Morilog\Jalali\Jalalian') ? \Morilog\Jalali\Jalalian::fromDateTime($plan->created_at)->format('Y/m/d') : ($plan->created_at ? $plan->created_at->format('Y/m/d') : '-');
 
                     $statusMeta = ['label' => $plan->status, 'color' => '#6b7280', 'class' => ''];
                     if (!empty($settings->cure_statuses)) {

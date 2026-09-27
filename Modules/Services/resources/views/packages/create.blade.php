@@ -324,8 +324,8 @@
                                     <div class="relative w-full">
                                         <input type="text"
                                                x-effect="if(document.activeElement !== $el) $el.value = formatPriceInput(item.unit_price)"
-                                               @input="let val = parsePriceInput($event.target.value); item.unit_price = val; $event.target.value = val ? formatPriceInput(val) : '';"
-                                               @blur="$el.value = formatPriceInput(item.unit_price)"
+                                               @input="let val = parsePriceInput($event.target.value); item.unit_price = val; let qty = Number(toEnglishNum(String(item.quantity || 1)).replace(/[^\d.]/g, '')) || 1; let maxDisc = val * qty; if(item.discount_type !== 'percent' && Number(item.discount_value || 0) > maxDisc) { item.discount_value = maxDisc; } $event.target.value = val ? formatPriceInput(val) : '';"
+                                               @blur="let up = Number(toEnglishNum(String(item.unit_price || 0)).replace(/[^\d.]/g, '')) || 0; let qty = Number(toEnglishNum(String(item.quantity || 1)).replace(/[^\d.]/g, '')) || 1; let maxDisc = up * qty; if(item.discount_type !== 'percent' && Number(item.discount_value || 0) > maxDisc) { item.discount_value = maxDisc; } $el.value = formatPriceInput(item.unit_price); if(typeof calculateTotals === 'function') calculateTotals();"
                                                :name="'items[' + index + '][unit_price]'" required
                                                :readonly="(item.mode !== 'manual' && (item.service_id || item.product_id)) && !item._priceUnlocked"
                                                :class="((item.mode !== 'manual' && (item.service_id || item.product_id)) && !item._priceUnlocked) ? 'bg-gray-100 dark:bg-gray-900 cursor-not-allowed text-gray-500 dark:text-gray-400' : ''"
@@ -361,8 +361,10 @@
                                 <div class="flex items-center gap-1 w-full">
                                     <div class="relative w-full">
                                         <input type="text"
+                                               x-effect="let up = Number(toEnglishNum(String(item.unit_price || 0)).replace(/[^\d.]/g, '')) || 0; let qty = Number(toEnglishNum(String(item.quantity || 1)).replace(/[^\d.]/g, '')) || 1; let maxDisc = up * qty; if(item.discount_type !== 'percent' && Number(item.discount_value || 0) > maxDisc) item.discount_value = maxDisc; if(document.activeElement !== $el) $el.value = (item.discount_type === 'percent' ? toPersianNum(item.discount_value) : formatPriceInput(item.discount_value));"
                                                :value="item.discount_type === 'percent' ? toPersianNum(item.discount_value) : formatPriceInput(item.discount_value)"
-                                               @input="if(item.discount_type === 'percent') { let n = Math.min(100, Math.max(0, parseFloat(toEnglishNum($event.target.value).replace(/[^\d.]/g, '')) || 0)); item.discount_value = n; } else { let val = parsePriceInput($event.target.value); item.discount_value = val; $event.target.value = val ? formatPriceInput(val) : ''; }"
+                                               @input="if(item.discount_type === 'percent') { let n = Math.min(100, Math.max(0, parseFloat(toEnglishNum($event.target.value).replace(/[^\d.]/g, '')) || 0)); item.discount_value = n; } else { let val = parsePriceInput($event.target.value); let up = Number(toEnglishNum(String(item.unit_price || 0)).replace(/[^\d.]/g, '')) || 0; let qty = Number(toEnglishNum(String(item.quantity || 1)).replace(/[^\d.]/g, '')) || 1; let maxDisc = up * qty; if(val > maxDisc) { val = maxDisc; } item.discount_value = val; $event.target.value = val ? formatPriceInput(val) : ''; }"
+                                               @blur="let up = Number(toEnglishNum(String(item.unit_price || 0)).replace(/[^\d.]/g, '')) || 0; let qty = Number(toEnglishNum(String(item.quantity || 1)).replace(/[^\d.]/g, '')) || 1; let maxDisc = up * qty; if(item.discount_type !== 'percent' && Number(item.discount_value || 0) > maxDisc) { item.discount_value = maxDisc; } $el.value = (item.discount_type === 'percent' ? toPersianNum(item.discount_value) : formatPriceInput(item.discount_value)); if(typeof calculateTotals === 'function') calculateTotals();"
                                                class="{{ $inputClass }} py-2.5 text-xs text-center tabular-nums font-medium w-full"
                                                :class="item.discount_type === 'percent' ? 'px-1 text-center font-bold text-red-600 dark:text-red-400' : 'pe-9 font-medium'"
                                                dir="ltr" placeholder="۰">
@@ -474,8 +476,10 @@
                                             <td class="px-4 py-2.5 align-middle max-w-[170px]">
                                                 <div class="relative w-full">
                                                     <input type="text"
+                                                           x-effect="if(document.activeElement !== $el) $el.value = formatPriceInput(getCustomFieldDiscount(item, field, opt))"
                                                            :value="formatPriceInput(getCustomFieldDiscount(item, field, opt))"
-                                                           @input="setCustomFieldDiscount(item, field, opt, $event.target.value)"
+                                                           @input="setCustomFieldDiscount(item, field, opt, $event.target.value); $event.target.value = formatPriceInput(getCustomFieldDiscount(item, field, opt));"
+                                                           @blur="$el.value = formatPriceInput(getCustomFieldDiscount(item, field, opt)); if(typeof calculateTotals === 'function') calculateTotals();"
                                                            :name="'items[' + index + '][custom_fields_discounts][' + field.id + '][' + opt + ']'"
                                                            class="{{ $inputClass }} py-2 text-sm text-center tabular-nums font-black w-full pe-14 shadow-none border-gray-200 dark:border-gray-800"
                                                            dir="ltr" placeholder="۰">
@@ -580,8 +584,10 @@
                                             <td class="px-4 py-2.5 align-middle max-w-[170px]">
                                                 <div class="relative w-full">
                                                     <input type="text"
+                                                           x-effect="if(document.activeElement !== $el) $el.value = formatPriceInput(getCustomFieldDiscount(item, field))"
                                                            :value="formatPriceInput(getCustomFieldDiscount(item, field))"
-                                                           @input="setCustomFieldDiscount(item, field, null, $event.target.value)"
+                                                           @input="setCustomFieldDiscount(item, field, null, $event.target.value); $event.target.value = formatPriceInput(getCustomFieldDiscount(item, field));"
+                                                           @blur="$el.value = formatPriceInput(getCustomFieldDiscount(item, field)); if(typeof calculateTotals === 'function') calculateTotals();"
                                                            :disabled="!isFieldSelected(field, item.custom_field_values[field.id])"
                                                            :name="'items[' + index + '][custom_fields_discounts][' + field.id + ']'"
                                                            class="{{ $inputClass }} py-2 text-sm text-center tabular-nums font-black w-full pe-14 shadow-none border-gray-200 dark:border-gray-800"
@@ -873,16 +879,15 @@
 
                                                                 <template x-if="field.type === 'checkbox'">
                                                                     <label
-                                                                        class="inline-flex items-center gap-2 cursor-pointer mt-1">
+                                                                        class="flex items-center gap-2.5 cursor-pointer w-full px-3 py-3 rounded-xl border border-gray-200 bg-gray-50/50 hover:bg-indigo-50 hover:border-indigo-300 dark:bg-gray-900/50 dark:border-gray-700 dark:hover:bg-indigo-900/30 dark:hover:border-indigo-700 transition-colors">
                                                                         <input type="checkbox"
                                                                                :name="'items[' + index + '][custom_fields][' + field.id + ']'"
                                                                                x-model="item.custom_field_values[field.id]"
                                                                                value="1"
                                                                                @change="calculateTotals()"
-                                                                               class="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                                                                               class="w-4.5 h-4.5 rounded text-indigo-600 focus:ring-indigo-500 border-gray-300 dark:border-gray-600 dark:bg-gray-900">
                                                                         <span
-                                                                            class="text-xs font-bold text-gray-700 dark:text-gray-300"
-                                                                            x-text="field.label"></span>
+                                                                            class="text-xs font-bold text-gray-700 dark:text-gray-300">انتخاب می‌کنم</span>
                                                                     </label>
                                                                 </template>
 
@@ -1528,7 +1533,8 @@
                     item.custom_service_name = s.name;
                     item.billing_period = s.default_billing_period || '';
                     item.unit = s.has_unit_pricing ? (s.unit_name || 'عدد') : 'عدد';
-                    item.service_custom_fields = s.custom_fields || s.customFields || [];
+                    let rF = s.custom_fields || s.customFields || [];
+                    item.service_custom_fields = rF.filter(f => f.show_in_invoice === true || f.show_in_invoice === 1 || String(f.show_in_invoice) === '1' || f.show_in_invoice === undefined || f.show_in_invoice === null);
                     item.custom_field_values = {};
                     item.custom_field_custom_prices = {};
                     item.custom_field_quantities = {};
@@ -1653,6 +1659,14 @@
                             it.custom_field_values[fId] = num > 0 ? num : (val === '' ? '' : num);
                         }
                     }
+                    if (num > 0) {
+                        let p = this.getCustomFieldPrice(it, f, opt) || 0;
+                        let maxGross = p * num;
+                        let currentDisc = this.getCustomFieldDiscount(it, f, opt);
+                        if (currentDisc > maxGross) {
+                            this.setCustomFieldDiscount(it, f, opt, maxGross);
+                        }
+                    }
                 },
                 isCustomPriceUnlocked(it, f, opt = null) {
                     if (!it._customPricesUnlocked) it._customPricesUnlocked = {};
@@ -1707,6 +1721,12 @@
                         it.custom_field_custom_prices[fId][opt] = num;
                     } else {
                         it.custom_field_custom_prices[fId] = num;
+                    }
+                    let qty = this.getCustomFieldQuantity(it, f, opt) || 1;
+                    let maxGross = num * (qty > 0 ? qty : 1);
+                    let currentDisc = this.getCustomFieldDiscount(it, f, opt);
+                    if (currentDisc > maxGross) {
+                        this.setCustomFieldDiscount(it, f, opt, maxGross);
                     }
                     if (typeof this.calculateTotals === 'function') {
                         this.calculateTotals();
@@ -1793,22 +1813,41 @@
                 getCustomFieldDiscount(it, f, opt = null) {
                     if (!it) return 0;
                     const fId = (f && f.id !== undefined) ? f.id : f;
+                    let price = this.getCustomFieldPrice(it, f, opt) || 0;
+                    let qty = this.getCustomFieldQuantity(it, f, opt) || 1;
+                    let maxGross = price * (qty > 0 ? qty : 1);
                     if (opt !== null && opt !== undefined) {
                         if (it.custom_field_discounts && it.custom_field_discounts[fId] && typeof it.custom_field_discounts[fId] === 'object' && it.custom_field_discounts[fId][opt] !== undefined) {
                             let d = Number(it.custom_field_discounts[fId][opt]);
-                            return isNaN(d) ? 0 : d;
+                            if (isNaN(d)) d = 0;
+                            if (d > maxGross) {
+                                d = maxGross;
+                                it.custom_field_discounts[fId][opt] = maxGross;
+                            }
+                            return d;
                         }
                         return 0;
                     }
                     if (it.custom_field_discounts && it.custom_field_discounts[fId] !== undefined && typeof it.custom_field_discounts[fId] !== 'object') {
                         let d = Number(it.custom_field_discounts[fId]);
-                        return isNaN(d) ? 0 : d;
+                        if (isNaN(d)) d = 0;
+                        if (d > maxGross) {
+                            d = maxGross;
+                            it.custom_field_discounts[fId] = maxGross;
+                        }
+                        return d;
                     }
                     return 0;
                 },
                 setCustomFieldDiscount(it, f, opt = null, val) {
                     let num = this.parsePriceInput(val);
                     const fId = (f && f.id !== undefined) ? f.id : f;
+                    let price = this.getCustomFieldPrice(it, f, opt) || 0;
+                    let qty = this.getCustomFieldQuantity(it, f, opt) || 1;
+                    let maxGross = price * (qty > 0 ? qty : 1);
+                    if (num > maxGross) {
+                        num = maxGross;
+                    }
                     if (!it.custom_field_discounts) it.custom_field_discounts = {};
                     if (opt !== null && opt !== undefined) {
                         if (typeof it.custom_field_discounts[fId] !== 'object' || it.custom_field_discounts[fId] === null) {
@@ -1929,7 +1968,8 @@
                     if (discType === 'percent') {
                         return Math.round((gross * Math.min(100, Math.max(0, discVal))) / 100);
                     }
-                    return Math.min(gross, discVal);
+                    const maxAllowed = parseFloat(item.unit_price) || 0;
+                    return Math.min(gross, Math.min(maxAllowed, discVal));
                 },
                 calculateRowTotal(item) {
                     const gross = this.getRowGross(item);

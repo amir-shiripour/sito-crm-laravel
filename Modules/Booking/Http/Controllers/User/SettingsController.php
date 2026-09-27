@@ -205,6 +205,8 @@ class SettingsController extends Controller
             'queue_max_size' => ['nullable', 'integer', 'min:1', 'max:100000'],
             'monitoring_quick_status_enabled' => ['nullable'],
             'monitoring_refresh_interval_seconds' => ['nullable', 'integer', 'min:5', 'max:3600'],
+            'laboratory_enabled' => ['nullable'],
+            'laboratory_default_partner' => ['nullable', 'string', 'max:100'],
         ]);
 
         $generalData['global_online_booking_enabled'] = (bool) $generalData['global_online_booking_enabled'];
@@ -221,8 +223,25 @@ class SettingsController extends Controller
         $generalData['monitoring_refresh_interval_seconds'] = $request->filled('monitoring_refresh_interval_seconds')
             ? (int) $request->input('monitoring_refresh_interval_seconds')
             : 15;
+        $generalData['laboratory_enabled'] = $request->boolean('laboratory_enabled');
+        if ($request->filled('laboratory_default_partner')) {
+            $generalData['laboratory_default_partner'] = trim((string)$request->input('laboratory_default_partner'));
+        }
 
         $settings->fill($generalData);
+
+        if ($request->has('laboratory_settings') || $request->has('laboratory_settings_json')) {
+            $labSettingsInput = $request->input('laboratory_settings_json') ?? $request->input('laboratory_settings');
+            if (is_string($labSettingsInput)) {
+                $decoded = json_decode($labSettingsInput, true);
+                if (is_array($decoded)) {
+                    $settings->laboratory_settings = $decoded;
+                }
+            } elseif (is_array($labSettingsInput)) {
+                $settings->laboratory_settings = $labSettingsInput;
+            }
+        }
+
         $settings->allowed_roles = $syncRoleInput($normalizeRolesToIds($request->input('allowed_roles', [])), $oldAllowedRoles);
         $settings->statement_roles = $syncRoleInput($normalizeRolesToIds($request->input('statement_roles', [])), $normalizeRolesToIds($settings->statement_roles ?? []));
 

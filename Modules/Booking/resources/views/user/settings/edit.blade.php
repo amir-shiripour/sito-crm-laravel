@@ -138,6 +138,15 @@
                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
                         هماهنگ‌سازی سرویس‌ها
                     </button>
+
+                    <button type="button" @click="activeTab = 'laboratory'"
+                            :class="activeTab === 'laboratory'
+                                ? 'border-b-2 border-indigo-600 text-indigo-600 dark:text-indigo-400'
+                                : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 border-b-2 border-transparent'"
+                            class="pb-4 px-5 transition-all whitespace-nowrap flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" /></svg>
+                        تنظیمات لابراتوار
+                    </button>
                 </div>
             </div>
 
@@ -439,7 +448,7 @@
                                                            class="w-8 h-8 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 cursor-pointer shrink-0 p-0.5">
                                                     <input type="text"
                                                            x-model="color"
-                                                           class="{{ $inputClass }} text-xs text-center font-mono py-1.5 px-2 w-24 shrink-0"
+                                                           class="{{ $inputClass }} text-xs text-center font-sans py-1.5 px-2 w-24 shrink-0"
                                                            placeholder="#000000">
                                                 </div>
 
@@ -746,7 +755,7 @@
                                             <!-- ID -->
                                             <div>
                                                 <label class="block text-[10px] font-bold text-gray-500 mb-1">شناسه وضعیت</label>
-                                                <input type="text" :name="'cure_statuses['+index+'][id]'" x-model="status.id" class="{{ $inputClass }} text-xs font-mono py-1.5" :readonly="['draft', 'confirmed'].includes(status.id)" required>
+                                                <input type="text" :name="'cure_statuses['+index+'][id]'" x-model="status.id" class="{{ $inputClass }} text-xs font-sans py-1.5" :readonly="['draft', 'confirmed'].includes(status.id)" required>
                                             </div>
                                             
                                             <!-- Name -->
@@ -760,7 +769,7 @@
                                                 <label class="block text-[10px] font-bold text-gray-500 mb-1">رنگ وضعیت</label>
                                                 <div class="flex gap-2">
                                                     <input type="color" :name="'cure_statuses['+index+'][color]'" x-model="status.color" class="w-8 h-8 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 cursor-pointer shrink-0">
-                                                    <input type="text" x-model="status.color" class="{{ $inputClass }} text-xs text-center font-mono py-1.5">
+                                                    <input type="text" x-model="status.color" class="{{ $inputClass }} text-xs text-center font-sans py-1.5">
                                                 </div>
                                             </div>
                                             
@@ -1383,7 +1392,7 @@
                                                 <label class="block text-[11px] font-bold text-gray-500 mb-1.5">شروع کار</label>
                                                 <div class="relative">
                                                     <input type="text" data-jdp-only-time name="rules[{{ $d }}][work_start_local]"
-                                                           class="{{ $inputClass }} text-center dir-ltr font-mono" value="{{ $start }}" placeholder="09:00">
+                                                           class="{{ $inputClass }} text-center dir-ltr font-sans" value="{{ $start }}" placeholder="09:00">
                                                     <div class="absolute inset-y-0 right-3 flex items-center pointer-events-none text-gray-400">
                                                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                                                     </div>
@@ -1393,7 +1402,7 @@
                                                 <label class="block text-[11px] font-bold text-gray-500 mb-1.5">پایان کار</label>
                                                 <div class="relative">
                                                     <input type="text" data-jdp-only-time name="rules[{{ $d }}][work_end_local]"
-                                                           class="{{ $inputClass }} text-center dir-ltr font-mono" value="{{ $end }}" placeholder="17:00">
+                                                           class="{{ $inputClass }} text-center dir-ltr font-sans" value="{{ $end }}" placeholder="17:00">
                                                     <div class="absolute inset-y-0 right-3 flex items-center pointer-events-none text-gray-400">
                                                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                                                     </div>
@@ -1446,11 +1455,11 @@
                                                         <div class="flex items-center gap-3 break-row bg-white dark:bg-gray-800 p-2 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm group/break">
                                                             <span class="text-xs font-medium text-gray-500 w-6 text-center">از</span>
                                                             <input type="text" data-jdp-only-time name="rules[{{ $d }}][breaks][{{ $i }}][start_local]"
-                                                                   class="w-24 h-9 rounded-lg border-gray-200 bg-gray-50 text-center text-sm font-mono focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 dark:bg-gray-900 dark:border-gray-600 dark:text-gray-200"
+                                                                   class="w-24 h-9 rounded-lg border-gray-200 bg-gray-50 text-center text-sm font-sans focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 dark:bg-gray-900 dark:border-gray-600 dark:text-gray-200"
                                                                    value="{{ $br['start_local'] ?? '' }}" placeholder="شروع">
                                                             <span class="text-xs font-medium text-gray-500 w-6 text-center">تا</span>
                                                             <input type="text" data-jdp-only-time name="rules[{{ $d }}][breaks][{{ $i }}][end_local]"
-                                                                   class="w-24 h-9 rounded-lg border-gray-200 bg-gray-50 text-center text-sm font-mono focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 dark:bg-gray-900 dark:border-gray-600 dark:text-gray-200"
+                                                                   class="w-24 h-9 rounded-lg border-gray-200 bg-gray-50 text-center text-sm font-sans focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 dark:bg-gray-900 dark:border-gray-600 dark:text-gray-200"
                                                                    value="{{ $br['end_local'] ?? '' }}" placeholder="پایان">
 
                                                             <div class="flex-1"></div>
@@ -1991,7 +2000,7 @@
                                 <div>
                                     <label class="{{ $labelClass }}">آدرس لینک بنر (URL)</label>
                                     <input type="text" name="ads_doctor_link" x-model="doctorBannerLink"
-                                           class="{{ $inputClass }} text-left ltr font-mono"
+                                           class="{{ $inputClass }} text-left ltr font-sans"
                                            placeholder="https://example.com/promo یا /booking">
                                     <p class="text-[11px] text-gray-400 mt-1">در صورت تمایل به کلیک‌پذیر بودن بنر، آدرس اینترنتی یا مسیر داخلی را وارد کنید.</p>
                                 </div>
@@ -2050,7 +2059,7 @@
                                                      :alt="doctorBannerAlt || 'بنر تبلیغاتی'"
                                                      class="w-full h-auto max-h-32 object-cover">
                                                 <template x-if="doctorBannerLink">
-                                                    <span class="absolute bottom-2 left-2 px-2 py-0.5 rounded bg-black/70 text-[10px] text-white font-mono" x-text="doctorBannerLink"></span>
+                                                    <span class="absolute bottom-2 left-2 px-2 py-0.5 rounded bg-black/70 text-[10px] text-white font-sans" x-text="doctorBannerLink"></span>
                                                 </template>
                                             </div>
                                         </template>
@@ -2088,6 +2097,337 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
                         </svg>
                         ذخیره تنظیمات تبلیغات و بنرها
+                    </button>
+                </div>
+            </div>
+
+            {{-- ══════════════════════════════════════════════════════════ --}}
+            {{--               LABORATORY SETTINGS TAB                      --}}
+            {{-- ══════════════════════════════════════════════════════════ --}}
+            <div x-show="activeTab === 'laboratory'"
+                 x-transition:enter="transition ease-out duration-200"
+                 x-transition:enter-start="opacity-0"
+                 x-transition:enter-end="opacity-100"
+                 class="space-y-8"
+                 x-data="labTabManager">
+
+                <!-- Hidden Input to submit full laboratory configuration JSON -->
+                <input type="hidden" name="laboratory_settings_json" :value="JSON.stringify({ types: types })">
+
+                {{-- راهنمای سیستم لابراتوار --}}
+                <div class="bg-gradient-to-r from-indigo-500/10 via-blue-500/10 to-cyan-500/10 dark:from-indigo-950/40 dark:via-blue-950/30 dark:to-cyan-950/30 p-5 rounded-2xl border border-indigo-100 dark:border-indigo-800/40 flex items-start gap-4">
+                    <div class="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center flex-shrink-0 shadow-lg shadow-indigo-500/30">
+                        <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+                        </svg>
+                    </div>
+                    <div class="space-y-1">
+                        <h3 class="text-base font-bold text-gray-900 dark:text-white">سیستم هوشمند و داینامیک مدیریت انواع، دسته‌بندی‌ها و مراحل لابراتوار</h3>
+                        <p class="text-xs text-gray-600 dark:text-slate-300 leading-relaxed">
+                            در این بخش می‌توانید بدون هیچ محدودیتی انواع لابراتوار (خارجی، دیجیتال داخل مطب، سنترهای تخصصی و...)، دسته‌بندی‌های هر نوع و زمان‌بندی دقیق مراحل پیگیری (روز / ساعت) را سفارشی‌سازی کنید.
+                        </p>
+                    </div>
+                </div>
+
+                {{-- کارت ۱: سوییچ اصلی فعال‌سازی و مشخصات پایه --}}
+                <div class="{{ $cardClass }}">
+                    <div class="{{ $headerClass }}">
+                        <div class="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                        </div>
+                        <div>
+                            <h2 class="text-base font-bold text-gray-900 dark:text-white">وضعیت کلی و ماژول لابراتوار</h2>
+                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">کنترل سراسری فعال‌سازی بخش لابراتوار و نام همکار پیش‌فرض</p>
+                        </div>
+                    </div>
+
+                    <div class="p-6 space-y-6">
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/40">
+                            <div>
+                                <h4 class="text-sm font-bold text-gray-900 dark:text-white">فعال‌سازی ماژول لابراتوار در نوبت‌دهی</h4>
+                                <p class="text-xs text-gray-500 dark:text-slate-300 mt-1">با روشن بودن این گزینه، منوی اختصاصی لابراتوار و کارتابل پیگیری‌های روزانه در سیستم در دسترس خواهد بود.</p>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer flex-shrink-0">
+                                <input type="checkbox" name="laboratory_enabled" value="1" x-model="labEnabled" class="sr-only peer">
+                                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-indigo-600"></div>
+                            </label>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
+                            <div>
+                                <label class="{{ $labelClass }}">نام پیش‌فرض لابراتوار اصلی / طرف قرارداد</label>
+                                <input type="text" name="laboratory_default_partner" x-model="defaultPartner" placeholder="مثلاً: آرمان سلامت" class="{{ $inputClass }}">
+                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1.5">این عنوان به عنوان نام پیش‌فرض در ثبت سفارشات درج می‌گردد.</p>
+                            </div>
+
+                            <div class="p-4 rounded-xl border border-indigo-100 bg-indigo-50/50 dark:border-indigo-900/40 dark:bg-indigo-950/30 flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold text-xs shrink-0">✓</div>
+                                <div class="text-xs text-slate-700 dark:text-slate-300 leading-relaxed">
+                                    <strong>سیستم هشدارهای خودکار:</strong> کارهایی که موعد پیگیری یا دریافت آن‌ها گذشته باشد با رنگ <strong>قرمز</strong> و پس از دریافت نهایی کار با رنگ <strong>سبز</strong> در کارتابل نمایش داده می‌شوند.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- کارت ۲: مدیریت پویا و بدون محدودیت انواع لابراتوار، دسته‌ها و مراحل زمانی --}}
+                <div class="{{ $cardClass }}" x-show="labEnabled">
+                    <div class="{{ $headerClass }}">
+                        <div class="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center text-blue-600 dark:text-blue-400">
+                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
+                        </div>
+                        <div class="flex-1 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                            <div>
+                                <h2 class="text-base font-bold text-gray-900 dark:text-white">پیکربندی انواع، دسته‌بندی‌ها و مراحل پیگیری</h2>
+                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">شخصی‌سازی انواع لابراتوار، جریان‌های کاری و زمان‌بندی‌های خودکار</p>
+                            </div>
+                            <button type="button" @click="addType()" class="px-3.5 py-2 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 transition-colors text-xs font-bold flex items-center gap-1.5 shadow-sm shadow-indigo-500/20 self-start sm:self-auto">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                                افزودن نوع لابراتوار جدید
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="p-6 space-y-6">
+                        {{-- تب‌های انتخاب نوع لابراتوار --}}
+                        <div class="flex items-center gap-2 overflow-x-auto pb-2 border-b border-gray-200 dark:border-gray-700">
+                            <template x-for="(type, tIndex) in types" :key="type.id">
+                                <button type="button"
+                                        @click="activeTypeIndex = tIndex"
+                                        :class="activeTypeIndex === tIndex
+                                            ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/20'
+                                            : 'bg-gray-100 dark:bg-gray-700/60 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'"
+                                        class="px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 flex items-center gap-2">
+                                    <span x-text="type.name || 'نوع بدون نام'"></span>
+                                    <span class="px-1.5 py-0.5 rounded-md text-[10px]"
+                                          :class="activeTypeIndex === tIndex ? 'bg-white/20 text-white' : 'bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300'"
+                                          x-text="(type.categories ? type.categories.length : 0) + ' دسته'">
+                                    </span>
+                                </button>
+                            </template>
+                        </div>
+
+                        {{-- محتوای نوع فعال --}}
+                        <template x-if="types[activeTypeIndex]">
+                            <div class="space-y-6">
+                                {{-- مشخصات نوع انتخاب شده --}}
+                                <div class="p-5 rounded-2xl border border-indigo-100 dark:border-indigo-900/40 bg-indigo-50/20 dark:bg-indigo-950/10 space-y-4">
+                                    <div class="flex items-center justify-between">
+                                        <h3 class="text-sm font-bold text-indigo-900 dark:text-indigo-300 flex items-center gap-2">
+                                            <span class="w-2 h-2 rounded-full bg-indigo-600"></span>
+                                            مشخصات نوع لابراتوار
+                                        </h3>
+                                        <button type="button" @click="removeType(activeTypeIndex)"
+                                                class="px-3 py-1.5 rounded-lg border border-red-200 dark:border-red-800/50 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 text-xs font-bold transition-colors flex items-center gap-1"
+                                                x-show="types.length > 1">
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                            حذف این نوع
+                                        </button>
+                                    </div>
+
+                                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                        <div>
+                                            <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">شناسه سیستمی (انگلیسی)</label>
+                                            <input type="text" x-model="types[activeTypeIndex].id" class="{{ $inputClass }} text-xs" required>
+                                        </div>
+                                        <div>
+                                            <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">عنوان نمایشی نوع</label>
+                                            <input type="text" x-model="types[activeTypeIndex].name" class="{{ $inputClass }} text-xs" required>
+                                        </div>
+                                        <div>
+                                            <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">نام پیش‌فرض مرکز / لابراتوار</label>
+                                            <input type="text" x-model="types[activeTypeIndex].default_partner" class="{{ $inputClass }} text-xs" placeholder="مثلاً: آرمان سلامت، لابراتوار مطب">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {{-- بخش دسته‌بندی‌های این نوع (با مدیریت آکاردئونی و باز/بسته کردن) --}}
+                                <div class="space-y-4">
+                                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-gray-50/70 dark:bg-gray-900/40 p-3.5 rounded-2xl border border-gray-200 dark:border-gray-700">
+                                        <div class="flex items-center gap-2.5">
+                                            <span class="w-8 h-8 rounded-xl bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold text-xs">
+                                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" /></svg>
+                                            </span>
+                                            <div>
+                                                <h3 class="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                                                    دسته‌بندی‌های این نوع
+                                                    <span class="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800/40"
+                                                          x-text="(types[activeTypeIndex].categories ? types[activeTypeIndex].categories.length : 0) + ' دسته تعریف شده'"></span>
+                                                </h3>
+                                                <p class="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">برای مشاهده یا ویرایش مراحل هر دسته، روی نوار آن کلیک کنید.</p>
+                                            </div>
+                                        </div>
+
+                                        <div class="flex flex-wrap items-center gap-2">
+                                            <button type="button" @click="expandAllCategories(activeTypeIndex)" class="px-3 py-1.5 rounded-xl bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 text-xs font-bold transition-colors border border-gray-200 dark:border-gray-700 shadow-xs flex items-center gap-1">
+                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                                                باز کردن همه
+                                            </button>
+                                            <button type="button" @click="collapseAllCategories(activeTypeIndex)" class="px-3 py-1.5 rounded-xl bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 text-xs font-bold transition-colors border border-gray-200 dark:border-gray-700 shadow-xs flex items-center gap-1">
+                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"/></svg>
+                                                بستن همه
+                                            </button>
+                                            <button type="button" @click="addCategory(activeTypeIndex)" class="px-3.5 py-1.5 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 transition-colors text-xs font-bold flex items-center gap-1 shadow-sm shadow-indigo-500/20">
+                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                                                افزودن دسته جدید
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {{-- لیست آکاردئونی دسته‌بندی‌ها --}}
+                                    <div class="space-y-3.5">
+                                        <template x-for="(category, cIndex) in types[activeTypeIndex].categories" :key="category.id">
+                                            <div class="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-xs overflow-hidden transition-all duration-200 hover:border-indigo-300 dark:hover:border-indigo-600/60">
+                                                
+                                                {{-- هدر آکاردئون دسته (کلیک برای باز/بسته شدن) --}}
+                                                <div class="p-4 bg-gray-50/70 dark:bg-gray-900/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3 cursor-pointer select-none transition-colors hover:bg-gray-100/80 dark:hover:bg-gray-900/80"
+                                                     @click="toggleCategory(activeTypeIndex, cIndex)">
+                                                    <div class="flex items-center gap-3">
+                                                        <span class="w-7 h-7 rounded-lg bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 font-bold text-xs flex items-center justify-center shrink-0" x-text="cIndex + 1"></span>
+                                                        <div>
+                                                            <div class="flex items-center gap-2">
+                                                                <h4 class="font-bold text-sm text-gray-900 dark:text-white" x-text="category.name || 'دسته‌بندی بدون نام'"></h4>
+                                                                <span class="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300" x-text="category.id"></span>
+                                                            </div>
+                                                            <p class="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5 truncate max-w-md" x-text="category.description || 'بدون توضیحات اضافی'"></p>
+                                                        </div>
+                                                    </div>
+
+                                                    <div class="flex items-center justify-between sm:justify-end gap-2.5">
+                                                        {{-- بج تعداد مراحل --}}
+                                                        <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-blue-50 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300 border border-blue-200 dark:border-blue-800/50">
+                                                            <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                                            <span x-text="(category.stages ? category.stages.length : 0) + ' مرحله'"></span>
+                                                        </span>
+
+                                                        {{-- بج مجموع زمان --}}
+                                                        <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/50">
+                                                            <span x-text="'مجموع: ' + getCategoryTotalTime(category)"></span>
+                                                        </span>
+
+                                                        {{-- دکمه حذف دسته --}}
+                                                        <button type="button"
+                                                                @click.stop="removeCategory(activeTypeIndex, cIndex)"
+                                                                class="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg transition-colors mr-1"
+                                                                title="حذف این دسته‌بندی">
+                                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                                        </button>
+
+                                                        {{-- آیکون فلش باز/بسته --}}
+                                                        <div class="w-6 h-6 rounded-full flex items-center justify-center text-gray-400 transition-transform duration-200"
+                                                             :class="isCategoryOpen(activeTypeIndex, cIndex) ? 'rotate-180 text-indigo-600 dark:text-indigo-400' : ''">
+                                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                {{-- بدنه بازشونده دسته --}}
+                                                <div x-show="isCategoryOpen(activeTypeIndex, cIndex)" x-collapse class="p-5 border-t border-gray-200 dark:border-gray-700 space-y-5 bg-white dark:bg-gray-800">
+                                                    {{-- فیلدهای مشخصات دسته‌بندی --}}
+                                                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 rounded-xl bg-gray-50/60 dark:bg-gray-900/30 border border-gray-200/80 dark:border-gray-700/60">
+                                                        <div>
+                                                            <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">شناسه دسته‌بندی (یکتا)</label>
+                                                            <input type="text" x-model="category.id" class="{{ $inputClass }} text-xs" required>
+                                                        </div>
+                                                        <div>
+                                                            <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">عنوان نمایشی دسته‌بندی</label>
+                                                            <input type="text" x-model="category.name" class="{{ $inputClass }} text-xs font-bold" placeholder="مثلاً: ۱ تا ۲ واحدی، سفارش فوری" required>
+                                                        </div>
+                                                        <div>
+                                                            <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">توضیحات کوتاه (اختیاری)</label>
+                                                            <input type="text" x-model="category.description" class="{{ $inputClass }} text-xs" placeholder="توضیح کوتاه در فرم ثبت">
+                                                        </div>
+                                                    </div>
+
+                                                    {{-- جدول و مراحل زمانی پیگیری --}}
+                                                    <div class="space-y-3">
+                                                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                                                            <div class="flex items-center gap-2">
+                                                                <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                                                                <h4 class="text-xs font-bold text-gray-900 dark:text-white">مراحل و زمان‌بندی پیگیری‌های متوالی</h4>
+                                                            </div>
+                                                            <button type="button" @click="addStage(activeTypeIndex, cIndex)" class="px-3 py-1.5 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm shadow-emerald-500/20 self-start sm:self-auto">
+                                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                                                                افزودن مرحله جدید
+                                                            </button>
+                                                        </div>
+
+                                                        {{-- لیست مراحل --}}
+                                                        <div class="space-y-2.5">
+                                                            <template x-for="(stage, sIndex) in category.stages" :key="stage.key || sIndex">
+                                                                <div class="flex flex-col sm:flex-row sm:items-center gap-3 p-3.5 rounded-xl bg-gray-50 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-700/80 shadow-xs transition-all hover:border-gray-300 dark:hover:border-gray-600">
+                                                                    <div class="flex items-center gap-2 shrink-0">
+                                                                        <span class="w-6 h-6 rounded-lg bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 text-xs font-bold flex items-center justify-center" x-text="sIndex + 1"></span>
+                                                                        <span class="text-xs font-bold text-gray-500 dark:text-gray-400" x-text="'گام ' + (sIndex + 1)"></span>
+                                                                    </div>
+
+                                                                    <div class="flex-1 grid grid-cols-1 sm:grid-cols-4 gap-2.5">
+                                                                        <div class="sm:col-span-2">
+                                                                            <input type="text" x-model="stage.title" class="{{ $inputClass }} text-xs py-1.5" placeholder="عنوان مرحله (مثلاً: پیگیری اول)" required>
+                                                                        </div>
+                                                                        <div>
+                                                                            <input type="number" x-model.number="stage.offset" min="0" max="365" class="{{ $inputClass }} text-xs text-center py-1.5" placeholder="فاصله زمانی" required>
+                                                                        </div>
+                                                                        <div>
+                                                                            <select x-model="stage.unit" class="{{ $selectClass }} text-xs py-1.5">
+                                                                                <option value="days">روز بعد از مرحله قبل</option>
+                                                                                <option value="hours">ساعت بعد از مرحله قبل</option>
+                                                                            </select>
+                                                                        </div>
+                                                                    </div>
+
+                                                                    <div class="flex items-center justify-between sm:justify-end gap-3 pt-2 sm:pt-0 border-t sm:border-t-0 border-gray-200 dark:border-gray-700">
+                                                                        <label class="inline-flex items-center gap-1.5 cursor-pointer select-none px-2.5 py-1 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+                                                                            <input type="checkbox" x-model="stage.is_receive" class="rounded border-gray-300 text-emerald-600 shadow-sm focus:border-emerald-300 focus:ring focus:ring-emerald-200 focus:ring-opacity-50 dark:border-gray-600 dark:bg-gray-900">
+                                                                            <span class="text-[11px] font-bold text-gray-700 dark:text-gray-300">دریافت نهایی کار (سبز)</span>
+                                                                        </label>
+
+                                                                        <div class="flex items-center gap-1">
+                                                                            <button type="button" @click="moveStage(activeTypeIndex, cIndex, sIndex, -1)" class="p-1 text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors" title="انتقال به بالا" x-show="sIndex > 0">
+                                                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"/></svg>
+                                                                            </button>
+                                                                            <button type="button" @click="moveStage(activeTypeIndex, cIndex, sIndex, 1)" class="p-1 text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors" title="انتقال به پایین" x-show="sIndex < category.stages.length - 1">
+                                                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                                                                            </button>
+                                                                            <button type="button" @click="removeStage(activeTypeIndex, cIndex, sIndex)" class="p-1 text-gray-400 hover:text-red-500 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors" title="حذف این مرحله">
+                                                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                                                            </button>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            </template>
+
+                                                            <div x-show="!category.stages || category.stages.length === 0" class="p-4 rounded-xl border border-dashed border-gray-300 dark:border-gray-700 text-center text-xs text-gray-400">
+                                                                هیچ مرحله‌ای برای این دسته‌بندی تعریف نشده است. روی دکمه «افزودن مرحله جدید» کلیک کنید.
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </template>
+
+                                        <div x-show="!types[activeTypeIndex].categories || types[activeTypeIndex].categories.length === 0" class="p-8 rounded-2xl border-2 border-dashed border-gray-200 dark:border-gray-700 text-center text-xs text-gray-400 space-y-2">
+                                            <p>هیچ دسته‌بندی برای این نوع لابراتوار ثبت نشده است.</p>
+                                            <button type="button" @click="addCategory(activeTypeIndex)" class="px-4 py-2 rounded-xl bg-indigo-600 text-white font-bold text-xs hover:bg-indigo-700 transition-colors inline-flex items-center gap-1.5 shadow-sm">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                                                ایجاد اولین دسته‌بندی
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+
+                {{-- دکمه ذخیره‌سازی تب لابراتوار --}}
+                <div class="flex justify-end pt-4">
+                    <button type="submit"
+                            class="inline-flex items-center gap-2 px-8 py-3.5 rounded-2xl bg-indigo-600 text-white font-bold shadow-lg shadow-indigo-500/30 hover:bg-indigo-700 hover:shadow-indigo-500/50 transition-all transform active:scale-95">
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                        </svg>
+                        ذخیره تمام تنظیمات سیستم لابراتوار
                     </button>
                 </div>
             </div>
@@ -2239,6 +2579,163 @@
                     }
                 }
             }));
+
+            Alpine.data('labTabManager', () => ({
+                labEnabled: @json((bool) ($settings->laboratory_enabled ?? false)),
+                defaultPartner: @json($settings->laboratory_default_partner ?? 'آرمان سلامت'),
+                activeTypeIndex: 0,
+                types: @json($settings->laboratory_settings['types'] ?? []),
+                openCategories: {},
+
+                init() {
+                    if (!this.types || this.types.length === 0) {
+                        this.types = [
+                            {
+                                id: 'external',
+                                name: 'لابراتوار طرف قرارداد (خارجی)',
+                                default_partner: 'آرمان سلامت',
+                                categories: []
+                            }
+                        ];
+                    }
+                },
+
+                isCategoryOpen(tIndex, cIndex) {
+                    const key = tIndex + '_' + cIndex;
+                    if (this.openCategories[key] === undefined) {
+                        return cIndex === 0;
+                    }
+                    return !!this.openCategories[key];
+                },
+
+                toggleCategory(tIndex, cIndex) {
+                    const key = tIndex + '_' + cIndex;
+                    this.openCategories[key] = !this.isCategoryOpen(tIndex, cIndex);
+                },
+
+                expandAllCategories(typeIndex) {
+                    if (this.types[typeIndex] && this.types[typeIndex].categories) {
+                        this.types[typeIndex].categories.forEach((_, cIndex) => {
+                            this.openCategories[typeIndex + '_' + cIndex] = true;
+                        });
+                    }
+                },
+
+                collapseAllCategories(typeIndex) {
+                    if (this.types[typeIndex] && this.types[typeIndex].categories) {
+                        this.types[typeIndex].categories.forEach((_, cIndex) => {
+                            this.openCategories[typeIndex + '_' + cIndex] = false;
+                        });
+                    }
+                },
+
+                getCategoryTotalTime(category) {
+                    if (!category.stages || category.stages.length === 0) {
+                        return 'بدون مرحله';
+                    }
+                    let totalHours = 0;
+                    category.stages.forEach(s => {
+                        const offset = parseInt(s.offset) || 0;
+                        if (s.unit === 'hours') {
+                            totalHours += offset;
+                        } else {
+                            totalHours += offset * 24;
+                        }
+                    });
+                    if (totalHours === 0) return '۰ روز';
+                    const days = Math.floor(totalHours / 24);
+                    const remHours = totalHours % 24;
+                    const parts = [];
+                    if (days > 0) parts.push(days + ' روز');
+                    if (remHours > 0) parts.push(remHours + ' ساعت');
+                    return parts.join(' و ');
+                },
+
+                addType() {
+                    const id = 'lab_type_' + Date.now();
+                    this.types.push({
+                        id: id,
+                        name: 'نوع لابراتوار جدید',
+                        default_partner: 'مرکز همکار',
+                        categories: [
+                            {
+                                id: 'cat_' + Date.now(),
+                                name: 'دسته‌بندی جدید',
+                                description: '',
+                                stages: [
+                                    { key: 'stage_1', title: 'پیگیری اول', offset: 7, unit: 'days', is_receive: false },
+                                    { key: 'stage_receive', title: 'دریافت کار', offset: 3, unit: 'days', is_receive: true }
+                                ]
+                            }
+                        ]
+                    });
+                    this.activeTypeIndex = this.types.length - 1;
+                    this.openCategories[this.activeTypeIndex + '_0'] = true;
+                },
+
+                removeType(typeIndex) {
+                    if (this.types.length <= 1) {
+                        alert('حداقل یک نوع لابراتوار باید در سیستم وجود داشته باشد.');
+                        return;
+                    }
+                    if (confirm('آیا از حذف این نوع لابراتوار و تمامی دسته‌بندی‌ها و مراحل آن اطمینان دارید؟')) {
+                        this.types.splice(typeIndex, 1);
+                        if (this.activeTypeIndex >= this.types.length) {
+                            this.activeTypeIndex = Math.max(0, this.types.length - 1);
+                        }
+                    }
+                },
+
+                addCategory(typeIndex) {
+                    const catId = 'cat_' + Date.now();
+                    if (!this.types[typeIndex].categories) {
+                        this.types[typeIndex].categories = [];
+                    }
+                    this.types[typeIndex].categories.push({
+                        id: catId,
+                        name: 'دسته‌بندی جدید',
+                        description: '',
+                        stages: [
+                            { key: 'stage_1', title: 'پیگیری اول', offset: 5, unit: 'days', is_receive: false },
+                            { key: 'stage_receive', title: 'دریافت کار', offset: 3, unit: 'days', is_receive: true }
+                        ]
+                    });
+                    const newIndex = this.types[typeIndex].categories.length - 1;
+                    this.openCategories[typeIndex + '_' + newIndex] = true;
+                },
+
+                removeCategory(typeIndex, catIndex) {
+                    if (confirm('آیا از حذف این دسته‌بندی و مراحل پیگیری آن مطمئن هستید؟')) {
+                        this.types[typeIndex].categories.splice(catIndex, 1);
+                    }
+                },
+
+                addStage(typeIndex, catIndex) {
+                    const cat = this.types[typeIndex].categories[catIndex];
+                    if (!cat.stages) cat.stages = [];
+                    const stepNum = cat.stages.length + 1;
+                    cat.stages.push({
+                        key: 'stage_' + Date.now(),
+                        title: 'مرحله پیگیری ' + stepNum,
+                        offset: 3,
+                        unit: 'days',
+                        is_receive: false
+                    });
+                },
+
+                removeStage(typeIndex, catIndex, stageIndex) {
+                    this.types[typeIndex].categories[catIndex].stages.splice(stageIndex, 1);
+                },
+
+                moveStage(typeIndex, catIndex, stageIndex, direction) {
+                    const stages = this.types[typeIndex].categories[catIndex].stages;
+                    const targetIndex = stageIndex + direction;
+                    if (targetIndex < 0 || targetIndex >= stages.length) return;
+                    const temp = stages[stageIndex];
+                    stages[stageIndex] = stages[targetIndex];
+                    stages[targetIndex] = temp;
+                }
+            }));
         })
 
         function addBreak(day) {
@@ -2253,11 +2750,11 @@
             row.innerHTML = `
                 <span class="text-xs font-medium text-gray-500 w-6 text-center">از</span>
                 <input type="text" data-jdp-only-time name="rules[${day}][breaks][${index}][start_local]"
-                       class="w-24 h-9 rounded-lg border-gray-200 bg-gray-50 text-center text-sm font-mono focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 dark:bg-gray-900 dark:border-gray-600 dark:text-gray-200"
+                       class="w-24 h-9 rounded-lg border-gray-200 bg-gray-50 text-center text-sm font-sans focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 dark:bg-gray-900 dark:border-gray-600 dark:text-gray-200"
                        placeholder="شروع">
                 <span class="text-xs font-medium text-gray-500 w-6 text-center">تا</span>
                 <input type="text" data-jdp-only-time name="rules[${day}][breaks][${index}][end_local]"
-                       class="w-24 h-9 rounded-lg border-gray-200 bg-gray-50 text-center text-sm font-mono focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 dark:bg-gray-900 dark:border-gray-600 dark:text-gray-200"
+                       class="w-24 h-9 rounded-lg border-gray-200 bg-gray-50 text-center text-sm font-sans focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 dark:bg-gray-900 dark:border-gray-600 dark:text-gray-200"
                        placeholder="پایان">
                 <div class="flex-1"></div>
                 <button type="button" onclick="this.closest('.break-row').remove()"
