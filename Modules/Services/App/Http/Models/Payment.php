@@ -230,5 +230,118 @@ class Payment extends Model
     {
         return $this->status === 'canceled';
     }
+
+    public function isWalletPayment(): bool
+    {
+        $method = strtolower(trim((string)$this->method));
+        $gateway = strtolower(trim((string)$this->gateway));
+        return $method === 'wallet' || $gateway === 'wallet' || str_starts_with($method, 'wallet-') || str_starts_with($gateway, 'wallet-');
+    }
+
+    protected static function booted()
+    {
+        static::updating(function (Payment $payment) {
+            if ($payment->isDirty('status') && $payment->status === 'canceled' && $payment->getOriginal('status') !== 'canceled') {
+                $payment->refundWalletPayment('لغو وضعیت پرداخت');
+            }
+        });
+
+        static::deleting(function (Payment $payment) {
+            if ($payment->status !== 'canceled') {
+                $payment->refundWalletPayment('حذف پرداخت');
+            }
+        });
+    }
+
+    public function refundWalletPayment(?string $reason = null): bool
+    {
+        if (!\Nwidart\Modules\Facades\Module::has('Wallet') || !\Nwidart\Modules\Facades\Module::isEnabled('Wallet')) {
+            return false;
+        }
+
+        if (!$this->isWalletPayment()) {
+            return false;
+        }
+
+        if ($this->amount <= 0) {
+            return false;
+        }
+
+        $invoice = $this->invoice;
+        if (!$invoice && $this->invoice_id) {
+            $invoice = Invoice::find($this->invoice_id);
+        }
+
+        if (!$invoice) {
+            return false;
+        }
+
+        // Idempotency: check if already refunded to wallet
+        $alreadyRefunded = \Modules\Wallet\App\Models\WalletTransaction::where('type', \Modules\Wallet\App\Enums\TransactionType::REFUND->value)
+            ->where(function ($q) {
+                $q->where('meta->payment_id', $this->id)
+                  ->orWhere('meta->payment_id', (string)$this->id);
+            })
+            ->exists();
+
+        if ($alreadyRefunded) {
+            return false;
+        }
+
+        $customer = $invoice->customer;
+        if (!$customer && $invoice->customer_id) {
+            $customer = \Modules\Clients\Entities\Client::find($invoice->customer_id);
+        }
+
+        if (!$customer) {
+            \Illuminate\Support\Facades\Log::warning("[WalletRefund] Customer not found for invoice #{$invoice->id}, payment #{$this->id}");
+            return false;
+        }
+
+        $clientClass = (new \Modules\Clients\Entities\Client())->getMorphClass();
+        $customerWallet = \Modules\Wallet\App\Models\Wallet::where('holder_type', $clientClass)
+            ->where('holder_id', $customer->id)
+            ->first();
+
+        if (!$customerWallet) {
+            $customerWallet = \Modules\Wallet\App\Models\Wallet::where('holder_type', get_class($customer))
+                ->where('holder_id', $customer->id)
+                ->first();
+        }
+
+        $walletHolder = $customerWallet?->holder ?? $customer;
+        if (!$walletHolder) {
+            \Illuminate\Support\Facades\Log::warning("[WalletRefund] Wallet holder not found for invoice #{$invoice->id}, payment #{$this->id}");
+            return false;
+        }
+
+        $invoiceNum = $invoice->invoice_number ?: $invoice->id;
+        $desc = "عودت وجه پرداخت کیف پول بابت لغو پرداخت فاکتور خدمات #{$invoiceNum}" . ($reason ? " ({$reason})" : '');
+
+        try {
+            app(\Modules\Wallet\App\Services\WalletService::class)->deposit(
+                holder: $walletHolder,
+                amount: (float)$this->amount,
+                type: \Modules\Wallet\App\Enums\TransactionType::REFUND,
+                payable: $invoice,
+                description: $desc,
+                meta: [
+                    'invoice_id' => $invoice->id,
+                    'payment_id' => $this->id,
+                    'refund_reason' => $reason ?? 'لغو پرداخت یا فاکتور خدمات',
+                    'refunded_at' => now()->toIso8601String(),
+                ]
+            );
+
+            $this->notes = trim(($this->notes ? $this->notes . "\n" : '') . 'وجه این پرداخت به کیف پول مشتری عودت داده شد.');
+            $this->saveQuietly();
+
+            \Illuminate\Support\Facades\Log::info("[WalletRefund] Successfully refunded {$this->amount} to wallet for invoice #{$invoice->id}, payment #{$this->id}");
+            return true;
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error("[WalletRefund] Error refunding to wallet for payment #{$this->id}: " . $e->getMessage());
+            return false;
+        }
+    }
 }
 

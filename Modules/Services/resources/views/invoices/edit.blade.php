@@ -681,9 +681,14 @@
                                                 :class="isDebtInvoiceAdded(inv.id) ? 'bg-emerald-50/70 border-emerald-200 dark:bg-emerald-950/20 dark:border-emerald-800/50' : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700/80 shadow-xs'">
                                                 <div class="min-w-0 flex-1">
                                                     <div class="flex items-center gap-2 flex-wrap">
-                                                        <span
-                                                            class="font-black text-xs sm:text-sm text-gray-800 dark:text-gray-100 tabular-nums"
-                                                            x-text="'فاکتور #' + inv.invoice_number"></span>
+                                                        <a :href="inv.url || ('{{ url('user/services/invoices') }}/' + inv.id)" target="_blank"
+                                                           class="font-black text-xs sm:text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 hover:underline flex items-center gap-1.5 tabular-nums transition-colors group cursor-pointer"
+                                                           title="مشاهده فاکتور در برگه جدید">
+                                                            <span x-text="'فاکتور #' + inv.invoice_number"></span>
+                                                            <svg class="w-3.5 h-3.5 opacity-70 group-hover:opacity-100 transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+                                                            </svg>
+                                                        </a>
                                                         <template x-if="inv.issue_date_jalali">
                                                             <span
                                                                 class="text-[10px] text-gray-400 dark:text-gray-500 tabular-nums"
@@ -699,6 +704,14 @@
                                                     </div>
                                                 </div>
                                                 <div class="shrink-0 ms-3 flex items-center gap-1.5">
+                                                    <a :href="inv.url || ('{{ url('user/services/invoices') }}/' + inv.id)" target="_blank"
+                                                       class="p-1.5 rounded-lg text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 border border-gray-200/60 dark:border-gray-700/60 hover:border-indigo-200 dark:hover:border-indigo-800/40 transition-colors cursor-pointer"
+                                                       title="مشاهده فاکتور در تب جدید">
+                                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                                            <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                                                        </svg>
+                                                    </a>
                                                     <template x-if="isDebtInvoiceAdded(inv.id)">
                                                         <div class="flex items-center gap-1.5">
                                                             <span

@@ -218,6 +218,7 @@ class InvoiceController extends Controller
                 return [
                     'id' => $inv->id,
                     'invoice_number' => $inv->invoice_number,
+                    'url' => route('services.invoices.show', $inv),
                     'total' => (int)$inv->total,
                     'total_formatted' => number_format((int)$inv->total),
                     'paid_amount' => (int)$inv->calculatePaidAmount(),
@@ -1401,6 +1402,7 @@ class InvoiceController extends Controller
         try {
             DB::transaction(function () use ($invoice, $payment) {
                 $wasPaid = ($payment->status === 'paid');
+                $payment->refundWalletPayment('رد پرداخت / فیش واریزی');
                 $payment->update(['status' => 'canceled']);
 
                 $invoice->paid_amount = $invoice->calculatePaidAmount();
@@ -1466,6 +1468,7 @@ class InvoiceController extends Controller
 
         try {
             DB::transaction(function () use ($invoice, $payment) {
+                $payment->refundWalletPayment('لغو پرداخت');
                 $payment->update(['status' => 'canceled']);
 
                 $invoice->paid_amount = $invoice->calculatePaidAmount();
@@ -1591,6 +1594,7 @@ class InvoiceController extends Controller
                     $engine = app(AccountingEngine::class);
                     foreach ($invoice->payments as $payment) {
                         if ($payment->status !== 'canceled') {
+                            $payment->refundWalletPayment('تغییر وضعیت فاکتور به ' . $status->name);
                             $payment->update(['status' => 'canceled']);
                             $engine->cancelServicePayment($payment);
                         }
@@ -1639,6 +1643,13 @@ class InvoiceController extends Controller
 
         DB::transaction(function () use ($invoice, $cancelledStatus) {
             $invoice->status_id = $cancelledStatus->id;
+
+            // Refund any wallet payments before updating status to canceled
+            foreach ($invoice->payments as $payment) {
+                if ($payment->status !== 'canceled') {
+                    $payment->refundWalletPayment('لغو فاکتور');
+                }
+            }
 
             if (Module::has('Accounting') && Module::isEnabled('Accounting')) {
                 try {
