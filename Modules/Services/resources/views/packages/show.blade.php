@@ -41,6 +41,7 @@
                     @endif
                 </div>
             </div>
+        </div>
 
         <div class="flex flex-wrap items-center gap-3 shrink-0">
             <a href="{{ route('services.packages.edit', $package) }}"
@@ -186,7 +187,7 @@
                                 </div>
                                 @if($item->service && $item->service->code)
                                     <span
-                                        class="block text-xs font-mono text-gray-400 mt-0.5">کد: {{ $item->service->code }}</span>
+                                        class="block text-xs font-sans tabular-nums text-gray-400 mt-0.5">کد: {{ $item->service->code }}</span>
                                 @endif
 
                                 @if($item->custom_fields && is_array($item->custom_fields) && count(array_filter($item->custom_fields)) > 0)
