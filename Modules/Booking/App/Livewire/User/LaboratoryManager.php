@@ -78,6 +78,31 @@ class LaboratoryManager extends Component
         $settings = BookingSetting::current();
         $this->labPartnerName = $settings->laboratory_default_partner ?: 'آرمان سلامت';
         $this->sentAtJalali = Jalalian::now()->format('Y/m/d');
+
+        $clientId = request()->query('client_id');
+        $action = request()->query('action');
+        $teeth = request()->query('teeth');
+        $doctorId = request()->query('doctor_id');
+
+        if ($clientId) {
+            $client = Client::find($clientId);
+            if ($client) {
+                $this->openCreateModal();
+                $this->selectClient($client->id);
+                if ($teeth) {
+                    $this->teethNumbers = $teeth;
+                    $teethList = array_filter(array_map('trim', explode(',', $teeth)));
+                    if (count($teethList) > 0) {
+                        $this->unitsCount = count($teethList);
+                    }
+                }
+                if ($doctorId) {
+                    $this->selectedDoctorId = (int) $doctorId;
+                }
+            }
+        } elseif ($action === 'create') {
+            $this->openCreateModal();
+        }
     }
 
     public function updatingSearch(): void

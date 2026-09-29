@@ -190,6 +190,40 @@ class BookingSetting extends Model
                         ],
                     ],
                 ],
+                'integrations' => [
+                    'reminders' => [
+                        'enabled'        => true,
+                        'assign_type'    => 'role', // 'role' or 'user'
+                        'target_role'    => 'secretary',
+                        'target_user_id' => null,
+                    ],
+                    'followups' => [
+                        'enabled'        => true,
+                        'assign_type'    => 'role', // 'role' or 'user'
+                        'target_role'    => 'secretary',
+                        'target_user_id' => null,
+                    ],
+                    'tasks' => [
+                        'enabled'        => true,
+                        'assign_type'    => 'role', // 'role' or 'user'
+                        'target_role'    => 'technician',
+                        'target_user_id' => null,
+                    ],
+                ],
+            ];
+        }
+
+        public static function getLaboratoryIntegrationSettings(): array
+        {
+            $settings = static::current();
+            $labSettings = $settings->laboratory_settings ?? [];
+            $defaults = static::defaultLaboratorySettings()['integrations'];
+            
+            $current = $labSettings['integrations'] ?? [];
+            return [
+                'reminders' => array_merge($defaults['reminders'], $current['reminders'] ?? []),
+                'followups' => array_merge($defaults['followups'], $current['followups'] ?? []),
+                'tasks'     => array_merge($defaults['tasks'], $current['tasks'] ?? []),
             ];
         }
 

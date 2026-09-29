@@ -2112,7 +2112,7 @@
                  x-data="labTabManager">
 
                 <!-- Hidden Input to submit full laboratory configuration JSON -->
-                <input type="hidden" name="laboratory_settings_json" :value="JSON.stringify({ types: types })">
+                <input type="hidden" name="laboratory_settings_json" :value="JSON.stringify({ types: types, integrations: integrations })">
 
                 {{-- راهنمای سیستم لابراتوار --}}
                 <div class="bg-gradient-to-r from-indigo-500/10 via-blue-500/10 to-cyan-500/10 dark:from-indigo-950/40 dark:via-blue-950/30 dark:to-cyan-950/30 p-5 rounded-2xl border border-indigo-100 dark:border-indigo-800/40 flex items-start gap-4">
@@ -2417,6 +2417,205 @@
                                 </div>
                             </div>
                         </template>
+                {{-- کارت ۳: تنظیمات انتساب خودکار و هماهنگی با سایر ماژول‌ها (Reminders, FollowUps, Tasks) --}}
+                <div class="{{ $cardClass }}" x-show="labEnabled">
+                    <div class="{{ $headerClass }}">
+                        <div class="w-8 h-8 rounded-lg bg-amber-50 dark:bg-amber-900/20 flex items-center justify-center text-amber-600 dark:text-amber-400">
+                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
+                        </div>
+                        <div>
+                            <h2 class="text-base font-bold text-gray-900 dark:text-white">تنظیمات انتساب خودکار و هماهنگی ماژول‌ها (Integration Rules)</h2>
+                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">تعیین نقش‌ها یا کاربران مسئول برای ثبت خودکار یادآورها، پیگیری‌های نوبت‌دهی و وظایف لابراتوار بر اساس نقش یا کاربر دلخواه</p>
+                        </div>
+                    </div>
+
+                    <div class="p-6 space-y-6 divide-y divide-gray-200/80 dark:divide-gray-700/80">
+                        {{-- ۱. تنظیمات یادآورها (Reminders) --}}
+                        <div class="pt-2 first:pt-0 space-y-4">
+                            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                <div class="space-y-1">
+                                    <div class="flex items-center gap-2">
+                                        <span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
+                                        <h4 class="text-sm font-bold text-gray-900 dark:text-white">یادآورهای موعد مراحل سفارش (Reminders)</h4>
+                                    </div>
+                                    <p class="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                                        ایجاد خودکار نوتیفیکیشن و یادآور در ساعت ۹ صبح روز موعد هر مرحله و همچنین زمان تحویل فیزیکی کار به مطب.
+                                    </p>
+                                </div>
+                                <label class="relative inline-flex items-center cursor-pointer flex-shrink-0">
+                                    <input type="checkbox" x-model="integrations.reminders.enabled" class="sr-only peer">
+                                    <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-amber-500"></div>
+                                </label>
+                            </div>
+
+                            <div x-show="integrations.reminders.enabled" class="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/40">
+                                <div>
+                                    <label class="{{ $labelClass }}">شیوه انتساب یادآوری</label>
+                                    <div class="flex items-center gap-4 mt-2">
+                                        <label class="inline-flex items-center gap-2 text-xs font-bold text-gray-700 dark:text-gray-300 cursor-pointer">
+                                            <input type="radio" value="role" x-model="integrations.reminders.assign_type" class="text-indigo-600 focus:ring-indigo-500">
+                                            <span>کاربران یک نقش خاص (پیش‌فرض: پذیرش)</span>
+                                        </label>
+                                        <label class="inline-flex items-center gap-2 text-xs font-bold text-gray-700 dark:text-gray-300 cursor-pointer">
+                                            <input type="radio" value="user" x-model="integrations.reminders.assign_type" class="text-indigo-600 focus:ring-indigo-500">
+                                            <span>یک کاربر مشخص</span>
+                                        </label>
+                                    </div>
+                                    <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-2">
+                                        یادآورها برای پزشک به صورت اجباری صادر نمی‌شوند و دقیقاً به این گروه یا شخص ارجاع می‌گردند.
+                                    </p>
+                                </div>
+
+                                <div>
+                                    <template x-if="integrations.reminders.assign_type === 'role'">
+                                        <div>
+                                            <label class="{{ $labelClass }}">انتخاب نقش هدف</label>
+                                            <select x-model="integrations.reminders.target_role" class="{{ $inputClass }}">
+                                                <option value="">-- انتخاب نقش --</option>
+                                                @foreach($roles as $r)
+                                                    <option value="{{ $r->name }}">{{ $r->name }}</option>
+                                                @endforeach
+                                            </select>
+                                            <span class="text-[11px] text-slate-500 dark:text-slate-400 mt-1 block">تمام کاربرانی که این نقش را دارند یادآوری را دریافت می‌کنند.</span>
+                                        </div>
+                                    </template>
+                                    <template x-if="integrations.reminders.assign_type === 'user'">
+                                        <div>
+                                            <label class="{{ $labelClass }}">انتخاب کاربر هدف</label>
+                                            <select x-model="integrations.reminders.target_user_id" class="{{ $inputClass }}">
+                                                <option value="">-- انتخاب کاربر --</option>
+                                                @foreach($allUsers as $u)
+                                                    <option value="{{ $u->id }}">{{ $u->name }} ({{ $u->email }})</option>
+                                                @endforeach
+                                            </select>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+                        </div>
+
+                        {{-- ۲. تنظیمات پیگیری‌ها (FollowUps) --}}
+                        <div class="pt-6 space-y-4">
+                            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                <div class="space-y-1">
+                                    <div class="flex items-center gap-2">
+                                        <span class="w-2.5 h-2.5 rounded-full bg-indigo-500"></span>
+                                        <h4 class="text-sm font-bold text-gray-900 dark:text-white">پیگیری تماس و نوبت‌دهی تحویل پروتز (FollowUps)</h4>
+                                    </div>
+                                    <p class="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                                        پس از تحویل فیزیکی پروتز از لابراتوار (سبز شدن کار)، یک پیگیری در کارتابل پیگیری‌ها جهت تماس با بیمار و تنظیم وقت ایجاد می‌شود.
+                                    </p>
+                                </div>
+                                <label class="relative inline-flex items-center cursor-pointer flex-shrink-0">
+                                    <input type="checkbox" x-model="integrations.followups.enabled" class="sr-only peer">
+                                    <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-indigo-600"></div>
+                                </label>
+                            </div>
+
+                            <div x-show="integrations.followups.enabled" class="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/40">
+                                <div>
+                                    <label class="{{ $labelClass }}">مسئول پیگیری نوبت تحویل</label>
+                                    <div class="flex items-center gap-4 mt-2">
+                                        <label class="inline-flex items-center gap-2 text-xs font-bold text-gray-700 dark:text-gray-300 cursor-pointer">
+                                            <input type="radio" value="role" x-model="integrations.followups.assign_type" class="text-indigo-600 focus:ring-indigo-500">
+                                            <span>کاربران یک نقش خاص (مثلاً پذیرش)</span>
+                                        </label>
+                                        <label class="inline-flex items-center gap-2 text-xs font-bold text-gray-700 dark:text-gray-300 cursor-pointer">
+                                            <input type="radio" value="user" x-model="integrations.followups.assign_type" class="text-indigo-600 focus:ring-indigo-500">
+                                            <span>یک کاربر مشخص</span>
+                                        </label>
+                                    </div>
+                                    <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-2">
+                                        از ارسال پیگیری برای کاربران نامرتبط جلوگیری شده و مستقیماً در کارتابل پرسنل مسئول قرار می‌گیرد.
+                                    </p>
+                                </div>
+
+                                <div>
+                                    <template x-if="integrations.followups.assign_type === 'role'">
+                                        <div>
+                                            <label class="{{ $labelClass }}">انتخاب نقش مسئول پیگیری</label>
+                                            <select x-model="integrations.followups.target_role" class="{{ $inputClass }}">
+                                                <option value="">-- انتخاب نقش --</option>
+                                                @foreach($roles as $r)
+                                                    <option value="{{ $r->name }}">{{ $r->name }}</option>
+                                                @endforeach
+                                            </select>
+                                        </div>
+                                    </template>
+                                    <template x-if="integrations.followups.assign_type === 'user'">
+                                        <div>
+                                            <label class="{{ $labelClass }}">انتخاب کاربر مسئول پیگیری</label>
+                                            <select x-model="integrations.followups.target_user_id" class="{{ $inputClass }}">
+                                                <option value="">-- انتخاب کاربر --</option>
+                                                @foreach($allUsers as $u)
+                                                    <option value="{{ $u->id }}">{{ $u->name }} ({{ $u->email }})</option>
+                                                @endforeach
+                                            </select>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+                        </div>
+
+                        {{-- ۳. تنظیمات وظایف داخل مطب (In-House Tasks) --}}
+                        <div class="pt-6 space-y-4">
+                            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                <div class="space-y-1">
+                                    <div class="flex items-center gap-2">
+                                        <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                                        <h4 class="text-sm font-bold text-gray-900 dark:text-white">وظایف لابراتوار دیجیتال مطب (In-House Tasks)</h4>
+                                    </div>
+                                    <p class="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                                        برای سفارش‌های دیجیتال داخل مطب، تسک طراحی و بررسی اسکن دیجیتال به این مسئول ارجاع خواهد شد.
+                                    </p>
+                                </div>
+                                <label class="relative inline-flex items-center cursor-pointer flex-shrink-0">
+                                    <input type="checkbox" x-model="integrations.tasks.enabled" class="sr-only peer">
+                                    <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-emerald-600"></div>
+                                </label>
+                            </div>
+
+                            <div x-show="integrations.tasks.enabled" class="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/40">
+                                <div>
+                                    <label class="{{ $labelClass }}">مسئول وظیفه طراحی دیجیتال</label>
+                                    <div class="flex items-center gap-4 mt-2">
+                                        <label class="inline-flex items-center gap-2 text-xs font-bold text-gray-700 dark:text-gray-300 cursor-pointer">
+                                            <input type="radio" value="role" x-model="integrations.tasks.assign_type" class="text-indigo-600 focus:ring-indigo-500">
+                                            <span>کاربران یک نقش خاص (مثلاً تکنسین)</span>
+                                        </label>
+                                        <label class="inline-flex items-center gap-2 text-xs font-bold text-gray-700 dark:text-gray-300 cursor-pointer">
+                                            <input type="radio" value="user" x-model="integrations.tasks.assign_type" class="text-indigo-600 focus:ring-indigo-500">
+                                            <span>یک کاربر مشخص</span>
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <template x-if="integrations.tasks.assign_type === 'role'">
+                                        <div>
+                                            <label class="{{ $labelClass }}">انتخاب نقش تکنسین / طراح</label>
+                                            <select x-model="integrations.tasks.target_role" class="{{ $inputClass }}">
+                                                <option value="">-- انتخاب نقش --</option>
+                                                @foreach($roles as $r)
+                                                    <option value="{{ $r->name }}">{{ $r->name }}</option>
+                                                @endforeach
+                                            </select>
+                                        </div>
+                                    </template>
+                                    <template x-if="integrations.tasks.assign_type === 'user'">
+                                        <div>
+                                            <label class="{{ $labelClass }}">انتخاب کاربر تکنسین / طراح</label>
+                                            <select x-model="integrations.tasks.target_user_id" class="{{ $inputClass }}">
+                                                <option value="">-- انتخاب کاربر --</option>
+                                                @foreach($allUsers as $u)
+                                                    <option value="{{ $u->id }}">{{ $u->name }} ({{ $u->email }})</option>
+                                                @endforeach
+                                            </select>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -2585,6 +2784,7 @@
                 defaultPartner: @json($settings->laboratory_default_partner ?? 'آرمان سلامت'),
                 activeTypeIndex: 0,
                 types: @json($settings->laboratory_settings['types'] ?? []),
+                integrations: @json(\Modules\Booking\Entities\BookingSetting::getLaboratoryIntegrationSettings()),
                 openCategories: {},
 
                 init() {
