@@ -199,11 +199,13 @@ class PropertyController extends Controller
         $maxVideoSize = PropertySetting::get('max_video_size', 20480);
         $allowedVideoTypes = str_replace(' ', '', PropertySetting::get('allowed_video_types', 'mp4,mov,avi'));
         $maxGalleryImages = PropertySetting::get('max_gallery_images', 10);
+        $rentalModeEnabled = (bool) PropertySetting::get('rental_mode_enabled', 0);
+        $allowedListingTypes = 'sale,presale,rent' . ($rentalModeEnabled ? ',daily_rental' : '');
 
         $validated = $request->validate([
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
-            'listing_type' => 'required|in:sale,presale,rent',
+            'listing_type' => 'required|in:' . $allowedListingTypes,
             'property_type' => 'required|in:apartment,villa,land,office',
             'document_type' => 'nullable|string',
             'building_id' => 'nullable|integer',
@@ -280,6 +282,24 @@ class PropertyController extends Controller
         }
         $data['meta'] = $processedMeta;
 
+        // انتساب خودکار میزبان در صورت لاگین بودن میزبان
+        $host = \Modules\Properties\Entities\PropertyHost::where('user_id', auth()->id())->first();
+        if ($host) {
+            $data['host_id'] = $host->id;
+            if (empty($data['owner_id']) && $host->owner_id) {
+                $data['owner_id'] = $host->owner_id;
+            }
+        }
+
+        // وضعیت تایید برای اقامتگاه روزانه
+        $isAdmin = auth()->user()->hasRole(['super-admin', 'admin']);
+        $autoApproveProperty = (bool) PropertySetting::get('rental_property_auto_approve', 0);
+        if ($data['listing_type'] === 'daily_rental') {
+            $data['approval_status'] = ($isAdmin || $autoApproveProperty) ? 'approved' : 'pending_review';
+        } else {
+            $data['approval_status'] = 'approved';
+        }
+
         $property = Property::create($data);
 
         if ($request->hasFile('gallery_images')) {
@@ -298,9 +318,13 @@ class PropertyController extends Controller
             PropertyAttributeValue::create(['property_id' => $property->id, 'attribute_id' => $fid, 'value' => '1']);
         }
 
-
-        $redirectUrl = route('user.properties.pricing', $property);
-        $successMsg = 'مشخصات اولیه ثبت شد. لطفا قیمت‌گذاری را انجام دهید.';
+        if ($property->listing_type === 'daily_rental') {
+            $redirectUrl = route('user.properties.rental.config', $property);
+            $successMsg = 'مشخصات اولیه اقامتگاه ثبت شد. لطفاً ظرفیت، قیمت شبانه و قوانین را تنظیم کنید.';
+        } else {
+            $redirectUrl = route('user.properties.pricing', $property);
+            $successMsg = 'مشخصات اولیه ثبت شد. لطفا قیمت‌گذاری را انجام دهید.';
+        }
 
         if ($request->wantsJson()) {
             return response()->json([
@@ -627,10 +651,13 @@ class PropertyController extends Controller
             }
         }
 
+        $rentalModeEnabled = (bool) PropertySetting::get('rental_mode_enabled', 0);
+        $allowedListingTypes = 'sale,presale,rent' . ($rentalModeEnabled ? ',daily_rental' : '');
+
         $data = $request->validate([
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
-            'listing_type' => 'required|in:sale,presale,rent',
+            'listing_type' => 'required|in:' . $allowedListingTypes,
             'property_type' => 'required|in:apartment,villa,land,office',
             'document_type' => 'nullable|string',
             'building_id' => 'nullable|integer',

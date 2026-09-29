@@ -34,6 +34,22 @@ return [
         'permission' => 'properties.owners.view',
     ],
     [
+        'title' => __('properties::menu.manage_hosts'),
+        'route' => 'user.properties.hosts.admin.index',
+        'icon' => '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5 shrink-0"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M17 20h5v-2a3 3 0 0 0 -5.356 -1.857" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /><path d="M7 10m-4 0a4 4 0 1 0 8 0a4 4 0 1 0 -8 0" /><path d="M3 20v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2" /></svg>',
+        'group' => 'properties',
+        'position' => 26,
+        'permission' => 'properties.hosts.view',
+    ],
+    [
+        'title' => __('properties::menu.host_dashboard'),
+        'route' => 'user.properties.hosts.dashboard',
+        'icon' => '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5 shrink-0"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M3 12l2 -2m0 0l7 -7l7 7m2 2l-2 2m-2 -2v10a1 1 0 0 1 -1 1h-3m-6 0a1 1 0 0 1 -1 -1v-4a1 1 0 0 1 1 -1h2a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-6" /></svg>',
+        'group' => 'properties',
+        'position' => 27,
+        'permission' => 'properties.view',
+    ],
+    [
         'title' => __('properties::menu.manage_buildings'),
         'route' => 'user.property-buildings.index',
         'icon' => '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5 shrink-0"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M3 21l18 0" /><path d="M5 21v-14l8 -4l8 4v14" /><path d="M19 21v-10l-6 -4" /><path d="M9 9l0 .01" /><path d="M9 12l0 .01" /><path d="M9 15l0 .01" /><path d="M9 18l0 .01" /></svg>',

@@ -480,6 +480,78 @@
                 </div>
             </div>
 
+            {{-- کارت جدید: تنظیمات اقامتگاه‌های روزانه و سیستم چندمالکی --}}
+            <div class="{{ $cardClass }} p-6" x-data="{ rentalEnabled: {{ ($rental_mode_enabled ?? 0) ? 'true' : 'false' }}, multiHostEnabled: {{ ($rental_multi_host_enabled ?? 0) ? 'true' : 'false' }} }">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                        <span class="w-1.5 h-1.5 rounded-full bg-teal-500"></span>
+                        اقامتگاه‌های روزانه و سیستم چندمالکی (ویلا / سوئیت)
+                    </h2>
+                    <span class="text-xs bg-teal-50 text-teal-700 dark:bg-teal-900/30 dark:text-teal-300 px-2.5 py-1 rounded-lg font-bold border border-teal-100 dark:border-teal-800/40">Vacation Rental</span>
+                </div>
+                <p class="text-xs text-gray-500 dark:text-gray-400 mb-6 leading-relaxed">
+                    با فعال‌سازی این قابلیت، پشتیبانی از اجاره‌های کوتاه‌مدت/روزانه (مشابه جاجیگا و جاباما) و سیستم چندمیزبانی به ماژول املاک اضافه می‌شود.
+                </p>
+
+                <div class="space-y-5">
+                    {{-- فعال‌سازی حالت اجاره روزانه --}}
+                    <label class="flex items-center justify-between p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 cursor-pointer hover:bg-white dark:hover:bg-gray-800 transition-colors">
+                        <div class="flex flex-col">
+                            <span class="text-sm font-bold text-gray-800 dark:text-gray-200">فعال‌سازی حالت اجاره روزانه</span>
+                            <span class="text-xs text-gray-500 dark:text-gray-400 mt-1">امکان ثبت ملک با نوع «اجاره روزانه»، تعیین ظرفیت مهمان، قیمت شبانه، آخر هفته و تقویم مسدودسازی.</span>
+                        </div>
+                        <input type="checkbox" name="rental_mode_enabled" value="1" x-model="rentalEnabled" class="{{ $checkboxClass }}">
+                    </label>
+
+                    {{-- تنظیمات فرعی با فعال بودن اجاره روزانه --}}
+                    <div x-show="rentalEnabled" x-transition class="space-y-4 pt-2 border-t border-gray-100 dark:border-gray-700">
+                        {{-- سیستم چندمالکی --}}
+                        <label class="flex items-center justify-between p-4 rounded-xl border border-indigo-100 dark:border-indigo-900/40 bg-indigo-50/40 dark:bg-indigo-900/10 cursor-pointer hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors">
+                            <div class="flex flex-col">
+                                <span class="text-sm font-bold text-gray-800 dark:text-gray-200 flex items-center gap-2">
+                                    <svg class="w-4 h-4 text-indigo-600 dark:text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+                                    فعال‌سازی پلتفرم چندمالکی (Multi-Host Marketplace)
+                                </span>
+                                <span class="text-xs text-gray-500 dark:text-gray-400 mt-1">مالکان و میزبانان می‌توانند مستقل ثبت‌نام کرده و اقامتگاه‌های خود را مدیریت کنند (مشابه چندفروشندگی).</span>
+                            </div>
+                            <input type="checkbox" name="rental_multi_host_enabled" value="1" x-model="multiHostEnabled" class="{{ $checkboxClass }}">
+                        </label>
+
+                        {{-- زیرمجموعه چندمالکی --}}
+                        <div x-show="multiHostEnabled" x-transition class="grid grid-cols-1 md:grid-cols-2 gap-4 mr-2">
+                            <label class="flex items-center gap-3 p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 cursor-pointer">
+                                <input type="checkbox" name="rental_host_auto_approve" value="1" {{ ($rental_host_auto_approve ?? 0) ? 'checked' : '' }} class="{{ $checkboxClass }}">
+                                <div class="flex flex-col">
+                                    <span class="text-xs font-bold text-gray-700 dark:text-gray-300">تأیید خودکار میزبان‌ها</span>
+                                    <span class="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">بدون نیاز به بررسی دستی ادمین</span>
+                                </div>
+                            </label>
+
+                            <label class="flex items-center gap-3 p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 cursor-pointer">
+                                <input type="checkbox" name="rental_property_auto_approve" value="1" {{ ($rental_property_auto_approve ?? 0) ? 'checked' : '' }} class="{{ $checkboxClass }}">
+                                <div class="flex flex-col">
+                                    <span class="text-xs font-bold text-gray-700 dark:text-gray-300">تأیید خودکار اقامتگاه‌ها</span>
+                                    <span class="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">انتشار فوری آگهی‌های میزبانان</span>
+                                </div>
+                            </label>
+
+                            <div class="md:col-span-2 p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 flex items-center justify-between gap-4">
+                                <div class="flex flex-col">
+                                    <span class="text-xs font-bold text-gray-700 dark:text-gray-300">درصد کارمزد پیش‌فرض پلتفرم</span>
+                                    <span class="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">سهم پلتفرم از مبلغ کل رزرو اقامتگاه‌ها (درصد)</span>
+                                </div>
+                                <div class="w-32">
+                                    <div class="relative">
+                                        <input type="number" name="rental_default_commission" value="{{ $rental_default_commission ?? 10 }}" min="0" max="100" step="0.5" class="{{ $inputClass }} text-center" placeholder="10">
+                                        <span class="absolute inset-y-0 left-3 flex items-center pointer-events-none text-xs text-gray-400">٪</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             {{-- کارت ۵: وضعیت حافظه --}}
             <div class="{{ $cardClass }} p-6 bg-gradient-to-br from-gray-50 to-white dark:from-gray-800 dark:to-gray-800/50">
                 <h2 class="text-sm font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">

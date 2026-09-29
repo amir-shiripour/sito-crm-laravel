@@ -13,6 +13,7 @@ class PropertyOwner extends Model
     protected $table = 'property_owners';
 
     protected $fillable = [
+        'user_id',
         'first_name',
         'last_name',
         'phone',
@@ -22,6 +23,16 @@ class PropertyOwner extends Model
     public function getFullNameAttribute()
     {
         return "{$this->first_name} {$this->last_name}";
+    }
+
+    public function user()
+    {
+        return $this->belongsTo(User::class, 'user_id');
+    }
+
+    public function host()
+    {
+        return $this->hasOne(PropertyHost::class, 'owner_id');
     }
 
     public function creator()

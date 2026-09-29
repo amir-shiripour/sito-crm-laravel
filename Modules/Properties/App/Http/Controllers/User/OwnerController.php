@@ -20,7 +20,7 @@ class OwnerController extends Controller
 
     public function index()
     {
-        $owners = PropertyOwner::with('creator')->withCount('properties')->latest()->paginate(20);
+        $owners = PropertyOwner::with(['creator', 'host'])->withCount('properties')->latest()->paginate(20);
         return view('properties::user.owners.index', compact('owners'));
     }
 

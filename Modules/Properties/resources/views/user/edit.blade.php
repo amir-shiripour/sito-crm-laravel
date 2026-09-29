@@ -108,6 +108,31 @@
 
                 {{-- ستون راست (اطلاعات اصلی و تب‌ها) --}}
                 <div class="col-span-12 lg:col-span-8 space-y-6 order-1 lg:order-2">
+
+                    @if($property->listing_type === 'daily_rental')
+                        <div class="bg-teal-50 dark:bg-teal-950/20 border border-teal-200 dark:border-teal-900/50 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-xl bg-teal-100 dark:bg-teal-900/40 text-teal-600 dark:text-teal-300 flex items-center justify-center flex-shrink-0">
+                                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>
+                                </div>
+                                <div>
+                                    <h3 class="text-xs font-bold text-teal-900 dark:text-teal-200">این ملک یک اقامتگاه روزانه است</h3>
+                                    <p class="text-[11px] text-teal-700 dark:text-teal-400 mt-0.5">تنظیمات ظرفیت، قیمت شبانه، قوانین و تقویم مسدودسازی روزها را مدیریت کنید.</p>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <a href="{{ route('user.properties.rental.config', $property) }}" class="px-3.5 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold transition shadow-sm flex items-center gap-1.5">
+                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" /></svg>
+                                    مشخصات اقامتگاه
+                                </a>
+                                <a href="{{ route('user.properties.rental.calendar', $property) }}" class="px-3.5 py-2 rounded-xl bg-white dark:bg-gray-800 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800/60 hover:bg-teal-50 dark:hover:bg-gray-700 text-xs font-bold transition flex items-center gap-1.5">
+                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                                    تقویم روزها
+                                </a>
+                            </div>
+                        </div>
+                    @endif
+
                     <div class="{{ $cardClass }}">
                         {{-- نوار تب‌ها --}}
                         <div class="flex border-b border-gray-200 dark:border-gray-700 overflow-x-auto scrollbar-hide bg-gray-50/50 dark:bg-gray-900/30">
@@ -158,6 +183,9 @@
                                                 <option value="sale">فروش</option>
                                                 <option value="presale">پیش‌فروش</option>
                                                 <option value="rent">رهن و اجاره</option>
+                                                @if(\Modules\Properties\Entities\PropertySetting::get('rental_mode_enabled') || $property->listing_type === 'daily_rental')
+                                                    <option value="daily_rental">اجاره روزانه / اقامتگاه</option>
+                                                @endif
                                             </select>
                                         </div>
 

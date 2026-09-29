@@ -29,14 +29,17 @@
             </div>
             <div class="flex flex-col max-w-[130px]">
                 <span class="font-bold text-gray-900 dark:text-white truncate block" title="{{ $property->title }}">{{ $property->title }}</span>
-                <span class="text-xs text-gray-500 dark:text-gray-400 font-mono mt-0.5">Code: {{ $property->code }}</span>
+                <span class="text-xs text-gray-500 dark:text-gray-400 font-sans mt-0.5">کد: {{ $property->code }}</span>
+                @if($property->host)
+                    <span class="text-[10px] text-indigo-600 dark:text-indigo-400 truncate font-sans">میزبان: {{ $property->host->display_name }}</span>
+                @endif
             </div>
         </div>
     </td>
 
     {{-- Price --}}
     <td class="px-6 py-4">
-        <div class="flex flex-col gap-1">
+        <div class="flex flex-col gap-1 font-sans">
             @if($property->listing_type == 'sale' || $property->listing_type == 'presale')
                 <span class="text-gray-900 dark:text-gray-100 font-medium">
                     {{ $property->price > 0 ? number_format($property->price) . ' تومان' : 'توافقی' }}
@@ -51,6 +54,13 @@
                     <div>رهن: <span class="text-gray-900 dark:text-gray-100 font-medium">{{ $property->deposit_price > 0 ? number_format($property->deposit_price) : 'توافقی' }}</span></div>
                     <div>اجاره: <span class="text-gray-900 dark:text-gray-100 font-medium">{{ $property->rent_price > 0 ? number_format($property->rent_price) : 'توافقی' }}</span></div>
                 </div>
+            @elseif($property->listing_type == 'daily_rental')
+                <div class="flex flex-col gap-0.5">
+                    <span class="text-gray-900 dark:text-gray-100 font-bold">
+                        {{ $property->price > 0 ? number_format($property->price) . ' تومان' : 'توافقی' }}
+                    </span>
+                    <span class="text-[11px] text-teal-600 dark:text-teal-400">به ازای هر شب</span>
+                </div>
             @endif
         </div>
     </td>
@@ -62,12 +72,14 @@
                 'sale' => 'bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-300 dark:border-emerald-800',
                 'rent' => 'bg-blue-50 text-blue-700 border-blue-100 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800',
                 'presale' => 'bg-purple-50 text-purple-700 border-purple-100 dark:bg-purple-900/20 dark:text-purple-300 dark:border-purple-800',
+                'daily_rental' => 'bg-teal-50 text-teal-700 border-teal-100 dark:bg-teal-900/20 dark:text-teal-300 dark:border-teal-800',
                 default => 'bg-gray-50 text-gray-700 border-gray-100'
             };
             $typeLabel = match($property->listing_type) {
                 'sale' => 'فروش',
                 'rent' => 'رهن و اجاره',
                 'presale' => 'پیش‌فروش',
+                'daily_rental' => 'اجاره روزانه',
                 default => $property->listing_type
             };
         @endphp
@@ -147,6 +159,15 @@
                 <a href="{{ route('properties.show', $property->slug) }}" target="_blank" class="p-2 rounded-lg text-emerald-600 bg-emerald-50 hover:bg-emerald-100 dark:text-emerald-400 dark:bg-emerald-900/20 dark:hover:bg-emerald-900/40 transition-colors" title="مشاهده در سایت">
                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
                 </a>
+
+                @if($property->listing_type === 'daily_rental')
+                    <a href="{{ route('user.properties.rental.calendar', $property) }}" class="p-2 rounded-lg text-teal-600 bg-teal-50 hover:bg-teal-100 dark:text-teal-400 dark:bg-teal-900/20 dark:hover:bg-teal-900/40 transition-colors" title="تقویم روزانه و قیمت‌ها">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                    </a>
+                    <a href="{{ route('user.properties.rental.config', $property) }}" class="p-2 rounded-lg text-purple-600 bg-purple-50 hover:bg-purple-100 dark:text-purple-400 dark:bg-purple-900/20 dark:hover:bg-purple-900/40 transition-colors" title="مشخصات و ظرفیت اقامتگاه">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" /></svg>
+                    </a>
+                @endif
                 @if($canEdit)
                     <a href="{{ route('user.properties.edit', $property) }}" class="p-2 rounded-lg text-indigo-600 bg-indigo-50 hover:bg-indigo-100 dark:text-indigo-400 dark:bg-indigo-900/20 dark:hover:bg-indigo-900/40 transition-colors" title="ویرایش">
                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
