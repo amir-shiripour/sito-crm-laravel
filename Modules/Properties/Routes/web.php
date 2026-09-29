@@ -12,6 +12,10 @@ use Modules\Properties\App\Http\Controllers\User\AIController;
 use Modules\Properties\App\Livewire\Settings\PropertyStatusesManager;
 use Modules\Properties\App\Http\Controllers\User\ImportController;
 
+use Modules\Properties\App\Http\Controllers\User\HostController;
+use Modules\Properties\App\Http\Controllers\User\RentalController;
+use Modules\Properties\App\Http\Controllers\User\RentalCalendarController;
+
 // Public Routes
 Route::middleware(['web'])->group(function() {
     Route::group(['prefix' => 'properties', 'as' => 'properties.'], function() {
@@ -79,6 +83,30 @@ Route::middleware(['web', 'auth'])
                 // AI Routes
                 Route::post('/ai/complete', [AIController::class, 'completeProperty'])->name('ai.complete');
                 Route::post('/ai/search', [AIController::class, 'searchProperty'])->name('ai.search');
+
+                // Host Portal Routes
+                Route::prefix('hosts')->name('hosts.')->group(function () {
+                    Route::get('/become', [HostController::class, 'becomeHost'])->name('register');
+                    Route::post('/become', [HostController::class, 'storeHostRequest'])->name('store');
+                    Route::get('/dashboard', [HostController::class, 'dashboard'])->name('dashboard');
+                    Route::get('/profile', [HostController::class, 'profile'])->name('profile');
+                    Route::put('/profile', [HostController::class, 'updateProfile'])->name('profile.update');
+                    Route::get('/manage', [HostController::class, 'adminIndex'])->name('admin.index');
+                    Route::post('/{host}/approve', [HostController::class, 'approveHost'])->name('admin.approve');
+                    Route::post('/{host}/reject', [HostController::class, 'rejectHost'])->name('admin.reject');
+                });
+
+                // Vacation Rental Configuration & Calendar Routes
+                Route::prefix('{property}/rental')->name('rental.')->group(function () {
+                    Route::get('/config', [RentalController::class, 'config'])->name('config');
+                    Route::put('/config', [RentalController::class, 'updateConfig'])->name('config.update');
+                    Route::post('/review-status', [RentalController::class, 'reviewStatus'])->name('review-status');
+                    Route::get('/calendar', [RentalCalendarController::class, 'calendar'])->name('calendar');
+                    Route::post('/calendar/toggle-block', [RentalCalendarController::class, 'toggleBlock'])->name('calendar.toggle-block');
+                    Route::post('/calendar/batch-block', [RentalCalendarController::class, 'batchBlock'])->name('calendar.batch-block');
+                    Route::post('/calendar/seasonal-prices', [RentalCalendarController::class, 'storeSeasonalPrice'])->name('calendar.seasonal-prices.store');
+                });
+                Route::delete('/rental/seasonal-prices/{price}', [RentalCalendarController::class, 'deleteSeasonalPrice'])->name('rental.calendar.seasonal-prices.destroy');
             });
 
         // Full Owner Management

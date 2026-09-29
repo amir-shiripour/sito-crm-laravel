@@ -103,8 +103,8 @@
                             class="flex-1 px-6 py-3 rounded-xl bg-indigo-50 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-400 text-sm font-bold hover:bg-indigo-100 dark:hover:bg-indigo-500/20 transition-colors flex items-center justify-center gap-2">
                         اعمال فیلتر
                     </button>
-                    @if(request()->hasAny(['search', 'category_id', 'status_id', 'billing_type']))
-                        <a href="{{ route('services.services.index') }}" title="پاک کردن فیلترها"
+                    @if(request()->hasAny(['search', 'category_id', 'status_id', 'billing_type']) || session()->has('services_catalog_filters'))
+                        <a href="{{ route('services.services.index', ['reset_filters' => 1]) }}" title="پاک کردن فیلترها"
                            class="px-4 py-3 rounded-xl bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 text-sm font-bold hover:bg-red-100 dark:hover:bg-red-500/20 transition-colors flex items-center justify-center">
                             <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>

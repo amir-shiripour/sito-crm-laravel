@@ -44,6 +44,9 @@ class Property extends Model
         'status_id',
         'category_id',
         'owner_id',
+        'host_id',
+        'approval_status',
+        'rejection_reason',
         'created_by',
         'agent_id', // Added agent_id
         'meta',
@@ -111,6 +114,26 @@ class Property extends Model
         return $this->belongsTo(PropertyOwner::class, 'owner_id');
     }
 
+    public function host()
+    {
+        return $this->belongsTo(PropertyHost::class, 'host_id');
+    }
+
+    public function rentalConfig()
+    {
+        return $this->hasOne(PropertyRentalConfig::class, 'property_id');
+    }
+
+    public function seasonalPrices()
+    {
+        return $this->hasMany(PropertyRentalPrice::class, 'property_id');
+    }
+
+    public function rentalBlocks()
+    {
+        return $this->hasMany(PropertyRentalBlock::class, 'property_id');
+    }
+
     public function building()
     {
         return $this->belongsTo(PropertyBuilding::class, 'building_id');
@@ -147,8 +170,8 @@ class Property extends Model
         $user = auth()->user();
 
         if (!$user) {
-            // For guests (public view), show all properties
-            return $query;
+            // For guests (public view), show all approved published properties
+            return $query->where('approval_status', 'approved');
         }
 
         // Super Admin, Admin or users with 'properties.view.all' or 'properties.manage' permission can see everything
@@ -156,10 +179,16 @@ class Property extends Model
             return $query;
         }
 
-        // Users can see properties they created OR properties where they are the assigned agent
+        // Users can see properties they created, or where they are the assigned agent, or where they are the host
         return $query->where(function ($q) use ($user) {
             $q->where('created_by', $user->id)
               ->orWhere('agent_id', $user->id);
+
+            // اگر کاربر میزبان ثبت‌شده باشد
+            $host = PropertyHost::where('user_id', $user->id)->first();
+            if ($host) {
+                $q->orWhere('host_id', $host->id);
+            }
         });
     }
 }

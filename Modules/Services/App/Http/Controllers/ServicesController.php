@@ -22,12 +22,38 @@ class ServicesController extends Controller
     {
         $this->authorize('viewAny', Service::class);
 
-        $services = Service::with('category')
+        if ($request->has('reset_filters')) {
+            $request->session()->forget('services_catalog_filters');
+            return redirect()->route('services.services.index');
+        }
+
+        $filterKeys = ['search', 'category_id', 'status_id', 'billing_type', 'page'];
+        $hasAnyFilterInRequest = $request->hasAny(['search', 'category_id', 'status_id', 'billing_type', 'page']);
+
+        if ($hasAnyFilterInRequest) {
+            $activeFilters = array_filter(
+                $request->only($filterKeys),
+                fn($val) => !is_null($val) && $val !== ''
+            );
+            if (!empty($activeFilters)) {
+                $request->session()->put('services_catalog_filters', $activeFilters);
+            } else {
+                $request->session()->forget('services_catalog_filters');
+            }
+        } elseif ($request->session()->has('services_catalog_filters')) {
+            $savedFilters = $request->session()->get('services_catalog_filters');
+            if (!empty($savedFilters)) {
+                return redirect()->route('services.services.index', $savedFilters);
+            }
+        }
+
+        $services = Service::with('category', 'status')
             ->withSum(['invoices as revenue' => fn($q) => $q->whereHas('status', fn($s) => $s->where('name', 'paid'))], 'total')
             ->when($request->search, fn($q, $s) => $q->where('name', 'like', "%$s%")->orWhere('code', 'like', "%$s%"))
             ->when($request->category_id, fn($q, $v) => $q->where('category_id', $v))
             ->when($request->status_id, fn($q, $v) => $q->where('status_id', $v))
             ->when($request->billing_type, fn($q, $v) => $q->where('billing_type', $v))
+            ->orderByRaw("COALESCE((SELECT CASE WHEN name = 'غیر فعال' THEN 1 ELSE 0 END FROM services_statuses WHERE services_statuses.id = services.status_id), 0) ASC")
             ->orderBy('sort_order')->orderByDesc('id')
             ->paginate(20)->withQueryString();
 
@@ -147,20 +173,28 @@ class ServicesController extends Controller
             }
         }
 
-        return redirect()
-            ->route('services.services.index')
+        $redirectUrl = route('services.services.index');
+        if ($request->session()->has('services_catalog_filters')) {
+            $redirectUrl = route('services.services.index', $request->session()->get('services_catalog_filters'));
+        }
+
+        return redirect($redirectUrl)
             ->with('success', 'سرویس "' . $service->name . '" با موفقیت ویرایش شد.');
     }
 
-    public function destroy(Service $service)
+    public function destroy(Request $request, Service $service)
     {
         $this->authorize('delete', $service);
 
         $serviceName = $service->name;
         $service->delete();
 
-        return redirect()
-            ->route('services.services.index')
+        $redirectUrl = route('services.services.index');
+        if ($request->session()->has('services_catalog_filters')) {
+            $redirectUrl = route('services.services.index', $request->session()->get('services_catalog_filters'));
+        }
+
+        return redirect($redirectUrl)
             ->with('success', 'سرویس "' . $serviceName . '" حذف شد.');
     }
 

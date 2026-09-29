@@ -2555,6 +2555,17 @@
                             }
                         }
                     },
+                    appendServiceNote(serviceName, description) {
+                        if (!description || typeof description !== 'string' || !description.trim()) return;
+                        const sDesc = description.trim();
+                        const noteHeader = 'توضیحات سرویس «' + (serviceName || 'سرویس') + '»:';
+                        const noteBlock = noteHeader + '\n' + sDesc;
+                        if (!this.notesText || !this.notesText.trim()) {
+                            this.notesText = noteBlock;
+                        } else if (!this.notesText.includes(sDesc)) {
+                            this.notesText = this.notesText.trim() + '\n\n' + noteBlock;
+                        }
+                    },
                     filteredPackagesList() {
                         const q = this.packageSearch.trim().toLowerCase();
                         if (!q) return [];
@@ -2761,6 +2772,10 @@
                                 _baseCustomFieldQuantities: JSON.parse(JSON.stringify(customFieldQuantities)),
                                 _baseCustomFieldValues: JSON.parse(JSON.stringify(customFieldValues))
                             });
+
+                            if (serviceRaw && serviceRaw.description && typeof serviceRaw.description === 'string' && serviceRaw.description.trim()) {
+                                this.appendServiceNote(serviceRaw.name, serviceRaw.description);
+                            }
                         });
 
                         let pkgDiscAmount = 0;
@@ -3028,6 +3043,9 @@
                         this.items[i].custom_field_tax_percents = {};
                         this.items[i].custom_field_use_default_price = {};
                         this.updatePriceForPeriod(i);
+                        if (s && s.description && typeof s.description === 'string' && s.description.trim()) {
+                            this.appendServiceNote(s.name, s.description);
+                        }
                     },
                     getPeriodPrice(i) {
                         if (!i.service_raw || i.service_raw.billing_type !== 'recurring' || !i.billing_period) return 0;

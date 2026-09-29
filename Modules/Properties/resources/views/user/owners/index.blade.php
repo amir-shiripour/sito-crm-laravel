@@ -53,7 +53,15 @@
                     <template x-for="owner in ownersList" :key="owner.id">
                         <tr class="group hover:bg-gray-50 dark:hover:bg-gray-700/20 transition-colors">
                             <td class="px-6 py-4">
-                                <span class="font-bold text-gray-900 dark:text-white" x-text="owner.first_name + ' ' + owner.last_name"></span>
+                                <div class="flex flex-col">
+                                    <span class="font-bold text-gray-900 dark:text-white" x-text="owner.first_name + ' ' + owner.last_name"></span>
+                                    <template x-if="owner.host">
+                                        <span class="text-[10px] text-teal-600 dark:text-teal-400 font-bold mt-0.5 flex items-center gap-1">
+                                            <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+                                            میزبان اقامتگاه: <span x-text="owner.host.display_name"></span>
+                                        </span>
+                                    </template>
+                                </div>
                             </td>
                             <td class="px-6 py-4">
                                 <span class="font-medium text-gray-600 dark:text-gray-400 dir-ltr" x-text="owner.phone"></span>

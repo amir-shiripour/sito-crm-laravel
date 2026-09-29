@@ -81,6 +81,13 @@ class SettingsController extends Controller
         $map_service = PropertySetting::get('map_service', 'leaflet');
         $map_ir_api_key = PropertySetting::get('map_ir_api_key');
 
+        // Rental Mode & Multi-Host Settings
+        $rental_mode_enabled = PropertySetting::get('rental_mode_enabled', 0);
+        $rental_multi_host_enabled = PropertySetting::get('rental_multi_host_enabled', 0);
+        $rental_host_auto_approve = PropertySetting::get('rental_host_auto_approve', 0);
+        $rental_property_auto_approve = PropertySetting::get('rental_property_auto_approve', 0);
+        $rental_default_commission = PropertySetting::get('rental_default_commission', 10);
+
         // Storage Report
         $storagePath = 'properties';
         $totalSize = 0;
@@ -130,7 +137,12 @@ class SettingsController extends Controller
             'office_location_lng',
             'office_location_title',
             'map_service',
-            'map_ir_api_key'
+            'map_ir_api_key',
+            'rental_mode_enabled',
+            'rental_multi_host_enabled',
+            'rental_host_auto_approve',
+            'rental_property_auto_approve',
+            'rental_default_commission'
         ));
     }
 
@@ -168,6 +180,11 @@ class SettingsController extends Controller
             'office_location_title' => 'nullable|string|max:255',
             'map_service' => 'required|in:leaflet,map_ir',
             'map_ir_api_key' => 'nullable|string',
+            'rental_mode_enabled' => 'nullable|boolean',
+            'rental_multi_host_enabled' => 'nullable|boolean',
+            'rental_host_auto_approve' => 'nullable|boolean',
+            'rental_property_auto_approve' => 'nullable|boolean',
+            'rental_default_commission' => 'nullable|numeric|min:0|max:100',
         ]);
 
         $allowedFileTypes = str_replace(' ', '', $request->allowed_file_types);
@@ -217,6 +234,13 @@ class SettingsController extends Controller
         // Save Map Service Settings
         PropertySetting::set('map_service', $request->map_service);
         PropertySetting::set('map_ir_api_key', $request->map_ir_api_key);
+
+        // Save Rental & Multi-Host Settings
+        PropertySetting::set('rental_mode_enabled', $request->has('rental_mode_enabled') ? 1 : 0);
+        PropertySetting::set('rental_multi_host_enabled', $request->has('rental_multi_host_enabled') ? 1 : 0);
+        PropertySetting::set('rental_host_auto_approve', $request->has('rental_host_auto_approve') ? 1 : 0);
+        PropertySetting::set('rental_property_auto_approve', $request->has('rental_property_auto_approve') ? 1 : 0);
+        PropertySetting::set('rental_default_commission', $request->input('rental_default_commission', 10));
 
         return back()->with('success', 'تنظیمات با موفقیت ذخیره شد.');
     }

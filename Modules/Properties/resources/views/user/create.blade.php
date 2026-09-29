@@ -331,6 +331,9 @@
                                         <option value="sale">فروش</option>
                                         <option value="presale">پیش‌فروش</option>
                                         <option value="rent">رهن و اجاره</option>
+                                        @if(\Modules\Properties\Entities\PropertySetting::get('rental_mode_enabled'))
+                                            <option value="daily_rental">اجاره روزانه / اقامتگاه</option>
+                                        @endif
                                     </select>
                                 </div>
                             </div>
@@ -905,7 +908,7 @@
 
         function propertyForm() {
             return {
-                listingType: 'sale',
+                listingType: '{{ old('listing_type', request('type', 'sale')) }}',
                 propertyType: 'apartment',
                 documentType: '',
                 usageType: '',
