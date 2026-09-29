@@ -497,6 +497,22 @@
                                             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>
                                         </button>
 
+                                        {{-- دکمه رزرو نوبت تحویل اگر کار دریافت شده باشد --}}
+                                        @if(($order->status === 'received' || $order->isReceived()) && $order->client_id)
+                                            <a href="{{ route('user.booking.appointments.create', [
+                                                    'client_id' => $order->client_id,
+                                                    'doctor_id' => $order->doctor_id,
+                                                    'notes' => 'تحویل پروتز سفارش ' . $order->order_number . ' (' . ($order->category_label ?? 'لابراتوار') . ')'
+                                                ]) }}" 
+                                               target="_blank"
+                                               class="inline-flex items-center justify-center w-8 h-8 rounded-xl bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white shadow-xs transition-all cursor-pointer"
+                                               title="رزرو نوبت تحویل پروتز به بیمار">
+                                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                                </svg>
+                                            </a>
+                                        @endif
+
                                         {{-- دکمه مشاهده کامل جزئیات و نقشه دندانی --}}
                                         <button type="button" 
                                                 wire:click="openDetailModal({{ $order->id }}, 'overview')" 
@@ -747,6 +763,21 @@
                     </div>
 
                     <div class="flex items-center gap-2">
+                        @if(($detailOrder->isReceived() || $detailOrder->status === 'received') && $detailOrder->client_id)
+                            <a href="{{ route('user.booking.appointments.create', [
+                                    'client_id' => $detailOrder->client_id,
+                                    'doctor_id' => $detailOrder->doctor_id,
+                                    'notes' => 'تحویل پروتز سفارش ' . $detailOrder->order_number . ' (' . ($detailOrder->category_label ?? 'لابراتوار') . ')'
+                                ]) }}" 
+                               target="_blank"
+                               class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white text-xs font-bold shadow-xs transition-all cursor-pointer">
+                                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                </svg>
+                                <span>رزرو نوبت تحویل</span>
+                            </a>
+                        @endif
+
                         <button type="button" 
                                 wire:click="closeDetailModal" 
                                 class="p-2 rounded-xl text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700/60 transition-colors cursor-pointer">

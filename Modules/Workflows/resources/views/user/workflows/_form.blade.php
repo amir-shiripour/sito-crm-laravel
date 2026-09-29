@@ -284,6 +284,31 @@
                                             </div>
                                         </div>
 
+                                        <!-- دسته‌بندی سفارشات لابراتوار -->
+                                        <div class="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden bg-white dark:bg-gray-900">
+                                            <button type="button" class="event-group-toggle w-full flex justify-between items-center px-4 py-3 bg-gray-50 dark:bg-gray-800/50 text-xs font-bold text-gray-700 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700">
+                                                <span>رویدادهای سفارشات لابراتوار (Laboratory Events)</span>
+                                                <svg class="h-4 w-4 transform transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+                                            </button>
+                                            <div class="event-group-content p-4 grid grid-cols-1 md:grid-cols-2 gap-3 hidden">
+                                                @php
+                                                    $labEvents = [
+                                                        'laboratory_order_created'  => 'ثبت سفارش جدید در لابراتوار',
+                                                        'laboratory_order_received' => 'تحویل پروتز از لابراتوار به مطب (سبز شدن کار)',
+                                                        'laboratory_stage_completed'=> 'تایید و تکمیل مرحله ساخت پروتز',
+                                                        'laboratory_stage_overdue'  => 'بروز تاخیر در مرحله لابراتوار',
+                                                    ];
+                                                @endphp
+                                                @foreach($labEvents as $k => $label)
+                                                    <label class="flex items-center gap-3 p-2 bg-gray-50/50 dark:bg-gray-800/30 rounded-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-all select-none">
+                                                        <input type="checkbox" name="triggers[{{ $index }}][config][event_key][]" value="{{ $k }}" @checked(in_array($k, $selectedEvents))
+                                                               class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-900 event-checkbox h-4.5 w-4.5">
+                                                        <span class="text-sm text-gray-700 dark:text-gray-300">{{ $label }}</span>
+                                                    </label>
+                                                @endforeach
+                                            </div>
+                                        </div>
+
                                         <!-- دسته‌بندی طرح درمان -->
                                         <div class="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden bg-white dark:bg-gray-900">
                                             <button type="button" class="event-group-toggle w-full flex justify-between items-center px-4 py-3 bg-gray-50 dark:bg-gray-800/50 text-xs font-bold text-gray-700 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700">

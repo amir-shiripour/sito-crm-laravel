@@ -2,9 +2,12 @@
 
 namespace Modules\Booking\Services;
 
+use App\Models\User;
 use Illuminate\Support\Facades\Log;
 use Modules\Booking\Entities\BookingLaboratoryOrder;
 use Modules\Booking\Entities\BookingLaboratoryStage;
+use Modules\Booking\Entities\BookingSetting;
+use Morilog\Jalali\Jalalian;
 use Nwidart\Modules\Facades\Module;
 
 class LaboratoryIntegrationService
@@ -42,7 +45,43 @@ class LaboratoryIntegrationService
     public function isWorkflowModuleReady(): bool
     {
         return class_exists('Modules\\Workflows\\Entities\\Workflow') &&
+               class_exists('Modules\\Workflows\\Services\\WorkflowEngine') &&
                Module::has('Workflows') && Module::isEnabled('Workflows');
+    }
+
+    /**
+     * Resolve target user IDs based on integration configuration
+     *
+     * @param array $config
+     * @param int|null $fallbackUserId
+     * @return array<int>
+     */
+    public function resolveTargetUserIds(array $config, ?int $fallbackUserId = null): array
+    {
+        $assignType = $config['assign_type'] ?? 'role';
+
+        if ($assignType === 'user' && !empty($config['target_user_id'])) {
+            return [(int) $config['target_user_id']];
+        }
+
+        if ($assignType === 'role' && !empty($config['target_role'])) {
+            $roleName = trim($config['target_role']);
+            $userIds = User::role($roleName)
+                ->where('is_active', true)
+                ->pluck('id')
+                ->toArray();
+
+            if (!empty($userIds)) {
+                return $userIds;
+            }
+        }
+
+        if ($fallbackUserId) {
+            return [$fallbackUserId];
+        }
+
+        $authId = auth()->id();
+        return $authId ? [$authId] : [];
     }
 
     /**
@@ -51,33 +90,38 @@ class LaboratoryIntegrationService
     public function onOrderCreated(BookingLaboratoryOrder $order): void
     {
         try {
+            $cfg = BookingSetting::getLaboratoryIntegrationSettings();
+
             // 1. Create Reminders for upcoming stages
-            if ($this->isReminderModuleReady()) {
+            if ($this->isReminderModuleReady() && ($cfg['reminders']['enabled'] ?? true)) {
                 $Reminder = 'Modules\\Reminders\\Entities\\Reminder';
-                $userId = $order->doctor_id ?: auth()->id();
+                $targetUserIds = $this->resolveTargetUserIds($cfg['reminders'], $order->doctor_id);
 
                 foreach ($order->stages as $stage) {
                     if ($stage->due_at && $stage->due_at->isFuture()) {
-                        $Reminder::query()->create([
-                            'user_id'      => $userId,
-                            'related_type' => 'CLIENT',
-                            'related_id'   => $order->client_id,
-                            'remind_at'    => $stage->due_at->copy()->setTime(9, 0, 0), // Remind at 9:00 AM on due day
-                            'channel'      => 'IN_APP',
-                            'message'      => "موعد {$stage->stage_title} سفارش پروتز بیمار {$order->patient_name} ({$order->lab_partner_name})",
-                            'status'       => 'OPEN',
-                            'is_sent'      => false,
-                        ]);
+                        foreach ($targetUserIds as $uId) {
+                            $Reminder::query()->create([
+                                'user_id'      => $uId,
+                                'related_type' => 'CLIENT',
+                                'related_id'   => $order->client_id,
+                                'remind_at'    => $stage->due_at->copy()->setTime(9, 0, 0), // Remind at 9:00 AM on due day
+                                'channel'      => 'IN_APP',
+                                'message'      => "موعد {$stage->stage_title} سفارش پروتز بیمار {$order->patient_name} ({$order->lab_partner_name})",
+                                'status'       => 'OPEN',
+                                'is_sent'      => false,
+                            ]);
+                        }
                     }
                 }
             }
 
             // 2. In-house digital lab task creation
-            if ($order->lab_type === BookingLaboratoryOrder::LAB_TYPE_IN_HOUSE && $this->isTaskModuleReady()) {
+            if ($order->lab_type === BookingLaboratoryOrder::LAB_TYPE_IN_HOUSE && $this->isTaskModuleReady() && ($cfg['tasks']['enabled'] ?? true)) {
                 $firstStage = $order->stages()->orderBy('sort_order')->first();
                 if ($firstStage) {
                     $Task = 'Modules\\Tasks\\Entities\\Task';
-                    $assignee = $order->technician_id ?: ($order->doctor_id ?: auth()->id());
+                    $targetUserIds = $this->resolveTargetUserIds($cfg['tasks'], $order->technician_id ?: ($order->doctor_id ?: auth()->id()));
+                    $assignee = $targetUserIds[0] ?? auth()->id();
 
                     $Task::query()->create([
                         'title'        => "طراحی اسکن لابراتوار مطب: {$order->patient_name}",
@@ -98,6 +142,24 @@ class LaboratoryIntegrationService
                     ]);
                 }
             }
+
+            // 3. Dispatch Workflows Trigger
+            if ($this->isWorkflowModuleReady() && $order->client_id) {
+                app(\Modules\Workflows\Services\WorkflowEngine::class)->start(
+                    'laboratory_order_created',
+                    'CLIENT',
+                    $order->client_id,
+                    [
+                        'order_id'     => $order->id,
+                        'order_number' => $order->order_number,
+                        'patient_name' => $order->patient_name,
+                        'lab_partner'  => $order->lab_partner_name,
+                        'category'     => $order->category_label,
+                        'units_count'  => $order->units_count,
+                        'teeth'        => $order->teeth_numbers,
+                    ]
+                );
+            }
         } catch (\Throwable $e) {
             Log::warning('[Booking][LaboratoryIntegration] onOrderCreated warning: ' . $e->getMessage());
         }
@@ -112,7 +174,7 @@ class LaboratoryIntegrationService
             $order = $stage->order;
 
             // Mark any linked FollowUp or Task as DONE
-            if ($this->isFollowUpModuleReady()) {
+            if ($this->isFollowUpModuleReady() && $order) {
                 $FollowUp = 'Modules\\FollowUps\\Entities\\FollowUp';
                 $FollowUp::query()
                     ->where('related_id', $order->client_id)
@@ -122,8 +184,53 @@ class LaboratoryIntegrationService
                         'completed_at' => now(),
                     ]);
             }
+
+            // Dispatch Workflows Trigger
+            if ($this->isWorkflowModuleReady() && $order && $order->client_id) {
+                app(\Modules\Workflows\Services\WorkflowEngine::class)->start(
+                    'laboratory_stage_completed',
+                    'CLIENT',
+                    $order->client_id,
+                    [
+                        'order_id'     => $order->id,
+                        'stage_id'     => $stage->id,
+                        'stage_title'  => $stage->stage_title,
+                        'patient_name' => $order->patient_name,
+                        'order_number' => $order->order_number,
+                        'note'         => $note,
+                    ]
+                );
+            }
         } catch (\Throwable $e) {
             Log::warning('[Booking][LaboratoryIntegration] onStageCompleted warning: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Triggered when a stage is overdue
+     */
+    public function onStageOverdue(BookingLaboratoryStage $stage): void
+    {
+        try {
+            $order = $stage->order;
+            if ($this->isWorkflowModuleReady() && $order && $order->client_id) {
+                app(\Modules\Workflows\Services\WorkflowEngine::class)->start(
+                    'laboratory_stage_overdue',
+                    'CLIENT',
+                    $order->client_id,
+                    [
+                        'order_id'     => $order->id,
+                        'stage_id'     => $stage->id,
+                        'stage_title'  => $stage->stage_title,
+                        'due_at'       => $stage->due_at?->toDateString(),
+                        'due_jalali'   => $stage->due_at_jalali,
+                        'patient_name' => $order->patient_name,
+                        'order_number' => $order->order_number,
+                    ]
+                );
+            }
+        } catch (\Throwable $e) {
+            Log::warning('[Booking][LaboratoryIntegration] onStageOverdue warning: ' . $e->getMessage());
         }
     }
 
@@ -133,14 +240,21 @@ class LaboratoryIntegrationService
     public function onOrderReceived(BookingLaboratoryOrder $order): void
     {
         try {
-            // Create a high-priority follow-up to schedule delivery appointment with the patient
-            if ($this->isFollowUpModuleReady() && $order->client_id) {
+            $cfg = BookingSetting::getLaboratoryIntegrationSettings();
+
+            // 1. Create a high-priority follow-up to schedule delivery appointment with the patient
+            if ($this->isFollowUpModuleReady() && $order->client_id && ($cfg['followups']['enabled'] ?? true)) {
                 $FollowUp = 'Modules\\FollowUps\\Entities\\FollowUp';
+                $targetUserIds = $this->resolveTargetUserIds($cfg['followups'], $order->doctor_id ?: auth()->id());
+                $assignee = $targetUserIds[0] ?? auth()->id();
+
+                $jalaliDate = Jalalian::now()->format('Y/m/d');
+
                 $FollowUp::query()->create([
                     'title'        => "رزرو نوبت تحویل پروتز: {$order->patient_name}",
-                    'description'  => "کار لابراتوار ({$order->lab_partner_name} - {$order->category_label}) در تاریخ " . now()->format('Y/m/d') . " به مطب تحویل شد. جهت تحویل نوبت تنظیم شود.",
+                    'description'  => "کار لابراتوار ({$order->lab_partner_name} - {$order->category_label}) در تاریخ {$jalaliDate} به مطب تحویل شد. جهت تحویل نوبت تنظیم شود.",
                     'task_type'    => 'FOLLOW_UP',
-                    'assignee_id'  => $order->doctor_id ?: auth()->id(),
+                    'assignee_id'  => $assignee,
                     'creator_id'   => auth()->id(),
                     'status'       => 'TODO',
                     'priority'     => 'HIGH',
@@ -154,19 +268,40 @@ class LaboratoryIntegrationService
                 ]);
             }
 
-            // Create reminder for doctor
-            if ($this->isReminderModuleReady() && $order->doctor_id) {
+            // 2. Create reminder for target users
+            if ($this->isReminderModuleReady() && ($cfg['reminders']['enabled'] ?? true)) {
                 $Reminder = 'Modules\\Reminders\\Entities\\Reminder';
-                $Reminder::query()->create([
-                    'user_id'      => $order->doctor_id,
-                    'related_type' => 'CLIENT',
-                    'related_id'   => $order->client_id,
-                    'remind_at'    => now(),
-                    'channel'      => 'IN_APP',
-                    'message'      => "پروتز بیمار {$order->patient_name} از لابراتوار تحویل مطب گردید.",
-                    'status'       => 'OPEN',
-                    'is_sent'      => false,
-                ]);
+                $targetUserIds = $this->resolveTargetUserIds($cfg['reminders'], $order->doctor_id);
+
+                foreach ($targetUserIds as $uId) {
+                    $Reminder::query()->create([
+                        'user_id'      => $uId,
+                        'related_type' => 'CLIENT',
+                        'related_id'   => $order->client_id,
+                        'remind_at'    => now(),
+                        'channel'      => 'IN_APP',
+                        'message'      => "پروتز بیمار {$order->patient_name} از لابراتوار تحویل مطب گردید.",
+                        'status'       => 'OPEN',
+                        'is_sent'      => false,
+                    ]);
+                }
+            }
+
+            // 3. Dispatch Workflows Trigger
+            if ($this->isWorkflowModuleReady() && $order->client_id) {
+                app(\Modules\Workflows\Services\WorkflowEngine::class)->start(
+                    'laboratory_order_received',
+                    'CLIENT',
+                    $order->client_id,
+                    [
+                        'order_id'     => $order->id,
+                        'order_number' => $order->order_number,
+                        'patient_name' => $order->patient_name,
+                        'lab_partner'  => $order->lab_partner_name,
+                        'category'     => $order->category_label,
+                        'teeth'        => $order->teeth_numbers,
+                    ]
+                );
             }
         } catch (\Throwable $e) {
             Log::warning('[Booking][LaboratoryIntegration] onOrderReceived warning: ' . $e->getMessage());

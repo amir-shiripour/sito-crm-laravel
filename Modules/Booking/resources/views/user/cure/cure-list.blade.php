@@ -559,6 +559,34 @@
                                         </a>
                                     @endcanany
 
+                                    {{-- دکمه سریع ارجاع به سفارش ساخت لابراتوار --}}
+                                    @php
+                                        $allPlanTeeth = [];
+                                        foreach ($items as $it) {
+                                            $tArr = $it['teeth'] ?? ($it['rawTeeth'] ?? []);
+                                            if (is_array($tArr)) {
+                                                foreach ($tArr as $t) {
+                                                    $tid = is_array($t) ? ($t['number'] ?? array_values($t)[0]) : $t;
+                                                    if ($tid) $allPlanTeeth[] = $tid;
+                                                }
+                                            }
+                                        }
+                                        $planTeethStr = implode(',', array_unique($allPlanTeeth));
+                                    @endphp
+                                    <a href="{{ route('user.booking.laboratory.index', [
+                                            'client_id' => $plan->client_id,
+                                            'action' => 'create',
+                                            'teeth' => $planTeethStr,
+                                            'doctor_id' => $plan->doctor_id ?? auth()->id()
+                                        ]) }}"
+                                       title="ثبت سفارش لابراتوار برای این طرح درمان"
+                                       class="flex items-center gap-1.5 px-3.5 py-2 text-xs rounded-xl bg-indigo-50 text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-950/40 dark:text-indigo-300 dark:hover:bg-indigo-900/60 border border-indigo-200/80 dark:border-indigo-800/60 transition font-medium">
+                                        <svg class="w-4 h-4 text-indigo-600 dark:text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+                                        </svg>
+                                        ارسال به لابراتوار
+                                    </a>
+
                                     @if(class_exists(\Modules\ContractForge\App\Models\Contract::class))
                                         @php
                                             $firstContract = \Modules\ContractForge\App\Models\Contract::where('contractable_type', get_class($plan))->where('contractable_id', $plan->id)->first();

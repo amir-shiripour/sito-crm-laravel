@@ -387,7 +387,21 @@
                                             </svg>
                                         </button>
 
-                                        @if(!$isReceived)
+                                        @if($isReceived && $order->client_id)
+                                            <a href="{{ route('user.booking.appointments.create', [
+                                                    'client_id' => $order->client_id,
+                                                    'doctor_id' => $order->doctor_id,
+                                                    'notes' => 'تحویل پروتز سفارش ' . $order->order_number . ' (' . ($order->category_label ?? 'لابراتوار') . ')'
+                                                ]) }}"
+                                               target="_blank"
+                                               title="رزرو نوبت تحویل پروتز به بیمار"
+                                               class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white font-bold text-[11px] shadow-sm shadow-emerald-500/20 transition-all">
+                                                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                                </svg>
+                                                رزرو نوبت
+                                            </a>
+                                        @elseif(!$isReceived)
                                             <button type="button"
                                                     wire:click="openReceiveModal({{ $order->id }})"
                                                     title="ثبت دریافت کار از لابراتوار (سبز شدن)"

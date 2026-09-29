@@ -429,6 +429,18 @@ class ClientController extends Controller
             }
         }
 
+        // ── Booking Laboratory Orders check ─────────────────────────
+        $clientLabOrders = collect([]);
+        if ($isBookingActive && class_exists(\Modules\Booking\Entities\BookingLaboratoryOrder::class)) {
+            try {
+                $clientLabOrders = $client->laboratoryOrders()
+                    ->with(['stages', 'doctor'])
+                    ->get();
+            } catch (Exception $e) {
+                $clientLabOrders = collect([]);
+            }
+        }
+
         $currency = class_exists(Setting::class)
             ? (Setting::where('key', 'currency')->value('value') ?? 'toman')
             : 'toman';
@@ -438,7 +450,7 @@ class ClientController extends Controller
             'bookingModule', 'workflowsModule', 'availableWorkflows',
             'accountingModule', 'accountingDocuments', 'clientAccountingStats',
             'isBookingQueueEnabled', 'clientWaitlists',
-            'clientAppointments',
+            'clientAppointments', 'clientLabOrders',
             'walletModule', 'clientWallet', 'clientWalletTransactions', 'clientWalletTransactionsCount',
             'currency'
         ));

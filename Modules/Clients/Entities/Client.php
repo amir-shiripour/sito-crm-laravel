@@ -146,6 +146,15 @@ class Client extends Authenticatable
         return $this->hasMany(Client::class, 'id', 'id')->whereRaw('1 = 0');
     }
 
+    public function laboratoryOrders()
+    {
+        $class = '\Modules\Booking\Entities\BookingLaboratoryOrder';
+        if (class_exists($class) && \Schema::hasTable('booking_laboratory_orders')) {
+            return $this->hasMany($class, 'client_id')->latest('sent_at');
+        }
+        return $this->hasMany(Client::class, 'id', 'id')->whereRaw('1 = 0');
+    }
+
     public function getFormFieldValue(string $fieldId): ?array
     {
         if ($fieldId === 'password') {

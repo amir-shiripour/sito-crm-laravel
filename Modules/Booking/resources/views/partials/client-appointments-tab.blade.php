@@ -163,6 +163,53 @@
         </div>
     </div>
 
+    {{-- هماهنگی و هشدار وضعیت سفارشات فعال لابراتوار --}}
+    @php
+        $activeLabOrders = $client->laboratoryOrders ? $client->laboratoryOrders->whereNotIn('status', ['delivered', 'canceled']) : collect([]);
+        $readyDeliveryOrders = $activeLabOrders->where('status', 'received');
+    @endphp
+
+    @if($readyDeliveryOrders->isNotEmpty())
+        <div class="p-4 rounded-2xl bg-emerald-50/80 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-700/60 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-xl bg-emerald-500 text-white flex items-center justify-center shrink-0 shadow-sm">
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                    </svg>
+                </div>
+                <div>
+                    <h4 class="text-xs font-bold text-emerald-900 dark:text-emerald-100 flex items-center gap-2">
+                        <span>پروتز لابراتوار آماده تحویل است!</span>
+                        <span class="px-2 py-0.5 rounded-full text-[10px] bg-emerald-200/70 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-300 font-black">
+                            {{ $readyDeliveryOrders->count() }} مورد
+                        </span>
+                    </h4>
+                    <p class="text-[11px] text-emerald-800/80 dark:text-emerald-200/80 mt-0.5">
+                        سفارش(های) {{ $readyDeliveryOrders->pluck('order_number')->implode(', ') }} از لابراتوار تحویل مطب شده و آماده رزرو نوبت تست/تحویل به بیمار می‌باشد.
+                    </p>
+                </div>
+            </div>
+            <a href="{{ route('user.booking.schedule.index', ['client_id' => $client->id]) }}"
+               class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs shrink-0 transition-all">
+                <span>رزرو نوبت در تقویم</span>
+                <svg class="w-3.5 h-3.5 rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                </svg>
+            </a>
+        </div>
+    @elseif($activeLabOrders->isNotEmpty())
+        <div class="p-3.5 rounded-2xl bg-indigo-50/60 dark:bg-indigo-950/30 border border-indigo-200/80 dark:border-indigo-800/50 flex items-center justify-between gap-3 text-xs">
+            <div class="flex items-center gap-2.5 text-indigo-900 dark:text-indigo-200">
+                <span class="w-2 h-2 rounded-full bg-indigo-500 animate-ping"></span>
+                <span>بیمار دارای <strong>{{ $activeLabOrders->count() }} سفارش فعال در لابراتوار</strong> می‌باشد.</span>
+            </div>
+            <button type="button" @click="activeTab = 'laboratory'" class="text-indigo-600 dark:text-indigo-400 font-bold hover:underline flex items-center gap-1">
+                <span>مشاهده سفارشات لابراتوار</span>
+                <span>←</span>
+            </button>
+        </div>
+    @endif
+
     {{-- Appointments List / Table --}}
     @if($clientAppointments->isNotEmpty())
         <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">

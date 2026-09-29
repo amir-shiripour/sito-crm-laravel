@@ -119,8 +119,10 @@ class SettingsController extends Controller
             }));
         }
 
+        $allUsers = \App\Models\User::orderBy('name')->get(['id', 'name', 'email']);
+
         return view('booking::user.settings.edit', compact(
-            'settings', 'rules', 'roles', 'categories', 'globalExceptions', 'services', 'providers', 'syncGroups'
+            'settings', 'rules', 'roles', 'categories', 'globalExceptions', 'services', 'providers', 'syncGroups', 'allUsers'
         ));
     }
 
