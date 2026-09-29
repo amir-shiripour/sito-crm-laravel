@@ -263,6 +263,68 @@ class LaboratoryService
     }
 
     /**
+     * Postpone / extend due date of a stage and adjust order expected delivery
+     */
+    public function postponeStage(
+        BookingLaboratoryStage $stage,
+        int|Carbon $daysOrDate,
+        ?string $note = null,
+        ?int $userId = null
+    ): void {
+        DB::transaction(function () use ($stage, $daysOrDate, $note, $userId) {
+            $oldDue = $stage->due_at ? $stage->due_at->copy() : now();
+            
+            if ($daysOrDate instanceof Carbon) {
+                $newDue = $daysOrDate;
+                $diffDays = $oldDue->diffInDays($newDue, false);
+            } else {
+                $diffDays = (int) $daysOrDate;
+                $newDue = $oldDue->copy()->addDays($diffDays);
+            }
+
+            $stage->update([
+                'due_at' => $newDue,
+                'status' => $newDue->isPast() ? BookingLaboratoryStage::STATUS_OVERDUE : BookingLaboratoryStage::STATUS_PENDING,
+            ]);
+
+            $order = $stage->order;
+
+            // Shift subsequent incomplete stages by the same diff if diff > 0
+            if ($diffDays > 0) {
+                $subsequentStages = $order->stages()
+                    ->where('id', '!=', $stage->id)
+                    ->where('sort_order', '>', $stage->sort_order)
+                    ->where('is_completed', false)
+                    ->get();
+
+                foreach ($subsequentStages as $sStage) {
+                    $sNewDue = $sStage->due_at ? $sStage->due_at->copy()->addDays($diffDays) : now()->addDays($diffDays);
+                    $sStage->update([
+                        'due_at' => $sNewDue,
+                        'status' => $sNewDue->isPast() ? BookingLaboratoryStage::STATUS_OVERDUE : BookingLaboratoryStage::STATUS_PENDING,
+                    ]);
+                }
+            }
+
+            $lastStageDue = $order->stages()->orderByDesc('due_at')->value('due_at');
+            if ($lastStageDue) {
+                $order->update(['expected_delivery_at' => $lastStageDue]);
+            }
+
+            $logNote = $note ?: "تمدید موعد پیگیری مرحله {$stage->stage_title} به مدت {$diffDays} روز";
+
+            BookingLaboratoryDailyLog::create([
+                'order_id'         => $order->id,
+                'stage_id'         => $stage->id,
+                'log_date'         => now()->toDateString(),
+                'needs_followup'   => true,
+                'followup_result'  => $logNote,
+                'operator_user_id' => $userId ?: auth()->id(),
+            ]);
+        });
+    }
+
+    /**
      * Log a follow-up action for the daily board
      */
     public function logDailyFollowup(

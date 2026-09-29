@@ -180,6 +180,8 @@ class MarketSettings extends Component
                 $this->payment_method_statuses[$method]['payment_status'] = 'paid';
             }
         }
+
+        $this->autoProvisionForSingleVendor();
     }
 
     public function save()
@@ -382,10 +384,14 @@ class MarketSettings extends Component
     protected function autoProvisionForSingleVendor()
     {
         if ($this->store_type === 'single') {
-            $adminUser = User::role(['super-admin', 'admin'])->first();
+            $adminUser = User::role(['super-admin', 'admin'])->first() ?? auth()->user() ?? User::first();
 
             if ($adminUser) {
-                $vendor = Vendor::where('user_id', $adminUser->id)->first();
+                if (method_exists($adminUser, 'assignRole')) {
+                    $adminUser->assignRole('vendor');
+                }
+
+                $vendor = Vendor::where('user_id', $adminUser->id)->first() ?? Vendor::first();
 
                 if (!$vendor) {
                     $vendor = Vendor::create([
@@ -394,14 +400,20 @@ class MarketSettings extends Component
                         'slug' => 'main-store',
                         'status' => 'active',
                         'kyc_status' => 'approved',
+                        'commission_rate' => 0,
                     ]);
                 }
 
-                if ($this->wms_enabled && $vendor) {
+                if ($vendor) {
+                    if (method_exists($vendor, 'owners')) {
+                        $vendor->owners()->syncWithoutDetaching([$adminUser->id]);
+                    }
+
                     Warehouse::firstOrCreate(
                         ['vendor_id' => $vendor->id],
                         [
                             'name' => 'انبار اصلی ' . $vendor->store_name,
+                            'code' => 'WH-MAIN',
                             'is_active' => true,
                         ]
                     );
@@ -412,7 +424,9 @@ class MarketSettings extends Component
 
     public function render()
     {
-        $checkoutForms = CheckoutForm::all();
+        $checkoutForms = \Illuminate\Support\Facades\Schema::hasTable('checkout_forms')
+            ? CheckoutForm::all()
+            : collect();
 
         return view('market::livewire.admin.market-settings', [
             'locationsList' => ['تهران', 'اصفهان', 'خراسان رضوی', 'فارس', 'آذربایجان شرقی', 'مازندران', 'البرز', 'خوزستان'],

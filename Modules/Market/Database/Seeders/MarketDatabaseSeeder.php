@@ -19,6 +19,7 @@ class MarketDatabaseSeeder extends Seeder
             $installer = new \Modules\Market\Installer();
             // اجرای لاجیک ساخت نقش‌ها، دسترسی‌ها و وضعیت‌ها
             $installer->setupPermissionsAndStatuses();
+            $installer->provisionDefaultStore();
         }
     }
 }
