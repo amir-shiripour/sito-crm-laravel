@@ -77,6 +77,56 @@ class Installer extends BaseModuleInstaller
     {
         parent::install();
         $this->setupPermissionsAndStatuses();
+        $this->provisionDefaultStore();
+    }
+
+    public function provisionDefaultStore(): void
+    {
+        try {
+            $adminUser = \App\Models\User::role(['super-admin', 'admin'])->first() ?? \App\Models\User::first();
+
+            if ($adminUser) {
+                if (method_exists($adminUser, 'assignRole')) {
+                    $adminUser->assignRole('vendor');
+                }
+
+                $vendor = \Modules\Market\Entities\Vendor::where('user_id', $adminUser->id)->first()
+                    ?? \Modules\Market\Entities\Vendor::first();
+
+                if (!$vendor) {
+                    $vendor = \Modules\Market\Entities\Vendor::create([
+                        'user_id' => $adminUser->id,
+                        'store_name' => 'فروشگاه اصلی',
+                        'slug' => 'main-store',
+                        'status' => 'active',
+                        'kyc_status' => 'approved',
+                        'commission_rate' => 0,
+                    ]);
+                } else {
+                    $vendor->update([
+                        'status' => 'active',
+                        'kyc_status' => 'approved',
+                    ]);
+                }
+
+                if ($vendor && method_exists($vendor, 'owners')) {
+                    $vendor->owners()->syncWithoutDetaching([$adminUser->id]);
+                }
+
+                \Modules\Market\Entities\Warehouse::firstOrCreate(
+                    ['vendor_id' => $vendor ? $vendor->id : null],
+                    [
+                        'name' => 'انبار اصلی ' . ($vendor ? $vendor->store_name : 'سیستم'),
+                        'code' => 'WH-MAIN',
+                        'is_active' => true,
+                    ]
+                );
+
+                Log::info("Market Installer: Default store provisioned successfully for user #{$adminUser->id}");
+            }
+        } catch (\Throwable $e) {
+            Log::warning("Market Installer: Could not provision default store: " . $e->getMessage());
+        }
     }
 
     public function setupPermissionsAndStatuses(): void
@@ -168,7 +218,7 @@ class Installer extends BaseModuleInstaller
 
         // انتساب نقش فروشنده (vendor) به تمام کاربران ادمین و سوپرادمین موجود در سیستم
         try {
-            $adminUsers = \App\Models\User::role(['admin'])->get();
+            $adminUsers = \App\Models\User::role(['super-admin', 'admin'])->get();
             foreach ($adminUsers as $user) {
                 $user->assignRole('vendor');
             }

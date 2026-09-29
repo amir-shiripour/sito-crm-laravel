@@ -172,6 +172,31 @@ class BaseModuleInstaller implements ModuleInstallerInterface
     }
 
     /**
+     * Get all migration file names for this module
+     */
+    protected function getModuleMigrationNames(): array
+    {
+        $migrationNames = [];
+        $candidates = [
+            base_path("Modules/{$this->moduleName}/Database/Migrations"),
+            base_path("modules/{$this->moduleName}/Database/Migrations"),
+        ];
+
+        foreach ($candidates as $dir) {
+            if (File::isDirectory($dir)) {
+                foreach (File::files($dir) as $file) {
+                    if ($file->getExtension() === 'php') {
+                        $migrationNames[] = pathinfo($file->getFilename(), PATHINFO_FILENAME);
+                    }
+                }
+                break;
+            }
+        }
+
+        return $migrationNames;
+    }
+
+    /**
      * Clean up any remaining tables for this module safely
      */
     protected function dropModuleTables(): void
@@ -197,8 +222,12 @@ class BaseModuleInstaller implements ModuleInstallerInterface
 
             Schema::enableForeignKeyConstraints();
 
-            // 3. پاک کردن رکورد مایگریشن‌های مربوطه
+            // 3. پاک کردن رکورد مایگریشن‌های مربوطه بر اساس نام فایل‌های مایگریشن ماژول
             if (Schema::hasTable('migrations')) {
+                $moduleMigrations = $this->getModuleMigrationNames();
+                if (!empty($moduleMigrations)) {
+                    DB::table('migrations')->whereIn('migration', $moduleMigrations)->delete();
+                }
                 DB::table('migrations')->where('migration', 'like', '%' . $this->moduleSlug . '%')->delete();
             }
         } catch (\Throwable $e) {
@@ -217,7 +246,11 @@ class BaseModuleInstaller implements ModuleInstallerInterface
             }
 
             // اگر جداول پایه ماژول وجود نداشته باشند اما مایگریشن‌ها در دیتابیس ثبت شده باشند (حالت یتیم)
-            $migratedCount = DB::table('migrations')->where('migration', 'like', '%' . $this->moduleSlug . '%')->count();
+            $moduleMigrations = $this->getModuleMigrationNames();
+            $migratedCount = !empty($moduleMigrations)
+                ? DB::table('migrations')->whereIn('migration', $moduleMigrations)->count()
+                : DB::table('migrations')->where('migration', 'like', '%' . $this->moduleSlug . '%')->count();
+
             $tables = property_exists($this, 'tables') ? $this->tables : [];
             $existingTablesCount = 0;
             foreach ($tables as $t) {

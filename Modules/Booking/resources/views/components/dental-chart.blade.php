@@ -1,3 +1,37 @@
+<style>
+    .tooth-path {
+        cursor: pointer;
+        transition: fill .14s ease, stroke .14s ease, filter .14s ease;
+        stroke-width: 1.5px;
+        vector-effect: non-scaling-stroke;
+    }
+    .tooth-selected {
+        fill: #4f46e5 !important;
+        stroke: #4338ca !important;
+        stroke-width: 2.5px !important;
+        filter: drop-shadow(0 2px 6px rgba(79, 70, 229, 0.45));
+    }
+    .dark .tooth-selected {
+        fill: #6366f1 !important;
+        stroke: #818cf8 !important;
+    }
+    .tooth-unselected {
+        fill: #ffffff !important;
+        stroke: #cbd5e1 !important;
+    }
+    .dark .tooth-unselected {
+        fill: #1e293b !important;
+        stroke: #475569 !important;
+    }
+    .tooth-unselected:hover {
+        fill: #eef2ff !important;
+        stroke: #6366f1 !important;
+    }
+    .dark .tooth-unselected:hover {
+        fill: #334155 !important;
+        stroke: #818cf8 !important;
+    }
+</style>
 <svg viewBox="0 0 757 335" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-full h-auto">
     <path fill-rule="evenodd" clip-rule="evenodd" class="pointer-events-none"
           d="M378.247 302.863C378.247 302.863 378.681 301.795 326.339 302.863C273.997 303.931 216.2 283.051 191.379 263.2C166.558 243.349 127.479 182.966 107.379 143.377C87.279 103.788 43.331 56.06 39.431 51.4C35.531 46.74 36.471 41.8 41.319 42.962C46.167 44.124 75.019 53.932 101.719 53.932C128.419 53.932 143.468 32 247.062 32C338.923 32 368.815 56.471 368.815 56.471C368.815 56.471 379.926 62.655 388.829 56.471C388.829 56.471 425.336 31.998 510.502 31.998C614.034 32 629.07 53.937 655.756 53.937C682.442 53.937 711.277 44.125 716.122 42.966C720.967 41.807 721.906 46.748 718.008 51.405C714.11 56.062 670.177 103.8 650.1 143.391C630.023 182.982 590.963 243.377 566.155 263.226C541.347 283.075 483.586 303.958 431.276 302.89C378.966 301.822 379.4 302.89 379.4 302.89Z"

@@ -930,9 +930,23 @@
                             </div>
                         </div>
 
-                        {{-- خلاصه مشخصات پروتز با لینک به تب نقشه دندانی --}}
-                        <div class="p-4 rounded-2xl bg-white dark:bg-gray-800/90 border border-gray-200 dark:border-gray-700 shadow-xs flex items-center justify-between gap-4 flex-wrap">
-                            <div class="flex items-center gap-3 flex-wrap">
+                        {{-- مشخصات پروتز و کادر کراس پالمر دندان‌ها (+) --}}
+                        <div class="p-4 rounded-2xl bg-white dark:bg-gray-800/90 border border-gray-200 dark:border-gray-700 shadow-xs space-y-3">
+                            <div class="flex items-center justify-between gap-4 flex-wrap">
+                                <h4 class="font-bold text-xs text-gray-900 dark:text-white flex items-center gap-2">
+                                    <svg class="w-4 h-4 text-indigo-600 dark:text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
+                                    مشخصات پروتز و دندان‌ها (پالمر +)
+                                </h4>
+
+                                <button type="button" 
+                                        wire:click="setDetailTab('dental_chart')"
+                                        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/50 dark:hover:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 font-bold text-xs border border-indigo-200 dark:border-indigo-800/60 transition-all cursor-pointer">
+                                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                                    مشاهده نقشه کامل آناتومیک ↵
+                                </button>
+                            </div>
+
+                            <div class="flex flex-wrap items-center gap-3">
                                 <div class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 font-bold">
                                     <span>نوع کار:</span>
                                     <span class="text-indigo-600 dark:text-indigo-400">{{ $detailOrder->category_label }}</span>
@@ -950,14 +964,47 @@
                                         دارای مرحله PMMA
                                     </div>
                                 @endif
-                            </div>
 
-                            <button type="button" 
-                                    wire:click="setDetailTab('dental_chart')"
-                                    class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/50 dark:hover:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 font-bold text-xs border border-indigo-200 dark:border-indigo-800/60 transition-all">
-                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
-                                مشاهده نقشه گرافیکی دندان‌ها ↵
-                            </button>
+                                {{-- نمایش کراس پالمر دندان‌ها (+) با چارک‌های متقاطع --}}
+                                @if($detailOrder->has_teeth)
+                                    @php
+                                        $dtGrouped = $detailOrder->grouped_teeth;
+                                    @endphp
+                                    <div class="inline-flex items-center gap-3 border-2 border-indigo-200 dark:border-indigo-800/80 bg-indigo-50/30 dark:bg-slate-800/90 px-3.5 py-1.5 rounded-2xl shadow-2xs">
+                                        <span class="text-xs font-bold text-indigo-700 dark:text-indigo-300 pl-2 border-l border-indigo-200 dark:border-indigo-700">شماره دندان‌ها (پالمر +):</span>
+                                        <div class="inline-grid grid-cols-2 text-center align-middle">
+                                            {{-- UR --}}
+                                            <div class="border-l-2 border-b-2 border-slate-300 dark:border-slate-500 py-1 px-2.5 flex items-center justify-end gap-1.5 min-w-[30px] min-h-[22px]">
+                                                @foreach($dtGrouped['UR'] as $t)
+                                                    <span class="inline-flex items-center justify-center min-w-[12px] text-sm font-black text-indigo-600 dark:text-indigo-400">{{ $t['num'] }}</span>
+                                                @endforeach
+                                            </div>
+                                            {{-- UL --}}
+                                            <div class="border-b-2 border-slate-300 dark:border-slate-500 py-1 px-2.5 flex items-center justify-start gap-1.5 min-w-[30px] min-h-[22px]">
+                                                @foreach($dtGrouped['UL'] as $t)
+                                                    <span class="inline-flex items-center justify-center min-w-[12px] text-sm font-black text-indigo-600 dark:text-indigo-400">{{ $t['num'] }}</span>
+                                                @endforeach
+                                            </div>
+                                            {{-- LR --}}
+                                            <div class="border-l-2 border-slate-300 dark:border-slate-500 py-1 px-2.5 flex items-center justify-end gap-1.5 min-w-[30px] min-h-[22px]">
+                                                @foreach($dtGrouped['LR'] as $t)
+                                                    <span class="inline-flex items-center justify-center min-w-[12px] text-sm font-black text-indigo-600 dark:text-indigo-400">{{ $t['num'] }}</span>
+                                                @endforeach
+                                            </div>
+                                            {{-- LL --}}
+                                            <div class="py-1 px-2.5 flex items-center justify-start gap-1.5 min-w-[30px] min-h-[22px]">
+                                                @foreach($dtGrouped['LL'] as $t)
+                                                    <span class="inline-flex items-center justify-center min-w-[12px] text-sm font-black text-indigo-600 dark:text-indigo-400">{{ $t['num'] }}</span>
+                                                @endforeach
+                                            </div>
+                                        </div>
+                                    </div>
+                                @elseif($detailOrder->teeth_numbers)
+                                    <div class="text-xs font-bold text-indigo-600 dark:text-indigo-400">
+                                        دندان‌ها: {{ $detailOrder->teeth_numbers }}
+                                    </div>
+                                @endif
+                            </div>
                         </div>
 
                         {{-- تایم‌لاین مراحل ساخت و زمان‌بندی پیگیری‌ها --}}
@@ -1094,16 +1141,15 @@
                                     <div class="flex items-center justify-between border-b border-gray-150 dark:border-gray-700 pb-2">
                                         <h5 class="font-bold text-xs text-gray-900 dark:text-white flex items-center gap-1.5">
                                             <span class="w-2.5 h-2.5 rounded-full bg-indigo-500"></span>
-                                            فک بالا - سمت راست (UR ⏌)
+                                            فک بالا - سمت راست
                                         </h5>
                                         <span class="text-[10px] font-bold text-slate-500 dark:text-slate-400" x-text="getQuadrantTeeth('UR').length + ' دندان'"></span>
                                     </div>
                                     <div class="flex flex-wrap gap-1.5 min-h-[36px] items-center">
                                         <template x-for="t in getQuadrantTeeth('UR')" :key="t.id">
-                                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-bold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-800 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
-                                                <span class="font-black text-sm" x-text="'⏌' + t.num"></span>
-                                                <span class="text-[10px] opacity-75" x-text="'(FDI: ' + t.fdi + ')'"></span>
-                                                <span class="text-[10px] font-normal" x-text="t.name"></span>
+                                            <span class="inline-flex items-center justify-center w-8 h-8 rounded-xl text-xs font-bold bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-500/15 dark:hover:bg-indigo-500/25 text-indigo-700 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-500/30 shadow-2xs transition-colors cursor-default"
+                                                  :title="t.name + ' (FDI: ' + t.fdi + ')'"
+                                                  x-text="t.num">
                                             </span>
                                         </template>
                                         <template x-if="getQuadrantTeeth('UR').length === 0">
@@ -1117,16 +1163,15 @@
                                     <div class="flex items-center justify-between border-b border-gray-150 dark:border-gray-700 pb-2">
                                         <h5 class="font-bold text-xs text-gray-900 dark:text-white flex items-center gap-1.5">
                                             <span class="w-2.5 h-2.5 rounded-full bg-indigo-500"></span>
-                                            فک بالا - سمت چپ (UL ⎾)
+                                            فک بالا - سمت چپ
                                         </h5>
                                         <span class="text-[10px] font-bold text-slate-500 dark:text-slate-400" x-text="getQuadrantTeeth('UL').length + ' دندان'"></span>
                                     </div>
                                     <div class="flex flex-wrap gap-1.5 min-h-[36px] items-center">
                                         <template x-for="t in getQuadrantTeeth('UL')" :key="t.id">
-                                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-bold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-800 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
-                                                <span class="font-black text-sm" x-text="t.num + '⎾'"></span>
-                                                <span class="text-[10px] opacity-75" x-text="'(FDI: ' + t.fdi + ')'"></span>
-                                                <span class="text-[10px] font-normal" x-text="t.name"></span>
+                                            <span class="inline-flex items-center justify-center w-8 h-8 rounded-xl text-xs font-bold bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-500/15 dark:hover:bg-indigo-500/25 text-indigo-700 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-500/30 shadow-2xs transition-colors cursor-default"
+                                                  :title="t.name + ' (FDI: ' + t.fdi + ')'"
+                                                  x-text="t.num">
                                             </span>
                                         </template>
                                         <template x-if="getQuadrantTeeth('UL').length === 0">
@@ -1140,16 +1185,15 @@
                                     <div class="flex items-center justify-between border-b border-gray-150 dark:border-gray-700 pb-2">
                                         <h5 class="font-bold text-xs text-gray-900 dark:text-white flex items-center gap-1.5">
                                             <span class="w-2.5 h-2.5 rounded-full bg-indigo-500"></span>
-                                            فک پایین - سمت راست (LR ⏋)
+                                            فک پایین - سمت راست
                                         </h5>
                                         <span class="text-[10px] font-bold text-slate-500 dark:text-slate-400" x-text="getQuadrantTeeth('LR').length + ' دندان'"></span>
                                     </div>
                                     <div class="flex flex-wrap gap-1.5 min-h-[36px] items-center">
                                         <template x-for="t in getQuadrantTeeth('LR')" :key="t.id">
-                                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-bold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-800 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
-                                                <span class="font-black text-sm" x-text="'⏋' + t.num"></span>
-                                                <span class="text-[10px] opacity-75" x-text="'(FDI: ' + t.fdi + ')'"></span>
-                                                <span class="text-[10px] font-normal" x-text="t.name"></span>
+                                            <span class="inline-flex items-center justify-center w-8 h-8 rounded-xl text-xs font-bold bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-500/15 dark:hover:bg-indigo-500/25 text-indigo-700 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-500/30 shadow-2xs transition-colors cursor-default"
+                                                  :title="t.name + ' (FDI: ' + t.fdi + ')'"
+                                                  x-text="t.num">
                                             </span>
                                         </template>
                                         <template x-if="getQuadrantTeeth('LR').length === 0">
@@ -1163,16 +1207,15 @@
                                     <div class="flex items-center justify-between border-b border-gray-150 dark:border-gray-700 pb-2">
                                         <h5 class="font-bold text-xs text-gray-900 dark:text-white flex items-center gap-1.5">
                                             <span class="w-2.5 h-2.5 rounded-full bg-indigo-500"></span>
-                                            فک پایین - سمت چپ (LL ⎿)
+                                            فک پایین - سمت چپ
                                         </h5>
                                         <span class="text-[10px] font-bold text-slate-500 dark:text-slate-400" x-text="getQuadrantTeeth('LL').length + ' دندان'"></span>
                                     </div>
                                     <div class="flex flex-wrap gap-1.5 min-h-[36px] items-center">
                                         <template x-for="t in getQuadrantTeeth('LL')" :key="t.id">
-                                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-bold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-800 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
-                                                <span class="font-black text-sm" x-text="t.num + '⎿'"></span>
-                                                <span class="text-[10px] opacity-75" x-text="'(FDI: ' + t.fdi + ')'"></span>
-                                                <span class="text-[10px] font-normal" x-text="t.name"></span>
+                                            <span class="inline-flex items-center justify-center w-8 h-8 rounded-xl text-xs font-bold bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-500/15 dark:hover:bg-indigo-500/25 text-indigo-700 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-500/30 shadow-2xs transition-colors cursor-default"
+                                                  :title="t.name + ' (FDI: ' + t.fdi + ')'"
+                                                  x-text="t.num">
                                             </span>
                                         </template>
                                         <template x-if="getQuadrantTeeth('LL').length === 0">
