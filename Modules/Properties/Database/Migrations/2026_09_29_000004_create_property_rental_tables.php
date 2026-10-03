@@ -14,13 +14,10 @@ return new class extends Migration
                 $table->id();
                 $table->foreignId('property_id')->constrained('properties')->cascadeOnDelete();
                 
-                // ظرفیت‌ها و تخت‌ها
+                // ظرفیت پذیرش مهمان
                 $table->unsignedSmallInteger('base_guests')->default(2);
                 $table->unsignedSmallInteger('max_guests')->default(4);
-                $table->unsignedSmallInteger('bedrooms')->default(1);
-                $table->unsignedSmallInteger('double_beds')->default(1);
-                $table->unsignedSmallInteger('single_beds')->default(0);
-                $table->unsignedSmallInteger('bathrooms')->default(1);
+                $table->json('weekend_days')->nullable(); // روزهای آخر هفته منتخب
                 
                 // ساختار قیمت‌گذاری روزانه
                 $table->decimal('price_per_night', 15, 0)->nullable(); // نرخ عادی
@@ -34,9 +31,8 @@ return new class extends Migration
                 $table->time('check_out_time')->default('12:00:00');
                 $table->unsignedSmallInteger('min_stay_nights')->default(1);
                 
-                // امکانات و قوانین
+                // قوانین و رزرو آنی
                 $table->json('house_rules')->nullable();
-                $table->json('rental_amenities')->nullable();
                 $table->boolean('instant_booking')->default(false);
                 
                 $table->timestamps();

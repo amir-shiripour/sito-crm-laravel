@@ -31,7 +31,7 @@ class PropertyController extends Controller
 
         // Start Query manually to control visibility logic
         $query = Property::query()
-            ->with('status', 'creator', 'agent', 'category', 'building');
+            ->with('status', 'creator', 'agent', 'category', 'building', 'host');
 
         // Check for trash view
         if ($request->has('trashed') && $request->trashed == '1') {
@@ -169,8 +169,10 @@ class PropertyController extends Controller
         $agentRoles = json_decode(PropertySetting::get('agent_roles', '[]'), true);
         $agents = User::role($agentRoles)->get();
         $owners = PropertyOwner::latest()->get();
+        $hosts = \Modules\Properties\Entities\PropertyHost::where('status', 'active')->latest()->get();
+        $currentUserHost = \Modules\Properties\Entities\PropertyHost::where('user_id', auth()->id())->first();
 
-        return view('properties::user.create', compact('maxGalleryImages', 'maxFileSize', 'allowedFileTypes', 'maxVideoSize', 'allowedVideoTypes', 'statuses', 'agents', 'owners'));
+        return view('properties::user.create', compact('maxGalleryImages', 'maxFileSize', 'allowedFileTypes', 'maxVideoSize', 'allowedVideoTypes', 'statuses', 'agents', 'owners', 'hosts', 'currentUserHost'));
     }
 
     public function store(Request $request)
@@ -228,6 +230,7 @@ class PropertyController extends Controller
             'is_special' => 'nullable|boolean',
             'show_on_site' => 'nullable|boolean',
             'agent_id' => 'nullable|exists:users,id',
+            'host_id' => 'nullable|exists:property_hosts,id',
             'price' => 'nullable|numeric|min:0',
             'min_price' => 'nullable|numeric|min:0',
             'deposit_price' => 'nullable|numeric|min:0',
@@ -282,12 +285,23 @@ class PropertyController extends Controller
         }
         $data['meta'] = $processedMeta;
 
-        // انتساب خودکار میزبان در صورت لاگین بودن میزبان
-        $host = \Modules\Properties\Entities\PropertyHost::where('user_id', auth()->id())->first();
-        if ($host) {
-            $data['host_id'] = $host->id;
-            if (empty($data['owner_id']) && $host->owner_id) {
-                $data['owner_id'] = $host->owner_id;
+        // انتساب هوشمند میزبان
+        $user = auth()->user();
+        $isAdmin = $user->hasRole(['super-admin', 'admin']) || $user->can('properties.hosts.manage') || $user->can('properties.manage');
+        $currentUserHost = \Modules\Properties\Entities\PropertyHost::where('user_id', $user->id)->first();
+
+        if ($isAdmin && $request->has('host_id')) {
+            $data['host_id'] = $request->filled('host_id') ? $request->host_id : null;
+            if ($data['host_id'] && empty($data['owner_id'])) {
+                $chosenHost = \Modules\Properties\Entities\PropertyHost::find($data['host_id']);
+                if ($chosenHost && $chosenHost->owner_id) {
+                    $data['owner_id'] = $chosenHost->owner_id;
+                }
+            }
+        } elseif ($currentUserHost && $data['listing_type'] === 'daily_rental') {
+            $data['host_id'] = $currentUserHost->id;
+            if (empty($data['owner_id']) && $currentUserHost->owner_id) {
+                $data['owner_id'] = $currentUserHost->owner_id;
             }
         }
 
@@ -567,7 +581,7 @@ class PropertyController extends Controller
             abort(403);
         }
 
-        $property->load('building');
+        $property->load('building', 'host', 'owner', 'agent');
 
         $maxGalleryImages = PropertySetting::get('max_gallery_images', 10);
         $maxFileSize = PropertySetting::get('max_file_size', 10240);
@@ -601,8 +615,10 @@ class PropertyController extends Controller
 
         $agentRoles = json_decode(PropertySetting::get('agent_roles', '[]'), true);
         $agents = User::role($agentRoles)->get();
+        $hosts = \Modules\Properties\Entities\PropertyHost::where('status', 'active')->latest()->get();
+        $currentUserHost = \Modules\Properties\Entities\PropertyHost::where('user_id', auth()->id())->first();
 
-        return view('properties::user.edit', compact('property', 'maxGalleryImages', 'maxFileSize', 'allowedFileTypes', 'maxVideoSize', 'allowedVideoTypes', 'customDetails', 'customFeatures', 'owners', 'statuses', 'agents'));
+        return view('properties::user.edit', compact('property', 'maxGalleryImages', 'maxFileSize', 'allowedFileTypes', 'maxVideoSize', 'allowedVideoTypes', 'customDetails', 'customFeatures', 'owners', 'statuses', 'agents', 'hosts', 'currentUserHost'));
     }
 
     public function update(Request $request, Property $property)
@@ -681,6 +697,7 @@ class PropertyController extends Controller
             'is_special' => 'nullable|boolean',
             'show_on_site' => 'nullable|boolean',
             'agent_id' => 'nullable|exists:users,id',
+            'host_id' => 'nullable|exists:property_hosts,id',
             'price' => 'nullable|numeric|min:0',
             'min_price' => 'nullable|numeric|min:0',
             'deposit_price' => 'nullable|numeric|min:0',
@@ -750,6 +767,13 @@ class PropertyController extends Controller
         $data['meta'] = $processedMeta;
 
         $isAdmin = $user->hasRole(['super-admin', 'admin']);
+        $canManageHosts = $isAdmin || $user->can('properties.hosts.manage') || $user->can('properties.manage');
+        if ($canManageHosts && $request->has('host_id')) {
+            $data['host_id'] = $request->filled('host_id') ? $request->host_id : null;
+        } else {
+            unset($data['host_id']);
+        }
+
         $agentRoles = json_decode(PropertySetting::get('agent_roles', '[]'), true);
         if (!$isAdmin && $user->hasAnyRole($agentRoles)) {
             unset($data['agent_id']);

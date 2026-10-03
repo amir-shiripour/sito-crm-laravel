@@ -63,26 +63,55 @@ class RentalCalendarController extends Controller
         // قیمت‌های فصلی موجود
         $seasonalPrices = $property->seasonalPrices()->latest()->get();
 
+        // بازه زمانی ماه جاری جهت استعلام مناسبت‌های رسمی از دیتابیس محلی تقویم شمسی
+        $startCarbon = (new Jalalian($currentYear, $currentMonth, 1))->toCarbon()->subDays(2);
+        $endCarbon = (new Jalalian($currentYear, $currentMonth, $daysInMonth))->toCarbon()->addDays(3);
+        
+        $officialHolidayMap = [];
+        if (class_exists(\App\Models\HolidayEvent::class)) {
+            $holidayRecords = \App\Models\HolidayEvent::where('is_holiday', true)
+                ->whereBetween('gregorian_date', [$startCarbon->format('Y-m-d 00:00:00'), $endCarbon->format('Y-m-d 23:59:59')])
+                ->get();
+            foreach ($holidayRecords as $hr) {
+                $gDate = substr((string) $hr->gregorian_date, 0, 10);
+                $officialHolidayMap[$gDate] = $hr->title;
+            }
+        }
+
         for ($day = 1; $day <= $daysInMonth; $day++) {
             $jDate = new Jalalian($currentYear, $currentMonth, $day);
             $cDate = $jDate->toCarbon();
             $dateStr = $cDate->format('Y-m-d');
-            $dayOfWeek = $jDate->getDayOfWeek(); // 0: شنبه تا 6: جمعه
 
-            // بررسی آخر هفته (چهارشنبه=4، پنجشنبه=5 یا جمعه=6)
-            $isWeekend = ($dayOfWeek == 4 || $dayOfWeek == 5);
+            // تشخیص هوشمند رده نرخ بر اساس استاندارد جاجیگا و جاباما
+            $rateInfo = $config
+                ? $config->resolveNightRateCategory($cDate, $officialHolidayMap)
+                : [
+                    'price_type' => 'normal',
+                    'holiday_title' => $officialHolidayMap[$dateStr] ?? null,
+                    'is_holiday_or_peak' => false,
+                    'is_eve_of_holiday' => false,
+                    'is_weekend' => ($jDate->getDayOfWeek() == 4 || $jDate->getDayOfWeek() == 5),
+                    'day_of_week' => $jDate->getDayOfWeek(),
+                ];
 
-            // بررسی قیمت ویژه
+            // بررسی قیمت ویژه تاریخ خاص (بالاترین اولویت)
             $customPrice = $seasonalPrices->first(function ($p) use ($dateStr) {
                 return $dateStr >= $p->start_date->format('Y-m-d') && $dateStr <= $p->end_date->format('Y-m-d');
             });
 
-            // تعیین قیمت مؤثر
+            // تعیین قیمت مؤثر بر اساس سلسله‌مراتب اولویت‌ها:
+            // ۱. قیمت ویژه تاریخ خاص | ۲. ایام پیک و تعطیلات | ۳. آخر هفته | ۴. نرخ پایه عادی
             $effectivePrice = 0;
+            $priceType = $rateInfo['price_type'];
+
             if ($customPrice) {
                 $effectivePrice = (float) $customPrice->price_per_night;
+                $priceType = 'custom';
             } elseif ($config) {
-                if ($isWeekend && $config->price_weekend > 0) {
+                if ($priceType === 'holiday') {
+                    $effectivePrice = (float) $config->price_holiday;
+                } elseif ($priceType === 'weekend') {
                     $effectivePrice = (float) $config->price_weekend;
                 } else {
                     $effectivePrice = (float) $config->price_per_night;
@@ -98,10 +127,14 @@ class RentalCalendarController extends Controller
                 'day' => $day,
                 'jalali_date' => $jDate->format('Y/m/d'),
                 'carbon_date' => $dateStr,
-                'day_of_week' => $dayOfWeek,
-                'is_weekend' => $isWeekend,
+                'day_of_week' => $rateInfo['day_of_week'],
+                'is_weekend' => $rateInfo['is_weekend'],
+                'is_holiday' => $rateInfo['is_holiday_or_peak'],
+                'is_eve_of_holiday' => $rateInfo['is_eve_of_holiday'],
+                'holiday_title' => $rateInfo['holiday_title'],
                 'is_blocked' => $isBlocked,
                 'price' => $effectivePrice,
+                'price_type' => $priceType,
                 'custom_title' => $customPrice ? $customPrice->title : null,
                 'is_past' => $cDate->isPast() && !$cDate->isToday(),
             ];
@@ -122,8 +155,7 @@ class RentalCalendarController extends Controller
             'currentMonth',
             'monthNames',
             'currency',
-            'startOfMonthJalali',
-            'seasonalPrices'
+            'startOfMonthJalali'
         ));
     }
 
@@ -201,56 +233,5 @@ class RentalCalendarController extends Controller
         ]);
 
         return back()->with('success', 'بازه زمانی با موفقیت مسدود شد.');
-    }
-
-    /**
-     * ثبت قیمت‌گذاری فصلی / مناسبتی
-     */
-    public function storeSeasonalPrice(Request $request, Property $property)
-    {
-        $this->checkAccess($property);
-
-        $priceVal = str_replace(',', '', $request->price_per_night);
-        $request->merge(['price_per_night' => $priceVal]);
-
-        $request->validate([
-            'start_date_jalali' => 'required|string',
-            'end_date_jalali' => 'required|string',
-            'price_per_night' => 'required|numeric|min:0',
-            'title' => 'required|string|max:100',
-        ]);
-
-        try {
-            $startDate = Jalalian::fromFormat('Y/m/d', $request->start_date_jalali)->toCarbon()->format('Y-m-d');
-            $endDate = Jalalian::fromFormat('Y/m/d', $request->end_date_jalali)->toCarbon()->format('Y-m-d');
-        } catch (\Exception $e) {
-            return back()->with('error', 'فرمت تاریخ‌های وارد شده صحیح نیست.');
-        }
-
-        if ($startDate > $endDate) {
-            return back()->with('error', 'تاریخ پایان نمی‌تواند پیش از تاریخ شروع باشد.');
-        }
-
-        PropertyRentalPrice::create([
-            'property_id' => $property->id,
-            'start_date' => $startDate,
-            'end_date' => $endDate,
-            'price_per_night' => $request->price_per_night,
-            'title' => $request->title,
-        ]);
-
-        return back()->with('success', 'قیمت ویژه برای بازه مشخص با موفقیت ثبت شد.');
-    }
-
-    /**
-     * حذف قیمت‌گذاری فصلی
-     */
-    public function deleteSeasonalPrice(PropertyRentalPrice $price)
-    {
-        $property = $price->property;
-        $this->checkAccess($property);
-
-        $price->delete();
-        return back()->with('success', 'قیمت‌گذاری فصلی حذف شد.');
     }
 }

@@ -77,6 +77,9 @@ Route::middleware(['web', 'auth'])
                 // Agent Search
                 Route::get('/agents/search', [UserPropertyController::class, 'searchAgents'])->name('agents.search');
 
+                // Host Search
+                Route::get('/hosts/search', [HostController::class, 'search'])->name('hosts.search');
+
                 // Category Management
                 Route::resource('categories', CategoryController::class)->except(['show', 'create', 'edit']);
 
@@ -104,9 +107,7 @@ Route::middleware(['web', 'auth'])
                     Route::get('/calendar', [RentalCalendarController::class, 'calendar'])->name('calendar');
                     Route::post('/calendar/toggle-block', [RentalCalendarController::class, 'toggleBlock'])->name('calendar.toggle-block');
                     Route::post('/calendar/batch-block', [RentalCalendarController::class, 'batchBlock'])->name('calendar.batch-block');
-                    Route::post('/calendar/seasonal-prices', [RentalCalendarController::class, 'storeSeasonalPrice'])->name('calendar.seasonal-prices.store');
                 });
-                Route::delete('/rental/seasonal-prices/{price}', [RentalCalendarController::class, 'deleteSeasonalPrice'])->name('rental.calendar.seasonal-prices.destroy');
             });
 
         // Full Owner Management
@@ -130,6 +131,7 @@ Route::middleware(['web', 'auth'])
                 // Attributes Management
                 Route::get('/attributes', [AttributesController::class, 'index'])->name('attributes.index');
                 Route::post('/attributes', [AttributesController::class, 'store'])->name('attributes.store');
+                Route::post('/attributes/load-defaults', [AttributesController::class, 'loadDefaults'])->name('attributes.load-defaults');
                 Route::put('/attributes/{attribute}', [AttributesController::class, 'update'])->name('attributes.update');
                 Route::delete('/attributes/{attribute}', [AttributesController::class, 'destroy'])->name('attributes.destroy');
                 Route::get('/import', [ImportController::class, 'index'])->name('import');

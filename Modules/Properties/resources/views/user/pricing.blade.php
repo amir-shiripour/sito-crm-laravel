@@ -9,7 +9,7 @@
     // استایل‌های مشترک
     $cardClass = "bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm transition-all duration-200";
     $labelClass = "block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5";
-    $inputClass = "w-full rounded-xl border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-gray-900 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 transition-all dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:focus:bg-gray-800 dir-ltr text-center font-mono placeholder-gray-400 dark:placeholder-gray-600";
+    $inputClass = "w-full rounded-xl border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-gray-900 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 transition-all dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:focus:bg-gray-800 dir-ltr text-center font-sans placeholder-gray-400 dark:placeholder-gray-600";
 @endphp
 
 @section('content')

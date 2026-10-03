@@ -68,7 +68,10 @@
                 </h1>
                 <div class="flex items-center gap-2 mt-2 text-sm text-gray-500 dark:text-gray-400">
                     <span class="font-medium text-gray-800 dark:text-gray-200">{{ $property->title }}</span>
-                    <span class="px-2 py-0.5 bg-gray-100 dark:bg-gray-700 rounded text-xs">کد: {{ $property->code }}</span>
+                    <span class="px-2 py-0.5 bg-gray-100 dark:bg-gray-700 rounded text-xs" x-show="listingType !== 'daily_rental'">کد: {{ $property->code }}</span>
+                    <span x-show="listingType === 'daily_rental'" class="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-teal-50 text-teal-700 dark:bg-teal-950/40 dark:text-teal-300 font-sans border border-teal-200 dark:border-teal-800">
+                        نوع: اجاره روزانه / اقامتگاه
+                    </span>
                 </div>
             </div>
 
@@ -173,11 +176,14 @@
                                     {{-- ردیف اول --}}
                                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                                         <div class="md:col-span-2">
-                                            <label class="{{ $labelClass }}">عنوان ملک <span class="text-red-500">*</span></label>
+                                            <label class="{{ $labelClass }}">
+                                                <span x-text="listingType === 'daily_rental' ? 'عنوان اقامتگاه' : 'عنوان ملک'">عنوان ملک</span>
+                                                <span class="text-red-500">*</span>
+                                            </label>
                                             <input type="text" name="title" x-model="title" class="{{ $inputClass }}" required>
                                         </div>
 
-                                        <div>
+                                        <div x-show="listingType !== 'daily_rental'">
                                             <label class="{{ $labelClass }}">نوع فایل</label>
                                             <select name="listing_type" x-model="listingType" class="{{ $selectClass }}">
                                                 <option value="sale">فروش</option>
@@ -199,7 +205,7 @@
                                             </select>
                                         </div>
 
-                                        <div>
+                                        <div x-show="listingType !== 'daily_rental'">
                                             <label class="{{ $labelClass }}">نوع سند</label>
                                             <select name="document_type" x-model="documentType" class="{{ $selectClass }}">
                                                 <option value="">انتخاب کنید</option>
@@ -309,12 +315,12 @@
                                     </div>
 
                                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        <div>
+                                        <div x-show="listingType !== 'daily_rental'">
                                             <label class="{{ $labelClass }}">کد ملک</label>
                                             <input type="text" name="code" x-model="code" value="{{ old('code', $property->code) }}" class="{{ $inputClass }}">
                                         </div>
 
-                                        <div>
+                                        <div :class="listingType === 'daily_rental' ? 'md:col-span-2' : ''">
                                             <label class="{{ $labelClass }}">دسته‌بندی شخصی</label>
                                             <select name="category_id" class="{{ $selectClass }}">
                                                 <option value="">بدون دسته‌بندی</option>
@@ -552,7 +558,7 @@
                     </div>
 
                     {{-- کارت مالک --}}
-                    <div class="{{ $cardClass }} p-6 overflow-visible">
+                    <div class="{{ $cardClass }} p-6 overflow-visible" x-show="listingType !== 'daily_rental'">
                         <div class="flex items-center gap-2 mb-6 pb-4 border-b border-gray-100 dark:border-gray-700">
                             <span class="w-2 h-2 rounded-full bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.6)]"></span>
                             <h2 class="text-lg font-bold text-gray-900 dark:text-white">اطلاعات مالک</h2>
@@ -613,6 +619,108 @@
                                     <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
                                 </button>
                             </div>
+                        </div>
+                    </div>
+
+                    {{-- کارت میزبان اقامتگاه (جدید) --}}
+                    @php
+                        $canManageHosts = $isAdmin || auth()->user()->can('properties.hosts.manage') || auth()->user()->can('properties.manage');
+                    @endphp
+                    <div class="{{ $cardClass }} p-6 overflow-visible" x-show="listingType === 'daily_rental' || selectedHostId">
+                        <div class="flex items-center justify-between mb-6 pb-4 border-b border-gray-100 dark:border-gray-700">
+                            <div class="flex items-center gap-2">
+                                <span class="w-2 h-2 rounded-full bg-teal-500 shadow-[0_0_8px_rgba(20,184,166,0.6)]"></span>
+                                <h2 class="text-lg font-bold text-gray-900 dark:text-white">میزبان اقامتگاه</h2>
+                            </div>
+                            <span class="text-[11px] px-2.5 py-0.5 rounded-full bg-teal-50 text-teal-700 dark:bg-teal-950/40 dark:text-teal-300 font-bold font-sans">
+                                اجاره روزانه
+                            </span>
+                        </div>
+
+                        <div>
+                            {{-- نمایش میزبان فعلی / انتخاب شده --}}
+                            <template x-if="selectedHost">
+                                <div class="flex items-center justify-between p-3.5 mb-4 rounded-2xl bg-teal-50/70 border border-teal-100 dark:bg-teal-950/20 dark:border-teal-900/40">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-10 h-10 rounded-2xl bg-teal-200 text-teal-800 flex items-center justify-center font-bold text-sm dark:bg-teal-800 dark:text-teal-100 shadow-sm flex-shrink-0">
+                                            <span x-text="selectedHost.display_name ? selectedHost.display_name.substring(0, 1) : 'م'"></span>
+                                        </div>
+                                        <div class="space-y-0.5">
+                                            <div class="text-sm font-bold text-teal-950 dark:text-teal-200 font-sans" x-text="selectedHost.display_name"></div>
+                                            <div class="text-xs text-teal-700 dark:text-teal-400 dir-ltr text-right font-sans" x-text="selectedHost.phone"></div>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-white dark:bg-gray-800 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-700/60 font-sans">میزبان فعال</span>
+                                        @if($canManageHosts)
+                                            <button type="button" @click="removeHost()" class="text-red-500 hover:text-red-700 p-1 transition" title="حذف انتساب میزبان (مدیریت مستقیم توسط پلتفرم)">
+                                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                                            </button>
+                                        @endif
+                                    </div>
+                                </div>
+                            </template>
+
+                            <template x-if="!selectedHost">
+                                <div class="p-3 mb-4 rounded-xl bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700 text-xs text-gray-500 dark:text-gray-400 font-sans flex items-center justify-between">
+                                    <span>بدون میزبان اختصاصی (مدیریت مستقیم توسط پلتفرم)</span>
+                                </div>
+                            </template>
+
+                            <input type="hidden" name="host_id" x-model="selectedHostId">
+
+                            @if($canManageHosts)
+                                <label class="{{ $labelClass }}">تغییر یا انتساب میزبان (جستجو)</label>
+                                <div class="relative group">
+                                    <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-gray-400">
+                                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                                    </div>
+                                    <input type="text"
+                                           x-model="searchHostQuery"
+                                           @input.debounce.300ms="searchHosts()"
+                                           @focus="if(searchHostQuery.length >= 2 || searchHostResults.length > 0) showHostResults = true"
+                                           @click.outside="showHostResults = false"
+                                           class="{{ $inputClass }} pr-10"
+                                           placeholder="نام نمایشی، شماره همراه یا کد ملی میزبان...">
+
+                                    {{-- لودینگ جستجو --}}
+                                    <div x-show="isSearchingHost" class="absolute left-3 top-2.5">
+                                        <svg class="animate-spin h-5 w-5 text-teal-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                    </div>
+
+                                    {{-- نتایج جستجو --}}
+                                    <div x-show="showHostResults && searchHostResults.length > 0"
+                                         x-transition:enter="transition ease-out duration-100"
+                                         x-transition:enter-start="opacity-0 translate-y-2"
+                                         x-transition:enter-end="opacity-100 translate-y-0"
+                                         class="absolute z-50 w-full mt-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-xl max-h-60 overflow-y-auto custom-scrollbar">
+                                        <ul class="py-1">
+                                            <template x-for="host in searchHostResults" :key="host.id">
+                                                <li @click="selectHost(host)" class="px-4 py-3 hover:bg-teal-50 dark:hover:bg-teal-950/30 cursor-pointer border-b border-gray-50 dark:border-gray-700/50 last:border-0 transition-colors group/item">
+                                                    <div class="flex justify-between items-center">
+                                                        <div class="flex flex-col">
+                                                            <span class="text-sm font-bold text-gray-800 dark:text-gray-200 group-hover/item:text-teal-600 dark:group-hover/item:text-teal-400 font-sans" x-text="host.display_name"></span>
+                                                            <span class="text-xs text-gray-500 dark:text-gray-400 dir-ltr text-right font-sans" x-text="host.phone"></span>
+                                                        </div>
+                                                        <div class="flex items-center gap-1.5">
+                                                            <template x-if="host.status === 'active'">
+                                                                <span class="text-[10px] text-emerald-600 font-bold">فعال</span>
+                                                            </template>
+                                                            <svg class="w-4 h-4 text-gray-300 group-hover/item:text-teal-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+                                                        </div>
+                                                    </div>
+                                                </li>
+                                            </template>
+                                        </ul>
+                                    </div>
+                                    <div x-show="showHostResults && searchHostResults.length === 0 && !isSearchingHost" class="absolute z-50 w-full mt-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-xl p-4 text-center">
+                                        <p class="text-xs text-gray-500 dark:text-gray-400 font-sans">میزبانی با این مشخصات یافت نشد.</p>
+                                    </div>
+                                </div>
+                                <span class="text-[11px] text-gray-400 mt-1 block">می‌توانید اقامتگاه را به هر یک از میزبانان تایید شده منتقل نمایید.</span>
+                            @else
+                                <div class="text-[11px] text-gray-400 font-sans mt-1">تغییر میزبان اقامتگاه نیازمند دسترسی مدیریت پلتفرم می‌باشد.</div>
+                            @endif
                         </div>
                     </div>
 
@@ -978,6 +1086,14 @@
                 showAgentResults: false,
                 selectedAgentId: '{{ $currentAgentId }}',
                 isSearchingAgent: false,
+
+                // Host Management
+                selectedHostId: '{{ $property->host_id ?? "" }}',
+                selectedHost: {!! json_encode($property->host ? ['id' => $property->host->id, 'display_name' => $property->host->display_name, 'phone' => $property->host->phone, 'status' => $property->host->status, 'kyc_status' => $property->host->kyc_status] : null) !!},
+                searchHostQuery: '',
+                searchHostResults: [],
+                showHostResults: false,
+                isSearchingHost: false,
 
                 // Voice Typing
                 isVoiceTyping: false,
@@ -1360,6 +1476,40 @@
                     this.selectedAgentId = agent.id;
                     this.searchAgentQuery = agent.name;
                     this.showAgentResults = false;
+                },
+
+                // --- Host Search ---
+                async searchHosts() {
+                    if (this.searchHostQuery.length < 2) {
+                        this.searchHostResults = [];
+                        this.showHostResults = false;
+                        return;
+                    }
+                    this.isSearchingHost = true;
+                    try {
+                        const response = await fetch(`{{ route('user.properties.hosts.search') }}?q=${encodeURIComponent(this.searchHostQuery)}`);
+                        const data = await response.json();
+                        this.searchHostResults = data;
+                        this.showHostResults = true;
+                    } catch (error) {
+                        console.error('Host Search error:', error);
+                    } finally {
+                        this.isSearchingHost = false;
+                    }
+                },
+
+                selectHost(host) {
+                    this.selectedHost = host;
+                    this.selectedHostId = host ? host.id : '';
+                    this.searchHostQuery = host ? host.display_name : '';
+                    this.showHostResults = false;
+                },
+
+                removeHost() {
+                    this.selectedHost = null;
+                    this.selectedHostId = '';
+                    this.searchHostQuery = '';
+                    this.showHostResults = false;
                 },
 
                 // --- Custom Fields Handling ---
