@@ -334,6 +334,18 @@ class ClientForm extends Model implements FormSchemaContract
                 $f['searchable'] = (bool)($f['searchable'] ?? false);
             }
 
+            if (($f['type'] ?? '') === 'case_notes') {
+                $f['record_timestamp'] = array_key_exists('record_timestamp', $f) ? (bool)$f['record_timestamp'] : true;
+                $f['record_author'] = array_key_exists('record_author', $f) ? (bool)$f['record_author'] : true;
+                $f['allow_delete'] = array_key_exists('allow_delete', $f) ? (bool)$f['allow_delete'] : true;
+                $f['delete_permission'] = in_array($f['delete_permission'] ?? '', ['all', 'author_and_admin', 'admin_only'], true)
+                    ? $f['delete_permission']
+                    : 'author_and_admin';
+                $f['sort_order'] = in_array($f['sort_order'] ?? '', ['desc', 'asc'], true)
+                    ? $f['sort_order']
+                    : 'desc';
+            }
+
             $normalized[] = $f;
         }
 

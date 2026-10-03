@@ -673,6 +673,105 @@
         <div wire:loading wire:target="upload_files.{{ $fid }}" class="text-[10px] text-gray-400">در حال آپلود...</div>
     </div>
 
+@elseif($type === 'case_notes')
+    @php
+        $items = $quick[$fid] ?? [];
+        if (is_string($items)) {
+            $items = json_decode($items, true) ?: [];
+        }
+        if (!is_array($items)) {
+            $items = [];
+        }
+        $allowDelete = $field['allow_delete'] ?? true;
+        $deletePermission = $field['delete_permission'] ?? 'author_and_admin';
+        $recordTimestamp = $field['record_timestamp'] ?? true;
+        $recordAuthor = $field['record_author'] ?? true;
+        $currUser = auth()->user();
+        $isSuperAdmin = $currUser && ($currUser->hasRole('super-admin') || $currUser->can('manage-everything') || $currUser->can('clients.manage'));
+    @endphp
+
+    <div class="space-y-2" x-data="{
+        noteText: @entangle('newCaseNote.' . $fid).defer,
+        submitOnEnter(e) {
+            if (!e.shiftKey) {
+                e.preventDefault();
+                $wire.addCaseNoteItem('{{ $fid }}', true);
+            }
+        }
+    }">
+        <div class="relative bg-white dark:bg-gray-800/80 rounded-xl border border-gray-200 dark:border-gray-700 p-2 shadow-2xs">
+            <textarea
+                x-model="noteText"
+                @keydown.enter="submitOnEnter($event)"
+                rows="2"
+                placeholder="{{ $placeholder !== '...' ? $placeholder : 'متن مورد یا یادداشت پرونده...' }}"
+                class="w-full bg-transparent border-0 p-1 text-xs text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:ring-0 resize-y min-h-[40px] outline-none font-sans leading-relaxed"></textarea>
+
+            <div class="flex items-center justify-between pt-1.5 border-t border-gray-100 dark:border-gray-700/60 mt-1">
+                <span class="text-[10px] text-gray-400 font-sans">Enter برای ثبت</span>
+
+                <button
+                    type="button"
+                    wire:click="addCaseNoteItem('{{ $fid }}', true)"
+                    wire:loading.attr="disabled"
+                    class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-[11px] font-medium shadow-2xs transition-all active:scale-95 disabled:opacity-50 cursor-pointer">
+                    <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                    </svg>
+                    <span>افزودن</span>
+                </button>
+            </div>
+        </div>
+
+        @if(!empty($items))
+            <div class="space-y-1.5 max-h-48 overflow-y-auto pr-0.5">
+                @foreach($items as $item)
+                    @php
+                        $itemId = $item['id'] ?? $loop->index;
+                        $canDeleteItem = $allowDelete && (
+                            $deletePermission === 'all' ||
+                            $isSuperAdmin ||
+                            ($deletePermission === 'author_and_admin' && $currUser && isset($item['user_id']) && (int)$item['user_id'] === (int)$currUser->id)
+                        );
+                    @endphp
+                    <div wire:key="qnote-{{ $fid }}-{{ $itemId }}"
+                         class="group relative p-2 rounded-lg bg-gray-50/80 dark:bg-gray-800/50 border border-gray-200/80 dark:border-gray-700/80 transition-all text-xs">
+                        <div class="flex items-start justify-between gap-2">
+                            <div class="flex-1 space-y-1">
+                                <p class="text-xs text-gray-800 dark:text-gray-200 whitespace-pre-wrap leading-relaxed font-sans select-text">
+                                    {{ $item['text'] ?? '' }}
+                                </p>
+                                <div class="flex flex-wrap items-center gap-1.5">
+                                    @if($recordTimestamp && !empty($item['jalali_date']))
+                                        <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-sans font-medium bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300">
+                                            {{ $item['jalali_date'] }}
+                                        </span>
+                                    @endif
+                                    @if($recordAuthor && !empty($item['user_name']))
+                                        <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-sans font-medium bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300">
+                                            {{ $item['user_name'] }}
+                                        </span>
+                                    @endif
+                                </div>
+                            </div>
+                            @if($canDeleteItem)
+                                <button
+                                    type="button"
+                                    wire:click="removeCaseNoteItem('{{ $fid }}', '{{ $itemId }}', true)"
+                                    class="text-gray-400 hover:text-red-500 p-0.5 rounded transition-all cursor-pointer"
+                                    title="حذف">
+                                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                    </svg>
+                                </button>
+                            @endif
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+        @endif
+    </div>
+
 @else
     {{-- سایر انواع (fallback) --}}
     <input type="text" class="{{ $baseInputClass }}" wire:model.defer="quick.{{ $fid }}" placeholder="{{ $placeholder }}">

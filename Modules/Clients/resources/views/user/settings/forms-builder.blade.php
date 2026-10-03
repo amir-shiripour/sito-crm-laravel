@@ -197,6 +197,11 @@
                         'desc' => 'ارجاع به پرسنل، پزشکان و...',
                         'icon' => '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>',
                     ],
+                    'case_notes' => [
+                        'label' => 'ثبت/یادداشت پرونده',
+                        'desc' => 'ثبت موردی وقایع و یادداشت‌های پرونده با تاریخ و کاربر',
+                        'icon' => '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>',
+                    ],
                 ];
             @endphp
 
@@ -1261,6 +1266,78 @@
                                         اگر نقش کاربر فعلی همین باشد، روی او قفل شود
                                     </span>
                                             </label>
+                                        </div>
+                                    </div>
+                                @endif
+
+                                @if(($field['type'] ?? '') === 'case_notes')
+                                    <div class="p-4 rounded-xl bg-indigo-50/50 border border-indigo-100 dark:bg-gray-800/60 dark:border-indigo-900/40 space-y-4">
+                                        <div class="flex items-center gap-2 text-xs font-bold text-indigo-700 dark:text-indigo-300">
+                                            <svg class="w-4 h-4 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                                            </svg>
+                                            تنظیمات اختصاصی ثبت/یادداشت پرونده
+                                        </div>
+
+                                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                                            {{-- ثبت خودکار تاریخ و ساعت --}}
+                                            <label class="flex items-center gap-2.5 p-3 rounded-lg bg-white dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 cursor-pointer hover:border-indigo-300 transition-colors">
+                                                <input type="checkbox" class="{{ $checkboxClass }}"
+                                                       wire:model="schema.fields.{{ $i }}.record_timestamp">
+                                                <div>
+                                                    <span class="text-xs font-semibold text-gray-800 dark:text-gray-200 block">ثبت خودکار تاریخ و ساعت</span>
+                                                    <span class="text-[10px] text-gray-500 dark:text-gray-400">ذخیره زمان دقیق شمسی هنگام افزودن هر مورد</span>
+                                                </div>
+                                            </label>
+
+                                            {{-- ثبت خودکار نام کاربر --}}
+                                            <label class="flex items-center gap-2.5 p-3 rounded-lg bg-white dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 cursor-pointer hover:border-indigo-300 transition-colors">
+                                                <input type="checkbox" class="{{ $checkboxClass }}"
+                                                       wire:model="schema.fields.{{ $i }}.record_author">
+                                                <div>
+                                                    <span class="text-xs font-semibold text-gray-800 dark:text-gray-200 block">ثبت نام کاربر/پرسنل</span>
+                                                    <span class="text-[10px] text-gray-500 dark:text-gray-400">ثبت نام کاربری که یادداشت را اضافه کرده</span>
+                                                </div>
+                                            </label>
+
+                                            {{-- امکان حذف موارد --}}
+                                            <label class="flex items-center gap-2.5 p-3 rounded-lg bg-white dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 cursor-pointer hover:border-indigo-300 transition-colors">
+                                                <input type="checkbox" class="{{ $checkboxClass }}"
+                                                       wire:model="schema.fields.{{ $i }}.allow_delete">
+                                                <div>
+                                                    <span class="text-xs font-semibold text-gray-800 dark:text-gray-200 block">امکان حذف موارد ثبت‌شده</span>
+                                                    <span class="text-[10px] text-gray-500 dark:text-gray-400">امکان پاک کردن یادداشت‌ها پس از ثبت</span>
+                                                </div>
+                                            </label>
+                                        </div>
+
+                                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-gray-200/60 dark:border-gray-700/60">
+                                            {{-- سطح دسترسی حذف --}}
+                                            <div>
+                                                <label class="{{ $labelClass }}">سطح دسترسی حذف موارد</label>
+                                                <select class="{{ $inputClass }} !py-1.5 !text-xs"
+                                                        wire:model="schema.fields.{{ $i }}.delete_permission">
+                                                    <option value="author_and_admin">فقط کاربر ثبت‌کننده و مدیران ارشد</option>
+                                                    <option value="all">تمام کاربران دارای دسترسی ویرایش پرونده</option>
+                                                    <option value="admin_only">فقط مدیران ارشد سیستم (Super Admin)</option>
+                                                </select>
+                                                <p class="mt-1 text-[10px] text-gray-400 dark:text-gray-500">
+                                                    مشخص می‌کند چه کسانی اجازه دارند موارد ثبت‌شده این فیلد را پاک کنند.
+                                                </p>
+                                            </div>
+
+                                            {{-- ترتیب نمایش موارد --}}
+                                            <div>
+                                                <label class="{{ $labelClass }}">ترتیب نمایش آیتم‌ها</label>
+                                                <select class="{{ $inputClass }} !py-1.5 !text-xs"
+                                                        wire:model="schema.fields.{{ $i }}.sort_order">
+                                                    <option value="desc">جدیدترین موارد در بالا (نزولی)</option>
+                                                    <option value="asc">قدیمی‌ترین موارد در بالا (صعودی / بر اساس زمان ثبت)</option>
+                                                </select>
+                                                <p class="mt-1 text-[10px] text-gray-400 dark:text-gray-500">
+                                                    ترتیب چینش یادداشت‌ها در فرم و صفحه پرونده کلاینت.
+                                                </p>
+                                            </div>
                                         </div>
                                     </div>
                                 @endif

@@ -116,6 +116,17 @@ class ClientFormBuilder extends Component
                 $f['use_clients_list'] = (bool)($f['use_clients_list'] ?? false);
                 $f['searchable'] = (bool)($f['searchable'] ?? false);
             }
+            if (($f['type'] ?? '') === 'case_notes') {
+                $f['record_timestamp'] = array_key_exists('record_timestamp', $f) ? (bool)$f['record_timestamp'] : true;
+                $f['record_author'] = array_key_exists('record_author', $f) ? (bool)$f['record_author'] : true;
+                $f['allow_delete'] = array_key_exists('allow_delete', $f) ? (bool)$f['allow_delete'] : true;
+                $f['delete_permission'] = in_array($f['delete_permission'] ?? '', ['all', 'author_and_admin', 'admin_only'], true)
+                    ? $f['delete_permission']
+                    : 'author_and_admin';
+                $f['sort_order'] = in_array($f['sort_order'] ?? '', ['desc', 'asc'], true)
+                    ? $f['sort_order']
+                    : 'desc';
+            }
         }
         unset($f);
     }
@@ -200,6 +211,17 @@ class ClientFormBuilder extends Component
             $this->schema['fields'][$lastIndex]['max_mb'] = 5;
             $this->schema['fields'][$lastIndex]['accept'] = 'image/*';
             $this->schema['fields'][$lastIndex]['multiple'] = false;
+        }
+
+        if ($type === 'case_notes') {
+            $this->schema['fields'][$lastIndex]['label'] = 'ثبت/یادداشت پرونده';
+            $this->schema['fields'][$lastIndex]['placeholder'] = 'متن مورد یا یادداشت پرونده را وارد کنید...';
+            $this->schema['fields'][$lastIndex]['record_timestamp'] = true;
+            $this->schema['fields'][$lastIndex]['record_author'] = true;
+            $this->schema['fields'][$lastIndex]['allow_delete'] = true;
+            $this->schema['fields'][$lastIndex]['delete_permission'] = 'author_and_admin';
+            $this->schema['fields'][$lastIndex]['sort_order'] = 'desc';
+            $this->schema['fields'][$lastIndex]['width'] = 'full';
         }
     }
 

@@ -64,6 +64,14 @@ Route::middleware(['web', 'auth', EnsureClientsModuleEnabled::class])
                     ->name('destroy')
                     ->middleware('permission:clients.delete');
 
+                // Case Notes (ثبت و حذف موردی وقایع پرونده)
+                Route::post('/{client}/case-notes', [UserClientController::class, 'storeCaseNote'])
+                    ->name('case-notes.store')
+                    ->middleware('permission:clients.edit');
+                Route::delete('/{client}/case-notes/{itemId}', [UserClientController::class, 'deleteCaseNote'])
+                    ->name('case-notes.delete')
+                    ->middleware('permission:clients.edit');
+
                 // Trash Management
                 Route::post('/{id}/restore', [UserClientController::class, 'restore'])
                     ->name('restore')
