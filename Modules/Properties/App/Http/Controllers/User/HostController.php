@@ -287,4 +287,31 @@ class HostController extends Controller
 
         return back()->with('success', "میزبان «{$host->display_name}» رد/تعلیق شد.");
     }
+
+    /**
+     * جستجوی سریع میزبان‌ها (Ajax Search)
+     */
+    public function search(Request $request)
+    {
+        $query = $request->input('q');
+
+        if (empty($query)) {
+            $hosts = PropertyHost::where('status', 'active')
+                ->latest()
+                ->limit(10)
+                ->get(['id', 'display_name', 'phone', 'avatar', 'status', 'kyc_status']);
+            return response()->json($hosts);
+        }
+
+        $hosts = PropertyHost::where(function ($q) use ($query) {
+            $q->where('display_name', 'like', "%{$query}%")
+              ->orWhere('phone', 'like', "%{$query}%")
+              ->orWhere('national_code', 'like', "%{$query}%");
+        })
+        ->limit(15)
+        ->get(['id', 'display_name', 'phone', 'avatar', 'status', 'kyc_status']);
+
+        return response()->json($hosts);
+    }
 }
+

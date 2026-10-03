@@ -25,6 +25,10 @@ class Installer extends BaseModuleInstaller
         'property_attribute_values',
         'property_owners',
         'property_buildings',
+        'property_hosts',
+        'property_rental_configs',
+        'property_rental_prices',
+        'property_rental_blocks',
     ];
 
     public function __construct()
@@ -267,23 +271,70 @@ class Installer extends BaseModuleInstaller
             'properties.buildings.edit',
             'properties.buildings.delete',
             'properties.buildings.manage',
+
+            // Hosts & Vacation Rental
+            'properties.hosts.view',
+            'properties.hosts.manage',
+            'properties.rental.manage',
+            'properties.rental.calendar',
         ];
 
         $trackerPath = $this->permissionsTrackerPath();
-        $trackedPermissions = File::exists($trackerPath) ? json_decode(File::get($trackerPath), true) ?: [] : [];
 
-        $permissionsToCreate = array_diff($definedPermissions, $trackedPermissions);
-        $permissionsToRemove = array_diff($trackedPermissions, $definedPermissions);
+        // تضمین ایجاد قطعی تمام پرمیشن‌ها در دیتابیس بدون اتکای صرف به فایل ترکر
+        foreach ($definedPermissions as $name) {
+            $displayName = match ($name) {
+                'properties.view' => 'مشاهده املاک',
+                'properties.view.all' => 'مشاهده همه املاک',
+                'properties.view.own' => 'مشاهده املاک خود',
+                'properties.create' => 'ایجاد ملک',
+                'properties.edit' => 'ویرایش ملک',
+                'properties.edit.all' => 'ویرایش همه املاک',
+                'properties.edit.own' => 'ویرایش املاک خود',
+                'properties.delete' => 'حذف ملک',
+                'properties.delete.all' => 'حذف همه املاک',
+                'properties.delete.own' => 'حذف املاک خود',
+                'properties.manage' => 'مدیریت کامل املاک',
+                'properties.settings.manage' => 'مدیریت تنظیمات املاک',
+                'properties.categories.view' => 'مشاهده دسته‌بندی‌های املاک',
+                'properties.categories.create' => 'ایجاد دسته‌بندی املاک',
+                'properties.categories.edit' => 'ویرایش دسته‌بندی املاک',
+                'properties.categories.delete' => 'حذف دسته‌بندی املاک',
+                'properties.categories.manage' => 'مدیریت دسته‌بندی‌های املاک',
+                'properties.attributes.view' => 'مشاهده ویژگی‌های املاک',
+                'properties.attributes.create' => 'ایجاد ویژگی‌های املاک',
+                'properties.attributes.edit' => 'ویرایش ویژگی‌های املاک',
+                'properties.attributes.delete' => 'حذف ویژگی‌های املاک',
+                'properties.attributes.manage' => 'مدیریت ویژگی‌های املاک',
+                'properties.owners.view' => 'مشاهده مالکان املاک',
+                'properties.owners.create' => 'ایجاد مالک املاک',
+                'properties.owners.edit' => 'ویرایش مالک املاک',
+                'properties.owners.delete' => 'حذف مالک املاک',
+                'properties.owners.manage' => 'مدیریت مالکان املاک',
+                'properties.buildings.view' => 'مشاهده ساختمان‌های املاک',
+                'properties.buildings.create' => 'ایجاد ساختمان املاک',
+                'properties.buildings.edit' => 'ویرایش ساختمان املاک',
+                'properties.buildings.delete' => 'حذف ساختمان املاک',
+                'properties.buildings.manage' => 'مدیریت ساختمان‌های املاک',
+                'properties.hosts.view' => 'مشاهده لیست میزبانان اقامتگاه',
+                'properties.hosts.manage' => 'مدیریت و تایید میزبانان اقامتگاه',
+                'properties.rental.manage' => 'مدیریت مشخصات اقامتگاه روزانه',
+                'properties.rental.calendar' => 'مدیریت تقویم اقامتگاه روزانه',
+                default => $name,
+            };
 
-        if (!empty($permissionsToCreate)) {
-            Log::info('Properties Installer: Creating permissions: ' . implode(', ', $permissionsToCreate));
-            foreach ($permissionsToCreate as $name) {
-                Permission::firstOrCreate(['name' => $name, 'guard_name' => $guard]);
-            }
+            Permission::firstOrCreate(
+                ['name' => $name, 'guard_name' => $guard],
+                ['display_name' => $displayName]
+            );
         }
 
+        // حذف پرمیشن‌های قدیمی که دیگر در ماژول تعریف نشده‌اند
+        $trackedPermissions = File::exists($trackerPath) ? json_decode(File::get($trackerPath), true) ?: [] : [];
+        $permissionsToRemove = array_diff($trackedPermissions, $definedPermissions);
+
         if (!empty($permissionsToRemove)) {
-            Log::info('Properties Installer: Removing permissions: ' . implode(', ', $permissionsToRemove));
+            Log::info('Properties Installer: Removing obsolete permissions: ' . implode(', ', $permissionsToRemove));
             DB::transaction(function () use ($permissionsToRemove, $guard) {
                 $perms = Permission::whereIn('name', $permissionsToRemove)->where('guard_name', $guard)->get();
                 foreach ($perms as $perm) {
@@ -293,15 +344,29 @@ class Installer extends BaseModuleInstaller
             });
         }
 
-        if (empty($permissionsToCreate) && empty($permissionsToRemove)) {
-            Log::info('Properties Installer: Permissions are already up to date.');
-        }
-
         Log::info('Properties Installer: Syncing permissions with admin roles...');
         foreach (['super-admin', 'admin'] as $sysRole) {
-            $role = Role::firstOrCreate(['name' => $sysRole, 'guard_name' => $guard]);
+            $role = Role::firstOrCreate(
+                ['name' => $sysRole, 'guard_name' => $guard],
+                ['display_name' => $sysRole === 'super-admin' ? 'مدیر ارشد' : 'مدیر']
+            );
             $role->givePermissionTo($definedPermissions);
         }
+
+        // نقش میزبان اقامتگاه
+        $hostRole = Role::firstOrCreate(
+            ['name' => 'property_host', 'guard_name' => $guard],
+            ['display_name' => 'میزبان اقامتگاه']
+        );
+        $hostPermissions = [
+            'properties.view',
+            'properties.create',
+            'properties.edit',
+            'properties.delete',
+            'properties.rental.manage',
+            'properties.rental.calendar',
+        ];
+        $hostRole->syncPermissions(array_intersect($hostPermissions, $definedPermissions));
 
         File::ensureDirectoryExists(dirname($trackerPath));
         File::put($trackerPath, json_encode($definedPermissions, JSON_PRETTY_PRINT));

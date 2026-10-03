@@ -57,10 +57,20 @@
 
                     {{-- فرم افزودن --}}
                     <div class="bg-indigo-50/50 dark:bg-indigo-900/10 border border-indigo-100 dark:border-indigo-800 rounded-xl p-5 mb-8">
-                        <h3 class="text-sm font-bold text-indigo-900 dark:text-indigo-100 mb-4 flex items-center gap-2">
-                            <span class="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
-                            افزودن ویژگی جدید
-                        </h3>
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                            <h3 class="text-sm font-bold text-indigo-900 dark:text-indigo-100 flex items-center gap-2">
+                                <span class="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
+                                افزودن ویژگی جدید
+                            </h3>
+                            <form action="{{ route('user.settings.properties.attributes.load-defaults') }}" method="POST" onsubmit="return confirm('آیا می‌خواهید ویژگی‌های پیش‌فرض و استاندارد (مانند تعداد خواب، تخت‌ها، سیستم گرمایش و...) به این بخش اضافه شوند؟')">
+                                @csrf
+                                <input type="hidden" name="section" value="details">
+                                <button type="submit" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg border border-indigo-200 dark:border-indigo-800/80 bg-white dark:bg-gray-800 text-indigo-600 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 shadow-sm transition-all">
+                                    <svg class="w-4 h-4 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+                                    بارگذاری الگو پیش‌فرض
+                                </button>
+                            </form>
+                        </div>
                         <form action="{{ route('user.settings.properties.attributes.store') }}" method="POST">
                             @csrf
                             <input type="hidden" name="section" value="details">
@@ -119,7 +129,7 @@
                             <div class="group flex items-center justify-between p-4 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-indigo-300 dark:hover:border-indigo-700 hover:shadow-sm transition-all" x-data="{ editing: false, name: '{{ $attr->name }}', type: '{{ $attr->type }}', isFilterable: {{ $attr->is_filterable ? 'true' : 'false' }}, isRangeFilter: {{ $attr->is_range_filter ? 'true' : 'false' }} }">
                                 <div class="flex items-center gap-4 flex-1">
                                     <div class="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-gray-500 dark:text-gray-400">
-                                        <span class="text-xs font-mono font-bold">{{ $loop->iteration }}</span>
+                                        <span class="text-xs font-sans font-bold">{{ $loop->iteration }}</span>
                                     </div>
                                     <div class="flex-1">
                                         <div x-show="!editing">
@@ -198,9 +208,17 @@
                                 </div>
                             </div>
                         @empty
-                            <div class="text-center py-10 flex flex-col items-center justify-center text-gray-400 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-2xl">
+                            <div class="text-center py-10 px-4 flex flex-col items-center justify-center text-gray-400 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-2xl">
                                 <svg class="w-12 h-12 mb-3 opacity-20" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
-                                <p class="text-sm">هنوز هیچ ویژگی‌ای تعریف نشده است.</p>
+                                <p class="text-sm font-medium mb-3">هنوز هیچ ویژگی‌ای در این بخش تعریف نشده است.</p>
+                                <form action="{{ route('user.settings.properties.attributes.load-defaults') }}" method="POST">
+                                    @csrf
+                                    <input type="hidden" name="section" value="details">
+                                    <button type="submit" class="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:hover:bg-indigo-900/50 dark:text-indigo-300 transition-colors">
+                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+                                        بارگذاری الگوی پیش‌فرض اطلاعات تکمیلی
+                                    </button>
+                                </form>
                             </div>
                         @endforelse
                     </div>
@@ -211,10 +229,20 @@
 
                     {{-- فرم افزودن --}}
                     <div class="bg-emerald-50/50 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-800 rounded-xl p-5 mb-8" x-data="{ isFilterable: true }">
-                        <h3 class="text-sm font-bold text-emerald-900 dark:text-emerald-100 mb-4 flex items-center gap-2">
-                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                            افزودن امکانات رفاهی جدید
-                        </h3>
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                            <h3 class="text-sm font-bold text-emerald-900 dark:text-emerald-100 flex items-center gap-2">
+                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                افزودن امکانات رفاهی جدید
+                            </h3>
+                            <form action="{{ route('user.settings.properties.attributes.load-defaults') }}" method="POST" onsubmit="return confirm('آیا می‌خواهید امکانات رفاهی استاندارد (مانند استخر، جکوزی، اینترنت، باربیکیو و...) به این بخش اضافه شوند؟')">
+                                @csrf
+                                <input type="hidden" name="section" value="features">
+                                <button type="submit" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg border border-emerald-200 dark:border-emerald-800/80 bg-white dark:bg-gray-800 text-emerald-600 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 shadow-sm transition-all">
+                                    <svg class="w-4 h-4 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+                                    بارگذاری الگو پیش‌فرض
+                                </button>
+                            </form>
+                        </div>
                         <form action="{{ route('user.settings.properties.attributes.store') }}" method="POST">
                             @csrf
                             <input type="hidden" name="section" value="features">
@@ -311,9 +339,17 @@
                                 </div>
                             </div>
                         @empty
-                            <div class="col-span-2 text-center py-10 flex flex-col items-center justify-center text-gray-400 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-2xl">
+                            <div class="col-span-2 text-center py-10 px-4 flex flex-col items-center justify-center text-gray-400 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-2xl">
                                 <svg class="w-12 h-12 mb-3 opacity-20" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" /></svg>
-                                <p class="text-sm">هنوز هیچ امکاناتی تعریف نشده است.</p>
+                                <p class="text-sm font-medium mb-3">هنوز هیچ امکاناتی تعریف نشده است.</p>
+                                <form action="{{ route('user.settings.properties.attributes.load-defaults') }}" method="POST">
+                                    @csrf
+                                    <input type="hidden" name="section" value="features">
+                                    <button type="submit" class="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:hover:bg-emerald-900/50 dark:text-emerald-300 transition-colors">
+                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+                                        بارگذاری الگوی پیش‌فرض امکانات رفاهی
+                                    </button>
+                                </form>
                             </div>
                         @endforelse
                     </div>
