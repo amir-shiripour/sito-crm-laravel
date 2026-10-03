@@ -47,6 +47,9 @@ class ClientForm extends Component
     public array $upload_files = [];
     public $status_id = null;
 
+    // متغیر موقت برای ثبت یادداشت پرونده در فیلدهای نوع case_notes
+    public array $newCaseNote = [];
+
     // اسکیمای فرم پویا (از ClientFormSchema)
     public array $schema = ['fields' => []];
 
@@ -221,6 +224,146 @@ class ClientForm extends Component
             $this->password_confirmation = null;
             $this->auto_generate_password = false;
         }
+
+        // مقداردهی اولیه فیلدهای نوع case_notes
+        foreach ($this->schema['fields'] as $f) {
+            if (($f['type'] ?? null) === 'case_notes') {
+                $fid = $f['id'] ?? null;
+                if ($fid) {
+                    if (!isset($this->meta[$fid]) || !is_array($this->meta[$fid])) {
+                        if (isset($this->meta[$fid]) && is_string($this->meta[$fid])) {
+                            $decoded = json_decode($this->meta[$fid], true);
+                            $this->meta[$fid] = is_array($decoded) ? $decoded : [];
+                        } else {
+                            $this->meta[$fid] = [];
+                        }
+                    }
+                    $this->newCaseNote[$fid] = '';
+                    $this->quick[$fid] = $this->meta[$fid];
+                }
+            }
+        }
+    }
+
+    public function addCaseNoteItem(string $fieldId, bool $forQuick = false): void
+    {
+        $rawText = trim((string)($this->newCaseNote[$fieldId] ?? ''));
+        if ($rawText === '') {
+            $this->dispatch('notify', type: 'error', text: 'لطفاً متن یادداشت را وارد کنید.');
+            return;
+        }
+
+        $fieldDef = collect($this->schema['fields'] ?? [])->firstWhere('id', $fieldId);
+        $recordTimestamp = $fieldDef['record_timestamp'] ?? true;
+        $recordAuthor = $fieldDef['record_author'] ?? true;
+        $sortOrder = $fieldDef['sort_order'] ?? 'desc';
+
+        $user = Auth::user();
+        $now = Carbon::now();
+        $jalaliStr = '';
+        if ($recordTimestamp) {
+            try {
+                if (class_exists(\Morilog\Jalali\Jalalian::class)) {
+                    $jalaliStr = \Morilog\Jalali\Jalalian::fromCarbon($now)->format('Y/m/d - H:i');
+                } else {
+                    $jalaliStr = $now->format('Y-m-d H:i');
+                }
+            } catch (\Throwable $e) {
+                $jalaliStr = $now->format('Y-m-d H:i');
+            }
+        }
+
+        $item = [
+            'id' => (string) Str::uuid(),
+            'text' => $rawText,
+            'created_at' => $now->toIso8601String(),
+            'jalali_date' => $jalaliStr,
+            'user_id' => $user?->id,
+            'user_name' => $recordAuthor ? ($user?->name ?: $user?->username ?: 'کاربر سیستم') : null,
+        ];
+
+        if ($forQuick) {
+            $existing = $this->quick[$fieldId] ?? [];
+            if (!is_array($existing)) {
+                $existing = [];
+            }
+            if ($sortOrder === 'asc') {
+                $existing[] = $item;
+            } else {
+                array_unshift($existing, $item);
+            }
+            $this->quick[$fieldId] = $existing;
+        } else {
+            $existing = $this->meta[$fieldId] ?? [];
+            if (!is_array($existing)) {
+                $existing = [];
+            }
+            if ($sortOrder === 'asc') {
+                $existing[] = $item;
+            } else {
+                array_unshift($existing, $item);
+            }
+            $this->meta[$fieldId] = $existing;
+        }
+
+        $this->newCaseNote[$fieldId] = '';
+    }
+
+    public function removeCaseNoteItem(string $fieldId, string $itemId, bool $forQuick = false): void
+    {
+        $fieldDef = collect($this->schema['fields'] ?? [])->firstWhere('id', $fieldId);
+        $allowDelete = $fieldDef['allow_delete'] ?? true;
+        if (!$allowDelete) {
+            $this->dispatch('notify', type: 'error', text: 'امکان حذف موارد برای این فیلد غیرفعال است.');
+            return;
+        }
+
+        $targetArray = $forQuick ? ($this->quick[$fieldId] ?? []) : ($this->meta[$fieldId] ?? []);
+        if (!is_array($targetArray)) {
+            return;
+        }
+
+        $itemIndex = null;
+        $targetItem = null;
+        foreach ($targetArray as $idx => $it) {
+            if (($it['id'] ?? '') === $itemId) {
+                $itemIndex = $idx;
+                $targetItem = $it;
+                break;
+            }
+        }
+
+        if ($itemIndex === null) {
+            return;
+        }
+
+        $deletePermission = $fieldDef['delete_permission'] ?? 'author_and_admin';
+        $user = Auth::user();
+        $isSuperAdmin = $user && ($user->hasRole('super-admin') || $user->can('manage-everything') || $user->can('clients.manage'));
+
+        if ($deletePermission === 'admin_only' && !$isSuperAdmin) {
+            $this->dispatch('notify', type: 'error', text: 'فقط مدیران سیستم مجاز به حذف این یادداشت هستند.');
+            return;
+        }
+
+        if ($deletePermission === 'author_and_admin') {
+            $isAuthor = $user && isset($targetItem['user_id']) && (int)$targetItem['user_id'] === (int)$user->id;
+            if (!$isAuthor && !$isSuperAdmin) {
+                $this->dispatch('notify', type: 'error', text: 'شما فقط مجاز به حذف یادداشت‌های ثبت‌شده توسط خودتان هستید.');
+                return;
+            }
+        }
+
+        unset($targetArray[$itemIndex]);
+        $targetArray = array_values($targetArray);
+
+        if ($forQuick) {
+            $this->quick[$fieldId] = $targetArray;
+        } else {
+            $this->meta[$fieldId] = $targetArray;
+        }
+
+        $this->dispatch('notify', type: 'success', text: 'مورد از پرونده حذف شد.');
     }
 
     public function render()

@@ -181,7 +181,22 @@ class AppointmentController extends Controller
 
         $isQueueEnabled = BookingSetting::isQueueEnabled() && class_exists(\Modules\Booking\Entities\BookingWaitlist::class);
 
-        return view('booking::user.appointments.create', compact('settings', 'flow', 'fixedProvider', 'isQueueEnabled'));
+        $preselectedClient = null;
+        if (request()->filled('client_id')) {
+            $clientModel = Client::query()->visibleForUser($user)->find(request('client_id'));
+            if ($clientModel) {
+                $preselectedClient = [
+                    'id' => $clientModel->id,
+                    'full_name' => $clientModel->full_name,
+                    'phone' => $clientModel->phone,
+                    'email' => $clientModel->email,
+                    'national_code' => $clientModel->national_code,
+                    'case_number' => $clientModel->case_number,
+                ];
+            }
+        }
+
+        return view('booking::user.appointments.create', compact('settings', 'flow', 'fixedProvider', 'isQueueEnabled', 'preselectedClient'));
     }
 
     public function store(Request $request)
@@ -1638,6 +1653,14 @@ class AppointmentController extends Controller
     {
         $this->ensureAppointmentCreateAccess($request, BookingSetting::current());
         $user = $request->user();
+
+        if ($clientId = $request->query('client_id')) {
+            $clients = Client::query()->visibleForUser($user)
+                ->whereKey($clientId)
+                ->get(['id', 'full_name', 'phone', 'email', 'national_code', 'case_number']);
+            return response()->json(['data' => $clients]);
+        }
+
         $q = trim((string)$request->query('q', ''));
 
         $clientsQ = Client::query()->visibleForUser($user);
@@ -1649,6 +1672,9 @@ class AppointmentController extends Controller
                     ->orWhere('email', 'like', "%{$q}%")
                     ->orWhere('national_code', 'like', "%{$q}%")
                     ->orWhere('case_number', 'like', "%{$q}%");
+                if (is_numeric($q)) {
+                    $w->orWhere('id', (int) $q);
+                }
             });
             $clients = $clientsQ->orderByDesc('id')->limit(50)->get(['id', 'full_name', 'phone', 'email', 'national_code', 'case_number']);
         } else {

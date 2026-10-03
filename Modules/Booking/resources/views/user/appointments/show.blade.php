@@ -57,6 +57,15 @@
                     </svg>
                     بازگشت
                 </a>
+                @if($appointment->client_id)
+                    <a class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 hover:shadow-lg hover:shadow-emerald-500/30 transition-all duration-200"
+                       href="{{ route('user.booking.appointments.create', ['client_id' => $appointment->client_id]) }}">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                        </svg>
+                        نوبت بعدی
+                    </a>
+                @endif
                 @can('booking.appointments.edit')
                     <a class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 hover:shadow-lg hover:shadow-indigo-500/30 transition-all duration-200"
                        href="{{ route('user.booking.appointments.edit', $appointment) }}">

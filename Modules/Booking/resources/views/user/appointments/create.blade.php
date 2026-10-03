@@ -53,9 +53,12 @@
         }
     </style>
     <div class="space-y-5" data-fixed-provider='@json($fixedProviderPayload)'
-         x-data="operatorWizard({ fixedProvider: null })" x-init="
+         data-preselected-client='@json($preselectedClient ?? null)'
+         x-data="operatorWizard({ fixedProvider: null, preselectedClient: null })" x-init="
     const raw = $el.dataset.fixedProvider;
     try { fixedProvider = raw ? JSON.parse(raw) : null } catch(e) { fixedProvider = null }
+    const rawClient = $el.dataset.preselectedClient;
+    try { preselectedClient = rawClient ? JSON.parse(rawClient) : null } catch(e) { preselectedClient = null }
     init();
   ">
 
@@ -686,7 +689,7 @@
                                                 : 'bg-slate-100 dark:bg-slate-700/50 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'"
                                             @click="selectCategoryFilter('')">
                                         <span>همه</span>
-                                        <span class="text-[10px] px-1.5 py-0.5 rounded-full font-mono font-bold"
+                                        <span class="text-[10px] px-1.5 py-0.5 rounded-full font-sans font-bold"
                                               :class="!categoryId ? 'bg-white/25 text-white' : 'bg-slate-200 dark:bg-slate-600 text-slate-600 dark:text-slate-300'"
                                               x-text="totalServicesCount"></span>
                                     </button>
@@ -699,7 +702,7 @@
                                                     : 'bg-slate-100 dark:bg-slate-700/50 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'"
                                                 @click="selectCategoryFilter(c.id)">
                                             <span x-text="c.name"></span>
-                                            <span class="text-[10px] px-1.5 py-0.5 rounded-full font-mono font-bold"
+                                            <span class="text-[10px] px-1.5 py-0.5 rounded-full font-sans font-bold"
                                                   :class="String(categoryId) === String(c.id) ? 'bg-white/25 text-white' : 'bg-slate-200 dark:bg-slate-600 text-slate-600 dark:text-slate-300'"
                                                   x-text="getCategoryServicesCount(c)"></span>
                                         </button>
@@ -730,7 +733,7 @@
                                         <span class="w-2.5 h-2.5 rounded-full bg-indigo-500 shrink-0"></span>
                                         <h4 class="text-sm font-bold text-slate-800 dark:text-slate-200" x-text="grp.title"></h4>
                                         <div class="h-px bg-slate-200 dark:bg-slate-700/60 flex-1"></div>
-                                        <span class="text-[11px] font-semibold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2.5 py-0.5 rounded-full font-mono" x-text="grp.items.length + ' {{ config('booking.labels.service', 'سرویس') }}'"></span>
+                                        <span class="text-[11px] font-semibold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2.5 py-0.5 rounded-full font-sans" x-text="grp.items.length + ' {{ config('booking.labels.service', 'سرویس') }}'"></span>
                                     </div>
 
                                     <!-- Cards Grid -->
@@ -870,7 +873,7 @@
                                                 : 'bg-slate-100 dark:bg-slate-700/50 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'"
                                             @click="selectCategoryFilter('')">
                                         <span>همه</span>
-                                        <span class="text-[10px] px-1.5 py-0.5 rounded-full font-mono font-bold"
+                                        <span class="text-[10px] px-1.5 py-0.5 rounded-full font-sans font-bold"
                                               :class="!categoryId ? 'bg-white/25 text-white' : 'bg-slate-200 dark:bg-slate-600 text-slate-600 dark:text-slate-300'"
                                               x-text="totalServicesCount"></span>
                                     </button>
@@ -883,7 +886,7 @@
                                                     : 'bg-slate-100 dark:bg-slate-700/50 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'"
                                                 @click="selectCategoryFilter(c.id)">
                                             <span x-text="c.name"></span>
-                                            <span class="text-[10px] px-1.5 py-0.5 rounded-full font-mono font-bold"
+                                            <span class="text-[10px] px-1.5 py-0.5 rounded-full font-sans font-bold"
                                                   :class="String(categoryId) === String(c.id) ? 'bg-white/25 text-white' : 'bg-slate-200 dark:bg-slate-600 text-slate-600 dark:text-slate-300'"
                                                   x-text="getCategoryServicesCount(c)"></span>
                                         </button>
@@ -914,7 +917,7 @@
                                         <span class="w-2.5 h-2.5 rounded-full bg-indigo-500 shrink-0"></span>
                                         <h4 class="text-sm font-bold text-slate-800 dark:text-slate-200" x-text="grp.title"></h4>
                                         <div class="h-px bg-slate-200 dark:bg-slate-700/60 flex-1"></div>
-                                        <span class="text-[11px] font-semibold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2.5 py-0.5 rounded-full font-mono" x-text="grp.items.length + ' {{ config('booking.labels.service', 'سرویس') }}'"></span>
+                                        <span class="text-[11px] font-semibold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2.5 py-0.5 rounded-full font-sans" x-text="grp.items.length + ' {{ config('booking.labels.service', 'سرویس') }}'"></span>
                                     </div>
 
                                     <!-- Cards Grid -->
@@ -1810,6 +1813,7 @@
 
                 defaultSlotCapacity: @json($settings -> default_capacity_per_slot ?? 1),
                 fixedProvider: options.fixedProvider || null,
+                preselectedClient: options.preselectedClient || null,
                 providerId: '',
                 serviceId: '',
 
@@ -1986,6 +1990,11 @@
 
                     // Start with client selection (step 1)
                     this.step = 1;
+
+                    if (this.preselectedClient) {
+                        this.selectClient(this.preselectedClient);
+                    }
+
                     this.fetchClients();
 
                     if (this.isQueueEnabled) {
@@ -2898,9 +2907,21 @@
                         });
                         const json = await res.json();
                         this.clients = json.data || [];
-                        // If we have a selected clientId, make sure it's in the list
-                        if (this.clientId && !this.clients.find(c => String(c.id) === String(this.clientId))) {
-                            // Client not in search results, but that's ok - we'll show it anyway via selectedClient
+
+                        // If we have a selected client object, make sure it remains in this.clients
+                        if (this.selectedClientObject && !this.clients.find(c => String(c.id) === String(this.selectedClientObject.id))) {
+                            this.clients.unshift(this.selectedClientObject);
+                        } else if (this.clientId && !this.selectedClientObject) {
+                            // If clientId was set from URL but selectedClientObject not yet set, fetch it specifically
+                            const clientRes = await fetch(`{{ route('user.booking.appointments.wizard.clients') }}?client_id=${encodeURIComponent(this.clientId)}`, {
+                                headers: {
+                                    'Accept': 'application/json'
+                                }
+                            });
+                            const clientJson = await clientRes.json();
+                            if (clientJson.data && clientJson.data.length > 0) {
+                                this.selectClient(clientJson.data[0]);
+                            }
                         }
                     } finally {
                         this.clientLoading = false;

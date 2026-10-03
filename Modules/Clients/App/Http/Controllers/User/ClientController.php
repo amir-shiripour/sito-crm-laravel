@@ -661,4 +661,151 @@ class ClientController extends Controller
 
         return false;
     }
+
+    public function storeCaseNote(Request $request, Client $client)
+    {
+        $user = auth()->user();
+        if (!$user->can('clients.edit')) {
+            return response()->json(['success' => false, 'message' => 'دسترسی غیرمجاز.'], 403);
+        }
+
+        $request->validate([
+            'field_id' => 'required|string',
+            'text' => 'required|string|max:5000',
+        ]);
+
+        $fieldId = $request->input('field_id');
+        $rawText = trim($request->input('text'));
+
+        $keyFromSettings = ClientSetting::getValue('default_form_key');
+        $activeForm = ClientForm::active($keyFromSettings);
+        $fieldDef = collect($activeForm?->schema['fields'] ?? [])->firstWhere('id', $fieldId);
+
+        $recordTimestamp = $fieldDef['record_timestamp'] ?? true;
+        $recordAuthor = $fieldDef['record_author'] ?? true;
+        $sortOrder = $fieldDef['sort_order'] ?? 'desc';
+
+        $now = \Carbon\Carbon::now();
+        $jalaliStr = '';
+        if ($recordTimestamp) {
+            try {
+                if (class_exists(\Morilog\Jalali\Jalalian::class)) {
+                    $jalaliStr = \Morilog\Jalali\Jalalian::fromCarbon($now)->format('Y/m/d - H:i');
+                } else {
+                    $jalaliStr = $now->format('Y-m-d H:i');
+                }
+            } catch (\Throwable $e) {
+                $jalaliStr = $now->format('Y-m-d H:i');
+            }
+        }
+
+        $item = [
+            'id' => (string) \Illuminate\Support\Str::uuid(),
+            'text' => $rawText,
+            'created_at' => $now->toIso8601String(),
+            'jalali_date' => $jalaliStr,
+            'user_id' => $user->id,
+            'user_name' => $recordAuthor ? ($user->name ?: $user->username ?: 'کاربر سیستم') : null,
+        ];
+
+        $meta = $client->meta ?? [];
+        if (!is_array($meta)) {
+            $meta = [];
+        }
+        $existing = $meta[$fieldId] ?? [];
+        if (is_string($existing)) {
+            $existing = json_decode($existing, true) ?: [];
+        }
+        if (!is_array($existing)) {
+            $existing = [];
+        }
+
+        if ($sortOrder === 'asc') {
+            $existing[] = $item;
+        } else {
+            array_unshift($existing, $item);
+        }
+
+        $meta[$fieldId] = $existing;
+        $client->meta = $meta;
+        $client->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'یادداشت جدید با موفقیت ثبت شد.',
+            'item' => $item,
+            'items' => $existing,
+        ]);
+    }
+
+    public function deleteCaseNote(Request $request, Client $client, $itemId)
+    {
+        $user = auth()->user();
+        if (!$user->can('clients.edit')) {
+            return response()->json(['success' => false, 'message' => 'دسترسی غیرمجاز.'], 403);
+        }
+
+        $fieldId = $request->input('field_id');
+        if (!$fieldId) {
+            return response()->json(['success' => false, 'message' => 'شناسه فیلد نامعتبر است.'], 422);
+        }
+
+        $keyFromSettings = ClientSetting::getValue('default_form_key');
+        $activeForm = ClientForm::active($keyFromSettings);
+        $fieldDef = collect($activeForm?->schema['fields'] ?? [])->firstWhere('id', $fieldId);
+
+        $allowDelete = $fieldDef['allow_delete'] ?? true;
+        if (!$allowDelete) {
+            return response()->json(['success' => false, 'message' => 'امکان حذف موارد برای این فیلد غیرفعال است.'], 403);
+        }
+
+        $meta = $client->meta ?? [];
+        $existing = $meta[$fieldId] ?? [];
+        if (is_string($existing)) {
+            $existing = json_decode($existing, true) ?: [];
+        }
+        if (!is_array($existing)) {
+            $existing = [];
+        }
+
+        $itemIndex = null;
+        $targetItem = null;
+        foreach ($existing as $idx => $it) {
+            if (($it['id'] ?? '') === $itemId) {
+                $itemIndex = $idx;
+                $targetItem = $it;
+                break;
+            }
+        }
+
+        if ($itemIndex === null) {
+            return response()->json(['success' => false, 'message' => 'مورد مورد نظر یافت نشد.'], 404);
+        }
+
+        $deletePermission = $fieldDef['delete_permission'] ?? 'author_and_admin';
+        $isSuperAdmin = $user && ($user->hasRole('super-admin') || $user->can('manage-everything') || $user->can('clients.manage'));
+
+        if ($deletePermission === 'admin_only' && !$isSuperAdmin) {
+            return response()->json(['success' => false, 'message' => 'فقط مدیران ارشد سیستم مجاز به حذف این یادداشت هستند.'], 403);
+        }
+
+        if ($deletePermission === 'author_and_admin') {
+            $isAuthor = isset($targetItem['user_id']) && (int)$targetItem['user_id'] === (int)$user->id;
+            if (!$isAuthor && !$isSuperAdmin) {
+                return response()->json(['success' => false, 'message' => 'شما فقط مجاز به حذف یادداشت‌های ثبت‌شده توسط خودتان هستید.'], 403);
+            }
+        }
+
+        unset($existing[$itemIndex]);
+        $existing = array_values($existing);
+        $meta[$fieldId] = $existing;
+        $client->meta = $meta;
+        $client->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'مورد با موفقیت حذف شد.',
+            'items' => $existing,
+        ]);
+    }
 }

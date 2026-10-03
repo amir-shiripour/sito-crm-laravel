@@ -1468,6 +1468,129 @@
         </div>
     @endif
 
+    {{-- case_notes (ثبت/یادداشت پرونده) --}}
+@elseif ($type === 'case_notes')
+    @php
+        $items = $meta[$fid] ?? [];
+        if (is_string($items)) {
+            $items = json_decode($items, true) ?: [];
+        }
+        if (!is_array($items)) {
+            $items = [];
+        }
+        $allowDelete = $field['allow_delete'] ?? true;
+        $deletePermission = $field['delete_permission'] ?? 'author_and_admin';
+        $recordTimestamp = $field['record_timestamp'] ?? true;
+        $recordAuthor = $field['record_author'] ?? true;
+        $currUser = auth()->user();
+        $isSuperAdmin = $currUser && ($currUser->hasRole('super-admin') || $currUser->can('manage-everything') || $currUser->can('clients.manage'));
+    @endphp
+
+    <div class="space-y-3" x-data="{
+        noteText: @entangle('newCaseNote.' . $fid).defer,
+        submitOnEnter(e) {
+            if (!e.shiftKey) {
+                e.preventDefault();
+                $wire.addCaseNoteItem('{{ $fid }}');
+            }
+        }
+    }">
+        {{-- جعبه ورودی تایپ مورد جدید --}}
+        <div class="relative bg-white dark:bg-gray-800/80 rounded-2xl border border-gray-200 dark:border-gray-700 p-3 shadow-2xs focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-500/20 transition-all">
+            <textarea
+                x-model="noteText"
+                @keydown.enter="submitOnEnter($event)"
+                rows="2"
+                placeholder="{{ $placeholder ?: 'متن مورد یا یادداشت پرونده را بنویسید (Enter برای ثبت سریع، Shift+Enter برای خط جدید)...' }}"
+                class="w-full bg-transparent border-0 p-1 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:ring-0 resize-y min-h-[50px] outline-none font-sans leading-relaxed"></textarea>
+
+            <div class="flex items-center justify-between pt-2 border-t border-gray-100 dark:border-gray-700/60 mt-2">
+                <span class="text-[11px] text-gray-400 dark:text-gray-500 flex items-center gap-1 font-sans">
+                    <svg class="w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    کلید Enter برای ثبت سریع، Shift+Enter برای خط جدید
+                </span>
+
+                <button
+                    type="button"
+                    wire:click="addCaseNoteItem('{{ $fid }}')"
+                    wire:loading.attr="disabled"
+                    class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium shadow-sm transition-all active:scale-95 disabled:opacity-50 cursor-pointer">
+                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                    </svg>
+                    <span>افزودن به پرونده</span>
+                </button>
+            </div>
+        </div>
+
+        {{-- لیست موارد ثبت‌شده --}}
+        @if(!empty($items))
+            <div class="space-y-2 max-h-96 overflow-y-auto pr-1">
+                @foreach($items as $item)
+                    @php
+                        $itemId = $item['id'] ?? $loop->index;
+                        $canDeleteItem = $allowDelete && (
+                            $deletePermission === 'all' ||
+                            $isSuperAdmin ||
+                            ($deletePermission === 'author_and_admin' && $currUser && isset($item['user_id']) && (int)$item['user_id'] === (int)$currUser->id)
+                        );
+                    @endphp
+                    <div wire:key="note-{{ $fid }}-{{ $itemId }}"
+                         class="group relative p-3 rounded-xl bg-gray-50/80 hover:bg-white dark:bg-gray-800/50 dark:hover:bg-gray-800 border border-gray-200/80 dark:border-gray-700/80 transition-all shadow-2xs">
+                        <div class="flex items-start justify-between gap-3">
+                            <div class="flex-1 space-y-1.5">
+                                <p class="text-xs sm:text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap leading-relaxed font-sans select-text">
+                                    {{ $item['text'] ?? '' }}
+                                </p>
+
+                                <div class="flex flex-wrap items-center gap-2 pt-1">
+                                    @if($recordTimestamp && !empty($item['jalali_date']))
+                                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-sans font-medium bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300 border border-indigo-100/80 dark:border-indigo-800/40">
+                                            <svg class="w-3 h-3 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                            </svg>
+                                            {{ $item['jalali_date'] }}
+                                        </span>
+                                    @endif
+
+                                    @if($recordAuthor && !empty($item['user_name']))
+                                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-sans font-medium bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300">
+                                            <svg class="w-3 h-3 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                            </svg>
+                                            {{ $item['user_name'] }}
+                                        </span>
+                                    @endif
+                                </div>
+                            </div>
+
+                            @if($canDeleteItem)
+                                <button
+                                    type="button"
+                                    wire:click="removeCaseNoteItem('{{ $fid }}', '{{ $itemId }}')"
+                                    onclick="return confirm('آیا از حذف این مورد اطمینان دارید؟');"
+                                    class="opacity-60 group-hover:opacity-100 text-gray-400 hover:text-red-500 p-1 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-900/30 transition-all cursor-pointer"
+                                    title="حذف این مورد">
+                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                    </svg>
+                                </button>
+                            @endif
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+        @else
+            <div class="py-3 px-4 rounded-xl border border-dashed border-gray-200 dark:border-gray-700 text-center">
+                <span class="text-xs text-gray-400 dark:text-gray-500 font-sans">
+                    هنوز موردی برای این پرونده ثبت نشده است. از کادر بالا برای اضافه کردن استفاده کنید.
+                </span>
+            </div>
+        @endif
+    </div>
+
     {{-- fallback --}}
 @else
     <input type="text" wire:model.defer="{{ $model }}" placeholder="{{ $placeholder }}" class="{{ $baseInputClass }}" />

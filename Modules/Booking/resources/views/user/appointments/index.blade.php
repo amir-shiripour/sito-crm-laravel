@@ -266,7 +266,17 @@
                             </td>
 
                             <td class="px-4 py-3 text-left">
-                                <div class="flex items-center gap-2 justify-end opacity-60 group-hover:opacity-100 transition-opacity">
+                                <div class="flex items-center gap-2 justify-end opacity-75 group-hover:opacity-100 transition-opacity">
+                                    @if($a->client_id)
+                                        <a href="{{ route('user.booking.appointments.create', ['client_id' => $a->client_id]) }}"
+                                           class="px-2.5 py-1.5 text-xs rounded-lg font-medium inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-500/15 dark:text-emerald-300 dark:hover:bg-emerald-500/25 border border-emerald-200/60 dark:border-emerald-500/30 transition shadow-2xs"
+                                           title="ثبت نوبت بعدی برای {{ optional($a->client)->full_name ?: $clientLabel }}">
+                                            <svg class="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                                            </svg>
+                                            <span>نوبت بعدی</span>
+                                        </a>
+                                    @endif
                                     <a href="{{ route('user.booking.appointments.show', $a) }}"
                                        class="px-3 py-1.5 text-xs rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700/60 dark:text-gray-200 dark:hover:bg-gray-700 transition">
                                         مشاهده
