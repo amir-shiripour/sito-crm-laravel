@@ -1075,10 +1075,17 @@
             </table>
         @endif
 
-        @if(!empty($settings['services_invoice_footer_note']))
-            <div class="mt-4 text-xs text-gray-600 avoid-break border-t border-gray-200 pt-4">
+        @if(!empty($invoice->notes) || !empty($settings['services_invoice_footer_note']))
+            <div class="mt-4 text-xs text-gray-600 avoid-break border-t border-gray-200 pt-3">
                 <strong class="text-gray-800">یادداشت:</strong><br>
-                <div class="mt-1 leading-relaxed">{!! nl2br(e($settings['services_invoice_footer_note'])) !!}</div>
+                @if(!empty($invoice->notes))
+                    <div class="mt-1 leading-relaxed whitespace-pre-line text-gray-700">{!! nl2br(e(trim($invoice->notes))) !!}</div>
+                @endif
+                @if(!empty($settings['services_invoice_footer_note']))
+                    <div class="{{ !empty($invoice->notes) ? 'mt-3 pt-2.5 border-t border-dashed border-gray-200 text-gray-500' : 'mt-1 text-gray-600' }} leading-relaxed whitespace-pre-line">
+                        {!! nl2br(e(trim($settings['services_invoice_footer_note']))) !!}
+                    </div>
+                @endif
             </div>
         @endif
 

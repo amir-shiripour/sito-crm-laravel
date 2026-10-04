@@ -99,6 +99,9 @@ class AttributesController extends Controller
 
         $defaults = [
             'details' => [
+                ['name' => 'متراژ اقامتگاه (زیربنا)', 'type' => 'number', 'options' => null, 'is_filterable' => true, 'is_range_filter' => true],
+                ['name' => 'متراژ کل زمین / محوطه', 'type' => 'number', 'options' => null, 'is_filterable' => true, 'is_range_filter' => true],
+                ['name' => 'متراژ', 'type' => 'number', 'options' => null, 'is_filterable' => true, 'is_range_filter' => true],
                 ['name' => 'تعداد اتاق خواب', 'type' => 'number', 'options' => null, 'is_filterable' => true, 'is_range_filter' => true],
                 ['name' => 'تعداد حمام', 'type' => 'number', 'options' => null, 'is_filterable' => false, 'is_range_filter' => false],
                 ['name' => 'تعداد سرویس بهداشتی', 'type' => 'number', 'options' => null, 'is_filterable' => false, 'is_range_filter' => false],

@@ -129,10 +129,10 @@
 
                 {{-- دکمه‌های عملیات --}}
                 <div class="flex items-center justify-between pt-6 border-t border-gray-200 dark:border-gray-700">
-                    <a href="{{ route('user.properties.pricing', $property) }}"
+                    <a href="{{ $property->listing_type === 'daily_rental' ? route('user.properties.rental.config', $property) : route('user.properties.pricing', $property) }}"
                        class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl border border-gray-300 text-gray-600 font-bold text-sm hover:bg-gray-50 hover:text-gray-900 dark:border-gray-600 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-gray-200 transition-colors">
                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
-                        بازگشت به قیمت‌گذاری
+                        <span>{{ $property->listing_type === 'daily_rental' ? 'تنظیمات اقامتگاه' : 'بازگشت به قیمت‌گذاری' }}</span>
                     </a>
 
                     <button type="submit"

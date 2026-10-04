@@ -1120,16 +1120,16 @@
 
                 @if($invoice->notes)
                     <div
-                        class="{{ $cardClass }} p-6 sm:p-8 border-l-4 border-l-amber-500 bg-amber-50/50 dark:bg-amber-900/10">
+                        class="{{ $cardClass }} p-6 sm:p-8 border-s-4 border-s-amber-500 bg-amber-50/50 dark:bg-amber-900/10">
                         <div class="flex items-start gap-4 text-amber-800 dark:text-amber-300">
                             <svg class="w-8 h-8 shrink-0 mt-0.5 opacity-80" fill="none" viewBox="0 0 24 24"
                                  stroke="currentColor" stroke-width="2">
                                 <path stroke-linecap="round" stroke-linejoin="round"
                                       d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                             </svg>
-                            <div>
-                                <strong class="block mb-2 font-black text-lg tracking-tight">یادداشت فاکتور</strong>
-                                <p class="font-medium text-base leading-loose">{{ $invoice->notes }}</p>
+                            <div class="flex-1 min-w-0">
+                                <strong class="block mb-2 font-black text-lg tracking-tight text-amber-900 dark:text-amber-200">یادداشت فاکتور</strong>
+                                <div class="font-normal text-sm sm:text-base leading-loose text-slate-700 dark:text-slate-200 whitespace-pre-line break-words">{!! nl2br(e(trim($invoice->notes))) !!}</div>
                             </div>
                         </div>
                     </div>
