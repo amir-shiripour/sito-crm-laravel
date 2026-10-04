@@ -1076,7 +1076,7 @@
         @endif
 
         @if(!empty($invoice->notes) || !empty($settings['services_invoice_footer_note']))
-            <div class="mt-4 text-xs text-gray-600 avoid-break border-t border-gray-200 pt-3">
+            <div class="mt-4 text-xs text-gray-600 border-t border-gray-200 pt-3">
                 <strong class="text-gray-800">یادداشت:</strong><br>
                 @if(!empty($invoice->notes))
                     <div class="mt-1 leading-relaxed whitespace-pre-line text-gray-700">{!! nl2br(e(trim($invoice->notes))) !!}</div>
