@@ -146,7 +146,7 @@
                                 مشخصات اصلی
                             </button>
 
-                            <button type="button" @click="activeTab = 'pricing'"
+                            <button type="button" x-show="listingType !== 'daily_rental'" @click="activeTab = 'pricing'"
                                     class="flex-1 py-4 px-6 text-center border-b-2 font-bold text-sm transition-all whitespace-nowrap outline-none focus:outline-none flex items-center justify-center gap-2"
                                     :class="activeTab === 'pricing' ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400 bg-white dark:bg-gray-800' : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700/50'">
                                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 1v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
@@ -334,7 +334,7 @@
                             </div>
 
                             {{-- Tab 2: Pricing --}}
-                            <div x-show="activeTab === 'pricing'" x-transition:enter.duration.300ms x-transition:enter.opacity style="display: none;">
+                            <div x-show="activeTab === 'pricing' && listingType !== 'daily_rental'" x-transition:enter.duration.300ms x-transition:enter.opacity style="display: none;">
                                 <div class="max-w-3xl mx-auto space-y-8">
                                     {{-- پیام نوع فایل --}}
                                     <div class="flex items-center gap-3 p-4 rounded-xl bg-blue-50 text-blue-800 border border-blue-100 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800">
@@ -1102,6 +1102,14 @@
 
                 init() {
                     this.initMap();
+                    this.$watch('listingType', (value) => {
+                        if (value === 'daily_rental' && this.activeTab === 'pricing') {
+                            this.activeTab = 'details';
+                        }
+                    });
+                    if (this.listingType === 'daily_rental' && this.activeTab === 'pricing') {
+                        this.activeTab = 'details';
+                    }
                     this.$watch('showOwnerModal', (value) => {
                         if (value) {
                             this.errors = {};

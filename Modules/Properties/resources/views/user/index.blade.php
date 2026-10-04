@@ -48,13 +48,30 @@
         </div>
 
         {{-- Tabs --}}
+        @php
+            $isPendingTab = request('approval_status') === 'pending_review';
+        @endphp
         <div class="border-b border-gray-200 dark:border-gray-700">
             <nav class="-mb-px flex gap-6" aria-label="Tabs">
                 <a href="{{ route('user.properties.index') }}"
-                   class="{{ !$isTrash ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300' }} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2">
+                   class="{{ (!$isTrash && !$isPendingTab) ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300' }} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2">
                     <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
                     همه املاک
                 </a>
+
+                @if(\Modules\Properties\Services\PropertyRevisionService::canManagePublication(auth()->user()))
+                    <a href="{{ route('user.properties.index', ['approval_status' => 'pending_review']) }}"
+                       class="{{ $isPendingTab ? 'border-amber-500 text-amber-600 dark:text-amber-400' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300' }} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2">
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                        <span>در انتظار بررسی و تأیید</span>
+                        @if(isset($pendingReviewCount) && $pendingReviewCount > 0)
+                            <span class="inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold font-sans rounded-full bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300">
+                                {{ $pendingReviewCount }}
+                            </span>
+                        @endif
+                    </a>
+                @endif
+
                 <a href="{{ route('user.properties.index', ['trashed' => 1]) }}"
                    class="{{ $isTrash ? 'border-red-500 text-red-600 dark:text-red-400' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300' }} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2">
                     <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>

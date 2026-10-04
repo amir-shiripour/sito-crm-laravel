@@ -349,6 +349,16 @@ class PropertyController extends Controller
             'convertible_with' => json_decode(PropertySetting::get('visibility_convertible_with', '[]'), true),
         ];
 
+        // در صورت اختصاصی بودن فایل از نوع اجاره روزانه / اقامتگاه، هدایت به قالب تخصصی اقامتگاه
+        if ($property->listing_type === 'daily_rental') {
+            $property->loadMissing(['host.user', 'rentalConfig', 'seasonalPrices', 'rentalBlocks']);
+            $rentalPublicService = app(\Modules\Properties\Services\RentalPublicService::class);
+            $calendarData = $rentalPublicService->getCalendarData($property, 2);
+            $currency = PropertySetting::get('currency', 'toman');
+
+            return view('properties::rental.show', compact('property', 'visibilitySettings', 'calendarData', 'currency'));
+        }
+
         return view('properties::show', compact('property', 'visibilitySettings'));
     }
 

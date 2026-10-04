@@ -36,7 +36,7 @@
         </div>
     </div>
 
-    {{-- وضعیت بررسی ادمین (در صورت نیاز) --}}
+    {{-- وضعیت بررسی ادمین و دکمه مشاهده تغییرات --}}
     @if($isAdmin)
         <div class="{{ $cardClass }} p-5 bg-gradient-to-r from-amber-50/60 to-white dark:from-gray-800 dark:to-gray-800/80 border-amber-200/80 dark:border-amber-900/40">
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -45,33 +45,56 @@
                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
                         وضعیت تأیید و انتشار در پلتفرم
                     </span>
-                    <span class="text-xs text-gray-600 dark:text-gray-300 font-sans">
-                        وضعیت فعلی:
-                        <strong class="text-gray-900 dark:text-white mr-1">
-                            {{ match($property->approval_status) { 'approved' => 'تأیید شده و منتشر', 'pending_review' => 'در انتظار بررسی مدیریت', 'rejected' => 'رد شده', default => $property->approval_status } }}
-                        </strong>
-                    </span>
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <span class="text-xs text-gray-600 dark:text-gray-300 font-sans">
+                            وضعیت فعلی:
+                            <strong class="text-gray-900 dark:text-white mr-1">
+                                {{ match($property->approval_status) { 'approved' => 'تأیید شده و منتشر', 'pending_review' => 'در انتظار بررسی مدیریت', 'rejected' => 'رد شده', default => $property->approval_status } }}
+                            </strong>
+                        </span>
+
+                        @if($property->approval_status === 'rejected' && $property->rejection_reason)
+                            <span class="text-[11px] text-rose-600 dark:text-rose-400 font-sans">
+                                (علت رد: {{ $property->rejection_reason }})
+                            </span>
+                        @endif
+                    </div>
                 </div>
 
-                <form action="{{ route('user.properties.rental.review-status', $property) }}" method="POST" class="flex items-center gap-2">
-                    @csrf
-                    @if($property->approval_status !== 'approved')
-                        <input type="hidden" name="approval_status" value="approved">
-                        <button type="submit" class="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition shadow-sm flex items-center gap-1.5">
-                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
-                            تأیید اقامتگاه
-                        </button>
-                    @else
-                        <input type="hidden" name="approval_status" value="rejected">
-                        <input type="hidden" name="rejection_reason" value="نیاز به بازنگری تصاویر یا اطلاعات">
-                        <button type="submit" class="px-5 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition shadow-sm flex items-center gap-1.5">
-                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
-                            رد و عدم انتشار
+                <div class="flex items-center gap-2 flex-wrap">
+                    {{-- دکمه مشاهده جزئیات تغییرات و مقایسه (در صورتی که درخواست ویرایش در انتظار باشد) --}}
+                    @if($property->pendingRevision()->exists())
+                        <button type="button"
+                                @click="$dispatch('open-revision-diff', { propertyId: {{ $property->id }}, reviewUrl: '{{ route('user.properties.rental.review-status', $property) }}' })"
+                                class="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition shadow-sm flex items-center gap-1.5 animate-pulse">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                            بررسی و مقایسه تغییرات (Diff)
                         </button>
                     @endif
-                </form>
+
+                    <form action="{{ route('user.properties.rental.review-status', $property) }}" method="POST" class="flex items-center gap-2">
+                        @csrf
+                        @if($property->approval_status !== 'approved')
+                            <input type="hidden" name="approval_status" value="approved">
+                            <button type="submit" class="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition shadow-sm flex items-center gap-1.5">
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+                                تأیید مستقیم
+                            </button>
+                        @else
+                            <input type="hidden" name="approval_status" value="rejected">
+                            <input type="hidden" name="rejection_reason" value="نیاز به بازنگری تصاویر یا اطلاعات">
+                            <button type="submit" class="px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition shadow-sm flex items-center gap-1.5">
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                                لغو تأیید
+                            </button>
+                        @endif
+                    </form>
+                </div>
             </div>
         </div>
+
+        {{-- ورود مودال مقایسه تغییرات --}}
+        @include('properties::user.partials.revision-diff-modal')
     @endif
 
     {{-- فرم تنظیمات اقامتگاه --}}

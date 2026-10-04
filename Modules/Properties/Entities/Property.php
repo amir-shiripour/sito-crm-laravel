@@ -149,6 +149,82 @@ class Property extends Model
         return $this->hasMany(PropertyAttributeValue::class);
     }
 
+    public function getBedroomsAttribute($value)
+    {
+        if ($value !== null) return $value;
+
+        if ($this->relationLoaded('attributeValues')) {
+            $attr = $this->attributeValues->first(function($av) {
+                return $av->attribute && (str_contains($av->attribute->name, 'اتاق خواب') || str_contains($av->attribute->name, 'تعداد خواب'));
+            });
+            if ($attr && $attr->value !== null && $attr->value !== '') {
+                return $attr->value;
+            }
+        }
+
+        if (isset($this->meta['details'])) {
+            foreach ($this->meta['details'] as $k => $v) {
+                $name = is_array($v) ? ($v['key'] ?? $v['name'] ?? $k) : $k;
+                $val = is_array($v) ? ($v['value'] ?? null) : $v;
+                if ((str_contains($name, 'اتاق خواب') || str_contains($name, 'تعداد خواب')) && $val !== null && $val !== '') {
+                    return $val;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    public function getBathroomsAttribute($value)
+    {
+        if ($value !== null) return $value;
+
+        if ($this->relationLoaded('attributeValues')) {
+            $attr = $this->attributeValues->first(function($av) {
+                return $av->attribute && (str_contains($av->attribute->name, 'سرویس بهداشتی') || str_contains($av->attribute->name, 'تعداد حمام'));
+            });
+            if ($attr && $attr->value !== null && $attr->value !== '') {
+                return $attr->value;
+            }
+        }
+
+        if (isset($this->meta['details'])) {
+            foreach ($this->meta['details'] as $k => $v) {
+                $name = is_array($v) ? ($v['key'] ?? $v['name'] ?? $k) : $k;
+                $val = is_array($v) ? ($v['value'] ?? null) : $v;
+                if ((str_contains($name, 'سرویس بهداشتی') || str_contains($name, 'تعداد حمام')) && $val !== null && $val !== '') {
+                    return $val;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    public function getAreaFormattedAttribute()
+    {
+        $val = $this->area;
+        if ($val === null || $val === '') {
+            if ($this->relationLoaded('attributeValues')) {
+                $attr = $this->attributeValues->first(function($av) {
+                    return $av->attribute && str_contains($av->attribute->name, 'متراژ');
+                });
+                if ($attr && $attr->value) {
+                    $val = $attr->value;
+                }
+            }
+        }
+
+        if ($val !== null && $val !== '') {
+            if (is_numeric($val)) {
+                return (floatval($val) == intval($val)) ? (string) intval($val) : rtrim(rtrim((string)$val, '0'), '.');
+            }
+            return (string) $val;
+        }
+
+        return null;
+    }
+
     public function getSlugAttribute()
     {
         // Format: YmdHis-code (e.g., 20231027123045-1001)
@@ -190,5 +266,20 @@ class Property extends Model
                 $q->orWhere('host_id', $host->id);
             }
         });
+    }
+
+    public function revisions(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(PropertyRevision::class, 'property_id');
+    }
+
+    public function pendingRevision(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(PropertyRevision::class, 'property_id')->where('status', 'pending')->latestOfMany();
+    }
+
+    public function latestRevision(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(PropertyRevision::class, 'property_id')->latestOfMany();
     }
 }

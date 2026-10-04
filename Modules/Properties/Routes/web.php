@@ -104,6 +104,7 @@ Route::middleware(['web', 'auth'])
                     Route::get('/config', [RentalController::class, 'config'])->name('config');
                     Route::put('/config', [RentalController::class, 'updateConfig'])->name('config.update');
                     Route::post('/review-status', [RentalController::class, 'reviewStatus'])->name('review-status');
+                    Route::get('/pending-revision', [RentalController::class, 'getPendingRevision'])->name('pending-revision');
                     Route::get('/calendar', [RentalCalendarController::class, 'calendar'])->name('calendar');
                     Route::post('/calendar/toggle-block', [RentalCalendarController::class, 'toggleBlock'])->name('calendar.toggle-block');
                     Route::post('/calendar/batch-block', [RentalCalendarController::class, 'batchBlock'])->name('calendar.batch-block');

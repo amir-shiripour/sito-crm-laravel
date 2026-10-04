@@ -151,11 +151,25 @@ class RentalController extends Controller
         $specialPricesData = $request->input('special_prices', []);
         unset($validated['special_prices']);
 
-        // به‌روزرسانی یا ایجاد
-        PropertyRentalConfig::updateOrCreate(
-            ['property_id' => $property->id],
-            $validated
-        );
+        $user = auth()->user();
+        $canManagePublication = \Modules\Properties\Services\PropertyRevisionService::canManagePublication($user);
+
+        // واکشی یا ایجاد نمونه تنظیمات برای بررسی getDirty
+        $config = PropertyRentalConfig::firstOrNew(['property_id' => $property->id]);
+        $config->fill($validated);
+        $dirtyConfig = $config->getDirty();
+
+        $config->save();
+
+        // اگر کاربر مدیر پلتفرم نباشد، تغییرات در بازبینی ثبت شده و نیاز به تایید مجدد دارد
+        if (!$canManagePublication && !empty($dirtyConfig)) {
+            $revisionService = app(\Modules\Properties\Services\PropertyRevisionService::class);
+            $revisionService->recordRentalConfigChanges($property, $dirtyConfig, $user, [
+                'special_prices_count' => is_array($specialPricesData) ? count($specialPricesData) : 0,
+            ]);
+
+            $property->approval_status = 'pending_review';
+        }
 
         // مدیریت و ذخیره‌سازی تاریخ‌های خاص (تکی و چندتایی)
         $property->seasonalPrices()->delete();
@@ -195,20 +209,23 @@ class RentalController extends Controller
         }
 
         // هماهنگ‌سازی قیمت پایه با فیلد price جدول properties جهت نمایش در لیست‌ها
-        $property->update([
-            'price' => $validated['price_per_night'],
-        ]);
+        $property->price = $validated['price_per_night'];
+        $property->save();
+
+        if (!$canManagePublication && !empty($dirtyConfig)) {
+            return redirect()->route('user.properties.rental.calendar', $property)->with('success', 'تغییرات نرخ و تنظیمات اقامتگاه ثبت شد و پس از بررسی و تایید مدیریت در سایت فعال خواهد شد.');
+        }
 
         return redirect()->route('user.properties.rental.calendar', $property)->with('success', 'مشخصات و قیمت‌های اقامتگاه با موفقیت ذخیره شد. اکنون تقویم دسترسی را مشاهده کنید.');
     }
 
     /**
-     * تایید یا رد اقامتگاه توسط مدیر پلتفرم
+     * تایید یا رد اقامتگاه و آخرین نسخه ویرایشی توسط مدیر پلتفرم
      */
     public function reviewStatus(Request $request, Property $property)
     {
         $user = auth()->user();
-        if (!$user->hasRole(['super-admin', 'admin']) && !$user->can('properties.manage')) {
+        if (!\Modules\Properties\Services\PropertyRevisionService::canManagePublication($user)) {
             abort(403);
         }
 
@@ -217,12 +234,62 @@ class RentalController extends Controller
             'rejection_reason' => 'nullable|required_if:approval_status,rejected|string|max:500',
         ]);
 
-        $property->update([
-            'approval_status' => $request->approval_status,
-            'rejection_reason' => $request->approval_status === 'rejected' ? $request->rejection_reason : null,
-        ]);
+        $revisionService = app(\Modules\Properties\Services\PropertyRevisionService::class);
+        $pendingRevision = $property->pendingRevision;
 
-        $statusText = $request->approval_status === 'approved' ? 'تأیید شد' : 'رد شد';
+        if ($request->approval_status === 'approved') {
+            if ($pendingRevision) {
+                $revisionService->approveRevision($pendingRevision, $user);
+            } else {
+                $property->update([
+                    'approval_status' => 'approved',
+                    'rejection_reason' => null,
+                ]);
+            }
+            $statusText = 'تأیید شد';
+        } else {
+            if ($pendingRevision) {
+                $revisionService->rejectRevision($pendingRevision, $user, $request->rejection_reason);
+            } else {
+                $property->update([
+                    'approval_status' => 'rejected',
+                    'rejection_reason' => $request->rejection_reason,
+                ]);
+            }
+            $statusText = 'رد شد';
+        }
+
         return back()->with('success', "وضعیت اقامتگاه با موفقیت به «{$statusText}» تغییر یافت.");
+    }
+
+    /**
+     * دریافت اطلاعات تغییرات در انتظار بررسی جهت نمایش در پنجره مقایسه (Diff)
+     */
+    public function getPendingRevision(Property $property)
+    {
+        $user = auth()->user();
+        if (!\Modules\Properties\Services\PropertyRevisionService::canManagePublication($user)) {
+            abort(403);
+        }
+
+        $pendingRevision = $property->pendingRevision()->with('user')->first();
+
+        if (!$pendingRevision) {
+            return response()->json([
+                'success' => false,
+                'message' => 'هیچ ویرایش در انتظار بررسی برای این اقامتگاه یافت نشد.',
+            ], 404);
+        }
+
+        return response()->json([
+            'success' => true,
+            'revision' => [
+                'id' => $pendingRevision->id,
+                'user_name' => $pendingRevision->user?->name ?? 'کاربر/میزبان',
+                'created_at_jalali' => \Morilog\Jalali\Jalalian::fromCarbon($pendingRevision->created_at)->format('Y/m/d H:i'),
+                'type' => $pendingRevision->type,
+                'changes_summary' => $pendingRevision->changes_summary,
+            ]
+        ]);
     }
 }

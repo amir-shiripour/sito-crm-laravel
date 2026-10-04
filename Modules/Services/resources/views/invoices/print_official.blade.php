@@ -802,10 +802,17 @@
             </div>
         @endif
 
-        @if(!empty($settings['services_invoice_footer_note']))
-            <div class="mt-2 border border-official rounded p-2 text-[10px] bg-gray-50">
+        @if(!empty($invoice->notes) || !empty($settings['services_invoice_footer_note']))
+            <div class="mt-2 border border-official rounded p-2 text-[10px] bg-gray-50 avoid-break">
                 <strong class="text-gray-800">یادداشت:</strong>
-                <div class="mt-1 leading-relaxed">{!! nl2br(e($settings['services_invoice_footer_note'])) !!}</div>
+                @if(!empty($invoice->notes))
+                    <div class="mt-1 leading-relaxed whitespace-pre-line text-gray-700">{!! nl2br(e(trim($invoice->notes))) !!}</div>
+                @endif
+                @if(!empty($settings['services_invoice_footer_note']))
+                    <div class="{{ !empty($invoice->notes) ? 'mt-2 pt-1.5 border-t border-dashed border-gray-300 text-gray-500' : 'mt-1 text-gray-600' }} leading-relaxed whitespace-pre-line">
+                        {!! nl2br(e(trim($settings['services_invoice_footer_note']))) !!}
+                    </div>
+                @endif
             </div>
         @endif
 

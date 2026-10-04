@@ -90,14 +90,31 @@
 
     {{-- Status --}}
     <td class="px-6 py-4">
-        @if($property->status)
-            <span class="{{ $badgeClass }}"
-                  style="background-color: {{ $property->status->color }}15; color: {{ $property->status->color }}; border: 1px solid {{ $property->status->color }}30;">
-                {{ $property->status->label ?? $property->status->name }}
-            </span>
-        @else
-            <span class="text-xs text-gray-400">—</span>
-        @endif
+        <div class="flex flex-col gap-1 items-start">
+            @if($property->status)
+                <span class="{{ $badgeClass }}"
+                      style="background-color: {{ $property->status->color }}15; color: {{ $property->status->color }}; border: 1px solid {{ $property->status->color }}30;">
+                    {{ $property->status->label ?? $property->status->name }}
+                </span>
+            @endif
+
+            {{-- بج وضعیت بازبینی برای اقامتگاه‌ها یا املاک در انتظار --}}
+            @if($property->approval_status === 'pending_review')
+                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60 font-sans">
+                    <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+                    در انتظار بررسی
+                </span>
+            @elseif($property->approval_status === 'rejected')
+                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300 border border-rose-200 dark:border-rose-800/60 font-sans" title="{{ $property->rejection_reason }}">
+                    <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+                    نیاز به اصلاح
+                </span>
+            @endif
+
+            @if(!$property->status && !$property->approval_status)
+                <span class="text-xs text-gray-400">—</span>
+            @endif
+        </div>
     </td>
 
     {{-- Category --}}
@@ -161,6 +178,13 @@
                 </a>
 
                 @if($property->listing_type === 'daily_rental')
+                    {{-- دکمه سریع بررسی برای ادمین در صورت وجود درخواست بازبینی --}}
+                    @if(\Modules\Properties\Services\PropertyRevisionService::canManagePublication(auth()->user()) && $property->approval_status === 'pending_review')
+                        <a href="{{ route('user.properties.rental.config', $property) }}" class="p-2 rounded-lg text-amber-600 bg-amber-50 hover:bg-amber-100 dark:text-amber-400 dark:bg-amber-900/30 dark:hover:bg-amber-900/50 transition-colors animate-pulse" title="بررسی و تأیید تغییرات">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                        </a>
+                    @endif
+
                     <a href="{{ route('user.properties.rental.calendar', $property) }}" class="p-2 rounded-lg text-teal-600 bg-teal-50 hover:bg-teal-100 dark:text-teal-400 dark:bg-teal-900/20 dark:hover:bg-teal-900/40 transition-colors" title="تقویم روزانه و قیمت‌ها">
                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
                     </a>

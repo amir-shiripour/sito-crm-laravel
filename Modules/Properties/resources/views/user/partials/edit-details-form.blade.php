@@ -132,7 +132,8 @@
         </div>
     </div>
 
-    {{-- تنظیمات انتشار --}}
+    {{-- تنظیمات انتشار یا وضعیت تأیید اقامتگاه --}}
+    @if(\Modules\Properties\Services\PropertyRevisionService::canManagePublication(auth()->user()))
     <div class="{{ $cardClass }} p-5">
         <h3 class="text-sm font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
             <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
@@ -193,5 +194,50 @@
             </div>
         </div>
     </div>
+    @else
+    {{-- کارت وضعیت بازبینی برای میزبانان --}}
+    <div class="{{ $cardClass }} p-5 border border-gray-200 dark:border-gray-700/60">
+        <h3 class="text-sm font-bold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+            <span class="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
+            وضعیت انتشار و بازبینی
+        </h3>
+        
+        <div class="space-y-3 font-sans">
+            <div class="flex items-center justify-between p-3 rounded-xl bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-800">
+                <span class="text-xs text-gray-500 dark:text-gray-400 font-bold">وضعیت بررسی:</span>
+                @if($property->approval_status === 'approved')
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+                        تأیید شده و منتشر در سایت
+                    </span>
+                @elseif($property->approval_status === 'rejected')
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300 border border-rose-200 dark:border-rose-800">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
+                        نیاز به اصلاح (رد شده)
+                    </span>
+                @else
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+                        <svg class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
+                        در انتظار بررسی مدیریت
+                    </span>
+                @endif
+            </div>
+
+            @if($property->approval_status === 'rejected' && $property->rejection_reason)
+                <div class="p-3.5 rounded-xl bg-rose-50/70 border border-rose-100 dark:bg-rose-950/20 dark:border-rose-900/40 text-xs">
+                    <div class="font-bold text-rose-800 dark:text-rose-300 mb-1 flex items-center gap-1.5">
+                        <svg class="w-4 h-4 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                        علت عدم تأیید:
+                    </div>
+                    <p class="text-rose-700 dark:text-rose-200 leading-relaxed font-sans">{{ $property->rejection_reason }}</p>
+                </div>
+            @endif
+
+            <p class="text-[11px] text-gray-500 dark:text-gray-400 leading-relaxed font-sans">
+                توجه: هرگونه تغییر در مشخصات اقامتگاه یا نرخ‌ها، تا زمان بازبینی مجدد توسط مدیریت در صف بررسی قرار خواهد گرفت.
+            </p>
+        </div>
+    </div>
+    @endif
 
 </div>

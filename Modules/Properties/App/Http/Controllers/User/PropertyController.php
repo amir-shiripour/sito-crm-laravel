@@ -76,6 +76,9 @@ class PropertyController extends Controller
         if ($request->filled('publication_status')) {
             $query->where('publication_status', $request->publication_status);
         }
+        if ($request->filled('approval_status')) {
+            $query->where('approval_status', $request->approval_status);
+        }
         if ($request->filled('agent_id') && $canViewAll) {
             $query->where('agent_id', $request->agent_id);
         }
@@ -154,7 +157,13 @@ class PropertyController extends Controller
             }
         }
 
-        return view('properties::user.index', compact('properties', 'statuses', 'agents', 'categories', 'buildings', 'propertyAttributes'));
+        // شمارش اقامتگاه‌های در انتظار بررسی
+        $pendingReviewCount = 0;
+        if (\Modules\Properties\Services\PropertyRevisionService::canManagePublication($user)) {
+            $pendingReviewCount = Property::where('approval_status', 'pending_review')->count();
+        }
+
+        return view('properties::user.index', compact('properties', 'statuses', 'agents', 'categories', 'buildings', 'propertyAttributes', 'pendingReviewCount'));
     }
 
     public function create()
@@ -273,10 +282,20 @@ class PropertyController extends Controller
             $data['status_id'] = PropertyStatus::where('is_default', true)->first()?->id ?? PropertyStatus::where('is_active', true)->orderBy('sort_order')->first()?->id;
         }
 
+        // بررسی دسترسی به فیلدهای حساس و مدیریت انتشار
+        $canManagePublication = \Modules\Properties\Services\PropertyRevisionService::canManagePublication(auth()->user());
+        if (!$canManagePublication) {
+            // مقادیر اجباری و ایمن برای کاربر بدون دسترسی مدیریتی
+            $data['registered_at'] = now()->format('Y-m-d');
+            $data['status_id'] = PropertyStatus::where('is_default', true)->first()?->id ?? PropertyStatus::where('is_active', true)->orderBy('sort_order')->first()?->id;
+            $data['publication_status'] = 'draft';
+            $data['confidential_notes'] = null;
+        }
+
         $metaRequest = $request->input('meta', []);
         $processedMeta = [
-            'is_special' => $request->has('is_special'),
-            'show_on_site' => $request->has('show_on_site'),
+            'is_special' => $canManagePublication ? $request->has('is_special') : false,
+            'show_on_site' => $canManagePublication ? $request->has('show_on_site') : true,
         ];
         if (isset($metaRequest['details'])) foreach ($metaRequest['details'] as $k => $v) if (!empty($k)) $processedMeta['details'][$k] = $v;
         if (isset($metaRequest['features'])) foreach ($metaRequest['features'] as $f) {
@@ -306,10 +325,9 @@ class PropertyController extends Controller
         }
 
         // وضعیت تایید برای اقامتگاه روزانه
-        $isAdmin = auth()->user()->hasRole(['super-admin', 'admin']);
         $autoApproveProperty = (bool) PropertySetting::get('rental_property_auto_approve', 0);
         if ($data['listing_type'] === 'daily_rental') {
-            $data['approval_status'] = ($isAdmin || $autoApproveProperty) ? 'approved' : 'pending_review';
+            $data['approval_status'] = ($canManagePublication || $autoApproveProperty) ? 'approved' : 'pending_review';
         } else {
             $data['approval_status'] = 'approved';
         }
@@ -362,6 +380,12 @@ class PropertyController extends Controller
             abort(403);
         }
 
+        // برای اقامتگاه‌ها، مرحله قیمت‌گذاری سنتی اعمال نشده و مستقیماً به تنظیمات اقامتگاه هدایت می‌شود
+        if ($property->listing_type === 'daily_rental') {
+            return redirect()->route('user.properties.rental.config', $property)
+                ->with('info', 'نرخ‌گذاری و شرایط مالی این اقامتگاه از طریق بخش تنظیمات و تقویم اقامتگاه مدیریت می‌شود.');
+        }
+
         $currency = PropertySetting::get('currency', 'toman');
         return view('properties::user.pricing', compact('property', 'currency'));
     }
@@ -375,6 +399,10 @@ class PropertyController extends Controller
             !$user->can('properties.edit.all') &&
             !($user->can('properties.edit') && ($isOwnerOrAgent || $user->can('properties.manage')))) {
             abort(403);
+        }
+
+        if ($property->listing_type === 'daily_rental') {
+            return redirect()->route('user.properties.rental.config', $property);
         }
 
         // تمیز کردن فیلدهای قیمت و جلوگیری از خطای Unable to cast value to a decimal
@@ -764,6 +792,18 @@ class PropertyController extends Controller
             }
         }
 
+        $canManagePublication = \Modules\Properties\Services\PropertyRevisionService::canManagePublication($user);
+        if (!$canManagePublication) {
+            // سلب اختیار از تغییر فیلدهای حساس توسط میزبان
+            unset($data['registered_at']);
+            unset($data['status_id']);
+            unset($data['publication_status']);
+            unset($data['confidential_notes']);
+            // حفظ تنظیمات قبلی آگهی ویژه و نمایش در سایت
+            $processedMeta['is_special'] = (bool) ($property->meta['is_special'] ?? false);
+            $processedMeta['show_on_site'] = (bool) ($property->meta['show_on_site'] ?? true);
+        }
+
         $data['meta'] = $processedMeta;
 
         $isAdmin = $user->hasRole(['super-admin', 'admin']);
@@ -779,7 +819,46 @@ class PropertyController extends Controller
             unset($data['agent_id']);
         }
 
-        $property->update($data);
+        // بررسی و ثبت تغییرات بازبینی در صورت ویرایش توسط میزبان (یا اگر دسترسی مدیریت انتشار ندارد)
+        $isHostEdit = !$canManagePublication && ($property->listing_type === 'daily_rental' || $property->host_id);
+        $dirtyAttributes = [];
+        $addedGalleryPaths = [];
+
+        // پر کردن موقت مدل برای سنجش getDirty
+        $property->fill($data);
+        $dirtyAttributes = $property->getDirty();
+
+        if ($request->hasFile('gallery_images')) {
+            $currentCount = $property->images()->count();
+            $maxGallery = PropertySetting::get('max_gallery_images', 10);
+            if ($currentCount + count($request->file('gallery_images')) <= $maxGallery) {
+                foreach ($request->file('gallery_images') as $idx => $img) {
+                    if ($img->isValid()) {
+                        $uploadedPath = $this->uploadFile($img, 'properties/gallery');
+                        PropertyImage::create([
+                            'property_id' => $property->id,
+                            'path' => $uploadedPath,
+                            'sort_order' => $currentCount + $idx,
+                        ]);
+                        $addedGalleryPaths[] = $uploadedPath;
+                    }
+                }
+            } else {
+                return back()->with('error', "حداکثر تعداد مجاز برای گالری تصاویر {$maxGallery} عدد می‌باشد.");
+            }
+        }
+
+        if ($isHostEdit) {
+            $revisionService = app(\Modules\Properties\Services\PropertyRevisionService::class);
+            $revision = $revisionService->recordPropertyChanges($property, $dirtyAttributes, $user, [
+                'gallery_added' => $addedGalleryPaths,
+            ]);
+
+            // انتقال وضعیت اقامتگاه به در انتظار بررسی مجدد
+            $property->approval_status = 'pending_review';
+        }
+
+        $property->save();
 
         if (isset($data['attributes'])) {
             foreach ($data['attributes'] as $attributeId => $value) {
@@ -809,22 +888,8 @@ class PropertyController extends Controller
             }
         }
 
-        if ($request->hasFile('gallery_images')) {
-            $currentCount = $property->images()->count();
-            $maxGallery = PropertySetting::get('max_gallery_images', 10);
-            if ($currentCount + count($request->file('gallery_images')) <= $maxGallery) {
-                foreach ($request->file('gallery_images') as $idx => $img) {
-                    if ($img->isValid()) {
-                        PropertyImage::create([
-                            'property_id' => $property->id,
-                            'path' => $this->uploadFile($img, 'properties/gallery'),
-                            'sort_order' => $currentCount + $idx,
-                        ]);
-                    }
-                }
-            } else {
-                return back()->with('error', "حداکثر تعداد مجاز برای گالری تصاویر {$maxGallery} عدد می‌باشد.");
-            }
+        if ($isHostEdit) {
+            return back()->with('success', 'تغییرات اقامتگاه ثبت شد و پس از بررسی و تأیید مدیریت در سایت اعمال خواهد شد.');
         }
 
         return back()->with('success', 'تغییرات ملک با موفقیت ذخیره شد.');

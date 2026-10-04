@@ -239,7 +239,8 @@
                         </div>
                     </div>
 
-                    {{-- کارت تنظیمات انتشار --}}
+                    {{-- کارت تنظیمات انتشار (تنها برای مدیران پلتفرم و کاربران مجاز) --}}
+                    @if(\Modules\Properties\Services\PropertyRevisionService::canManagePublication(auth()->user()))
                     <div class="{{ $cardClass }} p-5">
                         <h3 class="text-sm font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
                             <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
@@ -306,6 +307,18 @@
                             </div>
                         </div>
                     </div>
+                    @else
+                    {{-- برای میزبانان و کاربران عادی: اطلاع‌رسانی فرآیند بازبینی --}}
+                    <div class="{{ $cardClass }} p-5 border border-indigo-100 dark:border-indigo-900/30 bg-indigo-50/40 dark:bg-indigo-950/20">
+                        <div class="flex items-center gap-2 mb-3">
+                            <span class="w-2 h-2 rounded-full bg-indigo-500"></span>
+                            <h3 class="text-sm font-bold text-gray-900 dark:text-white">فرآیند تأیید و انتشار</h3>
+                        </div>
+                        <p class="text-xs text-gray-600 dark:text-gray-300 leading-relaxed font-sans">
+                            اقامتگاه پس از تکمیل مشخصات و قیمت‌گذاری، جهت حفظ کیفیت توسط تیم پشتیبانی بررسی و پس از تأیید در سایت منتشر خواهد شد.
+                        </p>
+                    </div>
+                    @endif
 
                 </div>
 
