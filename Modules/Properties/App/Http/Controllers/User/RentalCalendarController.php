@@ -33,6 +33,11 @@ class RentalCalendarController extends Controller
             abort(403, 'شما دسترسی لازم برای تقویم این اقامتگاه را ندارید.');
         }
 
+        // اگر کاربر میزبان این اقامتگاه است، وضعیت حسابش بررسی شود
+        if ($isHost && $property->host && $property->host->status !== 'active') {
+            abort(403, 'حساب میزبانی شما هنوز فعال نشده است. مدیریت تقویم و قیمت‌گذاری پس از تأیید حساب توسط مدیریت امکان‌پذیر خواهد بود.');
+        }
+
         return true;
     }
 

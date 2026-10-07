@@ -42,6 +42,16 @@ class RegistrationRequestController extends Controller
             }
         }
 
+        // اگر نقش کاربر میزبان اقامتگاه است، پرونده میزبانی را متصل یا ایجاد کن
+        if ($registrationRequest->role && $registrationRequest->role->name === 'property_host') {
+            if (class_exists(\Modules\Properties\Services\HostLifecycleService::class)) {
+                \Modules\Properties\Services\HostLifecycleService::createOrUpdateHostForUser($user, [
+                    'phone'        => $user->mobile,
+                    'display_name' => $user->name,
+                ]);
+            }
+        }
+
         $registrationRequest->update([
             'status' => 'approved',
             'reviewed_by' => Auth::id(),

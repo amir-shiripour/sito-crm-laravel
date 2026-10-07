@@ -1129,7 +1129,7 @@
                             </svg>
                             <div class="flex-1 min-w-0">
                                 <strong class="block mb-2 font-black text-lg tracking-tight text-amber-900 dark:text-amber-200">یادداشت فاکتور</strong>
-                                <div class="font-normal text-sm sm:text-base leading-loose text-slate-700 dark:text-slate-200 whitespace-pre-line break-words">{!! nl2br(e(trim($invoice->notes))) !!}</div>
+                                <div class="font-normal text-sm sm:text-base leading-relaxed text-slate-700 dark:text-slate-200 break-words">{!! nl2br(e(trim($invoice->notes))) !!}</div>
                             </div>
                         </div>
                     </div>

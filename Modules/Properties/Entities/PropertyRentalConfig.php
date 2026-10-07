@@ -50,7 +50,17 @@ class PropertyRentalConfig extends Model
         if (empty($value)) {
             return ['4', '5'];
         }
-        $decoded = is_string($value) ? json_decode($value, true) : $value;
+
+        $decoded = $value;
+        while (is_string($decoded)) {
+            $parsed = json_decode($decoded, true);
+            if (json_last_error() === JSON_ERROR_NONE) {
+                $decoded = $parsed;
+            } else {
+                break;
+            }
+        }
+
         return !empty($decoded) && is_array($decoded) ? array_map('strval', $decoded) : ['4', '5'];
     }
 

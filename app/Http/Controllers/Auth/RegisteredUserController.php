@@ -13,6 +13,9 @@ use Illuminate\Validation\Rules;
 use Spatie\Permission\Models\Role;
 use Modules\Settings\Entities\Setting;
 
+use App\Services\RegistrationOtpService;
+use Modules\Properties\Services\HostLifecycleService;
+
 class RegisteredUserController extends Controller
 {
     private function getRegistrationSettings()
@@ -22,6 +25,42 @@ class RegisteredUserController extends Controller
             return json_decode($setting->value, true) ?: [];
         }
         return [];
+    }
+
+    /**
+     * Send OTP for mobile verification during registration.
+     */
+    public function sendOtp(Request $request)
+    {
+        $request->validate([
+            'mobile' => ['required', 'string'],
+        ]);
+
+        $result = RegistrationOtpService::sendOtp($request->mobile);
+
+        return response()->json($result, $result['success'] ? 200 : 422);
+    }
+
+    /**
+     * Verify OTP code and save verified status in session.
+     */
+    public function verifyOtp(Request $request)
+    {
+        $request->validate([
+            'mobile' => ['required', 'string'],
+            'code'   => ['required', 'string'],
+        ]);
+
+        $result = RegistrationOtpService::verifyOtp($request->mobile, $request->code);
+
+        if ($result['success']) {
+            session([
+                'verified_register_mobile' => $result['phone'],
+                'verified_register_at'     => now()->timestamp,
+            ]);
+        }
+
+        return response()->json($result, $result['success'] ? 200 : 422);
     }
 
     /**
@@ -67,6 +106,19 @@ class RegisteredUserController extends Controller
     {
         $settings = $this->getRegistrationSettings();
 
+        $isHostRole = ($request->input('role') === 'property_host');
+
+        // نرمال‌سازی شماره موبایل
+        $normalizedMobile = RegistrationOtpService::normalizePhoneNumber($request->input('mobile'));
+        if (!empty($normalizedMobile)) {
+            $request->merge(['mobile' => $normalizedMobile]);
+        }
+
+        // اگر نقش میزبان است و ایمیل پر نشده، یک ایمیل یکتا و معتبر بر اساس شماره موبایل می‌سازیم
+        if ($isHostRole && empty($request->input('email')) && !empty($normalizedMobile)) {
+            $request->merge(['email' => $normalizedMobile . '@host.local']);
+        }
+
         $request->validate([
             'role' => ['required', 'string', 'exists:roles,name'],
             'name' => ['required', 'string', 'max:255'],
@@ -82,7 +134,8 @@ class RegisteredUserController extends Controller
                 }
             ],
             'mobile' => [
-                'nullable', 'string', 'max:20',
+                $isHostRole ? 'required' : 'nullable',
+                'string', 'max:20',
                 'unique:'.User::class,
                 // ولیدیشن کاستوم: بررسی تکراری بودن موبایل در درخواست‌های در انتظار بررسی
                 function ($attribute, $value, $fail) {
@@ -97,9 +150,10 @@ class RegisteredUserController extends Controller
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
         ], [
             // ترجمه خطاهای متداول مستقیما در کنترلر برای جلوگیری از مشکل زبان سیستم
-            'email.unique' => 'این ایمیل قبلاً در سیستم ثبت شده است و امکان ثبت‌نام مجدد با آن وجود ندارد.',
-            'mobile.unique' => 'این شماره موبایل قبلاً در سیستم ثبت شده است.',
-            'email.required' => 'وارد کردن ایمیل الزامی است.',
+            'email.unique' => 'این ایمیل یا شماره موبایل قبلاً در سیستم ثبت شده است.',
+            'mobile.unique' => 'این شماره موبایل قبلاً در سیستم ثبت شده است و حساب کاربری با آن وجود دارد.',
+            'mobile.required' => 'وارد کردن شماره موبایل الزامی است.',
+            'email.required' => 'وارد کردن ایمیل یا شماره موبایل الزامی است.',
             'email.email' => 'فرمت ایمیل نامعتبر است.',
             'name.required' => 'نام و نام خانوادگی خود را وارد کنید.',
             'password.required' => 'رمز عبور الزامی است.',
@@ -116,46 +170,37 @@ class RegisteredUserController extends Controller
         // اعتبارسنجی فیلدهای سفارشی
         $customFields = CustomUserField::where('role_name', $role->name)->get();
         $customFieldRules = [];
-        $customFieldAttributes = []; // آرایه برای پاس دادن لیبل فارسی فیلدها
-        $customFieldMessages = []; // آرایه برای پیام‌های خطای فیلدهای سفارشی
+        $customFieldAttributes = [];
+        $customFieldMessages = [];
 
         foreach ($customFields as $field) {
             if ($field->is_required) {
                 $customFieldRules['custom_fields.'.$field->field_name] = ['required'];
-                // ایجاد پیام فارسی داینامیک با استفاده از لیبل همان فیلد
                 $fieldLabel = $field->label ?? $field->field_name;
                 $customFieldMessages['custom_fields.'.$field->field_name.'.required'] = "تکمیل فیلد «{$fieldLabel}» الزامی است.";
             } else {
                 $customFieldRules['custom_fields.'.$field->field_name] = ['nullable'];
             }
 
-            // اگر رول خاصی برای فیلد تعریف شده است (مثلا mimes:jpg,png)، آن را اضافه کنید
             if ($field->rules) {
                 $customFieldRules['custom_fields.'.$field->field_name] = array_merge($customFieldRules['custom_fields.'.$field->field_name], $field->rules);
             }
 
-            // اختصاص نام فارسی فیلد به اتریبیوت لاراول برای نمایش در ارورهای استاندارد
             $customFieldAttributes['custom_fields.'.$field->field_name] = $field->label ?? $field->field_name;
         }
 
         if (!empty($customFieldRules)) {
-            // پاس دادن پیام‌ها و اتریبیوت‌ها به صورت دستی برای جلوگیری از مشکل زبان سیستم
             $request->validate($customFieldRules, $customFieldMessages, $customFieldAttributes);
         }
 
-        // =========================================================================
         // پردازش فیلدهای سفارشی و آپلود فایل‌ها
-        // =========================================================================
         $processedCustomFields = [];
         if ($request->has('custom_fields')) {
             foreach ($request->custom_fields as $fieldName => $value) {
-                // اگر مقدار ارسال شده یک فایل آپلودی باشد
                 if ($request->hasFile("custom_fields.$fieldName")) {
-                    // ذخیره فایل در پوشه storage/app/public/uploads/custom_fields
                     $filePath = $request->file("custom_fields.$fieldName")->store('uploads/custom_fields', 'public');
                     $processedCustomFields[$fieldName] = $filePath;
                 } else {
-                    // اگر متن ساده، عدد یا آرایه باشد
                     $processedCustomFields[$fieldName] = $value;
                 }
             }
@@ -174,7 +219,7 @@ class RegisteredUserController extends Controller
 
             $user->assignRole($role);
 
-            // ذخیره مقادیر فیلدهای سفارشی (از آرایه پردازش شده استفاده میکنیم)
+            // ذخیره مقادیر فیلدهای سفارشی
             if (!empty($processedCustomFields)) {
                 foreach ($processedCustomFields as $fieldName => $value) {
                     $user->customValues()->create([
@@ -182,6 +227,22 @@ class RegisteredUserController extends Controller
                         'field_value' => is_array($value) ? json_encode($value) : $value,
                     ]);
                 }
+            }
+
+            // پاکسازی سشن اعتبارسنجی
+            session()->forget(['verified_register_mobile', 'verified_register_at']);
+
+            // ایجاد خودکار رکورد میزبانی در صورت نقش میزبان
+            if ($isHostRole) {
+                HostLifecycleService::createOrUpdateHostForUser($user, [
+                    'phone'        => $user->mobile,
+                    'display_name' => $user->name,
+                ]);
+
+                Auth::login($user);
+
+                return redirect()->route('user.properties.hosts.dashboard')
+                    ->with('success', 'به جمع میزبانان ما خوش آمدید! حساب کاربری شما با موفقیت ایجاد شد.');
             }
 
             Auth::login($user);
@@ -195,16 +256,15 @@ class RegisteredUserController extends Controller
                 }
             })->first();
 
-            // برای جلوگیری از ارور دیتابیس (SQL 1062) اگر رکوردی از قبل رد شده بود، همان را آپدیت می‌کنیم
             if ($existingRequest) {
                 $existingRequest->update([
                     'role_id' => $role->id,
                     'name' => $request->name,
                     'mobile' => $request->mobile,
                     'password' => Hash::make($request->password),
-                    'custom_fields' => $processedCustomFields, // استفاده از دیتای حاوی مسیر فایل
+                    'custom_fields' => $processedCustomFields,
                     'status' => 'pending',
-                    'rejection_reason' => null, // ریست کردن دلیل رد قبلی
+                    'rejection_reason' => null,
                 ]);
             } else {
                 RegistrationRequest::create([
@@ -213,12 +273,13 @@ class RegisteredUserController extends Controller
                     'email' => $request->email,
                     'mobile' => $request->mobile,
                     'password' => Hash::make($request->password),
-                    'custom_fields' => $processedCustomFields, // استفاده از دیتای حاوی مسیر فایل
+                    'custom_fields' => $processedCustomFields,
                     'status' => 'pending',
                 ]);
             }
 
-            // پیام فارسی به کاربر نمایش داده می‌شود (متن‌های Flash Session نیازی به فایل زبان ندارند مگر اینکه چندزبانه باشید)
+            session()->forget(['verified_register_mobile', 'verified_register_at']);
+
             return redirect('/login')->with('status', 'درخواست ثبت‌نام شما با موفقیت ارسال شد و در انتظار بررسی مدیریت است.');
         }
     }

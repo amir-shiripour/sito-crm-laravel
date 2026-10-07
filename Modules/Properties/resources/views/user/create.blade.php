@@ -35,6 +35,9 @@
     // تنظیمات نقشه
     $mapService = \Modules\Properties\Entities\PropertySetting::get('map_service', 'leaflet');
     $mapIrApiKey = \Modules\Properties\Entities\PropertySetting::get('map_ir_api_key', '');
+
+    // بررسی فعال بودن انحصاری حالت اجاره روزانه
+    $rentalModeEnabled = (bool) \Modules\Properties\Entities\PropertySetting::get('rental_mode_enabled', 0);
 @endphp
 
 @section('content')
@@ -309,6 +312,7 @@
                     </div>
                     @else
                     {{-- برای میزبانان و کاربران عادی: اطلاع‌رسانی فرآیند بازبینی --}}
+                    <input type="hidden" name="publication_status" value="draft">
                     <div class="{{ $cardClass }} p-5 border border-indigo-100 dark:border-indigo-900/30 bg-indigo-50/40 dark:bg-indigo-950/20">
                         <div class="flex items-center gap-2 mb-3">
                             <span class="w-2 h-2 rounded-full bg-indigo-500"></span>
@@ -334,32 +338,36 @@
                             </div>
                             <div x-show="listingType === 'daily_rental'" class="flex items-center gap-2">
                                 <span class="text-[11px] font-bold px-2.5 py-1 rounded-xl bg-teal-50 text-teal-700 dark:bg-teal-950/40 dark:text-teal-300 font-sans border border-teal-200 dark:border-teal-800">نوع: اجاره روزانه / اقامتگاه</span>
-                                @if(request('type') !== 'daily_rental')
+                                @if(!$rentalModeEnabled && request('type') !== 'daily_rental')
                                     <button type="button" @click="listingType = 'sale'" class="text-[11px] text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 underline font-sans transition">تغییر به سایر انواع</button>
                                 @endif
                             </div>
                         </div>
 
                         <div class="space-y-6">
+                            @if($rentalModeEnabled)
+                                <input type="hidden" name="listing_type" value="daily_rental">
+                            @endif
+
                             <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
-                                <div :class="listingType === 'daily_rental' ? 'md:col-span-4' : 'md:col-span-3'">
+                                <div :class="(listingType === 'daily_rental' || {{ $rentalModeEnabled ? 'true' : 'false' }}) ? 'md:col-span-4' : 'md:col-span-3'">
                                     <label class="{{ $labelClass }}">
                                         <span x-text="listingType === 'daily_rental' ? 'عنوان اقامتگاه' : 'عنوان ملک'">عنوان ملک</span>
                                         <span class="text-red-500">*</span>
                                     </label>
                                     <input type="text" name="title" x-model="title" class="{{ $inputClass }}" required :placeholder="listingType === 'daily_rental' ? 'مثلاً: ویلای استخردار لوکس شب‌نشین (متل قو)' : 'مثلاً: آپارتمان ۱۲۰ متری نوساز در خیابان اصلی'">
                                 </div>
-                                <div x-show="listingType !== 'daily_rental'">
-                                    <label class="{{ $labelClass }}">نوع فایل</label>
-                                    <select name="listing_type" x-model="listingType" class="{{ $selectClass }}">
-                                        <option value="sale">فروش</option>
-                                        <option value="presale">پیش‌فروش</option>
-                                        <option value="rent">رهن و اجاره</option>
-                                        @if(\Modules\Properties\Entities\PropertySetting::get('rental_mode_enabled'))
+                                @if(!$rentalModeEnabled)
+                                    <div x-show="listingType !== 'daily_rental'">
+                                        <label class="{{ $labelClass }}">نوع فایل</label>
+                                        <select name="listing_type" x-model="listingType" class="{{ $selectClass }}">
+                                            <option value="sale">فروش</option>
+                                            <option value="presale">پیش‌فروش</option>
+                                            <option value="rent">رهن و اجاره</option>
                                             <option value="daily_rental">اجاره روزانه / اقامتگاه</option>
-                                        @endif
-                                    </select>
-                                </div>
+                                        </select>
+                                    </div>
+                                @endif
                             </div>
 
                             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -1032,7 +1040,7 @@
 
         function propertyForm() {
             return {
-                listingType: '{{ old('listing_type', request('type', 'sale')) }}',
+                listingType: '{{ $rentalModeEnabled ? 'daily_rental' : old('listing_type', request('type', 'sale')) }}',
                 propertyType: 'apartment',
                 documentType: '',
                 usageType: '',

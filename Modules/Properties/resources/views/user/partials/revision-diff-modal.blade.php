@@ -22,9 +22,10 @@
                     </span>
                     <div>
                         <h3 class="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                            <span>بررسی و مقایسه تغییرات ویرایش اقامتگاه</span>
-                            <span class="text-[11px] px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60 font-bold">
-                                نسخه جدید
+                            <span>بررسی و مقایسه تغییرات اقامتگاه</span>
+                            <span class="text-[11px] px-2.5 py-0.5 rounded-full font-bold"
+                                  :class="revision.status === 'pending' ? 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60' : 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60'"
+                                  x-text="revision.status === 'pending' ? 'در انتظار بررسی' : 'تأیید شده'">
                             </span>
                         </h3>
                         <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
@@ -50,7 +51,7 @@
                     {{-- هشدار راهنما --}}
                     <div class="p-4 rounded-2xl bg-indigo-50/60 dark:bg-indigo-950/30 border border-indigo-100 dark:border-indigo-900/40 flex items-start gap-3 mb-5 text-xs text-indigo-900 dark:text-indigo-200 leading-relaxed">
                         <svg class="w-5 h-5 text-indigo-600 dark:text-indigo-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                        <span>تمامی آیتم‌هایی که توسط میزبان دستخوش تغییر شده‌اند در جدول زیر قبل و بعد از ویرایش به صورت تفکیک‌شده نمایش داده شده‌اند. در صورت تأیید، مقادیر جدید در سایت فعال می‌گردند.</span>
+                        <span>تمامی آیتم‌هایی که دستخوش تغییر شده‌اند در جدول زیر قبل و بعد از ویرایش به صورت تفکیک‌شده نمایش داده شده‌اند. در صورت تأیید، مقادیر جدید در سایت فعال می‌گردند.</span>
                     </div>
 
                     {{-- جدول مقایسه تغییرات --}}
@@ -128,21 +129,34 @@
                 </button>
 
                 <div class="flex items-center gap-3" x-show="!isLoading">
-                    {{-- دکمه رد درخواست --}}
-                    <button type="button"
-                            @click="handleRejectAction()"
-                            class="px-5 py-2.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 dark:bg-rose-950/50 dark:hover:bg-rose-900/60 dark:text-rose-300 border border-rose-200 dark:border-rose-800 text-xs font-bold transition flex items-center gap-1.5 shadow-sm">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-                        <span x-text="showRejectReasonInput ? 'تأیید و ثبت رد ویرایش' : 'رد ویرایش'"></span>
-                    </button>
+                    {{-- در صورتی که نسخه قبلاً تأیید شده است --}}
+                    <template x-if="revision.status !== 'pending'">
+                        <span class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60 text-xs font-bold font-sans">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+                            این نسخه قبلاً تأیید و اعمال شده است
+                        </span>
+                    </template>
 
-                    {{-- دکمه تأیید درخواست --}}
-                    <button type="button"
-                            @click="handleApproveAction()"
-                            class="px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-lg shadow-emerald-500/20">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                        <span>تأیید و اعمال تغییرات در سایت</span>
-                    </button>
+                    {{-- دکمه‌های تأیید و رد در صورتی که نسخه در انتظار بررسی باشد --}}
+                    <template x-if="revision.status === 'pending'">
+                        <div class="flex items-center gap-3">
+                            {{-- دکمه رد درخواست --}}
+                            <button type="button"
+                                    @click="handleRejectAction()"
+                                    class="px-5 py-2.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 dark:bg-rose-950/50 dark:hover:bg-rose-900/60 dark:text-rose-300 border border-rose-200 dark:border-rose-800 text-xs font-bold transition flex items-center gap-1.5 shadow-sm">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                <span x-text="showRejectReasonInput ? 'تأیید و ثبت رد ویرایش' : 'رد ویرایش'"></span>
+                            </button>
+
+                            {{-- دکمه تأیید درخواست --}}
+                            <button type="button"
+                                    @click="handleApproveAction()"
+                                    class="px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-lg shadow-emerald-500/20">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                <span>تأیید و اعمال تغییرات در سایت</span>
+                            </button>
+                        </div>
+                    </template>
                 </div>
             </div>
 
@@ -163,6 +177,7 @@
             isLoading: false,
             propertyId: null,
             reviewUrl: null,
+            isPending: true,
             revision: {},
             showRejectReasonInput: false,
             rejectionReason: '',
@@ -170,12 +185,15 @@
             openModal(detail) {
                 this.propertyId = detail.propertyId;
                 this.reviewUrl = detail.reviewUrl;
+                this.isPending = detail.isPending !== false;
                 this.isOpen = true;
                 this.isLoading = true;
                 this.showRejectReasonInput = false;
                 this.rejectionReason = '';
 
-                fetch(`/user/properties/${this.propertyId}/rental/pending-revision`)
+                const fetchUrl = `/user/properties/${this.propertyId}/rental/pending-revision` + (this.isPending ? '' : '?latest=1');
+
+                fetch(fetchUrl)
                     .then(res => res.json())
                     .then(data => {
                         this.isLoading = false;

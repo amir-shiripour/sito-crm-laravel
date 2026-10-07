@@ -12,6 +12,7 @@ use Modules\Properties\Entities\PropertyOwner;
 use Modules\Properties\Entities\PropertyStatus;
 use Modules\Properties\Entities\PropertyCategory;
 use Modules\Properties\Entities\PropertyBuilding;
+use Modules\Properties\Entities\PropertyRentalConfig;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Storage;
@@ -168,6 +169,20 @@ class PropertyController extends Controller
 
     public function create()
     {
+        $user = auth()->user();
+        $isAdmin = $user->hasRole(['super-admin', 'admin']) || $user->can('properties.manage');
+        $currentUserHost = \Modules\Properties\Entities\PropertyHost::where('user_id', $user->id)->first();
+
+        // بررسی محدودیت میزبان در وضعیت در انتظار تایید یا معلق
+        if (!$isAdmin && $currentUserHost && $currentUserHost->status !== 'active') {
+            $pendingCanCreate = (bool) PropertySetting::get('rental_pending_host_can_create', 0);
+            if (!$pendingCanCreate) {
+                $statusText = $currentUserHost->status === 'suspended' ? 'معلق است' : 'در انتظار تایید مدیریت است';
+                return redirect()->route('user.properties.hosts.dashboard')
+                    ->with('error', "حساب کاربری میزبانی شما {$statusText}. تا زمان بررسی و فعال‌سازی حساب توسط مدیریت، امکان ثبت اقامتگاه جدید وجود ندارد.");
+            }
+        }
+
         $maxGalleryImages = PropertySetting::get('max_gallery_images', 10);
         $maxFileSize = PropertySetting::get('max_file_size', 10240);
         $allowedFileTypes = PropertySetting::get('allowed_file_types', 'jpeg,png,jpg,gif');
@@ -179,13 +194,25 @@ class PropertyController extends Controller
         $agents = User::role($agentRoles)->get();
         $owners = PropertyOwner::latest()->get();
         $hosts = \Modules\Properties\Entities\PropertyHost::where('status', 'active')->latest()->get();
-        $currentUserHost = \Modules\Properties\Entities\PropertyHost::where('user_id', auth()->id())->first();
 
         return view('properties::user.create', compact('maxGalleryImages', 'maxFileSize', 'allowedFileTypes', 'maxVideoSize', 'allowedVideoTypes', 'statuses', 'agents', 'owners', 'hosts', 'currentUserHost'));
     }
 
     public function store(Request $request)
     {
+        $user = auth()->user();
+        $isAdmin = $user->hasRole(['super-admin', 'admin']) || $user->can('properties.manage');
+        $currentUserHost = \Modules\Properties\Entities\PropertyHost::where('user_id', $user->id)->first();
+
+        // بررسی محدودیت میزبان در وضعیت در انتظار تایید یا معلق
+        if (!$isAdmin && $currentUserHost && $currentUserHost->status !== 'active') {
+            $pendingCanCreate = (bool) PropertySetting::get('rental_pending_host_can_create', 0);
+            if (!$pendingCanCreate) {
+                $statusText = $currentUserHost->status === 'suspended' ? 'معلق است' : 'در انتظار تایید مدیریت است';
+                return back()->withInput()->with('error', "حساب کاربری میزبانی شما {$statusText}. تا زمان بررسی و فعال‌سازی حساب توسط مدیریت، امکان ثبت اقامتگاه جدید وجود ندارد.");
+            }
+        }
+
         // تبدیل تاریخ جلالی
         if ($request->has('delivery_date') && !empty($request->delivery_date)) {
             try { $request->merge(['delivery_date' => Jalalian::fromFormat('Y/m/d', $request->delivery_date)->toCarbon()->format('Y-m-d')]); } catch (\Exception $e) { $request->merge(['delivery_date' => null]); }
@@ -211,7 +238,19 @@ class PropertyController extends Controller
         $allowedVideoTypes = str_replace(' ', '', PropertySetting::get('allowed_video_types', 'mp4,mov,avi'));
         $maxGalleryImages = PropertySetting::get('max_gallery_images', 10);
         $rentalModeEnabled = (bool) PropertySetting::get('rental_mode_enabled', 0);
-        $allowedListingTypes = 'sale,presale,rent' . ($rentalModeEnabled ? ',daily_rental' : '');
+        $allowedListingTypes = $rentalModeEnabled ? 'daily_rental' : 'sale,presale,rent';
+
+        if ($rentalModeEnabled) {
+            $request->merge(['listing_type' => 'daily_rental']);
+        }
+
+        $canManagePublication = \Modules\Properties\Services\PropertyRevisionService::canManagePublication(auth()->user());
+        if (!$canManagePublication) {
+            $request->merge([
+                'publication_status' => 'draft',
+                'registered_at' => Jalalian::now()->format('Y/m/d'),
+            ]);
+        }
 
         $validated = $request->validate([
             'title' => 'required|string|max:255',
@@ -326,8 +365,16 @@ class PropertyController extends Controller
 
         // وضعیت تایید برای اقامتگاه روزانه
         $autoApproveProperty = (bool) PropertySetting::get('rental_property_auto_approve', 0);
+        $isHostActive = $currentUserHost ? ($currentUserHost->status === 'active') : true;
+
         if ($data['listing_type'] === 'daily_rental') {
-            $data['approval_status'] = ($canManagePublication || $autoApproveProperty) ? 'approved' : 'pending_review';
+            // اگر خود میزبان تایید نشده باشد، ملک به هیچ وجه نمی‌تواند به صورت خودکار تایید یا منتشر شود
+            if (!$isHostActive && !$isAdmin) {
+                $data['approval_status'] = 'pending_review';
+                $data['publication_status'] = 'draft';
+            } else {
+                $data['approval_status'] = ($canManagePublication || $autoApproveProperty) ? 'approved' : 'pending_review';
+            }
         } else {
             $data['approval_status'] = 'approved';
         }
@@ -351,7 +398,19 @@ class PropertyController extends Controller
         }
 
         if ($property->listing_type === 'daily_rental') {
-            $redirectUrl = route('user.properties.rental.config', $property);
+            PropertyRentalConfig::firstOrCreate(
+                ['property_id' => $property->id],
+                [
+                    'base_guests' => 2,
+                    'max_guests' => 4,
+                    'check_in_time' => '14:00:00',
+                    'check_out_time' => '12:00:00',
+                    'min_stay_nights' => 1,
+                    'weekend_days' => ['4', '5'],
+                    'instant_booking' => false,
+                ]
+            );
+            $redirectUrl = route('user.properties.rental.config', ['property' => $property, 'wizard' => 1]);
             $successMsg = 'مشخصات اولیه اقامتگاه ثبت شد. لطفاً ظرفیت، قیمت شبانه و قوانین را تنظیم کنید.';
         } else {
             $redirectUrl = route('user.properties.pricing', $property);
@@ -698,6 +757,13 @@ class PropertyController extends Controller
         $rentalModeEnabled = (bool) PropertySetting::get('rental_mode_enabled', 0);
         $allowedListingTypes = 'sale,presale,rent' . ($rentalModeEnabled ? ',daily_rental' : '');
 
+        $canManagePublication = \Modules\Properties\Services\PropertyRevisionService::canManagePublication($user);
+        if (!$canManagePublication) {
+            $request->merge([
+                'publication_status' => $property->publication_status ?? 'draft',
+            ]);
+        }
+
         $data = $request->validate([
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
@@ -819,8 +885,8 @@ class PropertyController extends Controller
             unset($data['agent_id']);
         }
 
-        // بررسی و ثبت تغییرات بازبینی در صورت ویرایش توسط میزبان (یا اگر دسترسی مدیریت انتشار ندارد)
-        $isHostEdit = !$canManagePublication && ($property->listing_type === 'daily_rental' || $property->host_id);
+        // بررسی و ثبت تغییرات بازبینی در صورت ویرایش اقامتگاه روزانه یا ملک میزبان
+        $isRentalOrHost = ($property->listing_type === 'daily_rental' || $property->host_id);
         $dirtyAttributes = [];
         $addedGalleryPaths = [];
 
@@ -848,47 +914,65 @@ class PropertyController extends Controller
             }
         }
 
-        if ($isHostEdit) {
+        // بررسی اینکه آیا ملک در حال حاضر زنده و تاییدشده است و کاربر اجازه انتشار مستقیم ندارد
+        $isLiveProperty = ($property->approval_status === 'approved' || $property->publication_status === 'published');
+        $mustStageForReview = (!$canManagePublication && $isLiveProperty);
+
+        $revision = null;
+        if ($isRentalOrHost) {
             $revisionService = app(\Modules\Properties\Services\PropertyRevisionService::class);
             $revision = $revisionService->recordPropertyChanges($property, $dirtyAttributes, $user, [
                 'gallery_added' => $addedGalleryPaths,
+                'attributes' => $data['attributes'] ?? [],
+                'features' => $data['features'] ?? [],
+                'meta_details' => $processedMeta['details'] ?? [],
+                'meta_features' => $processedMeta['features'] ?? [],
             ]);
 
-            // انتقال وضعیت اقامتگاه به در انتظار بررسی مجدد
-            $property->approval_status = 'pending_review';
+            if ($revision) {
+                // انتقال وضعیت اقامتگاه به در انتظار بررسی مجدد
+                $property->approval_status = 'pending_review';
+            }
         }
 
-        $property->save();
+        if ($mustStageForReview && $revision) {
+            // در صورتی که ملک زنده است و کاربر میزبان است:
+            // تغییرات در PropertyRevision ذخیره شده است. مقادیر زنده و دیتابیس عمومی تا زمان تأیید مدیر تغییر نمی‌کنند.
+            $property->save(); // فقط وضعیت approval_status ذخیره شود
+        } else {
+            // برای مدیران یا در زمان ثبت اولیه اقامتگاه (پیش از اولین تأیید):
+            $property->save();
 
-        if (isset($data['attributes'])) {
-            foreach ($data['attributes'] as $attributeId => $value) {
-                if (!empty($value)) {
-                    PropertyAttributeValue::updateOrCreate(
-                        ['property_id' => $property->id, 'attribute_id' => $attributeId],
-                        ['value' => $value]
-                    );
-                } else {
-                    PropertyAttributeValue::where('property_id', $property->id)
-                        ->where('attribute_id', $attributeId)
-                        ->delete();
+            if (isset($data['attributes'])) {
+                foreach ($data['attributes'] as $attributeId => $value) {
+                    if (!empty($value)) {
+                        PropertyAttributeValue::updateOrCreate(
+                            ['property_id' => $property->id, 'attribute_id' => $attributeId],
+                            ['value' => $value]
+                        );
+                    } else {
+                        PropertyAttributeValue::where('property_id', $property->id)
+                            ->where('attribute_id', $attributeId)
+                            ->delete();
+                    }
+                }
+            }
+
+            $featureIds = PropertyAttribute::where('section', 'features')->pluck('id');
+            PropertyAttributeValue::where('property_id', $property->id)->whereIn('attribute_id', $featureIds)->delete();
+
+            if (isset($data['features'])) {
+                foreach ($data['features'] as $fId) {
+                    PropertyAttributeValue::create([
+                        'property_id' => $property->id,
+                        'attribute_id' => $fId,
+                        'value' => '1',
+                    ]);
                 }
             }
         }
 
-        $featureIds = PropertyAttribute::where('section', 'features')->pluck('id');
-        PropertyAttributeValue::where('property_id', $property->id)->whereIn('attribute_id', $featureIds)->delete();
-
-        if (isset($data['features'])) {
-            foreach ($data['features'] as $fId) {
-                PropertyAttributeValue::create([
-                    'property_id' => $property->id,
-                    'attribute_id' => $fId,
-                    'value' => '1',
-                ]);
-            }
-        }
-
-        if ($isHostEdit) {
+        if ($isRentalOrHost) {
             return back()->with('success', 'تغییرات اقامتگاه ثبت شد و پس از بررسی و تأیید مدیریت در سایت اعمال خواهد شد.');
         }
 

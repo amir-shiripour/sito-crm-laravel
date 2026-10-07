@@ -123,7 +123,24 @@
                                     <p class="text-[11px] text-teal-700 dark:text-teal-400 mt-0.5">تنظیمات ظرفیت، قیمت شبانه، قوانین و تقویم مسدودسازی روزها را مدیریت کنید.</p>
                                 </div>
                             </div>
-                            <div class="flex items-center gap-2">
+                            <div class="flex items-center flex-wrap gap-2">
+                                @if(\Modules\Properties\Services\PropertyRevisionService::canManagePublication(auth()->user()))
+                                    @if($property->pendingRevision()->exists())
+                                        <button type="button"
+                                                @click="$dispatch('open-revision-diff', { propertyId: {{ $property->id }}, reviewUrl: '{{ route('user.properties.rental.review-status', $property) }}', isPending: true })"
+                                                class="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition shadow-sm flex items-center gap-1.5 animate-pulse font-sans">
+                                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                                            بررسی تغییرات (Diff)
+                                        </button>
+                                    @elseif($property->latestRevision()->exists())
+                                        <button type="button"
+                                                @click="$dispatch('open-revision-diff', { propertyId: {{ $property->id }}, reviewUrl: '{{ route('user.properties.rental.review-status', $property) }}', isPending: false })"
+                                                class="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-700/80 dark:hover:bg-slate-700 dark:text-slate-200 text-xs font-bold transition shadow-sm flex items-center gap-1.5 border border-slate-200 dark:border-slate-600 font-sans">
+                                            <svg class="w-4 h-4 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
+                                            آخرین تغییرات
+                                        </button>
+                                    @endif
+                                @endif
                                 <a href="{{ route('user.properties.rental.config', $property) }}" class="px-3.5 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold transition shadow-sm flex items-center gap-1.5">
                                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" /></svg>
                                     مشخصات اقامتگاه
@@ -134,6 +151,10 @@
                                 </a>
                             </div>
                         </div>
+
+                        @if(\Modules\Properties\Services\PropertyRevisionService::canManagePublication(auth()->user()))
+                            @include('properties::user.partials.revision-diff-modal')
+                        @endif
                     @endif
 
                     <div class="{{ $cardClass }}">
