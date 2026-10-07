@@ -95,12 +95,12 @@
 
                         <div class="flex items-center justify-between bg-gray-50 dark:bg-gray-900/50 rounded-xl px-3 py-2">
                             <span class="text-xs text-gray-500 dark:text-gray-400">نام کاربری</span>
-                            <span class="font-mono text-xs text-gray-900 dark:text-gray-100" x-text="username"></span>
+                            <span class="font-sans font-semibold text-xs text-gray-900 dark:text-gray-100" x-text="username"></span>
                         </div>
 
                         <div class="flex items-center justify-between bg-gray-50 dark:bg-gray-900/50 rounded-xl px-3 py-2">
                             <span class="text-xs text-gray-500 dark:text-gray-400">رمز عبور</span>
-                            <span class="font-mono text-xs text-rose-600 dark:text-rose-400" x-text="password"></span>
+                            <span class="font-sans font-semibold text-xs text-rose-600 dark:text-rose-400" x-text="password"></span>
                         </div>
 
                         <button
