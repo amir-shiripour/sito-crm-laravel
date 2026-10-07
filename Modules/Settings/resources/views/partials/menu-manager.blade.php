@@ -768,11 +768,11 @@
                         </div>
                         <div class="flex items-center gap-2">
                             <template x-if="selectedItem && editMode === 'item'">
-                                <span class="text-xs text-indigo-600 dark:text-indigo-400 font-mono"
+                                <span class="text-xs text-indigo-600 dark:text-indigo-400 font-sans"
                                       x-text="selectedItem.menu_key"></span>
                             </template>
                             <template x-if="selectedGroup && editMode === 'group'">
-                                <span class="text-xs text-indigo-600 dark:text-indigo-400 font-mono"
+                                <span class="text-xs text-indigo-600 dark:text-indigo-400 font-sans"
                                       x-text="'گروه: ' + selectedGroup.key"></span>
                             </template>
                         </div>
@@ -798,7 +798,7 @@
                         <template x-if="editMode === 'group' && selectedGroup">
                             <div class="space-y-4">
                                 {{-- بنر وضعیت ارث‌بری گروه --}}
-                                <template x-if="scope !== 'global' && !selectedGroup.has_local_override">
+                                <template x-if="scope !== 'global' && selectedGroup && !selectedGroup.has_local_override">
                                     <div class="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/80 dark:border-emerald-800/40 flex items-start gap-2.5 text-xs text-emerald-800 dark:text-emerald-300">
                                         <svg class="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -855,18 +855,18 @@
                                     <textarea rows="3" x-model="selectedGroup.icon"
                                               @input="markGroupModified(selectedGroup)"
                                               placeholder="<svg ...>...</svg>"
-                                              class="w-full rounded-xl border-gray-200 bg-gray-50 p-2.5 text-xs font-mono text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"></textarea>
+                                              class="w-full rounded-xl border-gray-200 bg-gray-50 p-2.5 text-xs font-sans text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"></textarea>
                                 </div>
 
                                 <div
                                     class="pt-3 border-t border-gray-100 dark:border-gray-700 flex items-center justify-between gap-2">
-                                    <template x-if="scope !== 'global' && selectedGroup.has_local_override">
+                                    <template x-if="scope !== 'global' && selectedGroup && selectedGroup.has_local_override">
                                         <button type="button" @click="inheritGlobalGroup(selectedGroup)"
                                                 class="text-xs text-indigo-600 dark:text-indigo-400 hover:underline font-medium">
                                             بازگشت به تنظیمات عمومی
                                         </button>
                                     </template>
-                                    <template x-if="scope === 'global' || !selectedGroup.has_local_override">
+                                    <template x-if="scope === 'global' || (selectedGroup && !selectedGroup.has_local_override)">
                                         <span class="text-[11px] text-gray-400">تغییرات گروه آماده ذخیره است</span>
                                     </template>
                                     <button type="button" @click="saveAll()" :disabled="isSaving"
@@ -886,7 +886,7 @@
                         <template x-if="editMode === 'item' && selectedItem">
                             <div class="space-y-4">
                                 {{-- بنر وضعیت ارث‌بری آیتم منو --}}
-                                <template x-if="scope !== 'global' && !selectedItem.has_local_override">
+                                <template x-if="scope !== 'global' && selectedItem && !selectedItem.has_local_override">
                                     <div class="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/80 dark:border-emerald-800/40 flex items-start gap-2.5 text-xs text-emerald-800 dark:text-emerald-300">
                                         <svg class="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -926,8 +926,8 @@
                                         <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">ترتیب
                                             جایگاه (Position)</label>
                                         <input type="number" x-model.number="selectedItem.position"
-                                               @input="markItemModified(selectedItem)"
-                                               class="w-full rounded-xl border-gray-200 bg-gray-50 px-3.5 py-2 text-sm text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100">
+                                                @input="markItemModified(selectedItem)"
+                                                class="w-full rounded-xl border-gray-200 bg-gray-50 px-3.5 py-2 text-sm text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100">
                                     </div>
 
                                     <div>
@@ -954,7 +954,7 @@
                                     <textarea rows="3" x-model="selectedItem.icon"
                                               @input="markItemModified(selectedItem)"
                                               placeholder="<svg ...>...</svg>"
-                                              class="w-full rounded-xl border-gray-200 bg-gray-50 p-2.5 text-xs font-mono text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"></textarea>
+                                              class="w-full rounded-xl border-gray-200 bg-gray-50 p-2.5 text-xs font-sans text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"></textarea>
                                 </div>
 
                                 {{-- محدودیت دسترسی در سطح UI --}}
@@ -1017,13 +1017,13 @@
 
                                 <div
                                     class="pt-3 border-t border-gray-100 dark:border-gray-700 flex items-center justify-between gap-2">
-                                    <template x-if="scope !== 'global' && selectedItem.has_local_override">
+                                    <template x-if="scope !== 'global' && selectedItem && selectedItem.has_local_override">
                                         <button type="button" @click="inheritGlobalSingleItem(selectedItem)"
                                                 class="text-xs text-indigo-600 dark:text-indigo-400 hover:underline font-medium">
                                             بازگشت به تنظیمات عمومی
                                         </button>
                                     </template>
-                                    <template x-if="scope === 'global' || !selectedItem.has_local_override">
+                                    <template x-if="scope === 'global' || (selectedItem && !selectedItem.has_local_override)">
                                         <span class="text-[11px] text-gray-400">تغییرات آیتم آماده ذخیره است</span>
                                     </template>
                                     <button type="button" @click="saveAll()" :disabled="isSaving"
@@ -1158,7 +1158,7 @@
                         <label class="block font-bold text-gray-700 dark:text-gray-300 mb-1">شناسه یکتا (Slug
                             انگلیسی)</label>
                         <input type="text" x-model="groupForm.group_key" placeholder="مثال: online_services"
-                               class="w-full rounded-xl border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 font-mono">
+                               class="w-full rounded-xl border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 font-sans">
                     </div>
 
                     <div>

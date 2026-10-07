@@ -165,7 +165,7 @@
             </div>
             <div class="flex items-baseline gap-1">
                 <span class="text-xs font-black text-slate-800 dark:text-slate-200">Version</span>
-                <span class="text-lg font-mono font-black text-indigo-600 dark:text-indigo-400 leading-none">
+                <span class="text-lg font-sans font-black text-indigo-600 dark:text-indigo-400 leading-none">
                     {{ $v ? $v->version_number : '1.0.0' }}
                 </span>
             </div>

@@ -165,7 +165,7 @@ class MenuCustomizationService
                     $item['title'] = $ov['title'];
                 }
                 if (isset($ov['icon']) && trim($ov['icon']) !== '') {
-                    $item['icon'] = $ov['icon'];
+                    $item['icon'] = $this->sanitizeSvg($ov['icon']);
                 }
                 if (isset($ov['position']) && is_numeric($ov['position'])) {
                     $item['position'] = (int) $ov['position'];
@@ -173,6 +173,10 @@ class MenuCustomizationService
                 if (!empty($ov['group'])) {
                     $item['group'] = $ov['group'];
                 }
+            }
+
+            if (!empty($item['icon'])) {
+                $item['icon'] = $this->sanitizeSvg($item['icon']);
             }
 
             $processedItems[] = $item;
@@ -280,7 +284,7 @@ class MenuCustomizationService
         if (isset($groupOverrides['clients'])) {
             $cov = $groupOverrides['clients'];
             if (!empty($cov['title'])) $clientsGroupMeta['title'] = $cov['title'];
-            if (!empty($cov['icon'])) $clientsGroupMeta['icon'] = $cov['icon'];
+            if (!empty($cov['icon'])) $clientsGroupMeta['icon'] = $this->sanitizeSvg($cov['icon']);
             if (!empty($cov['hidden'])) $clientsGroupMeta['hidden'] = true;
             if (isset($cov['position'])) $clientsGroupMeta['position'] = (int) $cov['position'];
         }
@@ -288,7 +292,7 @@ class MenuCustomizationService
         if (isset($groupOverrides['settings'])) {
             $sov = $groupOverrides['settings'];
             if (!empty($sov['title'])) $settingsGroupMeta['title'] = $sov['title'];
-            if (!empty($sov['icon'])) $settingsGroupMeta['icon'] = $sov['icon'];
+            if (!empty($sov['icon'])) $settingsGroupMeta['icon'] = $this->sanitizeSvg($sov['icon']);
             if (!empty($sov['hidden'])) $settingsGroupMeta['hidden'] = true;
             if (isset($sov['position'])) $settingsGroupMeta['position'] = (int) $sov['position'];
         }
@@ -296,7 +300,7 @@ class MenuCustomizationService
         if (isset($groupOverrides['single'])) {
             $siov = $groupOverrides['single'];
             if (!empty($siov['title'])) $singleGroupMeta['title'] = $siov['title'];
-            if (!empty($siov['icon'])) $singleGroupMeta['icon'] = $siov['icon'];
+            if (!empty($siov['icon'])) $singleGroupMeta['icon'] = $this->sanitizeSvg($siov['icon']);
             if (!empty($siov['hidden'])) $singleGroupMeta['hidden'] = true;
             if (isset($siov['position'])) $singleGroupMeta['position'] = (int) $siov['position'];
         }
@@ -313,7 +317,7 @@ class MenuCustomizationService
                     $gData['title'] = $gov['title'];
                 }
                 if (!empty($gov['icon'])) {
-                    $gData['icon'] = $gov['icon'];
+                    $gData['icon'] = $this->sanitizeSvg($gov['icon']);
                 }
                 if (isset($gov['position']) && is_numeric($gov['position'])) {
                     $gData['position'] = (int) $gov['position'];
@@ -545,6 +549,33 @@ class MenuCustomizationService
      */
     public function clearCache(): void
     {
+        Cache::forget('custom_menu_system_enabled');
+        Cache::forget('user_menu_two_step_enabled');
+        Cache::forget('user_menu_group_counter_enabled');
         Cache::flush(); // Or selectively if tag-supported
     }
+
+    /**
+     * Sanitize and repair SVG strings from known database corruptions and invalid characters.
+     */
+    public function sanitizeSvg(?string $svg): ?string
+    {
+        if ($svg === null || trim($svg) === '') {
+            return $svg;
+        }
+
+        // 1. Fix escaped quotes and trailing backslashes like z\" or z\
+        $cleaned = str_replace(['\"', "\\'"], ['"', "'"], $svg);
+        $cleaned = preg_replace('/([a-zA-Z0-9\.\-]+)\\\\+([ ">\'])/', '$1$2', $cleaned);
+
+        // 2. Fix known corrupted token in database like 'v6main2' -> 'v6m-4 0a2' or remove 'main'
+        if (str_contains($cleaned, 'main2 2 0 012 2')) {
+            $cleaned = str_replace('main2 2 0 012 2', 'm-4 0a2 2 0 012 2', $cleaned);
+        } elseif (str_contains($cleaned, 'main')) {
+            $cleaned = str_replace('main', '', $cleaned);
+        }
+
+        return $cleaned;
+    }
 }
+
