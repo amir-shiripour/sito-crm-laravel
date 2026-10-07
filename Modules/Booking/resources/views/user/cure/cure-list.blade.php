@@ -562,11 +562,12 @@
                                     {{-- دکمه سریع ارجاع به سفارش ساخت لابراتوار --}}
                                     @php
                                         $allPlanTeeth = [];
-                                        foreach ($items as $it) {
+                                        $planItemsList = is_iterable($plan->items) ? $plan->items : [];
+                                        foreach ($planItemsList as $it) {
                                             $tArr = $it['teeth'] ?? ($it['rawTeeth'] ?? []);
                                             if (is_array($tArr)) {
                                                 foreach ($tArr as $t) {
-                                                    $tid = is_array($t) ? ($t['number'] ?? array_values($t)[0]) : $t;
+                                                    $tid = is_array($t) ? ($t['number'] ?? (is_array($t) ? array_values($t)[0] : $t)) : $t;
                                                     if ($tid) $allPlanTeeth[] = $tid;
                                                 }
                                             }
