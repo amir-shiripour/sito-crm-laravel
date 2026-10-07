@@ -212,6 +212,13 @@ class MenuManagerController extends Controller
                 $item['allowed_roles'] = $lov['allowed_roles'] ?? [];
                 $item['allowed_users'] = $lov['allowed_users'] ?? [];
             }
+
+            if (!empty($item['icon'])) {
+                $item['icon'] = $this->customizationService->sanitizeSvg($item['icon']);
+            }
+            if (!empty($item['default_icon'])) {
+                $item['default_icon'] = $this->customizationService->sanitizeSvg($item['default_icon']);
+            }
         }
         unset($item);
 
@@ -415,7 +422,7 @@ class MenuManagerController extends Controller
             [
                 'key' => 'settings',
                 'title' => $this->moduleMenuService->resolveModuleGroupTitle('settings', 'Settings'),
-                'icon' => '<svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.325 4.317c.426 -1.756 2.924 -1.756 3.35 0a1.724 1.724 0 0 0 2.573 1.066c1.543 -.94 3.31 .826 2.37 2.37a1.724 1.724 0 0 0 1.065 2.572c1.756 .426 1.756 2.924 0 3.35a1.724 1.724 0 0 0 -1.066 2.573c.94 1.543 -.826 3.31 -2.37 2.37a1.724 1.724 0 0 0 -2.572 1.065c-.426 1.756 -2.924 1.756 -3.35 0a1.724 1.724 0 0 0 -2.573 -1.066c-1.543 .94 -3.31 -.826 -2.37 -2.37a1.724 1.724 0 0 0 -1.065 -2.572c-1.756 -.426 -1.756 -2.924 0 -3.35a1.724 1.724 0 0 0 1.066 -2.573c-.94 -1.543 .826 -3.31 2.37 -2.37c1 .608 2.296 .07 2.572 -1.065z\" /><path d="M9 12a3 3 0 1 0 6 0a3 3 0 0 0 -6 0" /></svg>',
+                'icon' => '<svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.325 4.317c.426 -1.756 2.924 -1.756 3.35 0a1.724 1.724 0 0 0 2.573 1.066c1.543 -.94 3.31 .826 2.37 2.37a1.724 1.724 0 0 0 1.065 2.572c1.756 .426 1.756 2.924 0 3.35a1.724 1.724 0 0 0 -1.066 2.573c.94 1.543 -.826 3.31 -2.37 2.37a1.724 1.724 0 0 0 -2.572 1.065c-.426 1.756 -2.924 1.756 -3.35 0a1.724 1.724 0 0 0 -2.573 -1.066c-1.543 .94 -3.31 -.826 -2.37 -2.37a1.724 1.724 0 0 0 -1.065 -2.572c-1.756 -.426 -1.756 -2.924 0 -3.35a1.724 1.724 0 0 0 1.066 -2.573c-.94 -1.543 .826 -3.31 2.37 -2.37c1 .608 2.296 .07 2.572 -1.065z" /><path d="M9 12a3 3 0 1 0 6 0a3 3 0 0 0 -6 0" /></svg>',
                 'position' => 900,
                 'is_custom' => false,
                 'is_collapsible' => true,
@@ -457,8 +464,8 @@ class MenuManagerController extends Controller
                 'key' => $gKey,
                 'title' => $gTitle,
                 'default_title' => $dg['title'],
-                'icon' => $gIcon,
-                'default_icon' => $dg['icon'],
+                'icon' => $this->customizationService->sanitizeSvg($gIcon),
+                'default_icon' => $this->customizationService->sanitizeSvg($dg['icon']),
                 'position' => $gPosition,
                 'is_custom' => false,
                 'is_collapsible' => $dg['is_collapsible'],
@@ -502,8 +509,8 @@ class MenuManagerController extends Controller
                 'key' => $gKey,
                 'title' => $gTitle,
                 'default_title' => $cg->title,
-                'icon' => $gIcon,
-                'default_icon' => $cg->icon,
+                'icon' => $this->customizationService->sanitizeSvg($gIcon),
+                'default_icon' => $this->customizationService->sanitizeSvg($cg->icon),
                 'position' => $gPosition,
                 'is_custom' => true,
                 'is_collapsible' => true,
@@ -621,7 +628,7 @@ class MenuManagerController extends Controller
 
                 $overrides = [
                     'title' => $itemData['title'] ?? null,
-                    'icon' => $itemData['icon'] ?? null,
+                    'icon' => isset($itemData['icon']) ? $this->customizationService->sanitizeSvg($itemData['icon']) : null,
                     'position' => isset($itemData['position']) ? (int)$itemData['position'] : 99,
                     'group' => $itemData['group'] ?? null,
                     'hidden' => !empty($itemData['hidden']),
@@ -652,7 +659,7 @@ class MenuManagerController extends Controller
                 $menuKey = "group:{$gKey}";
                 $overrides = [
                     'title' => $groupData['title'] ?? null,
-                    'icon' => $groupData['icon'] ?? null,
+                    'icon' => isset($groupData['icon']) ? $this->customizationService->sanitizeSvg($groupData['icon']) : null,
                     'position' => isset($groupData['position']) ? (int)$groupData['position'] : 99,
                     'hidden' => !empty($groupData['hidden']),
                 ];
@@ -674,11 +681,17 @@ class MenuManagerController extends Controller
                 if (!empty($groupData['is_custom']) && !empty($groupData['id'])) {
                     MenuCustomGroup::where('id', $groupData['id'])->update([
                         'title' => $groupData['title'],
-                        'icon' => $groupData['icon'] ?? null,
+                        'icon' => isset($groupData['icon']) ? $this->customizationService->sanitizeSvg($groupData['icon']) : null,
                         'position' => (int)($groupData['position'] ?? 99),
                     ]);
                 }
             }
+
+            // Ensure custom menu is globally active so saved changes take effect immediately in runtime
+            Setting::updateOrCreate(
+                ['key' => 'custom_menu_enabled'],
+                ['value' => '1']
+            );
 
             DB::commit();
 
