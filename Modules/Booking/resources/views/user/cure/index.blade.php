@@ -50,6 +50,7 @@
         ];
     }
     $allWorkflows = \Modules\Workflows\Entities\Workflow::where('is_active', true)->get(['id', 'name']);
+    $clientLabel = config('clients.labels.singular', 'مشتری');
 @endphp
 @section('content')
     <style>
@@ -589,7 +590,18 @@
                     </a>
                 </template>
 
-                <div class="relative" x-data="{ clientDdOpen: false, clientSearch: '' }">
+                <button type="button"
+                        x-show="!isReadOnly"
+                        @click="showQuickClientModal = true"
+                        class="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-emerald-200 dark:border-emerald-800/60 bg-emerald-50/80 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 text-xs font-bold hover:bg-emerald-100 dark:hover:bg-emerald-900/60 transition-all shadow-2xs shrink-0"
+                        title="ثبت سریع {{ $clientLabel }} جدید">
+                    <svg class="w-4 h-4 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+                    </svg>
+                    <span>{{ $clientLabel }} جدید</span>
+                </button>
+
+                <div class="relative">
                     <div @click="isReadOnly ? null : clientDdOpen = !clientDdOpen"
                          class="flex items-center gap-2 px-4 py-2 rounded-xl border transition-all min-w-50"
                          :class="isReadOnly
@@ -605,12 +617,12 @@
                         </svg>
                         <div class="flex-1 truncate font-semibold">
                             <template x-if="!clientId">
-                                <span class="text-sm text-gray-400 dark:text-gray-500">انتخاب بیمار</span>
+                                <span class="text-sm text-gray-400 dark:text-gray-500">انتخاب {{ $clientLabel }}</span>
                             </template>
                             <template x-if="clientId">
                                 <div class="flex flex-col text-right">
                                     <span class="text-sm font-bold text-gray-800 dark:text-gray-100"
-                                          x-text="clients.find(c => c.id === clientId)?.full_name || 'بیمار'"></span>
+                                          x-text="clients.find(c => c.id === clientId)?.full_name || '{{ $clientLabel }}'"></span>
                                     <span class="text-[10px] text-gray-400 dark:text-gray-500 font-normal mt-0.5"
                                           x-show="clients.find(c => c.id === clientId)?.national_code || clients.find(c => c.id === clientId)?.case_number"
                                           x-text="(clients.find(c => c.id === clientId)?.case_number ? 'پرونده: ' + clients.find(c => c.id === clientId).case_number : '') + (clients.find(c => c.id === clientId)?.national_code ? ' | کد ملی: ' + clients.find(c => c.id === clientId).national_code : '')"></span>
@@ -641,12 +653,23 @@
                                      fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
                                 </svg>
-                                <input x-model="clientSearch" @input.debounce.300ms="searchClientsBackend($el.value)" type="text" placeholder="جستجوی بیمار..." @click.stop
+                                <input x-model="clientSearch" @input.debounce.300ms="searchClientsBackend($el.value)" type="text" placeholder="جستجوی {{ $clientLabel }}..." @click.stop
                                        class="w-full pr-9 pl-3 py-2 text-sm rounded-xl border border-gray-200 dark:border-gray-600
                                               bg-gray-50 dark:bg-gray-700/50 text-gray-800 dark:text-gray-100
                                               placeholder-gray-400 focus:outline-none focus:border-indigo-400
                                               focus:ring-2 focus:ring-indigo-100 dark:focus:ring-indigo-900/30 transition-all"/>
                             </div>
+                        </div>
+                        <div class="px-3 py-2 border-b border-gray-100 dark:border-gray-700 bg-emerald-50/30 dark:bg-emerald-950/20 flex items-center justify-between">
+                            <span class="text-[11px] text-gray-500 dark:text-gray-400 font-medium">یا ثبت سریع:</span>
+                            <button type="button"
+                                    @click="clientDdOpen = false; showQuickClientModal = true"
+                                    class="inline-flex items-center gap-1 text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 transition-colors">
+                                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+                                </svg>
+                                <span>ثبت سریع {{ $clientLabel }}</span>
+                            </button>
                         </div>
                         <div class="max-h-56 overflow-y-auto sc-thin">
                             <!-- Loading Indicator -->
@@ -677,13 +700,23 @@
                                 </button>
                             </template>
                             <template x-if="filteredClients(clientSearch).length === 0">
-                                <div class="py-8 text-center text-sm text-gray-400 dark:text-gray-500">مشتری‌ای پیدا نشد</div>
+                                <div class="py-6 px-4 text-center space-y-2">
+                                    <div class="text-xs text-gray-400 dark:text-gray-500">{{ $clientLabel }}‌ای پیدا نشد</div>
+                                    <button type="button"
+                                            @click="clientDdOpen = false; showQuickClientModal = true"
+                                            class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-sm transition-all">
+                                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+                                        </svg>
+                                        <span>ثبت سریع این {{ $clientLabel }}</span>
+                                    </button>
+                                </div>
                             </template>
                         </div>
                         <div x-show="clientId" class="p-3 border-t border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
                             <button @click="clientId = null; patientName = ''; clientDdOpen = false; clientSearch = ''"
                                     class="w-full py-2 rounded-xl text-sm font-medium text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-900/20 hover:bg-rose-100 dark:hover:bg-rose-900/30 transition-all">
-                                حذف مشتری انتخاب شده
+                                حذف {{ $clientLabel }} انتخاب شده
                             </button>
                         </div>
                     </div>
@@ -1765,18 +1798,18 @@
                                                 <!-- Raw Total -->
                                                 <div class="bg-white dark:bg-gray-900/40 p-4 rounded-2xl border border-gray-100 dark:border-gray-700/60 flex flex-col justify-between">
                                                     <span class="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase">جمع کل خدمات</span>
-                                                    <span class="font-mono text-base font-black text-gray-700 dark:text-gray-300 mt-1" x-text="formatPrice(rawTotal) + ' ' + currencyLabel"></span>
+                                                    <span class="font-sans text-base font-black text-gray-700 dark:text-gray-300 mt-1" x-text="formatPrice(rawTotal) + ' ' + currencyLabel"></span>
                                                 </div>
                                                 <!-- Discount -->
                                                 <div class="bg-rose-50/30 dark:bg-rose-950/15 p-4 rounded-2xl border border-rose-100/50 dark:border-rose-900/20 flex flex-col justify-between">
                                                     <span class="text-[10px] font-bold text-rose-500 dark:text-rose-450 uppercase">تخفیف اعمال شده</span>
-                                                    <span class="font-mono text-base font-black text-rose-600 dark:text-rose-400 mt-1" x-text="'−' + formatPrice(discountVal) + ' ' + currencyLabel"></span>
+                                                    <span class="font-sans text-base font-black text-rose-600 dark:text-rose-400 mt-1" x-text="'−' + formatPrice(discountVal) + ' ' + currencyLabel"></span>
                                                 </div>
                                                 <!-- Final Payable -->
                                                 <div class="payable-spotlight p-4 rounded-2xl flex flex-col justify-between relative overflow-hidden">
                                                     <div class="absolute -right-6 -top-6 w-16 h-16 bg-emerald-500/10 dark:bg-emerald-500/15 rounded-full blur-xl pointer-events-none"></div>
                                                     <span class="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 relative">مبلغ نهایی قابل پرداخت</span>
-                                                    <span class="font-mono text-lg font-black text-emerald-600 dark:text-emerald-400 mt-1 relative" x-text="formatPrice(finalTotal) + ' ' + currencyLabel"></span>
+                                                    <span class="font-sans text-lg font-black text-emerald-600 dark:text-emerald-400 mt-1 relative" x-text="formatPrice(finalTotal) + ' ' + currencyLabel"></span>
                                                 </div>
                                             </div>
 
@@ -2709,6 +2742,68 @@
                 </div>
             </div>
         </div>
+
+        {{-- ══════════════════ MODAL: QUICK CREATE CLIENT ══════════════════ --}}
+        <div x-show="showQuickClientModal"
+             x-cloak
+             class="fixed inset-0 z-[70] overflow-y-auto"
+             aria-labelledby="modal-quick-client-title" role="dialog" aria-modal="true"
+             x-on:keydown.escape.window="showQuickClientModal = false">
+
+            {{-- Backdrop --}}
+            <div x-show="showQuickClientModal"
+                 x-transition:enter="ease-out duration-300"
+                 x-transition:enter-start="opacity-0"
+                 x-transition:enter-end="opacity-100"
+                 x-transition:leave="ease-in duration-200"
+                 x-transition:leave-start="opacity-100"
+                 x-transition:leave-end="opacity-0"
+                 class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity"
+                 @click="showQuickClientModal = false"></div>
+
+            <div class="flex min-h-dvh items-center justify-center p-4 text-center sm:p-6">
+                <div x-show="showQuickClientModal"
+                     x-transition:enter="ease-out duration-300"
+                     x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+                     x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100"
+                     x-transition:leave="ease-in duration-200"
+                     x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
+                     x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+                     class="relative transform overflow-hidden rounded-2xl bg-white dark:bg-gray-800 text-right shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-xl border border-gray-200 dark:border-gray-700">
+
+                    {{-- Modal Header --}}
+                    <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-gray-700/80 bg-gray-50/70 dark:bg-gray-800/80">
+                        <div class="flex items-center gap-2.5">
+                            <div class="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+                                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                                </svg>
+                            </div>
+                            <div>
+                                <h3 id="modal-quick-client-title" class="text-sm font-bold text-gray-900 dark:text-white">
+                                    ثبت سریع {{ $clientLabel }} جدید
+                                </h3>
+                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                                    اطلاعات را وارد کنید؛ پس از ثبت به طور خودکار در طرح درمان انتخاب می‌شود.
+                                </p>
+                            </div>
+                        </div>
+                        <button type="button"
+                                @click="showQuickClientModal = false"
+                                class="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition">
+                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                        </button>
+                    </div>
+
+                    {{-- Modal Body --}}
+                    <div class="p-5 max-h-[75vh] overflow-y-auto">
+                        @includeIf('clients::widgets.client-quick-create')
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>{{-- /x-data --}}
 
     <script>
@@ -2855,6 +2950,9 @@ snapshots: existingPlan?.snapshots || [],
                 },
                 clients: clients,
                 clientSearchLoading: false,
+                clientDdOpen: false,
+                clientSearch: '',
+                showQuickClientModal: false,
                 clientId: null,
                 patientName: '',
                 planItems: [],
@@ -4240,6 +4338,71 @@ snapshots: existingPlan?.snapshots || [],
                     });
                     this.initInstCalendar();
                     this.initWorkflows();
+
+                    window.addEventListener('client-quick-saved', async (e) => {
+                        const newId = e?.detail?.clientId;
+                        const newName = e?.detail?.clientName;
+                        if (!newId) return;
+
+                        this.clientSearch = '';
+
+                        try {
+                            const res = await fetch(`/user/clients/search?ids=${encodeURIComponent(newId)}`);
+                            const data = await res.json();
+                            if (data && data.results && data.results.length > 0) {
+                                const clientData = data.results[0];
+                                const formatted = {
+                                    id: clientData.id,
+                                    full_name: clientData.full_name,
+                                    phone: clientData.phone || '',
+                                    email: clientData.email || '',
+                                    national_code: clientData.national_code || '',
+                                    case_number: clientData.case_number || ''
+                                };
+                                const existingIdx = this.clients.findIndex(c => String(c.id) === String(newId));
+                                if (existingIdx >= 0) {
+                                    this.clients[existingIdx] = formatted;
+                                } else {
+                                    this.clients.unshift(formatted);
+                                }
+                                this.patientName = formatted.full_name;
+                            } else {
+                                if (!this.clients.some(c => String(c.id) === String(newId))) {
+                                    this.clients.unshift({
+                                        id: newId,
+                                        full_name: newName || '{{ $clientLabel }} جدید',
+                                        phone: '',
+                                        email: '',
+                                        national_code: '',
+                                        case_number: ''
+                                    });
+                                }
+                                this.patientName = newName || '';
+                            }
+                        } catch(err) {
+                            console.error('Failed to load new client details:', err);
+                            if (!this.clients.some(c => String(c.id) === String(newId))) {
+                                this.clients.unshift({
+                                    id: newId,
+                                    full_name: newName || '{{ $clientLabel }} جدید',
+                                    phone: '',
+                                    email: '',
+                                    national_code: '',
+                                    case_number: ''
+                                });
+                            }
+                            this.patientName = newName || '';
+                        }
+
+                        this.clientId = Number(newId) || newId;
+                        this.showQuickClientModal = false;
+                        this.clientDdOpen = false;
+
+                        if (typeof showToast === 'function') {
+                            showToast((this.patientName ? `«${this.patientName}»` : '{{ $clientLabel }} جدید') + ' با موفقیت ایجاد و انتخاب شد.', 'success');
+                        }
+                    });
+
                     this.$nextTick(() => { this.isInitializing = false; });
                 },
 
