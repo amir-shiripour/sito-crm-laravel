@@ -1,6 +1,6 @@
 {{-- Modules/Settings/resources/views/partials/menu-manager.blade.php --}}
 
-<div x-data="menuManagerApp()" x-init="init()" class="space-y-6 relative">
+<div x-data="menuManagerApp()" class="space-y-6 relative">
 
     {{-- سیستم Toast حرفه‌ای بدون نیاز به alert --}}
     <div class="fixed bottom-6 left-6 z-[9999] flex flex-col gap-2 pointer-events-none max-w-sm w-full">
@@ -530,7 +530,7 @@
 
             {{-- کانتینر Sortable برای جابجایی خود گروه‌ها --}}
             <div id="sortable-groups-container" class="space-y-3">
-                <template x-for="(group, gIdx) in getOrderedGroups()" :key="group.key">
+                <template x-for="(group, gIdx) in getOrderedGroups()" :key="'group-card-' + (group.key || gIdx) + '-' + gIdx">
                     <div :data-group-key="group.key"
                          class="group-card bg-white dark:bg-gray-800 rounded-2xl border transition-all shadow-sm overflow-hidden"
                          :class="{
@@ -623,7 +623,7 @@
                         {{-- لیست آیتم‌های داخل گروه (Drag & Drop Container) --}}
                         <div :id="'group-container-' + group.key"
                              class="p-2 space-y-1.5 sortable-group-items min-h-[46px]">
-                            <template x-for="(item, iIdx) in getItemsForGroup(group.key)" :key="item.menu_key">
+                            <template x-for="(item, iIdx) in getItemsForGroup(group.key)" :key="'group-item-' + (item.menu_key || iIdx) + '-' + iIdx">
                                 <div :data-key="item.menu_key"
                                      @click.stop="selectItem(item)"
                                      :class="{
@@ -1056,7 +1056,7 @@
 
                     {{-- بدنه سایدبار پیش‌نمایش --}}
                     <div class="space-y-1.5 max-h-96 overflow-y-auto custom-scrollbar p-1 text-sm font-medium">
-                        <template x-for="block in getOrderedSidebarBlocks()" :key="'block-' + block.key">
+                        <template x-for="(block, bIdx) in getOrderedSidebarBlocks()" :key="'sidebar-block-' + (block.key || bIdx) + '-' + bIdx">
                             <div>
                                 {{-- ۱. بلاک پیشخوان --}}
                                 <template x-if="block.type === 'dashboard'">
@@ -1073,7 +1073,7 @@
                                 {{-- ۲. بلاک آیتم‌های تکی --}}
                                 <template x-if="block.type === 'single_items'">
                                     <div class="space-y-1.5">
-                                        <template x-for="sItem in block.items" :key="'prev-sitem-' + sItem.menu_key">
+                                        <template x-for="(sItem, sIdx) in block.items" :key="'prev-sitem-' + (sItem.menu_key || sIdx) + '-' + sIdx">
                                             <div
                                                 class="group flex items-center gap-3 rounded-xl px-3 py-2.5 font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800/50 hover:text-gray-900 transition-colors">
                                                 <span class="w-5 h-5 shrink-0 [&>svg]:w-5 [&>svg]:h-5"
@@ -1111,8 +1111,8 @@
                                         </button>
                                         <div x-show="open"
                                              class="mt-1 space-y-1 relative before:absolute before:right-5 before:top-2 before:bottom-2 before:w-px before:bg-gray-200 dark:before:bg-gray-700">
-                                            <template x-for="gItem in block.items"
-                                                      :key="'prev-gitem-' + gItem.menu_key">
+                                            <template x-for="(gItem, gIdx) in block.items"
+                                                      :key="'prev-gitem-' + (gItem.menu_key || gIdx) + '-' + gIdx">
                                                 <div
                                                     class="flex items-center pr-10 pl-3 py-2 text-xs rounded-xl font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800/30 relative">
                                                     <span
@@ -1491,8 +1491,21 @@
                         this.isCustomMenuEnabled = !!data.is_custom_menu_enabled;
                         this.isTwoStepEnabled = !!data.is_two_step_enabled;
                         this.isGroupCounterEnabled = data.is_group_counter_enabled !== undefined ? !!data.is_group_counter_enabled : true;
-                        this.items = (data.items || []).map(i => ({ ...i, _dirty: false }));
-                        this.groups = (data.groups || []).map(g => ({ ...g, _dirty: false }));
+                        const itemMap = new Map();
+                        (data.items || []).forEach(i => {
+                            if (i && i.menu_key && !itemMap.has(i.menu_key)) {
+                                itemMap.set(i.menu_key, { ...i, _dirty: false });
+                            }
+                        });
+                        this.items = Array.from(itemMap.values());
+
+                        const groupMap = new Map();
+                        (data.groups || []).forEach(g => {
+                            if (g && g.key && !groupMap.has(g.key)) {
+                                groupMap.set(g.key, { ...g, _dirty: false });
+                            }
+                        });
+                        this.groups = Array.from(groupMap.values());
                         this.customGroups = data.custom_groups || [];
                         this.roles = data.roles || [];
                         this.users = data.users || [];
@@ -1596,27 +1609,41 @@
             },
 
             getItemsForGroup(groupKey) {
-                return this.items
+                const uniqueItems = new Map();
+                (this.items || [])
                     .filter(item => (item.group || 'single') === groupKey)
+                    .forEach(item => {
+                        if (item && item.menu_key && !uniqueItems.has(item.menu_key)) {
+                            uniqueItems.set(item.menu_key, item);
+                        }
+                    });
+                return Array.from(uniqueItems.values())
                     .sort((a, b) => (a.position || 99) - (b.position || 99));
             },
 
             getOrderedGroups() {
-                return this.groups
-                    .slice()
+                const uniqueGroups = new Map();
+                (this.groups || []).forEach(g => {
+                    if (g && g.key && !uniqueGroups.has(g.key)) {
+                        uniqueGroups.set(g.key, g);
+                    }
+                });
+                return Array.from(uniqueGroups.values())
                     .sort((a, b) => (a.position || 99) - (b.position || 99));
             },
 
             getOrderedSidebarBlocks() {
                 const blocks = [];
                 const sortedGroups = this.getOrderedGroups();
+                const seenBlockKeys = new Set();
 
                 sortedGroups.forEach(g => {
                     if (g.hidden) return;
 
                     if (g.key === 'dashboard') {
                         const dashItem = this.items.find(i => i.group === 'dashboard' && !i.hidden);
-                        if (dashItem) {
+                        if (dashItem && !seenBlockKeys.has('dashboard')) {
+                            seenBlockKeys.add('dashboard');
                             blocks.push({
                                 type: 'dashboard',
                                 key: 'dashboard',
@@ -1631,7 +1658,8 @@
                         const singleItems = this.items
                             .filter(i => (i.group === 'single' || !i.group) && !i.hidden)
                             .sort((a, b) => (a.position || 99) - (b.position || 99));
-                        if (singleItems.length > 0) {
+                        if (singleItems.length > 0 && !seenBlockKeys.has('single')) {
+                            seenBlockKeys.add('single');
                             blocks.push({
                                 type: 'single_items',
                                 key: 'single',
@@ -1643,7 +1671,8 @@
                     }
 
                     const gItems = this.getItemsForGroup(g.key).filter(i => !i.hidden);
-                    if (gItems.length > 0) {
+                    if (gItems.length > 0 && !seenBlockKeys.has(g.key)) {
+                        seenBlockKeys.add(g.key);
                         blocks.push({
                             type: 'group',
                             key: g.key,
