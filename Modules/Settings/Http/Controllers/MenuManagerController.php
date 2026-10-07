@@ -215,6 +215,12 @@ class MenuManagerController extends Controller
         }
         unset($item);
 
+        $dedupedItems = [];
+        foreach ($extractedItems as $it) {
+            $dedupedItems[$it['menu_key']] = $it;
+        }
+        $extractedItems = array_values($dedupedItems);
+
         // Fetch custom groups from database: global custom groups + local custom groups
         $customGroups = MenuCustomGroup::where(function ($q) use ($scope, $scopeId) {
             $q->where('scope', 'global');
@@ -447,7 +453,7 @@ class MenuManagerController extends Controller
                 if (!empty($lov['hidden'])) $gHidden = true;
             }
 
-            $allGroups[] = [
+            $allGroups[$gKey] = [
                 'key' => $gKey,
                 'title' => $gTitle,
                 'default_title' => $dg['title'],
@@ -464,9 +470,10 @@ class MenuManagerController extends Controller
             ];
         }
 
-        // Add custom created groups
+        // Add or merge custom created groups (preserves custom group properties)
         foreach ($customGroups as $cg) {
             $customKey = "group:{$cg->group_key}";
+            $gKey = $cg->group_key;
             $gTitle = $cg->title;
             $gIcon = $cg->icon ?: '<svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 19a2 2 0 0 1 -2 -2v-11a2 2 0 0 1 2 -2h4l2 2h10a2 2 0 0 1 2 2v11a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2z" /></svg>';
             $gPosition = $cg->position ?: 99;
@@ -490,9 +497,9 @@ class MenuManagerController extends Controller
                 if (!empty($lov['hidden'])) $gHidden = true;
             }
 
-            $allGroups[] = [
+            $allGroups[$gKey] = [
                 'id' => $cg->id,
-                'key' => $cg->group_key,
+                'key' => $gKey,
                 'title' => $gTitle,
                 'default_title' => $cg->title,
                 'icon' => $gIcon,
@@ -509,10 +516,9 @@ class MenuManagerController extends Controller
         }
 
         // Dynamic scanner: add any group present in extracted items that might be missing
-        $existingGroupKeys = collect($allGroups)->pluck('key')->toArray();
         foreach ($extractedItems as $item) {
             $gKey = $item['group'] ?? '';
-            if (!empty($gKey) && !in_array($gKey, $existingGroupKeys, true)) {
+            if (!empty($gKey) && !isset($allGroups[$gKey])) {
                 $customKey = "group:{$gKey}";
                 $gTitle = $item['group_title'] ?? $this->moduleMenuService->resolveModuleGroupTitle($gKey, $item['module'] ?? $gKey);
                 $gIcon = $item['icon'] ?? $item['default_icon'] ?? '<svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 19a2 2 0 0 1 -2 -2v-11a2 2 0 0 1 2 -2h4l2 2h10a2 2 0 0 1 2 2v11a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2z" /></svg>';
@@ -537,7 +543,7 @@ class MenuManagerController extends Controller
                     if (!empty($lov['hidden'])) $gHidden = true;
                 }
 
-                $allGroups[] = [
+                $allGroups[$gKey] = [
                     'key' => $gKey,
                     'title' => $gTitle,
                     'default_title' => $gTitle,
@@ -552,11 +558,11 @@ class MenuManagerController extends Controller
                     'is_inherited' => ($scope !== 'global' && $hasGlobal && !$hasLocal),
                     'is_customized' => ($scope === 'global') ? $hasGlobal : ($hasLocal || $hasGlobal),
                 ];
-                $existingGroupKeys[] = $gKey;
             }
         }
 
-        // Sort groups by position
+        // Reindex groups array and sort by position
+        $allGroups = array_values($allGroups);
         usort($allGroups, fn($a, $b) => ($a['position'] ?? 999) <=> ($b['position'] ?? 999));
 
         // Fetch available roles and users for selection
