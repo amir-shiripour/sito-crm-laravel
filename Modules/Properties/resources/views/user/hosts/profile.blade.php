@@ -274,27 +274,40 @@
 
                             <div>
                                 <label class="{{ $labelClass }}">تصویر کارت ملی هوشمند</label>
-                                <div class="relative border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-2xl p-4 text-center hover:border-indigo-500 transition-colors bg-gray-50/50 dark:bg-gray-900/30">
+                                <div class="border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-2xl p-4 text-center hover:border-indigo-500 transition-colors bg-gray-50/50 dark:bg-gray-900/30 space-y-3">
+                                    {{-- پیش‌نمایش تصویر در صورت انتخاب جدید --}}
                                     <template x-if="nationalCardPreview">
                                         <div class="space-y-2">
                                             <img :src="nationalCardPreview" class="max-h-28 mx-auto rounded-xl object-contain border border-gray-200 dark:border-gray-700 shadow-sm">
-                                            <button type="button" @click="nationalCardPreview = null" class="text-xs text-red-500 hover:underline font-bold">تغییر تصویر</button>
+                                            <span class="inline-block px-2.5 py-0.5 rounded-lg bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 text-[11px] font-bold">تصویر جدید آماده بارگذاری است</span>
                                         </div>
                                     </template>
+
+                                    {{-- نمایش وضعیت تصویر قبلی در صورت عدم انتخاب جدید --}}
                                     <template x-if="!nationalCardPreview">
-                                        <div class="space-y-2">
+                                        <div>
                                             @if($host->national_card_image)
-                                                <div class="space-y-1 mb-2">
-                                                    <span class="inline-block px-2 py-0.5 rounded-lg bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 text-[10px] font-bold">مدرک قبلاً بارگذاری شده</span>
+                                                <div class="space-y-2 mb-2">
+                                                    <img src="{{ asset('storage/' . $host->national_card_image) }}" class="max-h-28 mx-auto rounded-xl object-contain border border-gray-200 dark:border-gray-700 shadow-sm">
+                                                    <span class="inline-block px-2.5 py-0.5 rounded-lg bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 text-[10px] font-bold">تصویر کارت ملی قبلاً با موفقیت ثبت شده</span>
+                                                </div>
+                                            @else
+                                                <div class="py-2 text-gray-400">
+                                                    <svg class="w-8 h-8 mx-auto mb-1 text-gray-300 dark:text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                                                    <span class="block text-xs text-gray-600 dark:text-gray-300">تصویر کارت ملی هوشمند یا صفحه اول شناسنامه</span>
                                                 </div>
                                             @endif
-                                            <span class="block text-xs text-gray-600 dark:text-gray-300">انتخاب تصویر کارت ملی یا شناسنامه</span>
-                                            <label class="inline-block px-3 py-1.5 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-xs font-bold text-indigo-600 dark:text-indigo-400 shadow-sm cursor-pointer hover:bg-indigo-50 transition">
-                                                انتخاب فایل
-                                                <input type="file" name="national_card_image" accept="image/*" class="hidden" @change="previewImage($event, 'nationalCardPreview')">
-                                            </label>
                                         </div>
                                     </template>
+
+                                    {{-- اینپوت فایل پایدار (همیشه در فرم زنده می‌ماند) --}}
+                                    <div class="pt-1">
+                                        <label class="inline-block px-4 py-2 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-xs font-bold text-indigo-600 dark:text-indigo-400 shadow-sm cursor-pointer hover:bg-indigo-50 dark:hover:bg-gray-700/60 transition font-sans">
+                                            <span x-text="nationalCardPreview ? 'تغییر فایل انتخابی' : 'انتخاب فایل تصویر'"></span>
+                                            <input type="file" name="national_card_image" accept="image/*" class="hidden" @change="previewImage($event, 'nationalCardPreview')">
+                                        </label>
+                                        <span class="block text-[11px] text-gray-400 mt-1 font-sans">حداکثر حجم مجاز: ۵ مگابایت (JPG/PNG)</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>

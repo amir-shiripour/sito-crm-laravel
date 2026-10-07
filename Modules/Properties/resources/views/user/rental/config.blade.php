@@ -8,6 +8,7 @@
     $checkboxClass = "w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 dark:bg-gray-800 dark:border-gray-600 cursor-pointer";
     $currencyLabel = $currency === 'toman' ? 'تومان' : 'ریال';
     $isAdmin = auth()->user()->hasRole(['super-admin', 'admin']) || auth()->user()->can('properties.manage');
+    $isWizard = $isWizard ?? (request('wizard') == '1' || request('from') === 'create');
 @endphp
 
 @section('content')
@@ -20,21 +21,50 @@
                 <span class="w-10 h-10 rounded-2xl bg-indigo-50 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-300 flex items-center justify-center shadow-sm">
                     <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>
                 </span>
-                تنظیمات اقامتگاه: {{ $property->title }}
+                {{ $isWizard ? 'ایجاد اقامتگاه (مرحله ۲): تنظیمات و نرخ‌ها' : 'تنظیمات اقامتگاه: ' . $property->title }}
             </h1>
-            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 mr-13">ظرفیت مهمانان، قیمت‌های شبانه، شرایط اقامت، امکانات و قوانین ورود</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 mr-13">ظرفیت مهمانان، قیمت‌های شبانه، شرایط اقامت، قوانین ورود و بازه‌های ویژه</p>
         </div>
 
         <div class="flex items-center gap-3 flex-wrap">
-            <a href="{{ route('user.properties.rental.calendar', $property) }}" class="px-4 py-2.5 rounded-2xl bg-indigo-50 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-300 text-xs font-bold border border-indigo-200 dark:border-indigo-800/40 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition flex items-center gap-2">
-                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                تقویم و مسدودسازی روزها
-            </a>
+            @if(!$isWizard)
+                <a href="{{ route('user.properties.rental.calendar', $property) }}" class="px-4 py-2.5 rounded-2xl bg-teal-50 text-teal-700 dark:bg-teal-900/30 dark:text-teal-300 text-xs font-bold border border-teal-200 dark:border-teal-800/40 hover:bg-teal-100 dark:hover:bg-teal-900/50 transition flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                    مدیریت تقویم و قیمت روزها
+                </a>
+                <a href="{{ route('user.properties.edit', $property) }}" class="px-4 py-2.5 rounded-2xl bg-indigo-50 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-300 text-xs font-bold border border-indigo-200 dark:border-indigo-800/40 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                    ویرایش امکانات و مشخصات
+                </a>
+            @endif
             <a href="{{ route('user.properties.index') }}" class="px-4 py-2.5 rounded-2xl border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 text-xs font-bold hover:bg-gray-50 dark:hover:bg-gray-800 transition">
                 بازگشت به لیست املاک
             </a>
         </div>
     </div>
+
+    {{-- نوار وضعیت مراحل ایجاد اقامتگاه (فقط در حالت ثبت اولیه / ویزارد) --}}
+    @if($isWizard)
+        <div class="rounded-3xl bg-gradient-to-r from-indigo-500/10 via-indigo-500/5 to-transparent border border-indigo-200/80 dark:border-indigo-800/60 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+                <span class="w-9 h-9 rounded-2xl bg-indigo-600 text-white flex items-center justify-center font-black text-sm shadow-sm font-sans">
+                    ۲
+                </span>
+                <div>
+                    <h4 class="text-sm font-black text-indigo-950 dark:text-indigo-200">
+                        مرحله ۲ از ۴: ظرفیت مهمانان، نرخ‌های شبانه و قوانین ورود
+                    </h4>
+                    <p class="text-xs text-indigo-700/80 dark:text-indigo-400 mt-0.5 font-sans">
+                        مشخصات اولیه ثبت شد. پس از تکمیل این صفحه، وارد مرحله اطلاعات تکمیلی و مشخصات اتاق‌ها می‌شوید.
+                    </p>
+                </div>
+            </div>
+            <div class="flex items-center gap-1.5 text-xs text-indigo-600 dark:text-indigo-300 font-bold self-start sm:self-auto font-sans bg-white dark:bg-gray-800 px-3.5 py-1.5 rounded-xl border border-indigo-200/60 dark:border-indigo-800/60 shadow-sm">
+                <span>مرحله بعد: اطلاعات تکمیلی</span>
+                <svg class="w-4 h-4 rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
+            </div>
+        </div>
+    @endif
 
     {{-- وضعیت بررسی ادمین و دکمه مشاهده تغییرات --}}
     @if($isAdmin)
@@ -62,13 +92,20 @@
                 </div>
 
                 <div class="flex items-center gap-2 flex-wrap">
-                    {{-- دکمه مشاهده جزئیات تغییرات و مقایسه (در صورتی که درخواست ویرایش در انتظار باشد) --}}
+                    {{-- دکمه مشاهده جزئیات تغییرات و مقایسه --}}
                     @if($property->pendingRevision()->exists())
                         <button type="button"
-                                @click="$dispatch('open-revision-diff', { propertyId: {{ $property->id }}, reviewUrl: '{{ route('user.properties.rental.review-status', $property) }}' })"
+                                @click="$dispatch('open-revision-diff', { propertyId: {{ $property->id }}, reviewUrl: '{{ route('user.properties.rental.review-status', $property) }}', isPending: true })"
                                 class="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition shadow-sm flex items-center gap-1.5 animate-pulse">
                             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
                             بررسی و مقایسه تغییرات (Diff)
+                        </button>
+                    @elseif($property->latestRevision()->exists())
+                        <button type="button"
+                                @click="$dispatch('open-revision-diff', { propertyId: {{ $property->id }}, reviewUrl: '{{ route('user.properties.rental.review-status', $property) }}', isPending: false })"
+                                class="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-700/80 dark:hover:bg-slate-700 dark:text-slate-200 text-xs font-bold transition shadow-sm flex items-center gap-1.5 border border-slate-200 dark:border-slate-600">
+                            <svg class="w-4 h-4 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
+                            گزارش آخرین تغییرات تأیید شده
                         </button>
                     @endif
 
@@ -95,12 +132,37 @@
 
         {{-- ورود مودال مقایسه تغییرات --}}
         @include('properties::user.partials.revision-diff-modal')
+    @else
+        {{-- پیام وضعیت بازبینی برای میزبان --}}
+        @if($property->approval_status === 'pending_review' || $property->pendingRevision()->exists())
+            <div class="{{ $cardClass }} p-4.5 bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent border-amber-200/80 dark:border-amber-800/60 flex items-center justify-between gap-4">
+                <div class="flex items-center gap-3">
+                    <span class="w-9 h-9 rounded-2xl bg-amber-500/20 text-amber-700 dark:text-amber-300 flex items-center justify-center flex-shrink-0">
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    </span>
+                    <div>
+                        <h4 class="text-xs font-bold text-amber-900 dark:text-amber-200">
+                            آخرین تغییرات شما در انتظار تأیید مدیریت است
+                        </h4>
+                        <p class="text-[11px] text-amber-700/90 dark:text-amber-400 mt-0.5 font-sans">
+                            تا پیش از تأیید نهایی توسط کارشناس، مهمانان و مشتریان نسخه معتبر قبلی اقامتگاه را مشاهده خواهند کرد. مقادیر زیر پیش‌نویس ارسالی شما هستند.
+                        </p>
+                    </div>
+                </div>
+                <span class="text-[11px] font-bold px-3 py-1 rounded-xl bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300 whitespace-nowrap border border-amber-300/60 dark:border-amber-700/50">
+                    در انتظار بررسی
+                </span>
+            </div>
+        @endif
     @endif
 
     {{-- فرم تنظیمات اقامتگاه --}}
     <form action="{{ route('user.properties.rental.config.update', $property) }}" method="POST" class="space-y-8" @submit="isSubmitting = true">
         @csrf
         @method('PUT')
+        @if($isWizard)
+            <input type="hidden" name="wizard" value="1">
+        @endif
 
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
 
@@ -464,22 +526,36 @@
                         </div>
                     </div>
 
-                    {{-- راهنمای اتصال به تب‌های امکانات و مشخصات --}}
-                    <div class="p-3.5 rounded-2xl bg-indigo-50/70 border border-indigo-100 dark:bg-indigo-950/20 dark:border-indigo-900/40 space-y-2.5">
-                        <div class="flex items-start gap-2.5">
-                            <span class="w-6 h-6 rounded-lg bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-300 flex items-center justify-center flex-shrink-0 mt-0.5">
-                                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                            </span>
-                            <div class="space-y-0.5">
-                                <p class="text-xs font-bold text-indigo-950 dark:text-indigo-200">اتاق‌ها، تخت‌ها و امکانات</p>
-                                <p class="text-[11px] text-indigo-700 dark:text-indigo-400 leading-relaxed font-sans">تعداد اتاق، تخت‌ها، حمام، سرویس بهداشتی و کلیه امکانات در تب‌های «اطلاعات تکمیلی» و «امکانات» ویرایش ملک مدیریت می‌شوند.</p>
+                    {{-- راهنمای اتصال به مراحل بعد یا ویرایش امکانات --}}
+                    @if($isWizard)
+                        <div class="p-4 rounded-2xl bg-indigo-50/70 border border-indigo-100 dark:bg-indigo-950/20 dark:border-indigo-900/40 space-y-2">
+                            <div class="flex items-start gap-2.5">
+                                <span class="w-6 h-6 rounded-lg bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-300 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                </span>
+                                <div class="space-y-1">
+                                    <p class="text-xs font-bold text-indigo-950 dark:text-indigo-200">مشخصات اتاق‌ها، تخت‌ها و امکانات</p>
+                                    <p class="text-[11px] text-indigo-700 dark:text-indigo-300 leading-relaxed font-sans">
+                                        تعداد اتاق‌ها، سرویس‌های خواب، استخر، سیستم‌های سرمایش/گرمایش و کلیه امکانات پس از ذخیره این فرم، در مراحل بعدی (اطلاعات تکمیلی و امکانات) تکمیل خواهند شد.
+                                    </p>
+                                </div>
                             </div>
                         </div>
-                        <a href="{{ route('user.properties.edit', $property) }}" target="_blank" class="w-full py-2 px-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-sm shadow-indigo-500/20 transition flex items-center justify-center gap-1.5">
-                            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
-                            ویرایش امکانات و مشخصات
-                        </a>
-                    </div>
+                    @else
+                        <div class="p-4 rounded-2xl bg-gray-50/80 border border-gray-200/80 dark:bg-gray-900/40 dark:border-gray-700/60 space-y-2">
+                            <div class="flex items-start justify-between gap-3">
+                                <div class="space-y-1">
+                                    <p class="text-xs font-bold text-gray-900 dark:text-white">مشخصات اتاق‌ها و امکانات</p>
+                                    <p class="text-[11px] text-gray-500 dark:text-gray-400 font-sans leading-relaxed">
+                                        جهت به‌روزرسانی مشخصات اتاق‌ها، امکانات تفریحی، استخر یا مشخصات عمومی ملک:
+                                    </p>
+                                </div>
+                                <a href="{{ route('user.properties.edit', $property) }}" class="px-3 py-1.5 rounded-xl bg-white dark:bg-gray-800 text-indigo-600 dark:text-indigo-300 border border-gray-200 dark:border-gray-700 text-xs font-bold hover:bg-indigo-50 dark:hover:bg-indigo-950/40 transition whitespace-nowrap flex-shrink-0">
+                                    ویرایش مشخصات
+                                </a>
+                            </div>
+                        </div>
+                    @endif
                 </div>
 
                 {{-- کارت ۵: زمان‌بندی ورود و خروج و رزرو فوری --}}
@@ -539,17 +615,36 @@
                     </div>
                 </div>
 
-                {{-- کارت ۶: عملیات ذخیره سازی و پیوند تقویم (چسبان در اسکرول) --}}
-                <div class="{{ $cardClass }} p-5 space-y-4 sticky top-6 z-20 shadow-md backdrop-blur-md">
-                    <button type="submit" class="w-full py-3.5 px-6 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm shadow-lg shadow-indigo-500/25 transition transform active:scale-95 flex items-center justify-center gap-2">
-                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
-                        ذخیره تنظیمات اقامتگاه
-                    </button>
+                {{-- کارت ۶: عملیات ذخیره سازی و ادامه فرآیند (چسبان در اسکرول) --}}
+                <div class="{{ $cardClass }} p-5 space-y-3 sticky top-6 z-20 shadow-md backdrop-blur-md">
+                    @if($isWizard)
+                        <button type="submit" class="w-full py-3.5 px-6 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm shadow-lg shadow-indigo-500/25 transition transform active:scale-95 flex items-center justify-center gap-2">
+                            <span>ذخیره و ادامه (اطلاعات تکمیلی)</span>
+                            <svg class="w-5 h-5 rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
+                        </button>
 
-                    <a href="{{ route('user.properties.rental.calendar', $property) }}" class="w-full py-3 px-4 rounded-2xl border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 text-xs font-bold hover:bg-gray-50 dark:hover:bg-gray-700/60 transition flex items-center justify-center gap-2 text-center">
-                        <svg class="w-4 h-4 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                        مدیریت تقویم و قیمت روزها
-                    </a>
+                        <div class="pt-1 text-center">
+                            <span class="text-[11px] text-gray-500 dark:text-gray-400 font-sans block">
+                                مرحله بعد: مشخصات اتاق‌ها، سرویس‌ها و ابعاد
+                            </span>
+                        </div>
+                    @else
+                        <button type="submit" class="w-full py-3.5 px-6 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm shadow-lg shadow-indigo-500/25 transition transform active:scale-95 flex items-center justify-center gap-2">
+                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+                            <span>ذخیره تنظیمات اقامتگاه</span>
+                        </button>
+
+                        <div class="pt-2 flex flex-col gap-2">
+                            <a href="{{ route('user.properties.rental.calendar', $property) }}" class="w-full py-2.5 px-3 rounded-xl bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800/60 hover:bg-teal-100 dark:hover:bg-teal-900/60 text-xs font-bold transition flex items-center justify-center gap-2">
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                                <span>مدیریت تقویم و قیمت روزها</span>
+                            </a>
+                            <a href="{{ route('user.properties.edit', $property) }}" class="w-full py-2.5 px-3 rounded-xl bg-gray-100 dark:bg-gray-700/80 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600 hover:bg-gray-200 dark:hover:bg-gray-600 text-xs font-bold transition flex items-center justify-center gap-2">
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                                <span>ویرایش امکانات و مشخصات</span>
+                            </a>
+                        </div>
+                    @endif
                 </div>
 
             </div>

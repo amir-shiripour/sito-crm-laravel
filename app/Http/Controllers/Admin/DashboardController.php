@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Modules\Properties\Entities\Property;
 use Modules\Properties\Entities\PropertyImage;
+use Modules\Properties\Entities\PropertyHost;
 
 class DashboardController extends Controller
 {
@@ -114,27 +115,29 @@ class DashboardController extends Controller
         set_time_limit(300);
 
         $modelsToProcess = [
-            Property::class => 'cover_image',
-            PropertyImage::class => 'path',
+            [Property::class, 'cover_image'],
+            [PropertyImage::class, 'path'],
+            [PropertyHost::class, 'avatar'],
+            [PropertyHost::class, 'national_card_image'],
         ];
 
         if (class_exists(\Modules\ContentForge\App\Models\ContentPost::class)) {
-            $modelsToProcess[\Modules\ContentForge\App\Models\ContentPost::class] = 'cover_image';
+            $modelsToProcess[] = [\Modules\ContentForge\App\Models\ContentPost::class, 'cover_image'];
         }
         if (class_exists(\Modules\ContentForge\App\Models\ContentCategory::class)) {
-            $modelsToProcess[\Modules\ContentForge\App\Models\ContentCategory::class] = 'cover_image';
+            $modelsToProcess[] = [\Modules\ContentForge\App\Models\ContentCategory::class, 'cover_image'];
         }
         if (class_exists(\Modules\Market\Entities\MasterProduct::class)) {
-            $modelsToProcess[\Modules\Market\Entities\MasterProduct::class] = 'main_image';
+            $modelsToProcess[] = [\Modules\Market\Entities\MasterProduct::class, 'main_image'];
         }
         if (class_exists(\Modules\Booking\App\Models\DoctorMedia::class)) {
-            $modelsToProcess[\Modules\Booking\App\Models\DoctorMedia::class] = 'file_path';
+            $modelsToProcess[] = [\Modules\Booking\App\Models\DoctorMedia::class, 'file_path'];
         }
 
         $processedCount = 0;
         $errorCount = 0;
 
-        foreach ($modelsToProcess as $modelClass => $field) {
+        foreach ($modelsToProcess as [$modelClass, $field]) {
             $query = $modelClass::where($field, 'not like', '%.webp')->whereNotNull($field);
             if ($modelClass === \Modules\Booking\App\Models\DoctorMedia::class) {
                 $query->where('type', 'photo');

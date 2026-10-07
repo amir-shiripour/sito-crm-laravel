@@ -83,6 +83,8 @@ Route::middleware(['web', 'auth'])->prefix('user')->name('user.')->group(functio
 Route::middleware(['web', 'guest'])->group(function () {
     Route::get('/register', [RegisteredUserController::class, 'create'])->name('register');
     Route::post('/register', [RegisteredUserController::class, 'store']);
+    Route::post('/register/send-otp', [RegisteredUserController::class, 'sendOtp'])->name('register.send-otp');
+    Route::post('/register/verify-otp', [RegisteredUserController::class, 'verifyOtp'])->name('register.verify-otp');
 });
 
 Route::get('/ping', function() { return 'pong-crm'; });

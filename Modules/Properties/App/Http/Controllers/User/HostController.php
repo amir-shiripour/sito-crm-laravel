@@ -146,7 +146,11 @@ class HostController extends Controller
             'rejected' => $properties->where('approval_status', 'rejected')->count(),
         ];
 
-        return view('properties::user.hosts.dashboard', compact('host', 'properties', 'stats'));
+        // تعیین دسترسی میزبان به ثبت اقامتگاه جدید بر اساس وضعیت و تنظیمات سیستم
+        $pendingCanCreate = (bool) PropertySetting::get('rental_pending_host_can_create', 0);
+        $canCreateProperty = ($host->status === 'active') || ($host->status === 'pending' && $pendingCanCreate);
+
+        return view('properties::user.hosts.dashboard', compact('host', 'properties', 'stats', 'canCreateProperty', 'pendingCanCreate'));
     }
 
     /**
@@ -218,14 +222,27 @@ class HostController extends Controller
             abort(403);
         }
 
-        $query = PropertyHost::with('user', 'owner')->withCount('properties');
+        $query = PropertyHost::with(['user', 'owner', 'properties' => function($q) {
+            $q->select('id', 'host_id', 'title', 'code', 'listing_type', 'publication_status', 'approval_status', 'price', 'created_at')
+              ->latest()
+              ->limit(10);
+        }])->withCount('properties');
 
         if ($request->filled('search')) {
-            $s = $request->search;
+            $s = trim($request->search);
             $query->where(function($q) use ($s) {
                 $q->where('display_name', 'like', "%{$s}%")
                   ->orWhere('phone', 'like', "%{$s}%")
-                  ->orWhere('national_code', 'like', "%{$s}%");
+                  ->orWhere('national_code', 'like', "%{$s}%")
+                  ->orWhereHas('user', function($uq) use ($s) {
+                      $uq->where('name', 'like', "%{$s}%")
+                         ->orWhere('email', 'like', "%{$s}%")
+                         ->orWhere('phone', 'like', "%{$s}%");
+                  })
+                  ->orWhereHas('properties', function($pq) use ($s) {
+                      $pq->where('title', 'like', "%{$s}%")
+                         ->orWhere('code', 'like', "%{$s}%");
+                  });
             });
         }
 
@@ -263,6 +280,24 @@ class HostController extends Controller
         }
 
         return back()->with('success', "میزبان «{$host->display_name}» با موفقیت تأیید و فعال شد.");
+    }
+
+    /**
+     * تایید اختصاصی مدارک هویتی میزبان (KYC)
+     */
+    public function approveKyc(PropertyHost $host)
+    {
+        $user = auth()->user();
+        if (!$user->hasRole(['super-admin', 'admin']) && !$user->can('properties.hosts.manage') && !$user->can('properties.manage')) {
+            abort(403);
+        }
+
+        $host->update([
+            'kyc_status' => 'approved',
+            'kyc_rejection_reason' => null,
+        ]);
+
+        return back()->with('success', "مدارک احراز هویت میزبان «{$host->display_name}» با موفقیت تأیید شد.");
     }
 
     /**

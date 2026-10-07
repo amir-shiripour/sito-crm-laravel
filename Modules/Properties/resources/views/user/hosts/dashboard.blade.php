@@ -63,18 +63,107 @@
             </div>
 
             <div class="flex items-center gap-3 flex-wrap">
-                <a href="{{ route('user.properties.hosts.profile') }}" class="px-4 py-3 rounded-2xl bg-white/10 hover:bg-white/15 backdrop-blur-md border border-white/15 text-white text-xs font-bold transition flex items-center gap-2">
+                <a href="{{ route('user.properties.hosts.profile') }}" class="px-4 py-3 rounded-2xl bg-white/10 hover:bg-white/15 backdrop-blur-md border border-white/15 text-white text-xs font-bold transition flex items-center gap-2 font-sans">
                     <svg class="w-4 h-4 text-indigo-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                     تنظیمات پروفایل و شبا
                 </a>
 
-                <a href="{{ route('user.properties.create') }}?type=daily_rental" class="px-6 py-3 rounded-2xl bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-500 hover:to-orange-600 text-slate-950 font-black text-xs shadow-lg shadow-orange-500/25 transition transform active:scale-95 flex items-center gap-2">
-                    <svg class="w-4 h-4 stroke-[2.5]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" /></svg>
-                    ثبت اقامتگاه جدید
-                </a>
+                @if($canCreateProperty)
+                    <a href="{{ route('user.properties.create') }}?type=daily_rental" class="px-6 py-3 rounded-2xl bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-500 hover:to-orange-600 text-slate-950 font-black text-xs shadow-lg shadow-orange-500/25 transition transform active:scale-95 flex items-center gap-2 font-sans">
+                        <svg class="w-4 h-4 stroke-[2.5]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" /></svg>
+                        ثبت اقامتگاه جدید
+                    </a>
+                @else
+                    <button type="button" @click="alert('حساب میزبانی شما هنوز توسط مدیریت پلتفرم تایید نشده است. پس از تایید حساب، امکان ثبت اقامتگاه جدید برای شما فعال خواهد شد.')" class="px-6 py-3 rounded-2xl bg-white/20 border border-white/20 text-white/80 cursor-not-allowed font-bold text-xs flex items-center gap-2 font-sans" title="حساب در انتظار تأیید مدیریت">
+                        <svg class="w-4 h-4 text-amber-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                        ثبت اقامتگاه (قفل تا زمان تایید)
+                    </button>
+                @endif
             </div>
         </div>
     </div>
+
+    {{-- بنر وضعیت تعلیق / عدم تایید حساب میزبانی --}}
+    @if($host->status === 'suspended')
+        <div class="rounded-3xl border border-red-200/80 bg-gradient-to-r from-red-50/90 via-rose-50/60 to-red-50/40 p-6 shadow-sm dark:border-red-900/40 dark:bg-gray-800/80 dark:from-gray-800 dark:to-gray-800/90 flex flex-col md:flex-row md:items-center justify-between gap-5 transition-all">
+            <div class="flex items-start gap-4">
+                <div class="w-12 h-12 rounded-2xl bg-red-100 dark:bg-red-950/60 text-red-600 dark:text-red-400 flex items-center justify-center flex-shrink-0 shadow-inner">
+                    <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                </div>
+                <div>
+                    <h3 class="text-sm font-bold text-red-900 dark:text-red-300 font-sans">حساب میزبانی شما تایید نشده یا به حالت تعلیق درآمده است</h3>
+                    @if($host->kyc_rejection_reason)
+                        <div class="mt-2 p-3 rounded-xl bg-white/80 dark:bg-gray-900/60 border border-red-200/70 dark:border-red-800/50 text-xs text-red-800 dark:text-red-300 font-sans leading-relaxed">
+                            <span class="font-bold text-red-900 dark:text-red-200">علت ثبت شده توسط مدیریت:</span>
+                            {{ $host->kyc_rejection_reason }}
+                        </div>
+                    @else
+                        <p class="text-xs text-red-700 dark:text-red-300/80 mt-1 leading-relaxed font-sans">
+                            فعالیت حساب شما تا بررسی مجدد مدارک محدود شده است. لطفاً جهت فعال‌سازی مجدد، مدارک و مشخصات خود را بررسی و اصلاح فرمایید.
+                        </p>
+                    @endif
+                </div>
+            </div>
+            <a href="{{ route('user.properties.hosts.profile') }}" class="px-5 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs shadow-md shadow-red-600/20 transition flex items-center justify-center gap-2 self-start md:self-auto font-sans flex-shrink-0">
+                <span>اصلاح مشخصات و مدارک</span>
+                <svg class="w-4 h-4 rtl:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+            </a>
+        </div>
+    @endif
+
+    {{-- بنر وضعیت در انتظار بررسی حساب میزبانی --}}
+    @if($host->status === 'pending')
+        <div class="rounded-3xl border border-indigo-200/80 bg-gradient-to-r from-indigo-50/80 via-purple-50/50 to-indigo-50/30 p-6 shadow-sm dark:border-indigo-900/40 dark:bg-gray-800/80 dark:from-gray-800 dark:to-gray-800/90 flex flex-col md:flex-row md:items-center justify-between gap-5 transition-all">
+            <div class="flex items-start gap-4">
+                <div class="w-12 h-12 rounded-2xl bg-indigo-100 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center flex-shrink-0 shadow-inner">
+                    <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                </div>
+                <div>
+                    <h3 class="text-sm font-bold text-gray-900 dark:text-white font-sans">حساب میزبانی شما در صف بررسی مدیریت است</h3>
+                    <p class="text-xs text-gray-600 dark:text-gray-300 mt-1 leading-relaxed font-sans">
+                        @if($canCreateProperty)
+                            می‌توانید اطلاعات اقامتگاه‌های خود را به صورت پیش‌نویس ثبت کنید. پس از تایید هویت و حساب شما توسط مدیریت، اقامتگاه‌ها در سایت منتشر خواهند شد.
+                        @else
+                            مدارک و مشخصات شما در حال بررسی توسط کارشناسان است. به محض تأیید حساب، دکمه‌های ثبت اقامتگاه جدید و مدیریت تقویم رزرو فعال خواهند شد.
+                        @endif
+                    </p>
+                </div>
+            </div>
+            @if(empty($host->national_code) || empty($host->shaba_number))
+                <a href="{{ route('user.properties.hosts.profile') }}" class="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-md shadow-indigo-600/20 transition flex items-center justify-center gap-2 self-start md:self-auto font-sans">
+                    <span>تکمیل مدارک و تسریع بررسی</span>
+                    <svg class="w-4 h-4 rtl:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+                </a>
+            @endif
+        </div>
+    @endif
+
+    {{-- بنر راهنمای تکمیل اطلاعات میزبان (در صورت ناقص بودن شبا یا کدملی) --}}
+    @if($host->status === 'active' && (empty($host->shaba_number) || empty($host->national_code)))
+        <div class="rounded-3xl border border-amber-200/80 bg-gradient-to-r from-amber-50 via-amber-50/50 to-orange-50/30 p-6 shadow-sm dark:border-amber-900/30 dark:bg-gray-800/80 dark:from-gray-800 dark:to-gray-800/90 flex flex-col md:flex-row md:items-center justify-between gap-5 transition-all">
+            <div class="flex items-start gap-4">
+                <div class="w-12 h-12 rounded-2xl bg-amber-100 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center flex-shrink-0 shadow-inner">
+                    <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                </div>
+                <div>
+                    <h3 class="text-sm font-bold text-gray-900 dark:text-white font-sans">اطلاعات مالی و هویتی خود را تکمیل کنید</h3>
+                    <p class="text-xs text-gray-600 dark:text-gray-300 mt-1 leading-relaxed font-sans">
+                        برای واریز مبالغ رزرو و دریافت نشان تایید هویت، لطفاً شماره شبا، نام صاحب حساب و کد ملی خود را در بخش پروفایل وارد نمایید.
+                    </p>
+                </div>
+            </div>
+            <a href="{{ route('user.properties.hosts.profile') }}" class="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs shadow-md shadow-amber-500/20 transition flex items-center justify-center gap-2 self-start md:self-auto font-sans">
+                <span>تکمیل مشخصات و شبا</span>
+                <svg class="w-4 h-4 rtl:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+            </a>
+        </div>
+    @endif
 
     {{-- کارت‌های آمار Bento Grid --}}
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
@@ -190,10 +279,17 @@
                     </button>
                 </div>
 
-                <a href="{{ route('user.properties.create') }}?type=daily_rental" class="px-4 py-2 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-md shadow-indigo-500/20 transition flex items-center gap-1.5">
-                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
-                    ثبت جدید
-                </a>
+                @if($canCreateProperty)
+                    <a href="{{ route('user.properties.create') }}?type=daily_rental" class="px-4 py-2 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-md shadow-indigo-500/20 transition flex items-center gap-1.5 font-sans">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
+                        ثبت جدید
+                    </a>
+                @else
+                    <button type="button" @click="alert('حساب میزبانی شما هنوز توسط مدیریت پلتفرم تایید نشده است. پس از تایید حساب، امکان ثبت اقامتگاه برای شما فعال خواهد شد.')" class="px-4 py-2 rounded-2xl bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 text-xs font-bold border border-gray-200 dark:border-gray-700 cursor-not-allowed flex items-center gap-1.5 font-sans" title="حساب در انتظار تأیید مدیریت">
+                        <svg class="w-4 h-4 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                        ثبت جدید (قفل)
+                    </button>
+                @endif
             </div>
         </div>
 
@@ -208,10 +304,17 @@
                         اولین ویلا، سوئیت یا اقامتگاه بوم‌گردی خود را اضافه کنید تا در سایت منتشر شده و رزرو دریافت نمایید.
                     </p>
                 </div>
-                <a href="{{ route('user.properties.create') }}?type=daily_rental" class="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-lg shadow-indigo-500/25 transition transform active:scale-95">
-                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
-                    ثبت اولین اقامتگاه
-                </a>
+                @if($canCreateProperty)
+                    <a href="{{ route('user.properties.create') }}?type=daily_rental" class="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-lg shadow-indigo-500/25 transition transform active:scale-95 font-sans">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
+                        ثبت اولین اقامتگاه
+                    </a>
+                @else
+                    <button type="button" @click="alert('حساب میزبانی شما هنوز توسط مدیریت پلتفرم تایید نشده است. پس از تایید حساب، امکان ثبت اقامتگاه برای شما فعال خواهد شد.')" class="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 text-xs font-bold border border-gray-200 dark:border-gray-700 cursor-not-allowed font-sans" title="حساب در انتظار تأیید مدیریت">
+                        <svg class="w-4 h-4 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                        ثبت اولین اقامتگاه (در انتظار تایید حساب)
+                    </button>
+                @endif
             </div>
         @else
 

@@ -535,6 +535,14 @@
                                 </div>
                             </label>
 
+                            <label class="md:col-span-2 flex items-center gap-3 p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 cursor-pointer">
+                                <input type="checkbox" name="rental_pending_host_can_create" value="1" {{ ($rental_pending_host_can_create ?? 0) ? 'checked' : '' }} class="{{ $checkboxClass }}">
+                                <div class="flex flex-col">
+                                    <span class="text-xs font-bold text-gray-700 dark:text-gray-300">امکان ثبت اقامتگاه در وضعیت «در انتظار تایید مدیریت»</span>
+                                    <span class="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">در صورت غیرفعال بودن (پیش‌فرض)، ثبت اقامتگاه و مدیریت تقویم تا زمان تأیید مدارک میزبان قفل خواهد بود. در صورت فعال بودن، میزبان می‌تواند اقامتگاه را موقتاً به عنوان پیش‌نویس ثبت کند اما تا زمان تایید هویت منتشر نخواهد شد.</span>
+                                </div>
+                            </label>
+
                             <div class="md:col-span-2 p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 flex items-center justify-between gap-4">
                                 <div class="flex flex-col">
                                     <span class="text-xs font-bold text-gray-700 dark:text-gray-300">درصد کارمزد پیش‌فرض پلتفرم</span>

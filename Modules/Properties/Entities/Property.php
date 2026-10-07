@@ -247,7 +247,14 @@ class Property extends Model
 
         if (!$user) {
             // For guests (public view), show all approved published properties
-            return $query->where('approval_status', 'approved');
+            // If the property belongs to a host, that host must be active
+            return $query->where('approval_status', 'approved')
+                ->where(function($q) {
+                    $q->whereNull('host_id')
+                      ->orWhereHas('host', function($hq) {
+                          $hq->where('status', 'active');
+                      });
+                });
         }
 
         // Super Admin, Admin or users with 'properties.view.all' or 'properties.manage' permission can see everything

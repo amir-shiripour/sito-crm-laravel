@@ -20,6 +20,14 @@ class DashboardController extends Controller
     public function index()
     {
         $user = auth()->user();
+
+        // اگر کاربر فقط نقش میزبان اقامتگاه را دارد و نقش مدیریتی ندارد، به میزکار میزبانی هدایت شود
+        if ($user->hasRole('property_host') && !$user->hasRole('admin') && !$user->hasRole('super_admin')) {
+            if (\Illuminate\Support\Facades\Route::has('user.properties.hosts.dashboard')) {
+                return redirect()->route('user.properties.hosts.dashboard');
+            }
+        }
+
         $menuItems = $this->menuService->getAllForUser($user);
 
         return view('user.dashboard', compact('menuItems', 'user'));

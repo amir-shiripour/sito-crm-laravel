@@ -86,6 +86,7 @@ class SettingsController extends Controller
         $rental_multi_host_enabled = PropertySetting::get('rental_multi_host_enabled', 0);
         $rental_host_auto_approve = PropertySetting::get('rental_host_auto_approve', 0);
         $rental_property_auto_approve = PropertySetting::get('rental_property_auto_approve', 0);
+        $rental_pending_host_can_create = PropertySetting::get('rental_pending_host_can_create', 0);
         $rental_default_commission = PropertySetting::get('rental_default_commission', 10);
 
         // Storage Report
@@ -142,6 +143,7 @@ class SettingsController extends Controller
             'rental_multi_host_enabled',
             'rental_host_auto_approve',
             'rental_property_auto_approve',
+            'rental_pending_host_can_create',
             'rental_default_commission'
         ));
     }
@@ -184,6 +186,7 @@ class SettingsController extends Controller
             'rental_multi_host_enabled' => 'nullable|boolean',
             'rental_host_auto_approve' => 'nullable|boolean',
             'rental_property_auto_approve' => 'nullable|boolean',
+            'rental_pending_host_can_create' => 'nullable|boolean',
             'rental_default_commission' => 'nullable|numeric|min:0|max:100',
         ]);
 
@@ -240,6 +243,7 @@ class SettingsController extends Controller
         PropertySetting::set('rental_multi_host_enabled', $request->has('rental_multi_host_enabled') ? 1 : 0);
         PropertySetting::set('rental_host_auto_approve', $request->has('rental_host_auto_approve') ? 1 : 0);
         PropertySetting::set('rental_property_auto_approve', $request->has('rental_property_auto_approve') ? 1 : 0);
+        PropertySetting::set('rental_pending_host_can_create', $request->has('rental_pending_host_can_create') ? 1 : 0);
         PropertySetting::set('rental_default_commission', $request->input('rental_default_commission', 10));
 
         return back()->with('success', 'تنظیمات با موفقیت ذخیره شد.');
