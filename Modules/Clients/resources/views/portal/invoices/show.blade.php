@@ -103,7 +103,76 @@
             </div>
         </div>
 
-        @if(session('success'))
+        @php
+            $receipt = session('payment_success_receipt');
+        @endphp
+
+        @if($receipt)
+            {{-- کارت برجسته تشکر و رسید پرداخت آنلاین شاپرک --}}
+            <div class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-500/10 via-emerald-500/5 to-transparent dark:from-emerald-950/40 dark:via-gray-800/90 dark:to-gray-800 border-2 border-emerald-500/30 dark:border-emerald-500/40 p-6 sm:p-8 shadow-xl shadow-emerald-500/10">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-6 border-b border-emerald-500/20 dark:border-emerald-500/30">
+                    <div class="flex items-start sm:items-center gap-4">
+                        <div class="w-14 h-14 rounded-2xl bg-emerald-500/20 dark:bg-emerald-500/30 text-emerald-600 dark:text-emerald-300 flex items-center justify-center flex-shrink-0 shadow-inner">
+                            <svg class="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 mb-1.5">
+                                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                                پرداخت آنلاین موفق و تسویه شد
+                            </div>
+                            <h2 class="text-xl sm:text-2xl font-black text-gray-900 dark:text-white">
+                                با تشکر، پرداخت شما با موفقیت ثبت گردید
+                            </h2>
+                            <p class="text-xs sm:text-sm text-slate-600 dark:text-slate-300 mt-1">
+                                تراکنش بانکی توسط شبکه شاپرک تایید شد و صورت‌حساب شما در سامانه تسویه گردید.
+                            </p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2 self-start md:self-center">
+                        <a href="{{ route('client.invoices.print', $invoice->id) }}" target="_blank"
+                           class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs sm:text-sm font-bold shadow-md shadow-indigo-600/20 transition-all">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
+                            </svg>
+                            <span>چاپ فیش و فاکتور</span>
+                        </a>
+                        <a href="{{ route('client.invoices.index') }}"
+                           class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-700/60 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs sm:text-sm font-bold transition-all">
+                            <span>لیست فاکتورها</span>
+                        </a>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-4 mt-6">
+                    <div class="p-3.5 rounded-2xl bg-white/70 dark:bg-gray-800/80 border border-emerald-500/15 dark:border-emerald-500/25">
+                        <span class="text-xs text-slate-500 dark:text-slate-400 block mb-1">کد پیگیری شاپرک / مرجع</span>
+                        <span class="text-sm sm:text-base font-bold text-gray-900 dark:text-white select-all font-sans">
+                            {{ CalendarUtils::convertNumbers($receipt['ref_id'] ?? '—') }}
+                        </span>
+                    </div>
+                    <div class="p-3.5 rounded-2xl bg-white/70 dark:bg-gray-800/80 border border-emerald-500/15 dark:border-emerald-500/25">
+                        <span class="text-xs text-slate-500 dark:text-slate-400 block mb-1">درگاه پرداخت</span>
+                        <span class="text-sm sm:text-base font-bold text-gray-900 dark:text-white font-sans">
+                            {{ $receipt['gateway_label'] ?? 'پرداخت آنلاین' }}
+                        </span>
+                    </div>
+                    <div class="p-3.5 rounded-2xl bg-white/70 dark:bg-gray-800/80 border border-emerald-500/15 dark:border-emerald-500/25">
+                        <span class="text-xs text-slate-500 dark:text-slate-400 block mb-1">مبلغ تراکنش</span>
+                        <span class="text-sm sm:text-base font-bold text-emerald-600 dark:text-emerald-400 font-sans">
+                            {{ CalendarUtils::convertNumbers(number_format($receipt['amount'] ?? $invoice->total)) }} {{ $invoiceCurrencyLabel }}
+                        </span>
+                    </div>
+                    <div class="p-3.5 rounded-2xl bg-white/70 dark:bg-gray-800/80 border border-emerald-500/15 dark:border-emerald-500/25">
+                        <span class="text-xs text-slate-500 dark:text-slate-400 block mb-1">زمان ثبت تراکنش</span>
+                        <span class="text-sm sm:text-base font-bold text-gray-900 dark:text-white font-sans">
+                            {{ CalendarUtils::convertNumbers(jdate($receipt['paid_at'] ?? now())->format('Y/m/d - H:i')) }}
+                        </span>
+                    </div>
+                </div>
+            </div>
+        @elseif(session('success'))
             <div
                 class="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800/30 text-emerald-700 dark:text-emerald-400 flex items-center gap-3">
                 <svg class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">

@@ -596,7 +596,7 @@ class ClientInvoiceController extends Controller
             abort(404);
         }
 
-        $invoiceQuery = Invoice::query();
+        $invoiceQuery = Invoice::with(['customer', 'payments']);
         if ($client) {
             $invoiceQuery->where('customer_id', $client->id);
         }
@@ -648,6 +648,17 @@ class ClientInvoiceController extends Controller
                 ->first();
         }
 
+        // Helper to ensure client session is active on redirect
+        $ensureClientAuth = function() use ($invoice) {
+            if (!auth('client')->check() && $invoice->customer) {
+                try {
+                    auth('client')->login($invoice->customer);
+                } catch (\Throwable $e) {
+                    Log::warning('[ClientInvoiceController] Auto-login customer warning: ' . $e->getMessage());
+                }
+            }
+        };
+
         // Check user cancellation / NOK status across gateways
         if ($gateway === 'zibal') {
             $status = ((string)($request->input('success') ?? '')) === '1' ? 'OK' : 'NOK';
@@ -664,6 +675,7 @@ class ClientInvoiceController extends Controller
 
         if ($status === 'NOK' || $status === 'CANCELED') {
             $payment?->update(['status' => 'canceled']);
+            $ensureClientAuth();
             return redirect()
                 ->route('client.invoices.show', $invoice->id)
                 ->with('error', 'پرداخت آنلاین توسط کاربر لغو شد یا انجام نشد.');
@@ -697,7 +709,7 @@ class ClientInvoiceController extends Controller
             if ($verifyResult && ($verifyResult['success'] ?? false)) {
                 $refId = $verifyResult['ref_id'] ?? $verifyResult['reference_id'] ?? $authority;
 
-                DB::transaction(function () use ($invoice, $payment, $refId, $gateway) {
+                DB::transaction(function () use ($invoice, &$payment, $refId, $gateway) {
                     if ($payment) {
                         $payment->update([
                             'status' => 'paid',
@@ -789,18 +801,31 @@ class ClientInvoiceController extends Controller
                     }
                 }
 
+                $ensureClientAuth();
+
                 return redirect()
                     ->route('client.invoices.show', $invoice->id)
+                    ->with('payment_success_receipt', [
+                        'ref_id'         => $refId,
+                        'gateway_label'  => Payment::formatMethodName($gateway, $gateway),
+                        'gateway'        => $gateway,
+                        'amount'         => $payment?->amount ?? $invoice->total,
+                        'paid_at'        => now()->toDateTimeString(),
+                        'invoice_number' => $invoice->invoice_number,
+                        'is_full'        => $invoice->isPaid(),
+                    ])
                     ->with('success', 'پرداخت شما با موفقیت انجام شد و صورت‌حساب تسویه گردید. کد پیگیری: ' . $refId);
             } else {
                 $payment?->update(['status' => 'canceled']);
                 $errorMsg = $verifyResult['message'] ?? 'تراکنش توسط درگاه تایید نشد.';
+                $ensureClientAuth();
                 return redirect()
                     ->route('client.invoices.show', $invoice->id)
                     ->with('error', 'خطا در تایید تراکنش بانکی: ' . $errorMsg);
             }
         } catch (\Throwable $e) {
             Log::error('Invoice online payment verify error: ' . $e->getMessage());
+            $ensureClientAuth();
             return redirect()
                 ->route('client.invoices.show', $invoice->id)
                 ->with('error', 'خطا در پردازش بازگشت از درگاه: ' . $e->getMessage());
