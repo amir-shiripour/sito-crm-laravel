@@ -2549,6 +2549,57 @@ class InvoiceController extends Controller
 
     private function syncServiceOrders(Invoice $invoice, array $serviceItems)
     {
+        $invoiceMeta = is_array($invoice->meta) ? $invoice->meta : (json_decode($invoice->meta, true) ?? []);
+        $isRenewal = !empty($invoiceMeta['is_renewal']) || !empty($invoiceMeta['source_order_id']);
+
+        if (!$isRenewal) {
+            foreach ($serviceItems as $it) {
+                if (!empty($it['meta']['is_renewal_item'])) {
+                    $isRenewal = true;
+                    break;
+                }
+            }
+        }
+
+        // For renewal invoices: DO NOT create a new order; update the existing source order!
+        if ($isRenewal) {
+            $sourceOrderId = $invoiceMeta['source_order_id'] ?? null;
+            $sourceOrder = $sourceOrderId ? Order::find($sourceOrderId) : null;
+            if (!$sourceOrder && method_exists($invoice, 'getLinkedOrderAttribute')) {
+                $sourceOrder = $invoice->linked_order;
+            }
+
+            if ($sourceOrder) {
+                if ($invoice->isPaid()) {
+                    $activeStatus = Status::where('type', 'order')->where('name', 'فعال')->first()
+                        ?? Status::where('type', 'order')->where('name', 'LIKE', '%فعال%')->first();
+
+                    $updateData = [];
+                    if ($activeStatus && $sourceOrder->status_id != $activeStatus->id) {
+                        $updateData['status_id'] = $activeStatus->id;
+                    }
+
+                    $nextRenewalDate = $invoiceMeta['next_renewal_date'] ?? $invoice->due_date;
+                    if ($nextRenewalDate) {
+                        $currentRenewal = $sourceOrder->renewal_date ? Carbon::parse($sourceOrder->renewal_date) : null;
+                        $candidateRenewal = Carbon::parse($nextRenewalDate);
+                        if (!$currentRenewal || $currentRenewal->lt($candidateRenewal)) {
+                            $updateData['renewal_date'] = $candidateRenewal->format('Y-m-d');
+                        }
+                    }
+
+                    if (!empty($updateData)) {
+                        $sourceOrder->update($updateData);
+                    }
+                }
+
+                // Clean up any accidental duplicate orders attached to this renewal invoice
+                Order::where('invoice_id', $invoice->id)->where('id', '!=', $sourceOrder->id)->delete();
+
+                return;
+            }
+        }
+
         $existingOrders = Order::where('invoice_id', $invoice->id)->orderBy('id')->get();
 
         $orderStatus = Status::where('type', 'order')->where('name', 'در انتظار')->first()

@@ -134,6 +134,10 @@ Route::prefix('clients')
                 ->name('register.submit');
         });
 
+        // روت‌های کالبک عمومی درگاه پرداخت آنلاین فاکتور (شاپرک - قابل دسترس برای کلاینت‌ها و مهمانان با GET و POST)
+        Route::match(['get', 'post'], 'invoices/{invoice}/verify/{gateway?}', [ClientInvoiceController::class, 'verifyOnlinePayment'])
+            ->name('invoices.verify');
+
         // کلاینت‌های لاگین کرده
         Route::middleware('auth:client')->group(function () {
             Route::get('dashboard', [ClientDashboardController::class, 'index'])
@@ -170,8 +174,6 @@ Route::prefix('clients')
                 ->name('invoices.print');
             Route::post('invoices/{invoice}/pay', [ClientInvoiceController::class, 'processPayment'])
                 ->name('invoices.pay');
-            Route::match(['get', 'post'], 'invoices/{invoice}/verify/{gateway?}', [ClientInvoiceController::class, 'verifyOnlinePayment'])
-                ->name('invoices.verify');
 
             // 📦 Service Orders Routes
             Route::get('orders', [ClientOrderController::class, 'index'])
