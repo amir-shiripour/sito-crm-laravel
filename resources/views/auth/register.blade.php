@@ -54,7 +54,7 @@
 
                 {{-- خط پیشرفت رنگی (محاسبه عرض بر اساس مرحله) --}}
                 <div class="absolute top-1/2 right-0 h-1 bg-indigo-600 rounded-full -translate-y-1/2 z-0 transition-all duration-500 ease-out"
-                     :style="'width: ' + ((step - 1) * 50) + '%'"></div>
+                     :style="'width: ' + (role === 'property_host' ? ((step - 1) * 100) : ((step - 1) * 50)) + '%'"></div>
 
                 <div class="relative z-10 flex justify-between items-center w-full">
                     {{-- دکمه مرحله 1 --}}
@@ -73,13 +73,13 @@
                             ۲
                         </div>
                         <span class="mt-2 text-xs font-medium font-sans transition-colors" :class="step >= 2 ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-400'">
-                            <span x-show="role === 'property_host'">تایید شماره</span>
+                            <span x-show="role === 'property_host'">تایید شماره و ورود</span>
                             <span x-show="role !== 'property_host'">تکمیلی</span>
                         </span>
                     </div>
 
-                    {{-- دکمه مرحله 3 --}}
-                    <div class="flex flex-col items-center">
+                    {{-- دکمه مرحله 3 (تنها برای سایر نقش‌ها) --}}
+                    <div class="flex flex-col items-center" x-show="role !== 'property_host'" x-cloak>
                         <div class="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold font-sans transition-all duration-300 shadow-sm border-2"
                              :class="step >= 3 ? 'bg-indigo-600 border-indigo-600 text-white shadow-indigo-600/30' : 'bg-white border-gray-200 text-gray-400 dark:bg-gray-900 dark:border-gray-700'">
                             ۳
@@ -89,7 +89,7 @@
                 </div>
             </div>
 
-            <form method="POST" action="{{ route('register') }}" class="space-y-6" enctype="multipart/form-data" @submit="onFormSubmit($event)">
+            <form method="POST" action="{{ route('register') }}" x-ref="registerForm" id="registerForm" class="space-y-6" enctype="multipart/form-data" @submit="onFormSubmit($event)">
                 @csrf
 
                 {{-- ================= مرحله 1: اطلاعات پایه ================= --}}
@@ -175,7 +175,7 @@
                                     <input id="otp_code" type="text" maxlength="6" x-model="otpCode"
                                            class="block w-full text-center tracking-[0.5em] text-2xl font-bold rounded-xl border-gray-200 bg-gray-50 py-3 px-4 text-gray-900 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 transition-all dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:focus:bg-gray-800 dir-ltr font-sans"
                                            placeholder="• • • • •"
-                                           @keyup.enter.prevent="verifyOtp()" />
+                                           @keyup.enter.prevent="submitHostRegistration()" />
                                 </div>
                             </div>
 
@@ -301,13 +301,13 @@
                 </div>
 
                 {{-- ================= مرحله 3: امنیت و ثبت نهایی ================= --}}
-                <div x-show="step === 3" x-ref="step3" x-transition.opacity.duration.300ms style="display: none;" class="space-y-6">
+                <div x-show="step === 3 && role !== 'property_host'" x-ref="step3" x-transition.opacity.duration.300ms style="display: none;" class="space-y-6">
                     <div class="grid grid-cols-1 gap-6">
                         {{-- رمز عبور --}}
                         <div>
                             <label for="password" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">رمز عبور</label>
                             <div class="relative" x-data="{ show: false }">
-                                <input id="password" x-bind:type="show ? 'text' : 'password'" name="password" required autocomplete="new-password"
+                                <input id="password" x-bind:type="show ? 'text' : 'password'" name="password" :required="role !== 'property_host'" :disabled="role === 'property_host'" autocomplete="new-password"
                                        class="block w-full rounded-xl border-gray-200 bg-gray-50 py-3 pl-10 pr-10 text-sm text-gray-900 placeholder-gray-400 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 transition-all dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:focus:bg-gray-800 dir-ltr font-sans"
                                        placeholder="••••••••" />
 
@@ -333,7 +333,7 @@
                         <div>
                             <label for="password_confirmation" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">تکرار رمز عبور</label>
                             <div class="relative" x-data="{ show: false }">
-                                <input id="password_confirmation" x-bind:type="show ? 'text' : 'password'" name="password_confirmation" required autocomplete="new-password"
+                                <input id="password_confirmation" x-bind:type="show ? 'text' : 'password'" name="password_confirmation" :required="role !== 'property_host'" :disabled="role === 'property_host'" autocomplete="new-password"
                                        class="block w-full rounded-xl border-gray-200 bg-gray-50 py-3 pl-10 pr-10 text-sm text-gray-900 placeholder-gray-400 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 transition-all dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:focus:bg-gray-800 dir-ltr font-sans"
                                        placeholder="••••••••" />
 
@@ -361,7 +361,7 @@
                         <div class="mt-6 p-4 rounded-xl bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-800">
                             <label for="terms" class="flex items-center cursor-pointer group">
                                 <div class="relative flex items-center">
-                                    <input id="terms" type="checkbox" name="terms" required class="peer h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 cursor-pointer" />
+                                    <input id="terms" type="checkbox" name="terms" :required="role !== 'property_host'" :disabled="role === 'property_host'" class="peer h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 cursor-pointer" />
                                 </div>
                                 <span class="mr-3 text-sm leading-relaxed text-gray-600 dark:text-gray-400 transition-colors font-sans">
                                     من با <a target="_blank" href="{{ route('terms.show') }}" class="font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 dark:hover:text-indigo-300">شرایط استفاده</a> و <a target="_blank" href="{{ route('policy.show') }}" class="font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 dark:hover:text-indigo-300">سیاست حریم خصوصی</a> موافقم.
@@ -381,14 +381,11 @@
                     </button>
                     <div x-show="step === 1"></div>
 
-                    {{-- دکمه بعدی (مرحله ۱ یا ۲) --}}
-                    <button type="button" x-show="step < 3" @click="nextStep()" :disabled="isSendingOtp || isVerifyingOtp"
+                    {{-- دکمه بعدی (مرحله ۱ برای همه، و مرحله ۲ برای سایر نقش‌ها) --}}
+                    <button type="button" x-show="step === 1 || (step === 2 && role !== 'property_host')" @click="nextStep()" :disabled="isSendingOtp || isVerifyingOtp"
                             class="group relative flex justify-center items-center rounded-xl bg-indigo-600 py-2.5 px-6 text-sm font-semibold text-white shadow-lg shadow-indigo-600/30 hover:bg-indigo-500 hover:shadow-indigo-600/40 focus:outline-none focus:ring-2 focus:ring-indigo-500/40 transition-all active:scale-[0.98] font-sans disabled:opacity-60 disabled:cursor-not-allowed">
                         <span x-show="step === 1 && !isSendingOtp">مرحله بعد</span>
                         <span x-show="step === 1 && isSendingOtp">در حال ارسال کد...</span>
-
-                        <span x-show="step === 2 && role === 'property_host' && !isVerifyingOtp">تایید کد و ادامه</span>
-                        <span x-show="step === 2 && role === 'property_host' && isVerifyingOtp">در حال بررسی کد...</span>
 
                         <span x-show="step === 2 && role !== 'property_host'">مرحله بعد</span>
 
@@ -397,8 +394,18 @@
                         </span>
                     </button>
 
-                    {{-- دکمه ثبت نهایی (مرحله ۳) --}}
-                    <button type="submit" x-show="step === 3" style="display: none;"
+                    {{-- دکمه تایید و ثبت‌نام مرحله ۲ برای میزبان --}}
+                    <button type="button" x-show="step === 2 && role === 'property_host'" @click="submitHostRegistration()" :disabled="isVerifyingOtp"
+                            class="group relative flex justify-center items-center rounded-xl bg-emerald-600 py-2.5 px-8 text-sm font-semibold text-white shadow-lg shadow-emerald-600/30 hover:bg-emerald-500 hover:shadow-emerald-600/40 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 transition-all active:scale-[0.98] font-sans disabled:opacity-60 disabled:cursor-not-allowed">
+                        <span x-show="!isVerifyingOtp">تایید کد و تکمیل ثبت‌نام</span>
+                        <span x-show="isVerifyingOtp">در حال بررسی و ورود...</span>
+                        <span class="mr-2 flex items-center" x-show="!isVerifyingOtp">
+                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+                        </span>
+                    </button>
+
+                    {{-- دکمه ثبت نهایی (مرحله ۳ برای سایر نقش‌ها) --}}
+                    <button type="submit" x-show="step === 3 && role !== 'property_host'" style="display: none;"
                             class="group relative flex justify-center rounded-xl bg-emerald-600 py-2.5 px-8 text-sm font-semibold text-white shadow-lg shadow-emerald-600/30 hover:bg-emerald-500 hover:shadow-emerald-600/40 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 transition-all active:scale-[0.98] font-sans">
                         تکمیل ثبت‌نام
                         <span class="mr-2 flex items-center">
@@ -457,6 +464,7 @@
                 onRoleChange() {
                     this.otpAlert = { type: '', message: '' };
                     this.isMobileVerified = false;
+                    this.step = 1;
                 },
 
                 startCooldown(seconds) {
@@ -553,6 +561,25 @@
                     }
                 },
 
+                async submitHostRegistration() {
+                    this.otpAlert = { type: '', message: '' };
+
+                    if (!this.otpCode || this.otpCode.trim().length < 4) {
+                        this.showAlert('لطفاً کد تایید ۵ رقمی دریافتی را وارد کنید.');
+                        return;
+                    }
+
+                    if (!this.isMobileVerified) {
+                        const verified = await this.verifyOtp();
+                        if (!verified) return;
+                    }
+
+                    // Directly submit the registration form
+                    if (this.$refs.registerForm) {
+                        this.$refs.registerForm.submit();
+                    }
+                },
+
                 async nextStep() {
                     this.otpAlert = { type: '', message: '' };
 
@@ -575,11 +602,7 @@
                         }
                     } else if (this.step === 2) {
                         if (this.role === 'property_host') {
-                            if (!this.isMobileVerified) {
-                                const verified = await this.verifyOtp();
-                                if (!verified) return;
-                            }
-                            this.step = 3;
+                            await this.submitHostRegistration();
                         } else {
                             const invalid = [...this.$refs.step2.querySelectorAll('input, select, textarea')].find(el => !el.checkValidity());
                             if (invalid) {

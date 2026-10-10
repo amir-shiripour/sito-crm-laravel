@@ -14,7 +14,7 @@
 
     {{-- Task Top Header --}}
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 cursor-pointer select-none"
-         @click="toggleTask('{{ $taskSlug }}')">
+         @click.prevent="toggleTask('{{ $taskSlug }}')">
         <div class="flex items-start sm:items-center gap-3 min-w-0">
             @if(!$project->isCanceled() && ($project->userHasPermission(auth()->id(), 'tasks.delete') || $project->isManager(auth()->id()) || $isSuperAdmin))
                 <div class="flex items-center shrink-0" @click.stop>
@@ -28,6 +28,7 @@
 
             {{-- Collapse / Expand Chevron Icon --}}
             <button type="button"
+                    @click.stop.prevent="toggleTask('{{ $taskSlug }}')"
                     class="p-1.5 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-500 transition-transform duration-200 shadow-xs shrink-0"
                     :class="collapsedTasks['{{ $taskSlug }}'] ? 'rotate-180' : ''">
                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">

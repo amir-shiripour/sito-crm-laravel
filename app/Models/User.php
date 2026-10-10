@@ -40,6 +40,7 @@ class User extends Authenticatable
         'email',
         'mobile',
         'password',
+        'password_set_at',
     ];
 
     /**
@@ -61,6 +62,7 @@ class User extends Authenticatable
      */
     protected $casts = [
         'email_verified_at' => 'datetime',
+        'password_set_at' => 'datetime',
         'password' => 'hashed',
     ];
 
@@ -72,6 +74,14 @@ class User extends Authenticatable
     protected $appends = [
         'profile_photo_url',
     ];
+
+    /**
+     * Determine if the user has explicitly set a password.
+     */
+    public function hasSetPassword(): bool
+    {
+        return !is_null($this->password_set_at);
+    }
 
     /**
      * The clients that belong to the user.

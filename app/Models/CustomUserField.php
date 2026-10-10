@@ -10,7 +10,14 @@ class CustomUserField extends Model
     use HasFactory;
 
     protected $fillable = [
-        'role_name','field_name','label','field_type','is_required','rules',
+        'role_name',
+        'field_name',
+        'label',
+        'field_type',
+        'is_required',
+        'show_in_register',
+        'show_in_profile',
+        'rules',
     ];
 
     public function role()
@@ -22,5 +29,7 @@ class CustomUserField extends Model
         'meta'  => 'array', // why: دسترسی آسان به mimes/max/options
         'rules' => 'array',
         'is_required' => 'bool',
+        'show_in_register' => 'bool',
+        'show_in_profile' => 'bool',
     ];
 }

@@ -235,10 +235,25 @@
                             <p class="leading-relaxed text-emerald-700 dark:text-emerald-300/90 text-xs">
                                 مدارک هویتی شما توسط کارشناسان تأیید شده و حساب شما بدون محدودیت واریز در حال فعالیت است. اقامتگاه‌های شما دارای نشان «میزبان تأیید شده» هستند.
                             </p>
-                            <div class="pt-2 border-t border-emerald-200/50 dark:border-emerald-800/40 flex items-center justify-between">
-                                <span class="text-emerald-800 dark:text-emerald-300 font-bold">کد ملی ثبت‌شده:</span>
-                                <span class="font-bold text-sm tracking-wider dir-ltr text-emerald-900 dark:text-emerald-200">{{ $host->national_code ?? 'ثبت شده' }}</span>
-                            </div>
+                            @if(isset($customFields) && $customFields->count() > 0)
+                                <div class="pt-2 border-t border-emerald-200/50 dark:border-emerald-800/40 space-y-2">
+                                    @foreach($customFields as $cf)
+                                        @php
+                                            $cVal = $customValues->get($cf->field_name)->value ?? null;
+                                        @endphp
+                                        @if(!empty($cVal))
+                                            <div class="flex items-center justify-between text-xs">
+                                                <span class="text-emerald-800 dark:text-emerald-300 font-bold">{{ $cf->label }}:</span>
+                                                @if($cf->field_type === 'file')
+                                                    <a href="{{ asset('storage/' . $cVal) }}" target="_blank" class="font-bold underline text-emerald-900 dark:text-emerald-200">مشاهده مدرک تأیید شده</a>
+                                                @else
+                                                    <span class="font-bold text-sm tracking-wider dir-ltr text-emerald-900 dark:text-emerald-200 font-sans">{{ $cVal }}</span>
+                                                @endif
+                                            </div>
+                                        @endif
+                                    @endforeach
+                                </div>
+                            @endif
                         </div>
 
                     @else
@@ -250,7 +265,7 @@
                                     علت عدم تأیید مدارک قبلی:
                                 </div>
                                 <p class="text-red-700 dark:text-red-300 mr-6">
-                                    {{ $host->kyc_rejection_reason ?? 'کیفیت تصویر کارت ملی ناخوانا بوده یا اطلاعات هویتی با اطلاعات بانکی مطابقت ندارد. لطفاً مجدداً بارگذاری فرمایید.' }}
+                                    {{ $host->kyc_rejection_reason ?? 'کیفیت تصویر مدارک ناخوانا بوده یا اطلاعات هویتی با اطلاعات بانکی مطابقت ندارد. لطفاً مجدداً بارگذاری فرمایید.' }}
                                 </p>
                             </div>
                         @elseif($host->kyc_status === 'pending')
@@ -265,52 +280,147 @@
                             </div>
                         @endif
 
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-5 items-start">
-                            <div>
-                                <label class="{{ $labelClass }}">کد ملی هوشمند (۱۰ رقمی)</label>
-                                <input type="text" name="national_code" value="{{ old('national_code', $host->national_code) }}" maxlength="10" class="{{ $inputClass }} text-left dir-ltr font-sans" placeholder="10 رقمی">
-                                <span class="text-[11px] text-gray-400 mt-1 block">کد ملی جهت راستی‌آزمایی با شبا بانکی است.</span>
-                            </div>
+                        {{-- رندر داینامیک فیلدهای سفارشی احراز هویت و مدارک امنیتی --}}
+                        @if(isset($customFields) && $customFields->count() > 0)
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-5 items-start">
+                                @foreach($customFields as $field)
+                                    @php
+                                        $type = strtolower($field->field_type ?? 'text');
+                                        $existingVal = $customValues->get($field->field_name)->value ?? '';
+                                        $meta = is_array($field->meta) ? $field->meta : (is_string($field->meta) ? json_decode($field->meta, true) : []);
+                                        $opts = $meta['options'] ?? null;
+                                        $isFullWidth = in_array($type, ['textarea', 'file']);
+                                        $isLtr = in_array($type, ['number', 'email', 'url', 'tel']);
+                                    @endphp
 
-                            <div>
-                                <label class="{{ $labelClass }}">تصویر کارت ملی هوشمند</label>
-                                <div class="border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-2xl p-4 text-center hover:border-indigo-500 transition-colors bg-gray-50/50 dark:bg-gray-900/30 space-y-3">
-                                    {{-- پیش‌نمایش تصویر در صورت انتخاب جدید --}}
-                                    <template x-if="nationalCardPreview">
-                                        <div class="space-y-2">
-                                            <img :src="nationalCardPreview" class="max-h-28 mx-auto rounded-xl object-contain border border-gray-200 dark:border-gray-700 shadow-sm">
-                                            <span class="inline-block px-2.5 py-0.5 rounded-lg bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 text-[11px] font-bold">تصویر جدید آماده بارگذاری است</span>
-                                        </div>
-                                    </template>
+                                    @if($type === 'file')
+                                        {{-- فیلد آپلود مدرک / فایل --}}
+                                        <div class="sm:col-span-2 space-y-2">
+                                            <label class="{{ $labelClass }}">
+                                                {{ $field->label }}
+                                                @if($field->is_required) <span class="text-red-500">*</span> @endif
+                                            </label>
+                                            <div class="border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-2xl p-4 text-center hover:border-indigo-500 transition-colors bg-gray-50/50 dark:bg-gray-900/30 space-y-3">
+                                                {{-- پیش‌نمایش فایل جدید انتخاب شده --}}
+                                                <template x-if="previews['{{ $field->field_name }}']">
+                                                    <div class="space-y-2">
+                                                        <template x-if="previews['{{ $field->field_name }}'].isImage">
+                                                            <img :src="previews['{{ $field->field_name }}'].data" class="max-h-28 mx-auto rounded-xl object-contain border border-gray-200 dark:border-gray-700 shadow-sm">
+                                                        </template>
+                                                        <template x-if="!previews['{{ $field->field_name }}'].isImage">
+                                                            <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-indigo-50 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 text-xs font-bold">
+                                                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                                                                <span x-text="previews['{{ $field->field_name }}'].name"></span>
+                                                            </div>
+                                                        </template>
+                                                        <span class="inline-block px-2.5 py-0.5 rounded-lg bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 text-[11px] font-bold">فایل جدید آماده ارسال است</span>
+                                                    </div>
+                                                </template>
 
-                                    {{-- نمایش وضعیت تصویر قبلی در صورت عدم انتخاب جدید --}}
-                                    <template x-if="!nationalCardPreview">
-                                        <div>
-                                            @if($host->national_card_image)
-                                                <div class="space-y-2 mb-2">
-                                                    <img src="{{ asset('storage/' . $host->national_card_image) }}" class="max-h-28 mx-auto rounded-xl object-contain border border-gray-200 dark:border-gray-700 shadow-sm">
-                                                    <span class="inline-block px-2.5 py-0.5 rounded-lg bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 text-[10px] font-bold">تصویر کارت ملی قبلاً با موفقیت ثبت شده</span>
+                                                {{-- وضعیت مدرک قبلی --}}
+                                                <template x-if="!previews['{{ $field->field_name }}']">
+                                                    <div>
+                                                        @if(!empty($existingVal))
+                                                            @php
+                                                                $ext = strtolower(pathinfo($existingVal, PATHINFO_EXTENSION));
+                                                                $isImg = in_array($ext, ['jpg', 'jpeg', 'png', 'webp', 'gif', 'svg']);
+                                                            @endphp
+                                                            <div class="space-y-2 mb-2">
+                                                                @if($isImg)
+                                                                    <img src="{{ asset('storage/' . $existingVal) }}" class="max-h-28 mx-auto rounded-xl object-contain border border-gray-200 dark:border-gray-700 shadow-sm">
+                                                                @else
+                                                                    <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 text-xs font-bold">
+                                                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                                                                        <span>مدرک قبلاً ثبت شده است</span>
+                                                                    </div>
+                                                                @endif
+                                                                <div class="flex items-center justify-center gap-2">
+                                                                    <span class="inline-block px-2.5 py-0.5 rounded-lg bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 text-[10px] font-bold font-sans">ثبت شده در سیستم</span>
+                                                                    <a href="{{ asset('storage/' . $existingVal) }}" target="_blank" class="text-[11px] text-indigo-600 dark:text-indigo-400 hover:underline font-bold">مشاهده فایل فعلی</a>
+                                                                </div>
+                                                            </div>
+                                                        @else
+                                                            <div class="py-2 text-gray-400">
+                                                                <svg class="w-8 h-8 mx-auto mb-1 text-gray-300 dark:text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                                                                <span class="block text-xs text-gray-600 dark:text-gray-300">{{ $field->label }}</span>
+                                                            </div>
+                                                        @endif
+                                                    </div>
+                                                </template>
+
+                                                <div class="pt-1">
+                                                    <label class="inline-block px-4 py-2 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-xs font-bold text-indigo-600 dark:text-indigo-400 shadow-sm cursor-pointer hover:bg-indigo-50 dark:hover:bg-gray-700/60 transition font-sans">
+                                                        <span x-text="previews['{{ $field->field_name }}'] ? 'تغییر فایل انتخابی' : 'انتخاب و بارگذاری فایل'"></span>
+                                                        <input type="file" name="custom[{{ $field->field_name }}]" class="hidden" @change="previewFieldFile($event, '{{ $field->field_name }}')">
+                                                    </label>
+                                                    <span class="block text-[11px] text-gray-400 mt-1 font-sans">فرمت‌های معتبر تصویر یا اسناد تا حداکثر ۱۰ مگابایت</span>
                                                 </div>
-                                            @else
-                                                <div class="py-2 text-gray-400">
-                                                    <svg class="w-8 h-8 mx-auto mb-1 text-gray-300 dark:text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                                                    <span class="block text-xs text-gray-600 dark:text-gray-300">تصویر کارت ملی هوشمند یا صفحه اول شناسنامه</span>
-                                                </div>
-                                            @endif
+                                            </div>
+                                            @error('custom.'.$field->field_name)
+                                                <span class="text-xs text-red-500 font-bold block mt-1">{{ $message }}</span>
+                                            @enderror
                                         </div>
-                                    </template>
 
-                                    {{-- اینپوت فایل پایدار (همیشه در فرم زنده می‌ماند) --}}
-                                    <div class="pt-1">
-                                        <label class="inline-block px-4 py-2 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-xs font-bold text-indigo-600 dark:text-indigo-400 shadow-sm cursor-pointer hover:bg-indigo-50 dark:hover:bg-gray-700/60 transition font-sans">
-                                            <span x-text="nationalCardPreview ? 'تغییر فایل انتخابی' : 'انتخاب فایل تصویر'"></span>
-                                            <input type="file" name="national_card_image" accept="image/*" class="hidden" @change="previewImage($event, 'nationalCardPreview')">
-                                        </label>
-                                        <span class="block text-[11px] text-gray-400 mt-1 font-sans">حداکثر حجم مجاز: ۵ مگابایت (JPG/PNG)</span>
-                                    </div>
-                                </div>
+                                    @elseif($type === 'textarea')
+                                        {{-- فیلد متنی چندخطی --}}
+                                        <div class="sm:col-span-2 space-y-1">
+                                            <label class="{{ $labelClass }}">
+                                                {{ $field->label }}
+                                                @if($field->is_required) <span class="text-red-500">*</span> @endif
+                                            </label>
+                                            <textarea name="custom[{{ $field->field_name }}]" rows="3" class="{{ $inputClass }} font-sans" placeholder="{{ $field->label }}">{{ old('custom.'.$field->field_name, $existingVal) }}</textarea>
+                                            @error('custom.'.$field->field_name)
+                                                <span class="text-xs text-red-500 font-bold block mt-1">{{ $message }}</span>
+                                            @enderror
+                                        </div>
+
+                                    @elseif($type === 'select')
+                                        {{-- فیلد انتخابی کشویی --}}
+                                        <div class="space-y-1">
+                                            <label class="{{ $labelClass }}">
+                                                {{ $field->label }}
+                                                @if($field->is_required) <span class="text-red-500">*</span> @endif
+                                            </label>
+                                            <select name="custom[{{ $field->field_name }}]" class="{{ $inputClass }} font-sans">
+                                                <option value="">انتخاب کنید...</option>
+                                                @if(is_array($opts))
+                                                    @foreach($opts as $optVal => $optLabel)
+                                                        <option value="{{ $optVal }}" {{ old('custom.'.$field->field_name, $existingVal) == $optVal ? 'selected' : '' }}>{{ $optLabel }}</option>
+                                                    @endforeach
+                                                @endif
+                                            </select>
+                                            @error('custom.'.$field->field_name)
+                                                <span class="text-xs text-red-500 font-bold block mt-1">{{ $message }}</span>
+                                            @enderror
+                                        </div>
+
+                                    @else
+                                        {{-- فیلدهای استاندارد (متن، عدد، تاریخ، ایمیل و ...) --}}
+                                        <div class="space-y-1">
+                                            <label class="{{ $labelClass }}">
+                                                {{ $field->label }}
+                                                @if($field->is_required) <span class="text-red-500">*</span> @endif
+                                            </label>
+                                            <input type="{{ $type === 'number' ? 'number' : ($type === 'date' ? 'date' : ($type === 'email' ? 'email' : 'text')) }}"
+                                                   name="custom[{{ $field->field_name }}]"
+                                                   value="{{ old('custom.'.$field->field_name, $existingVal) }}"
+                                                   class="{{ $inputClass }} {{ $isLtr ? 'text-left dir-ltr' : '' }} font-sans"
+                                                   placeholder="{{ $field->label }}">
+                                            @error('custom.'.$field->field_name)
+                                                <span class="text-xs text-red-500 font-bold block mt-1">{{ $message }}</span>
+                                            @enderror
+                                        </div>
+                                    @endif
+                                @endforeach
                             </div>
-                        </div>
+                        @else
+                            {{-- در صورت عدم تعریف فیلد سفارشی برای احراز هویت این نقش --}}
+                            <div class="p-6 rounded-2xl bg-gray-50/80 dark:bg-gray-900/40 border border-gray-200/80 dark:border-gray-800 text-center font-sans space-y-2">
+                                <svg class="w-8 h-8 text-gray-400 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                <p class="text-xs text-gray-600 dark:text-gray-400">در حال حاضر مدرک یا فیلد سفارشی خاصی برای احراز هویت میزبان تعیین نشده است.</p>
+                                <p class="text-[11px] text-gray-400">مدیران سیستم می‌توانند از منوی «فیلدهای سفارشی کاربر»، مدارک مورد نیاز را اضافه کنند.</p>
+                            </div>
+                        @endif
                     @endif
                 </div>
 
@@ -389,26 +499,53 @@
                     </div>
                 </div>
 
-                {{-- کارت راهنمای تسویه مالی و نرخ کارمزد --}}
+                {{-- کارت راهنمای تسویه مالی و نرخ کارمزد (پویا و قابل تنظیم از پنل مدیریت) --}}
                 <div class="{{ $cardClass }} p-6 space-y-4 bg-gradient-to-br from-indigo-50/50 to-white dark:from-gray-800 dark:to-gray-800/80 border-indigo-100 dark:border-gray-700">
                     <div class="flex items-center gap-2 text-indigo-700 dark:text-indigo-300 font-bold text-xs">
                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                        قوانین و رویه تسویه حساب درآمد:
+                        {{ $settlementRulesTitle ?? 'قوانین و رویه تسویه حساب درآمد:' }}
                     </div>
 
+                    @php
+                        $activeRules = $settlementRules ?? [
+                            [
+                                'title' => 'زمان تسویه',
+                                'text' => 'مبالغ رزروها پس از تحویل اقامتگاه به مسافر و ورود بدون مغایرت در اولین سیکل پایا واریز می‌گردد.',
+                            ],
+                            [
+                                'title' => 'کارمزد پلتفرم',
+                                'text' => 'سهم پلتفرم از هر رزرو {commission}٪ بوده و مابقی مستقیماً به شبا واریز می‌شود.',
+                            ],
+                            [
+                                'title' => 'تطابق حساب',
+                                'text' => 'نام صاحب حساب باید با اطلاعات هویتی و کد ملی همخوانی کامل داشته باشد.',
+                            ],
+                        ];
+                    @endphp
+
                     <ul class="text-xs text-gray-600 dark:text-gray-300 space-y-2 leading-relaxed font-sans">
-                        <li class="flex items-start gap-2">
-                            <span class="w-1.5 h-1.5 rounded-full bg-indigo-500 mt-1.5 flex-shrink-0"></span>
-                            <span><strong>زمان تسویه:</strong> مبالغ رزروها پس از تحویل اقامتگاه به مسافر و ورود بدون مغایرت در اولین سیکل پایا واریز می‌گردد.</span>
-                        </li>
-                        <li class="flex items-start gap-2">
-                            <span class="w-1.5 h-1.5 rounded-full bg-indigo-500 mt-1.5 flex-shrink-0"></span>
-                            <span><strong>کارمزد پلتفرم:</strong> سهم پلتفرم از هر رزرو <strong class="text-indigo-600 dark:text-indigo-400">{{ $host->effective_commission_rate }}٪</strong> بوده و مابقی مستقیماً به شبا واریز می‌شود.</span>
-                        </li>
-                        <li class="flex items-start gap-2">
-                            <span class="w-1.5 h-1.5 rounded-full bg-indigo-500 mt-1.5 flex-shrink-0"></span>
-                            <span><strong>تطابق حساب:</strong> نام صاحب حساب باید با اطلاعات هویتی و کد ملی همخوانی کامل داشته باشد.</span>
-                        </li>
+                        @foreach($activeRules as $rule)
+                            @php
+                                $rTitle = trim($rule['title'] ?? '');
+                                $rText = trim($rule['text'] ?? '');
+                                $formattedText = str_replace(
+                                    ['{commission}', ':commission'],
+                                    '<strong class="text-indigo-600 dark:text-indigo-400 font-sans">' . $host->effective_commission_rate . '٪</strong>',
+                                    e($rText)
+                                );
+                            @endphp
+                            @if(!empty($rText) || !empty($rTitle))
+                                <li class="flex items-start gap-2">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-indigo-500 mt-1.5 flex-shrink-0"></span>
+                                    <span>
+                                        @if(!empty($rTitle))
+                                            <strong>{{ $rTitle }}:</strong>
+                                        @endif
+                                        {!! $formattedText !!}
+                                    </span>
+                                </li>
+                            @endif
+                        @endforeach
                     </ul>
                 </div>
 
@@ -446,7 +583,7 @@
         return {
             isSubmitting: false,
             avatarPreview: null,
-            nationalCardPreview: null,
+            previews: {},
             formData: {
                 displayName: '{{ old('display_name', $host->display_name) }}',
                 phone: '{{ old('phone', $host->phone) }}',
@@ -502,6 +639,21 @@
                     const reader = new FileReader();
                     reader.onload = (e) => {
                         this[targetProp] = e.target.result;
+                    };
+                    reader.readAsDataURL(file);
+                }
+            },
+
+            previewFieldFile(event, fieldName) {
+                const file = event.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        this.previews[fieldName] = {
+                            data: e.target.result,
+                            name: file.name,
+                            isImage: file.type.startsWith('image/')
+                        };
                     };
                     reader.readAsDataURL(file);
                 }

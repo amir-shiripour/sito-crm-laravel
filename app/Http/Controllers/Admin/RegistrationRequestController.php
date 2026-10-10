@@ -23,11 +23,14 @@ class RegistrationRequestController extends Controller
 
     public function approve(RegistrationRequest $registrationRequest)
     {
+        $isHost = ($registrationRequest->role && $registrationRequest->role->name === 'property_host');
+
         $user = User::create([
             'name' => $registrationRequest->name,
             'email' => $registrationRequest->email,
             'mobile' => $registrationRequest->mobile,
             'password' => $registrationRequest->password,
+            'password_set_at' => $isHost ? null : now(),
         ]);
 
         $user->assignRole($registrationRequest->role);

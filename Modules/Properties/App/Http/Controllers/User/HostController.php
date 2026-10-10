@@ -9,6 +9,8 @@ use Modules\Properties\Entities\PropertyOwner;
 use Modules\Properties\Entities\Property;
 use Modules\Properties\Entities\PropertySetting;
 use App\Models\User;
+use App\Models\CustomUserField;
+use App\Models\UserCustomValue;
 use App\Traits\FileUploadTrait;
 use Illuminate\Support\Str;
 
@@ -161,7 +163,48 @@ class HostController extends Controller
         $user = auth()->user();
         $host = PropertyHost::where('user_id', $user->id)->firstOrFail();
 
-        return view('properties::user.hosts.profile', compact('host'));
+        $roleNames = $user->roles->pluck('name')->toArray();
+        if (!in_array('property_host', $roleNames)) {
+            $roleNames[] = 'property_host';
+        }
+
+        $customFields = CustomUserField::whereIn('role_name', $roleNames)
+            ->where('show_in_profile', true)
+            ->orderBy('id')
+            ->get()
+            ->unique('field_name');
+
+        $customValues = UserCustomValue::where('user_id', $user->id)
+            ->get()
+            ->keyBy('field_name');
+
+        $settlementRulesTitle = PropertySetting::get('rental_settlement_rules_title', 'قوانین و رویه تسویه حساب درآمد:');
+        $rawRules = PropertySetting::get('rental_settlement_rules');
+        $settlementRules = $rawRules ? json_decode($rawRules, true) : null;
+        if (empty($settlementRules) || !is_array($settlementRules)) {
+            $settlementRules = [
+                [
+                    'title' => 'زمان تسویه',
+                    'text' => 'مبالغ رزروها پس از تحویل اقامتگاه به مسافر و ورود بدون مغایرت در اولین سیکل پایا واریز می‌گردد.',
+                ],
+                [
+                    'title' => 'کارمزد پلتفرم',
+                    'text' => 'سهم پلتفرم از هر رزرو {commission}٪ بوده و مابقی مستقیماً به شبا واریز می‌شود.',
+                ],
+                [
+                    'title' => 'تطابق حساب',
+                    'text' => 'نام صاحب حساب باید با اطلاعات هویتی و کد ملی همخوانی کامل داشته باشد.',
+                ],
+            ];
+        }
+
+        return view('properties::user.hosts.profile', compact(
+            'host',
+            'customFields',
+            'customValues',
+            'settlementRulesTitle',
+            'settlementRules'
+        ));
     }
 
     /**
@@ -172,6 +215,7 @@ class HostController extends Controller
         $user = auth()->user();
         $host = PropertyHost::where('user_id', $user->id)->firstOrFail();
 
+        // اعتبارسنجی اطلاعات پایه میزبان (بدون هاردکد کردن مدارک)
         $request->validate([
             'display_name' => 'required|string|max:255',
             'phone' => 'required|string|max:20',
@@ -180,9 +224,80 @@ class HostController extends Controller
             'bank_name' => 'nullable|string|max:100',
             'account_owner_name' => 'nullable|string|max:255',
             'avatar' => 'nullable|image|max:3072',
-            'national_code' => 'nullable|string|max:15',
-            'national_card_image' => 'nullable|image|max:5120',
         ]);
+
+        $roleNames = $user->roles->pluck('name')->toArray();
+        if (!in_array('property_host', $roleNames)) {
+            $roleNames[] = 'property_host';
+        }
+
+        // استخراج و اعتبارسنجی پویا بر اساس فیلدهای سفارشی احراز هویت
+        $customFields = CustomUserField::whereIn('role_name', $roleNames)
+            ->where('show_in_profile', true)
+            ->orderBy('id')
+            ->get()
+            ->unique('field_name');
+
+        $customRules = [];
+        $customMessages = [];
+        $customAttributes = [];
+
+        foreach ($customFields as $f) {
+            $key = 'custom.' . $f->field_name;
+            $type = strtolower($f->field_type ?? 'text');
+            $meta = is_array($f->meta ?? null) ? $f->meta : (is_string($f->meta ?? null) ? json_decode($f->meta, true) : []);
+            $meta = $meta ?: [];
+
+            $existingVal = UserCustomValue::where('user_id', $user->id)
+                ->where('field_name', $f->field_name)
+                ->value('value');
+
+            if ($f->is_required) {
+                if ($type === 'file') {
+                    $base = !empty($existingVal) ? ['nullable'] : ['required'];
+                } else {
+                    $base = ['required'];
+                }
+            } else {
+                $base = ['nullable'];
+            }
+
+            switch ($type) {
+                case 'number': $base[] = 'numeric'; break;
+                case 'date': $base[] = 'date'; break;
+                case 'email': $base[] = 'email'; break;
+                case 'file':
+                    $base[] = 'file';
+                    $base[] = 'max:10240';
+                    break;
+                case 'checkbox':
+                    $base[] = 'array';
+                    break;
+                case 'select':
+                case 'radio':
+                    if (!empty($meta['options']) && is_array($meta['options'])) {
+                        $base[] = 'in:' . implode(',', array_values($meta['options']));
+                    } else {
+                        $base[] = 'string';
+                    }
+                    break;
+                default:
+                    $base[] = 'string';
+            }
+
+            if (!empty($f->rules) && is_array($f->rules)) {
+                $base = array_merge($base, $f->rules);
+            }
+
+            $customRules[$key] = $base;
+            $label = $f->label ?: $f->field_name;
+            $customAttributes[$key] = $label;
+            $customMessages[$key . '.required'] = "تکمیل فیلد «{$label}» الزامی است.";
+        }
+
+        if (!empty($customRules)) {
+            $request->validate($customRules, $customMessages, $customAttributes);
+        }
 
         $data = [
             'display_name' => $request->display_name,
@@ -197,14 +312,46 @@ class HostController extends Controller
             $data['avatar'] = $this->uploadFile($request->file('avatar'), 'properties/hosts/avatars');
         }
 
-        // احراز هویت مجدد فقط در صورت نیاز
-        if ($request->filled('national_code') && $host->kyc_status !== 'approved') {
-            $data['national_code'] = $request->national_code;
+        $hasVerificationChanges = false;
+        foreach ($customFields as $f) {
+            $fieldName = $f->field_name;
+            $type = strtolower($f->field_type ?? 'text');
+
+            if ($type === 'file') {
+                if ($request->hasFile("custom.{$fieldName}")) {
+                    $file = $request->file("custom.{$fieldName}");
+                    $path = $this->uploadFile($file, 'properties/hosts/kyc');
+                    UserCustomValue::updateOrCreate(
+                        ['user_id' => $user->id, 'field_name' => $fieldName],
+                        ['value' => $path]
+                    );
+                    if ($fieldName === 'national_card_image') {
+                        $data['national_card_image'] = $path;
+                    }
+                    $hasVerificationChanges = true;
+                }
+            } else {
+                if ($request->has("custom.{$fieldName}")) {
+                    $val = $request->input("custom.{$fieldName}");
+                    if (is_array($val)) {
+                        $val = json_encode($val, JSON_UNESCAPED_UNICODE);
+                    }
+                    UserCustomValue::updateOrCreate(
+                        ['user_id' => $user->id, 'field_name' => $fieldName],
+                        ['value' => $val]
+                    );
+                    if ($fieldName === 'national_code') {
+                        $data['national_code'] = $val;
+                    }
+                    $hasVerificationChanges = true;
+                }
+            }
         }
 
-        if ($request->hasFile('national_card_image') && $host->kyc_status !== 'approved') {
-            $data['national_card_image'] = $this->uploadFile($request->file('national_card_image'), 'properties/hosts/kyc');
+        // احراز هویت مجدد: در صورت هرگونه تغییر در اطلاعات یا مدارک احراز هویت، مدارک مجدداً جهت بررسی به صف انتظار می‌روند
+        if ($hasVerificationChanges) {
             $data['kyc_status'] = 'pending';
+            $data['kyc_rejection_reason'] = null;
         }
 
         $host->update($data);
@@ -222,7 +369,7 @@ class HostController extends Controller
             abort(403);
         }
 
-        $query = PropertyHost::with(['user', 'owner', 'properties' => function($q) {
+        $query = PropertyHost::with(['user.customValues', 'owner', 'properties' => function($q) {
             $q->select('id', 'host_id', 'title', 'code', 'listing_type', 'publication_status', 'approval_status', 'price', 'created_at')
               ->latest()
               ->limit(10);
@@ -256,7 +403,93 @@ class HostController extends Controller
 
         $hosts = $query->latest()->paginate(15)->withQueryString();
 
-        return view('properties::user.hosts.index', compact('hosts'));
+        $verificationFieldDefs = CustomUserField::whereIn('role_name', ['property_host', 'host'])
+            ->where('show_in_profile', true)
+            ->orderBy('id')
+            ->get();
+
+        return view('properties::user.hosts.index', compact('hosts', 'verificationFieldDefs'));
+    }
+
+    /**
+     * ویرایش کامل اطلاعات میزبان توسط ادمین
+     */
+    public function adminUpdate(Request $request, PropertyHost $host)
+    {
+        $user = auth()->user();
+        if (!$user->hasRole(['super-admin', 'admin']) && !$user->can('properties.hosts.manage') && !$user->can('properties.manage')) {
+            abort(403);
+        }
+
+        $request->validate([
+            'display_name' => 'required|string|max:255',
+            'phone' => 'required|string|max:20',
+            'commission_rate' => 'nullable|numeric|min:0|max:100',
+            'about' => 'nullable|string|max:1000',
+            'shaba_number' => 'nullable|string|max:35',
+            'bank_name' => 'nullable|string|max:100',
+            'account_owner_name' => 'nullable|string|max:255',
+            'status' => 'required|in:active,pending,suspended',
+            'kyc_status' => 'required|in:approved,pending,rejected,not_submitted',
+            'kyc_rejection_reason' => 'nullable|string|max:500',
+        ], [
+            'display_name.required' => 'نام نمایشی میزبان الزامی است.',
+            'phone.required' => 'شماره تماس میزبان الزامی است.',
+            'status.required' => 'وضعیت حساب میزبان الزامی است.',
+            'kyc_status.required' => 'وضعیت احراز هویت الزامی است.',
+        ]);
+
+        $data = [
+            'display_name' => $request->display_name,
+            'phone' => $request->phone,
+            'commission_rate' => $request->filled('commission_rate') ? $request->commission_rate : null,
+            'about' => $request->about,
+            'shaba_number' => $request->shaba_number,
+            'bank_name' => $request->bank_name,
+            'account_owner_name' => $request->account_owner_name,
+            'status' => $request->status,
+            'kyc_status' => $request->kyc_status,
+            'kyc_rejection_reason' => ($request->kyc_status === 'rejected' || $request->status === 'suspended')
+                ? $request->kyc_rejection_reason
+                : null,
+        ];
+
+        // در صورت فعال‌سازی حساب، نقش property_host به کاربر اختصاص داده شود
+        if ($data['status'] === 'active' && $host->user && !$host->user->hasRole('property_host')) {
+            $host->user->assignRole('property_host');
+        }
+
+        // پردازش فیلدهای سفارشی احراز هویت در صورت ارسال توسط ادمین
+        if ($host->user_id && $request->has('custom') && is_array($request->custom)) {
+            foreach ($request->custom as $fieldName => $val) {
+                if ($request->hasFile("custom.{$fieldName}")) {
+                    $file = $request->file("custom.{$fieldName}");
+                    $path = $this->uploadFile($file, 'properties/hosts/kyc');
+                    UserCustomValue::updateOrCreate(
+                        ['user_id' => $host->user_id, 'field_name' => $fieldName],
+                        ['value' => $path]
+                    );
+                    if ($fieldName === 'national_card_image') {
+                        $data['national_card_image'] = $path;
+                    }
+                } elseif (!is_null($val)) {
+                    if (is_array($val)) {
+                        $val = json_encode($val, JSON_UNESCAPED_UNICODE);
+                    }
+                    UserCustomValue::updateOrCreate(
+                        ['user_id' => $host->user_id, 'field_name' => $fieldName],
+                        ['value' => $val]
+                    );
+                    if ($fieldName === 'national_code') {
+                        $data['national_code'] = $val;
+                    }
+                }
+            }
+        }
+
+        $host->update($data);
+
+        return back()->with('success', "اطلاعات میزبان «{$host->display_name}» با موفقیت ویرایش و ذخیره شد.");
     }
 
     /**

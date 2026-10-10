@@ -26,7 +26,7 @@ class AppServiceProvider extends ServiceProvider
         Schema::defaultStringLength(191);
         View::composer('auth.register', function ($view) {
 
-            $view->with('allCustomFields', CustomUserField::all()->groupBy('role_name'));
+            $view->with('allCustomFields', CustomUserField::where('show_in_register', true)->get()->groupBy('role_name'));
 
         });
         View::composer(

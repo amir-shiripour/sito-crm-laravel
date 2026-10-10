@@ -34,10 +34,12 @@ class CustomFieldController extends Controller
     public function store(Request $request)
     {
         $data = $request->validate([
-            'role_name'   => ['required', 'string'],
-            'label'       => ['required', 'string', 'max:255'],
-            'field_type'  => ['required', 'string'], // همهٔ انواع HTML قابل پشتیبانی
-            'is_required' => ['nullable', 'boolean'],
+            'role_name'        => ['required', 'string'],
+            'label'            => ['required', 'string', 'max:255'],
+            'field_type'       => ['required', 'string'], // همهٔ انواع HTML قابل پشتیبانی
+            'is_required'      => ['nullable', 'boolean'],
+            'show_in_register' => ['nullable', 'boolean'],
+            'show_in_profile'  => ['nullable', 'boolean'],
             // field_name عمداً اعتبارسنجی نمی‌شود تا اختیاری باشد
         ]);
 
@@ -48,7 +50,9 @@ class CustomFieldController extends Controller
                 ->withInput();
         }
 
-        $data['is_required'] = (bool) ($data['is_required'] ?? false);
+        $data['is_required']      = (bool) ($data['is_required'] ?? false);
+        $data['show_in_register'] = (bool) ($data['show_in_register'] ?? false);
+        $data['show_in_profile']  = (bool) ($data['show_in_profile'] ?? false);
 
         // اگر کاربر field_name نداد، از label بساز و یکتایش کن
         $data['field_name'] = $this->makeUniqueKey(
@@ -78,10 +82,12 @@ class CustomFieldController extends Controller
     public function update(Request $request, CustomUserField $field)
     {
         $data = $request->validate([
-            'role_name'   => ['required', 'string'],
-            'label'       => ['required', 'string', 'max:255'],
-            'field_type'  => ['required', 'string'],
-            'is_required' => ['nullable', 'boolean'],
+            'role_name'        => ['required', 'string'],
+            'label'            => ['required', 'string', 'max:255'],
+            'field_type'       => ['required', 'string'],
+            'is_required'      => ['nullable', 'boolean'],
+            'show_in_register' => ['nullable', 'boolean'],
+            'show_in_profile'  => ['nullable', 'boolean'],
             // field_name اختیاری
         ]);
 
@@ -92,7 +98,9 @@ class CustomFieldController extends Controller
                 ->withInput();
         }
 
-        $data['is_required'] = (bool) ($data['is_required'] ?? false);
+        $data['is_required']      = (bool) ($data['is_required'] ?? false);
+        $data['show_in_register'] = (bool) ($data['show_in_register'] ?? false);
+        $data['show_in_profile']  = (bool) ($data['show_in_profile'] ?? false);
 
         // تصمیم: اگر field_name خالی بود => از label تولید کن
         // اگر پر بود => همان را استفاده کن ولی یکتابودن در نقش را تضمین کن
