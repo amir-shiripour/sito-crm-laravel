@@ -11,13 +11,38 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('projects_messages', function (Blueprint $table) {
-            $table->boolean('is_pinned')->default(false)->after('attachments');
-            $table->timestamp('pinned_at')->nullable()->after('is_pinned');
-            $table->unsignedBigInteger('pinned_by')->nullable()->after('pinned_at');
+        if (!Schema::hasTable('projects_messages')) {
+            Schema::create('projects_messages', function (Blueprint $table) {
+                $table->id();
+                $table->foreignId('project_id')->constrained('projects')->cascadeOnDelete();
+                $table->unsignedBigInteger('user_id');
+                $table->text('body');
+                $table->json('attachments')->nullable();
+                $table->boolean('is_pinned')->default(false);
+                $table->timestamp('pinned_at')->nullable();
+                $table->unsignedBigInteger('pinned_by')->nullable();
+                $table->timestamps();
 
-            if (Schema::hasTable('users')) {
-                $table->foreign('pinned_by')->references('id')->on('users')->nullOnDelete();
+                if (Schema::hasTable('users')) {
+                    $table->foreign('user_id')->references('id')->on('users')->cascadeOnDelete();
+                    $table->foreign('pinned_by')->references('id')->on('users')->nullOnDelete();
+                }
+            });
+            return;
+        }
+
+        Schema::table('projects_messages', function (Blueprint $table) {
+            if (!Schema::hasColumn('projects_messages', 'is_pinned')) {
+                $table->boolean('is_pinned')->default(false)->after('attachments');
+            }
+            if (!Schema::hasColumn('projects_messages', 'pinned_at')) {
+                $table->timestamp('pinned_at')->nullable()->after('is_pinned');
+            }
+            if (!Schema::hasColumn('projects_messages', 'pinned_by')) {
+                $table->unsignedBigInteger('pinned_by')->nullable()->after('pinned_at');
+                if (Schema::hasTable('users')) {
+                    $table->foreign('pinned_by')->references('id')->on('users')->nullOnDelete();
+                }
             }
         });
     }
@@ -27,11 +52,20 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('projects_messages', function (Blueprint $table) {
-            if (Schema::hasTable('users')) {
-                $table->dropForeign(['pinned_by']);
-            }
-            $table->dropColumn(['is_pinned', 'pinned_at', 'pinned_by']);
-        });
+        if (Schema::hasTable('projects_messages')) {
+            Schema::table('projects_messages', function (Blueprint $table) {
+                if (Schema::hasColumn('projects_messages', 'pinned_by')) {
+                    if (Schema::hasTable('users')) {
+                        try {
+                            $table->dropForeign(['pinned_by']);
+                        } catch (\Throwable) {}
+                    }
+                }
+                $colsToDrop = array_filter(['is_pinned', 'pinned_at', 'pinned_by'], fn($c) => Schema::hasColumn('projects_messages', $c));
+                if (!empty($colsToDrop)) {
+                    $table->dropColumn($colsToDrop);
+                }
+            });
+        }
     }
 };

@@ -7,15 +7,19 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration {
     public function up(): void
     {
-        Schema::table('projects', function (Blueprint $table) {
-            $table->boolean('is_template')->default(false)->after('progress')->index();
-        });
+        if (Schema::hasTable('projects') && !Schema::hasColumn('projects', 'is_template')) {
+            Schema::table('projects', function (Blueprint $table) {
+                $table->boolean('is_template')->default(false)->after('progress')->index();
+            });
+        }
     }
 
     public function down(): void
     {
-        Schema::table('projects', function (Blueprint $table) {
-            $table->dropColumn('is_template');
-        });
+        if (Schema::hasTable('projects') && Schema::hasColumn('projects', 'is_template')) {
+            Schema::table('projects', function (Blueprint $table) {
+                $table->dropColumn('is_template');
+            });
+        }
     }
 };

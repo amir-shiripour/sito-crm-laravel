@@ -7,15 +7,19 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration {
     public function up(): void
     {
-        Schema::table('projects_tasks', function (Blueprint $table) {
-            $table->string('group_name', 120)->nullable()->after('status_id')->index();
-        });
+        if (Schema::hasTable('projects_tasks') && !Schema::hasColumn('projects_tasks', 'group_name')) {
+            Schema::table('projects_tasks', function (Blueprint $table) {
+                $table->string('group_name', 120)->nullable()->after('status_id')->index();
+            });
+        }
     }
 
     public function down(): void
     {
-        Schema::table('projects_tasks', function (Blueprint $table) {
-            $table->dropColumn('group_name');
-        });
+        if (Schema::hasTable('projects_tasks') && Schema::hasColumn('projects_tasks', 'group_name')) {
+            Schema::table('projects_tasks', function (Blueprint $table) {
+                $table->dropColumn('group_name');
+            });
+        }
     }
 };
