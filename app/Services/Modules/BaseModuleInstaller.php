@@ -197,21 +197,47 @@ class BaseModuleInstaller implements ModuleInstallerInterface
     }
 
     /**
+     * Get module table names (from property, install-tables.php, or default slug).
+     */
+    protected function getModuleTables(): array
+    {
+        if (property_exists($this, 'tables') && !empty($this->tables)) {
+            return $this->tables;
+        }
+
+        $tablesFilesCandidates = [
+            base_path("Modules/{$this->moduleName}/install-tables.php"),
+            base_path("modules/{$this->moduleName}/install-tables.php"),
+        ];
+
+        foreach ($tablesFilesCandidates as $tablesFile) {
+            if (File::exists($tablesFile)) {
+                $tables = include $tablesFile;
+                if (is_array($tables) && !empty($tables)) {
+                    return $tables;
+                }
+            }
+        }
+
+        return [$this->moduleSlug];
+    }
+
+    /**
      * Clean up any remaining tables for this module safely
      */
     protected function dropModuleTables(): void
     {
         try {
-            $tables = property_exists($this, 'tables') ? $this->tables : [];
+            $tables = $this->getModuleTables();
             
             Schema::disableForeignKeyConstraints();
 
-            // 1. پاکسازی جداولی که صراحتاً در کلاس Installer تعریف شده‌اند
+            // 1. پاکسازی جداول ماژول
             foreach ($tables as $table) {
                 Schema::dropIfExists($table);
             }
 
-            // 2. پاکسازی تمام جداولی که نامشان با slug ماژول (مثلاً market_) شروع می‌شود
+            // 2. پاکسازی تمام جداولی که نامشان با slug ماژول (مثلاً projects_) شروع می‌شود
             $allTables = Schema::getTableListing();
             $prefix = $this->moduleSlug . '_';
             foreach ($allTables as $table) {
@@ -222,13 +248,12 @@ class BaseModuleInstaller implements ModuleInstallerInterface
 
             Schema::enableForeignKeyConstraints();
 
-            // 3. پاک کردن رکورد مایگریشن‌های مربوطه بر اساس نام فایل‌های مایگریشن ماژول
+            // 3. پاک کردن رکورد مایگریشن‌های مربوط به این ماژول
             if (Schema::hasTable('migrations')) {
                 $moduleMigrations = $this->getModuleMigrationNames();
                 if (!empty($moduleMigrations)) {
                     DB::table('migrations')->whereIn('migration', $moduleMigrations)->delete();
                 }
-                DB::table('migrations')->where('migration', 'like', '%' . $this->moduleSlug . '%')->delete();
             }
         } catch (\Throwable $e) {
             Log::warning("dropModuleTables failed for {$this->moduleName}: " . $e->getMessage());
@@ -245,35 +270,32 @@ class BaseModuleInstaller implements ModuleInstallerInterface
                 return;
             }
 
-            // اگر جداول پایه ماژول وجود نداشته باشند اما مایگریشن‌ها در دیتابیس ثبت شده باشند (حالت یتیم)
             $moduleMigrations = $this->getModuleMigrationNames();
-            $migratedCount = !empty($moduleMigrations)
-                ? DB::table('migrations')->whereIn('migration', $moduleMigrations)->count()
-                : DB::table('migrations')->where('migration', 'like', '%' . $this->moduleSlug . '%')->count();
+            if (empty($moduleMigrations)) {
+                return;
+            }
 
-            $tables = property_exists($this, 'tables') ? $this->tables : [];
+            $migratedCount = DB::table('migrations')->whereIn('migration', $moduleMigrations)->count();
+            if ($migratedCount === 0) {
+                return;
+            }
+
+            $tables = $this->getModuleTables();
             $existingTablesCount = 0;
+            $hasData = false;
+
             foreach ($tables as $t) {
                 if (Schema::hasTable($t)) {
                     $existingTablesCount++;
+                    if (DB::table($t)->exists()) {
+                        $hasData = true;
+                    }
                 }
             }
 
-            // اگر تعداد جداول موجود کمتر از جداول ماژول باشد یا ناهمخوانی وجود داشته باشد، در صورتی که دیتایی وجود نداشته باشد پاک می‌شوند
-            if ($migratedCount > 0 && $existingTablesCount < count($tables)) {
-                $hasData = false;
-                foreach ($tables as $t) {
-                    if (Schema::hasTable($t) && DB::table($t)->exists()) {
-                        $hasData = true;
-                        break;
-                    }
-                }
-                if ($hasData) {
-                    Log::warning("BaseModuleInstaller: Existing data detected in {$this->moduleName} tables. Preserving existing tables and data.");
-                    return;
-                }
-
-                Log::info("BaseModuleInstaller: Found orphaned/incomplete migration state for {$this->moduleName}. Cleaning up...");
+            // اگر جداول پایه ماژول وجود نداشته باشند یا ناقص باشند و دیتایی هم ثبت نشده باشد، حالت یتیم است
+            if ($existingTablesCount < count($tables) && !$hasData) {
+                Log::info("BaseModuleInstaller: Found orphaned/incomplete migration state for {$this->moduleName} ({$existingTablesCount}/" . count($tables) . " tables exist, 0 rows). Cleaning up...");
                 $this->dropModuleTables();
             }
         } catch (\Throwable $e) {
