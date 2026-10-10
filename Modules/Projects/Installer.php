@@ -14,6 +14,17 @@ class Installer extends BaseModuleInstaller
 {
     protected string $moduleName = 'Projects';
 
+    protected array $tables = [
+        'projects_categories',
+        'projects_statuses',
+        'projects',
+        'projects_members',
+        'projects_tasks',
+        'projects_checklist_items',
+        'projects_documents',
+        'projects_messages',
+    ];
+
     public function __construct()
     {
         parent::__construct($this->moduleName);
