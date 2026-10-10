@@ -14,7 +14,7 @@ return new class extends Migration
         if (!Schema::hasTable('projects_messages')) {
             Schema::create('projects_messages', function (Blueprint $table) {
                 $table->id();
-                $table->foreignId('project_id')->constrained('projects')->cascadeOnDelete();
+                $table->unsignedBigInteger('project_id');
                 $table->unsignedBigInteger('user_id');
                 $table->text('body');
                 $table->json('attachments')->nullable();
@@ -23,6 +23,9 @@ return new class extends Migration
                 $table->unsignedBigInteger('pinned_by')->nullable();
                 $table->timestamps();
 
+                if (Schema::hasTable('projects')) {
+                    $table->foreign('project_id')->references('id')->on('projects')->cascadeOnDelete();
+                }
                 if (Schema::hasTable('users')) {
                     $table->foreign('user_id')->references('id')->on('users')->cascadeOnDelete();
                     $table->foreign('pinned_by')->references('id')->on('users')->nullOnDelete();
