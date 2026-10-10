@@ -123,15 +123,44 @@
 
                             <div>
                                 <label class="{{ $labelClass }}">کلید سیستمی فیلد (field_name)</label>
-                                <input type="text" name="field_name" value="{{ old('field_name', $field->field_name) }}" class="{{ $inputClass }} dir-ltr text-left font-mono max-w-md" placeholder="خالی = تولید خودکار از label">
+                                <input type="text" name="field_name" value="{{ old('field_name', $field->field_name) }}" class="{{ $inputClass }} dir-ltr text-left font-sans max-w-md" placeholder="خالی = تولید خودکار از label">
                                 <p class="text-[10px] text-gray-500 dark:text-gray-400 mt-1.5 flex items-center gap-1">
                                     <svg class="w-3 h-3 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
                                     تغییر کلید سیستمی فیلدهایی که قبلاً برای آنها داده ثبت شده ممکن است منجر به عدم نمایش اطلاعات قدیمی کاربران شود.
                                 </p>
                             </div>
 
+                            {{-- محل نمایش و دریافت فیلد --}}
+                            <div class="space-y-4 pt-2">
+                                <h4 class="text-xs font-bold text-gray-700 dark:text-gray-300">محل نمایش و دریافت فیلد:</h4>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {{-- دریافت در فرم ثبت‌نام --}}
+                                    <label class="flex items-start gap-3 cursor-pointer group p-3.5 rounded-xl border border-gray-200 dark:border-gray-700 hover:bg-white dark:hover:bg-gray-800 transition-colors">
+                                        <div class="relative flex items-center mt-0.5">
+                                            <input type="checkbox" name="show_in_register" value="1" @checked(old('show_in_register', $field->show_in_register)) class="w-5 h-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:bg-gray-900 dark:border-gray-600 cursor-pointer">
+                                        </div>
+                                        <div>
+                                            <span class="block text-sm font-bold text-gray-800 dark:text-gray-200 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">دریافت در فرم ثبت‌نام</span>
+                                            <span class="block text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">نمایش و دریافت مستقیم در فرم عضویت (/register)</span>
+                                        </div>
+                                    </label>
+
+                                    {{-- احراز هویت و دریافت در پروفایل --}}
+                                    <label class="flex items-start gap-3 cursor-pointer group p-3.5 rounded-xl border border-gray-200 dark:border-gray-700 hover:bg-white dark:hover:bg-gray-800 transition-colors">
+                                        <div class="relative flex items-center mt-0.5">
+                                            <input type="checkbox" name="show_in_profile" value="1" @checked(old('show_in_profile', $field->show_in_profile)) class="w-5 h-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:bg-gray-900 dark:border-gray-600 cursor-pointer">
+                                        </div>
+                                        <div>
+                                            <span class="block text-sm font-bold text-gray-800 dark:text-gray-200 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">احراز هویت و دریافت در پروفایل</span>
+                                            <span class="block text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">دریافت در بخش احراز هویت و اطلاعات تکمیلی پروفایل کاربری</span>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+
+                            {{-- وضعیت اجباری بودن --}}
                             <div>
-                                <label class="inline-flex items-center gap-3 cursor-pointer group p-3 rounded-xl border border-gray-200 dark:border-gray-700 hover:bg-white dark:hover:bg-gray-800 transition-colors w-fit">
+                                <label class="inline-flex items-center gap-3 cursor-pointer group p-3.5 rounded-xl border border-gray-200 dark:border-gray-700 hover:bg-white dark:hover:bg-gray-800 transition-colors w-full md:w-auto">
                                     <div class="relative flex items-center">
                                         <input type="checkbox" name="is_required" value="1" @checked(old('is_required', $field->is_required)) class="w-5 h-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:bg-gray-900 dark:border-gray-600 cursor-pointer">
                                     </div>

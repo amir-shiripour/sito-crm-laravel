@@ -377,6 +377,9 @@
 
         {{-- Apply Template Modal --}}
         @include('projects::projects.partials.modal-apply-template')
+
+        {{-- Import Tasks JSON Modal --}}
+        @include('projects::projects.partials.modal-import-tasks-json')
     </div>
 
     @includeIf('partials.jalali-date-picker')

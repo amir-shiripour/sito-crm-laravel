@@ -9,6 +9,7 @@ use App\Models\CustomUserField;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rules;
 use Spatie\Permission\Models\Role;
 use Modules\Settings\Entities\Setting;
@@ -91,7 +92,9 @@ class RegisteredUserController extends Controller
 
         $customFields = collect();
         if ($selectedRole) {
-            $customFields = CustomUserField::where('role_name', $selectedRole->name)->get();
+            $customFields = CustomUserField::where('role_name', $selectedRole->name)
+                ->where('show_in_register', true)
+                ->get();
         }
 
         return view('auth.register', compact('roles', 'selectedRole', 'customFields'));
@@ -147,7 +150,7 @@ class RegisteredUserController extends Controller
                     }
                 }
             ],
-            'password' => ['required', 'confirmed', Rules\Password::defaults()],
+            'password' => $isHostRole ? ['nullable', 'string', 'min:8'] : ['required', 'confirmed', Rules\Password::defaults()],
         ], [
             // ترجمه خطاهای متداول مستقیما در کنترلر برای جلوگیری از مشکل زبان سیستم
             'email.unique' => 'این ایمیل یا شماره موبایل قبلاً در سیستم ثبت شده است.',
@@ -167,8 +170,10 @@ class RegisteredUserController extends Controller
             abort(403, 'Registration is disabled for this role.');
         }
 
-        // اعتبارسنجی فیلدهای سفارشی
-        $customFields = CustomUserField::where('role_name', $role->name)->get();
+        // اعتبارسنجی فیلدهای سفارشی (تنها مواردی که دریافت در ثبت‌نام برای آنها فعال است)
+        $customFields = CustomUserField::where('role_name', $role->name)
+            ->where('show_in_register', true)
+            ->get();
         $customFieldRules = [];
         $customFieldAttributes = [];
         $customFieldMessages = [];
@@ -208,13 +213,19 @@ class RegisteredUserController extends Controller
 
         $approvalType = $settings[$role->id]['approval'] ?? 'manual';
 
+        $hasPassword = $request->filled('password');
+        $rawPassword = $hasPassword ? $request->password : Str::random(32);
+        $hashedPassword = Hash::make($rawPassword);
+        $passwordSetAt = $hasPassword ? now() : null;
+
         if ($approvalType === 'automatic') {
             // ثبت‌نام مستقیم
             $user = User::create([
                 'name' => $request->name,
                 'email' => $request->email,
                 'mobile' => $request->mobile,
-                'password' => Hash::make($request->password),
+                'password' => $hashedPassword,
+                'password_set_at' => $passwordSetAt,
             ]);
 
             $user->assignRole($role);
@@ -261,7 +272,7 @@ class RegisteredUserController extends Controller
                     'role_id' => $role->id,
                     'name' => $request->name,
                     'mobile' => $request->mobile,
-                    'password' => Hash::make($request->password),
+                    'password' => $hashedPassword,
                     'custom_fields' => $processedCustomFields,
                     'status' => 'pending',
                     'rejection_reason' => null,
@@ -272,7 +283,7 @@ class RegisteredUserController extends Controller
                     'name' => $request->name,
                     'email' => $request->email,
                     'mobile' => $request->mobile,
-                    'password' => Hash::make($request->password),
+                    'password' => $hashedPassword,
                     'custom_fields' => $processedCustomFields,
                     'status' => 'pending',
                 ]);

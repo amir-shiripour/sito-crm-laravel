@@ -55,7 +55,7 @@
         <div class="flex items-center gap-2.5 flex-wrap">
             {{-- Toggle Expand/Collapse All Phases --}}
             @if($phases->count() > 1 || ($phases->count() >= 1 && $unphasedTasks->isNotEmpty()))
-                <button type="button" @click="toggleAllGroups()"
+                <button type="button" @click.prevent="toggleAllGroups()"
                         class="px-3.5 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 dark:bg-gray-700/60 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 font-bold text-xs transition-all flex items-center gap-1.5 shadow-xs">
                     <svg class="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -67,7 +67,7 @@
 
             {{-- Toggle Expand/Collapse All Groups --}}
             @if($allProjectTasks->count() > 1)
-                <button type="button" @click="toggleAllTasks()"
+                <button type="button" @click.prevent="toggleAllTasks()"
                         class="px-3.5 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 dark:bg-gray-700/60 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 font-bold text-xs transition-all flex items-center gap-1.5 shadow-xs">
                     <svg class="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -93,7 +93,7 @@
             @can('applyTemplates', $project)
                 {{-- Apply Template Button --}}
                 <button type="button" @click="$dispatch('open-apply-template-modal')"
-                        class="px-3.5 py-2.5 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 dark:hover:bg-purple-900/50 font-bold text-xs border border-purple-200/60 dark:border-purple-800/40 transition-all flex items-center gap-1.5 shadow-xs"
+                        class="px-3.5 py-2.5 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 dark:hover:bg-purple-900/50 font-bold text-xs border border-purple-200/60 dark:border-purple-800/40 transition-all flex items-center gap-1.5 shadow-xs cursor-pointer"
                         title="درون‌ریزی و اضافه کردن فازها و کارهای یک الگوی آماده به این پروژه">
                     <svg class="w-4 h-4 text-purple-600 dark:text-purple-400" fill="none" viewBox="0 0 24 24"
                          stroke="currentColor" stroke-width="2">
@@ -101,6 +101,20 @@
                               d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
                     </svg>
                     بارگذاری الگو
+                </button>
+            @endcan
+
+            @can('createTasks', $project)
+                {{-- Import from JSON Button --}}
+                <button type="button" @click="$dispatch('open-import-tasks-json-modal')"
+                        class="px-3.5 py-2.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300 dark:hover:bg-indigo-900/50 font-bold text-xs border border-indigo-200/60 dark:border-indigo-800/40 transition-all flex items-center gap-1.5 shadow-xs cursor-pointer"
+                        title="درون‌ریزی و افزودن مستقیم فازها و کارها از فایل JSON به این پروژه">
+                    <svg class="w-4 h-4 text-indigo-600 dark:text-indigo-400" fill="none" viewBox="0 0 24 24"
+                         stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                              d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+                    </svg>
+                    <span>درون‌ریزی از JSON</span>
                 </button>
             @endcan
 
@@ -271,7 +285,7 @@
                     {{-- Phase Header / Toggle Bar --}}
                     <div
                         class="p-4 sm:p-5 bg-gray-50/90 dark:bg-gray-900/50 border-b border-gray-200/70 dark:border-gray-700/60 flex items-center justify-between gap-4 cursor-pointer select-none"
-                        @click="toggleGroup('{{ $phaseSlug }}')">
+                        @click.prevent="toggleGroup('{{ $phaseSlug }}')">
 
                         <div class="flex items-center gap-3 min-w-0">
                             @if(!$project->isCanceled() && ($project->userHasPermission(auth()->id(), 'phases.delete') || $project->isManager(auth()->id()) || $isSuperAdmin))
@@ -286,6 +300,7 @@
 
                             {{-- Collapse / Expand Chevron Icon --}}
                             <button type="button"
+                                    @click.stop.prevent="toggleGroup('{{ $phaseSlug }}')"
                                     class="p-1.5 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-500 transition-transform duration-200 shadow-xs"
                                     :class="collapsedGroups['{{ $phaseSlug }}'] ? 'rotate-180' : ''">
                                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -395,10 +410,11 @@
                     {{-- General Header --}}
                     <div
                         class="p-4 sm:p-5 bg-gray-50/90 dark:bg-gray-900/50 border-b border-gray-200/70 dark:border-gray-700/60 flex items-center justify-between gap-4 cursor-pointer select-none"
-                        @click="toggleGroup('{{ $genSlug }}')">
+                        @click.prevent="toggleGroup('{{ $genSlug }}')">
 
                         <div class="flex items-center gap-3 min-w-0">
                             <button type="button"
+                                    @click.stop.prevent="toggleGroup('{{ $genSlug }}')"
                                     class="p-1.5 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-500 transition-transform duration-200 shadow-xs"
                                     :class="collapsedGroups['{{ $genSlug }}'] ? 'rotate-180' : ''">
                                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -554,11 +570,11 @@
                             {{-- Assignee (Group Manager) --}}
                             <div>
                                 <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">
-                                    مدیر گروه <span class="text-red-500">*</span>
+                                    مدیر گروه <span class="text-xs text-gray-400 font-normal">(اختیاری)</span>
                                 </label>
-                                <select name="assigned_to" x-model="form.assigned_to" required
+                                <select name="assigned_to" x-model="form.assigned_to"
                                         class="w-full rounded-xl border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-3 py-2 text-xs focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 dark:text-white cursor-pointer">
-                                    <option value="">انتخاب مدیر گروه (اجباری)</option>
+                                    <option value="">بدون مدیر گروه (تعیین‌نشده)</option>
                                     @foreach($project->members as $member)
                                         <option value="{{ $member->user_id }}">{{ $member->user?->name }}</option>
                                     @endforeach
@@ -689,7 +705,7 @@
                             <div class="flex items-center gap-3">
                                 <input type="color" name="color" x-model="phaseForm.color"
                                        class="w-10 h-10 rounded-xl border border-gray-200 dark:border-gray-700 cursor-pointer p-0.5 bg-transparent">
-                                <span class="text-xs font-mono font-bold text-gray-600 dark:text-gray-300"
+                                <span class="text-xs font-sans font-bold text-gray-600 dark:text-gray-300"
                                       x-text="phaseForm.color"></span>
                             </div>
                         </div>
@@ -791,10 +807,67 @@
                 isEdit: false,
                 phaseModalOpen: false,
                 phaseIsEdit: false,
+                phasesStorageKey: 'crm_proj_{{ $project->id }}_collapsed_phases',
+                tasksStorageKey: 'crm_proj_{{ $project->id }}_collapsed_tasks',
                 collapsedGroups: {},
                 allCollapsed: false,
                 collapsedTasks: {},
                 allTasksCollapsed: false,
+                init() {
+                    try {
+                        const savedPhases = localStorage.getItem(this.phasesStorageKey);
+                        if (savedPhases) {
+                            this.collapsedGroups = JSON.parse(savedPhases) || {};
+                        }
+                    } catch (e) {
+                        console.warn('Failed to load collapsed phases from localStorage', e);
+                    }
+
+                    try {
+                        const savedTasks = localStorage.getItem(this.tasksStorageKey);
+                        if (savedTasks) {
+                            this.collapsedTasks = JSON.parse(savedTasks) || {};
+                        }
+                    } catch (e) {
+                        console.warn('Failed to load collapsed tasks from localStorage', e);
+                    }
+
+                    this.updateAllCollapsedState();
+                },
+                saveCollapsedStates() {
+                    try {
+                        localStorage.setItem(this.phasesStorageKey, JSON.stringify(this.collapsedGroups));
+                    } catch (e) {
+                        console.warn('Failed to save collapsed phases to localStorage', e);
+                    }
+                },
+                saveCollapsedTasks() {
+                    try {
+                        localStorage.setItem(this.tasksStorageKey, JSON.stringify(this.collapsedTasks));
+                    } catch (e) {
+                        console.warn('Failed to save collapsed tasks to localStorage', e);
+                    }
+                },
+                updateAllCollapsedState() {
+                    const phaseSlugs = [
+                        @foreach($phases as $p)
+                            'phase_{{ $p->id }}',
+                        @endforeach
+                        'phase_general'
+                    ];
+                    if (phaseSlugs.length > 0) {
+                        this.allCollapsed = phaseSlugs.every(slug => !!this.collapsedGroups[slug]);
+                    }
+
+                    const taskSlugs = [
+                        @foreach($allProjectTasks as $t)
+                            'task_{{ $t->id }}',
+                        @endforeach
+                    ];
+                    if (taskSlugs.length > 0) {
+                        this.allTasksCollapsed = taskSlugs.every(slug => !!this.collapsedTasks[slug]);
+                    }
+                },
                 selectedPhases: [],
                 selectedTasks: [],
                 isBulkDeleting: false,
@@ -918,23 +991,41 @@
                 },
                 checklist: [],
                 toggleGroup(slug) {
-                    this.collapsedGroups[slug] = !this.collapsedGroups[slug];
+                    const nextVal = !this.collapsedGroups[slug];
+                    this.collapsedGroups = {
+                        ...this.collapsedGroups,
+                        [slug]: nextVal
+                    };
+                    this.saveCollapsedStates();
+                    this.updateAllCollapsedState();
                 },
                 toggleAllGroups() {
                     this.allCollapsed = !this.allCollapsed;
+                    const updated = {};
                     @foreach($phases as $p)
-                        this.collapsedGroups['phase_{{ $p->id }}'] = this.allCollapsed;
+                        updated['phase_{{ $p->id }}'] = this.allCollapsed;
                     @endforeach
-                        this.collapsedGroups['phase_general'] = this.allCollapsed;
+                    updated['phase_general'] = this.allCollapsed;
+                    this.collapsedGroups = updated;
+                    this.saveCollapsedStates();
                 },
                 toggleTask(slug) {
-                    this.collapsedTasks[slug] = !this.collapsedTasks[slug];
+                    const nextVal = !this.collapsedTasks[slug];
+                    this.collapsedTasks = {
+                        ...this.collapsedTasks,
+                        [slug]: nextVal
+                    };
+                    this.saveCollapsedTasks();
+                    this.updateAllCollapsedState();
                 },
                 toggleAllTasks() {
                     this.allTasksCollapsed = !this.allTasksCollapsed;
+                    const updated = {};
                     @foreach($allProjectTasks as $t)
-                        this.collapsedTasks['task_{{ $t->id }}'] = this.allTasksCollapsed;
+                        updated['task_{{ $t->id }}'] = this.allTasksCollapsed;
                     @endforeach
+                    this.collapsedTasks = updated;
+                    this.saveCollapsedTasks();
                 },
                 openCreatePhaseModal() {
                     this.phaseIsEdit = false;
@@ -1025,12 +1116,6 @@
                     this.checklist.splice(idx, 1);
                 },
                 validateTaskForm(e) {
-                    if (!this.form.assigned_to) {
-                        e.preventDefault();
-                        alert('⚠️ انتخاب مدیر گروه الزامی است.');
-                        return false;
-                    }
-
                     const projectEndDate = '{{ $project->end_date ? (function_exists("jdate") ? jdate($project->end_date)->format("Y/m/d") : $project->end_date->format("Y/m/d")) : "" }}';
                     if (projectEndDate && this.form.due_date) {
                         const formDateClean = this.form.due_date.replace(/[^0-9]/g, '');

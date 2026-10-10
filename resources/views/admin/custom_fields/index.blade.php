@@ -41,6 +41,7 @@
                         <th class="px-6 py-4 font-bold text-gray-600 dark:text-gray-300">عنوان فیلد و نام سیستمی</th>
                         <th class="px-6 py-4 font-bold text-gray-600 dark:text-gray-300 text-center">نقش مرتبط</th>
                         <th class="px-6 py-4 font-bold text-gray-600 dark:text-gray-300 text-center">نوع فیلد (Type)</th>
+                        <th class="px-6 py-4 font-bold text-gray-600 dark:text-gray-300 text-center">محل نمایش</th>
                         <th class="px-6 py-4 font-bold text-gray-600 dark:text-gray-300 text-center">اجباری</th>
                         <th class="px-6 py-4 font-bold text-gray-600 dark:text-gray-300 text-left pl-6">عملیات</th>
                     </tr>
@@ -50,7 +51,7 @@
                         <tr class="group hover:bg-gray-50 dark:hover:bg-gray-700/20 transition-colors duration-150">
 
                             {{-- شناسه --}}
-                            <td class="px-6 py-4 text-gray-400 dark:text-gray-500 font-mono text-xs font-semibold">
+                            <td class="px-6 py-4 text-gray-400 dark:text-gray-500 font-sans text-xs font-semibold">
                                 {{ $f->id }}
                             </td>
 
@@ -62,7 +63,7 @@
                                     </div>
                                     <div class="flex flex-col">
                                         <span class="font-bold text-gray-900 dark:text-white">{{ $f->label }}</span>
-                                        <span class="text-[11px] text-gray-500 dark:text-gray-400 font-mono dir-ltr text-right mt-0.5">
+                                        <span class="text-[11px] text-gray-500 dark:text-gray-400 font-sans dir-ltr text-right mt-0.5">
                                             {{ $f->field_name }}
                                         </span>
                                     </div>
@@ -86,9 +87,28 @@
                                         default => 'bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600'
                                     };
                                 @endphp
-                                <span class="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-mono font-bold border {{ $typeColor }} dir-ltr">
+                                <span class="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-sans font-bold border {{ $typeColor }} dir-ltr">
                                     {{ $f->field_type }}
                                 </span>
+                            </td>
+
+                            {{-- محل نمایش --}}
+                            <td class="px-6 py-4 text-center">
+                                <div class="flex items-center justify-center gap-1.5 flex-wrap">
+                                    @if($f->show_in_register)
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-100 dark:bg-indigo-900/20 dark:text-indigo-300 dark:border-indigo-800" title="نمایش در فرم ثبت‌نام">
+                                            ثبت‌نام
+                                        </span>
+                                    @endif
+                                    @if($f->show_in_profile)
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold bg-teal-50 text-teal-700 border border-teal-100 dark:bg-teal-900/20 dark:text-teal-300 dark:border-teal-800" title="احراز هویت و نمایش در پروفایل">
+                                            احراز هویت / پروفایل
+                                        </span>
+                                    @endif
+                                    @if(!$f->show_in_register && !$f->show_in_profile)
+                                        <span class="text-xs text-gray-400 dark:text-gray-500">غیرفعال</span>
+                                    @endif
+                                </div>
                             </td>
 
                             {{-- وضعیت اجباری --}}
@@ -134,7 +154,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="6" class="py-12 text-center">
+                            <td colspan="7" class="py-12 text-center">
                                 <div class="flex flex-col items-center justify-center text-gray-400 dark:text-gray-500">
                                     <svg class="w-16 h-16 mb-4 opacity-20" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
                                     <p class="text-base font-medium text-gray-900 dark:text-white">هیچ فیلد سفارشی یافت نشد.</p>

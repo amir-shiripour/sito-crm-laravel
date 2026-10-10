@@ -49,8 +49,12 @@ class ProjectsTaskController extends Controller
             $data = $request->safe()->except('checklist');
             $data['project_id'] = $project->id;
             $data['created_by'] = auth()->id();
-            if (!empty($data['assigned_to']) && empty($data['manager_id'])) {
-                $data['manager_id'] = $data['assigned_to'];
+            $managerId = !empty($data['assigned_to']) ? (int)$data['assigned_to'] : (!empty($data['manager_id']) ? (int)$data['manager_id'] : null);
+            $data['manager_id'] = $managerId;
+            $data['assigned_to'] = $managerId;
+
+            if ($managerId && !$project->members()->where('user_id', $managerId)->exists()) {
+                $project->members()->create(['user_id' => $managerId, 'role' => 'editor']);
             }
 
             $defaultTaskStatus = ProjectSetting::get('projects_default_task_status_id');
@@ -173,8 +177,12 @@ class ProjectsTaskController extends Controller
         DB::transaction(function () use ($request, $task, $project) {
             $data = $request->safe()->except('checklist');
             $data['due_date'] = $this->convertJalaliDate($request->input('due_date'));
-            if (!empty($data['assigned_to'])) {
-                $data['manager_id'] = $data['assigned_to'];
+            $managerId = !empty($data['assigned_to']) ? (int)$data['assigned_to'] : (!empty($data['manager_id']) ? (int)$data['manager_id'] : null);
+            $data['manager_id'] = $managerId;
+            $data['assigned_to'] = $managerId;
+
+            if ($managerId && !$project->members()->where('user_id', $managerId)->exists()) {
+                $project->members()->create(['user_id' => $managerId, 'role' => 'editor']);
             }
 
             if ($project->end_date && !empty($data['due_date'])) {
@@ -535,4 +543,385 @@ class ProjectsTaskController extends Controller
             'dashboard_stats' => $this->projectsSvc->dashboardStats($project->fresh()),
         ]);
     }
+
+    /**
+     * Import tasks and phases directly into a project from a JSON file or JSON payload.
+     */
+    public function importJson(Request $request, Project $project)
+    {
+        $this->authorize('createTasks', $project);
+
+        if ($project->isCanceled()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'این پروژه لغو شده است و امکان افزودن کار به آن وجود ندارد.'
+            ], 422);
+        }
+
+        $request->validate([
+            'json_file' => 'nullable|file|max:10240',
+            'json_content' => 'nullable|string',
+            'structure' => 'nullable',
+            'import_mode' => 'nullable|in:append,replace',
+        ], [
+            'json_file.file' => 'فایل انتخاب‌شده نامعتبر است.',
+            'json_file.max' => 'حجم فایل نمی‌تواند بیشتر از ۱۰ مگابایت باشد.',
+        ]);
+
+        $rawJson = '';
+        if ($request->hasFile('json_file')) {
+            $rawJson = file_get_contents($request->file('json_file')->getRealPath());
+        } elseif ($request->filled('json_content')) {
+            $rawJson = $request->input('json_content');
+        } elseif ($request->filled('structure')) {
+            $rawJson = is_array($request->input('structure')) ? json_encode($request->input('structure')) : $request->input('structure');
+        }
+
+        if (empty($rawJson)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'لطفاً فایل JSON را انتخاب کنید یا محتوای JSON را وارد نمایید.'
+            ], 422);
+        }
+
+        // Strip UTF-8 BOM if present
+        $rawJson = preg_replace('/^\xEF\xBB\xBF/', '', trim($rawJson));
+        $decoded = json_decode($rawJson, true);
+
+        if (json_last_error() !== JSON_ERROR_NONE || !is_array($decoded)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'فرمت فایل JSON نامعتبر است یا ساختار آن آسیب دیده است: ' . json_last_error_msg()
+            ], 422);
+        }
+
+        $importMode = $request->input('import_mode', 'append');
+        $structure = $this->extractAndNormalizeJsonStructure($decoded);
+
+        $resultCounts = DB::transaction(function () use ($project, $structure, $importMode) {
+            if ($importMode === 'replace') {
+                $tasks = $project->tasks()->get();
+                foreach ($tasks as $task) {
+                    $task->checklistItems()->delete();
+                    $task->timeLogs()->delete();
+                    $task->comments()->delete();
+                    $task->delete();
+                }
+                $project->phases()->delete();
+            }
+
+            $defaultTaskStatus = ProjectStatus::defaultFor('task')?->id
+                ?? ProjectStatus::queuedFor('task')?->id
+                ?? ProjectStatus::forType('task')->first()?->id;
+
+            $defaultChecklistStatus = ProjectStatus::defaultFor('checklist')?->id
+                ?? ProjectStatus::inProgressFor('checklist')?->id
+                ?? ProjectStatus::queuedFor('checklist')?->id
+                ?? ProjectStatus::forType('checklist')->first()?->id;
+
+            $maxPhaseOrder = (int)$project->phases()->max('sort_order');
+            $maxTaskOrder = (int)$project->tasks()->max('sort_order');
+
+            $resolveDueDate = function(?string $rawDate) use ($project) {
+                if (empty($rawDate)) return null;
+                $rawDate = trim((string)$rawDate);
+                if (is_numeric($rawDate)) {
+                    $base = $project->start_date ? \Carbon\Carbon::parse($project->start_date) : now();
+                    return $base->copy()->addDays((int)$rawDate)->format('Y-m-d');
+                }
+                return $this->convertJalaliDate($rawDate);
+            };
+
+            $createdPhasesCount = 0;
+            $createdTasksCount = 0;
+            $createdItemsCount = 0;
+
+            // 1. Phases & Phase Tasks
+            foreach ($structure['phases'] ?? [] as $phaseData) {
+                $phaseName = trim($phaseData['name'] ?? $phaseData['title'] ?? '');
+                if (empty($phaseName)) continue;
+
+                $phase = null;
+                if ($importMode === 'append') {
+                    $phase = $project->phases()->where('name', $phaseName)->first();
+                }
+
+                if (!$phase) {
+                    $maxPhaseOrder++;
+                    $phase = $project->phases()->create([
+                        'name' => $phaseName,
+                        'color' => $phaseData['color'] ?? '#6366f1',
+                        'description' => $phaseData['description'] ?? null,
+                        'sort_order' => $maxPhaseOrder,
+                    ]);
+                    $createdPhasesCount++;
+                }
+
+                foreach ($phaseData['tasks'] ?? [] as $taskData) {
+                    $taskTitle = trim($taskData['title'] ?? $taskData['name'] ?? '');
+                    if (empty($taskTitle)) continue;
+
+                    $maxTaskOrder++;
+                    $managerId = !empty($taskData['manager_id']) ? (int)$taskData['manager_id'] : (!empty($taskData['assigned_to']) ? (int)$taskData['assigned_to'] : null);
+                    $rawDueDate = !empty($taskData['due_date']) ? $taskData['due_date'] : null;
+                    $taskDueDate = $resolveDueDate($rawDueDate);
+
+                    if ($managerId && !$project->members()->where('user_id', $managerId)->exists()) {
+                        $project->members()->create(['user_id' => $managerId, 'role' => 'editor']);
+                    }
+
+                    $task = $project->tasks()->create([
+                        'phase_id' => $phase->id,
+                        'group_name' => $phase->name,
+                        'title' => $taskTitle,
+                        'description' => $taskData['description'] ?? null,
+                        'status_id' => $defaultTaskStatus,
+                        'manager_id' => $managerId,
+                        'assigned_to' => $managerId,
+                        'due_date' => $taskDueDate,
+                        'created_by' => auth()->id(),
+                        'sort_order' => $maxTaskOrder,
+                    ]);
+                    $createdTasksCount++;
+
+                    $items = $taskData['items'] ?? $taskData['checklist'] ?? $taskData['subtasks'] ?? [];
+                    foreach ($items as $iIndex => $itemData) {
+                        $itemTitle = trim(is_string($itemData) ? $itemData : ($itemData['title'] ?? $itemData['name'] ?? ''));
+                        if (empty($itemTitle)) continue;
+
+                        $itemAssignee = is_array($itemData) ? (!empty($itemData['assigned_to']) ? (int)$itemData['assigned_to'] : $managerId) : $managerId;
+                        $rawItemDueDate = is_array($itemData) ? (!empty($itemData['due_date']) ? $itemData['due_date'] : $rawDueDate) : $rawDueDate;
+                        $itemDueDate = $rawItemDueDate ? $resolveDueDate($rawItemDueDate) : $taskDueDate;
+
+                        if ($itemAssignee && !$project->members()->where('user_id', $itemAssignee)->exists()) {
+                            $project->members()->create(['user_id' => $itemAssignee, 'role' => 'editor']);
+                        }
+
+                        $chkItem = $task->checklistItems()->create([
+                            'title' => $itemTitle,
+                            'description' => is_array($itemData) ? ($itemData['description'] ?? null) : null,
+                            'status_id' => $defaultChecklistStatus,
+                            'assigned_to' => $itemAssignee,
+                            'due_date' => $itemDueDate,
+                            'created_by' => auth()->id(),
+                            'is_done' => false,
+                            'sort_order' => $iIndex + 1,
+                        ]);
+                        $createdItemsCount++;
+
+                        if ($itemAssignee) {
+                            $chkItem->syncAssignees([$itemAssignee]);
+                        }
+                    }
+
+                    $task->syncStatusFromChecklist();
+                }
+            }
+
+            // 2. Unphased Tasks
+            foreach ($structure['unphased_tasks'] ?? [] as $taskData) {
+                $taskTitle = trim($taskData['title'] ?? $taskData['name'] ?? '');
+                if (empty($taskTitle)) continue;
+
+                $maxTaskOrder++;
+                $managerId = !empty($taskData['manager_id']) ? (int)$taskData['manager_id'] : (!empty($taskData['assigned_to']) ? (int)$taskData['assigned_to'] : null);
+                $rawDueDate = !empty($taskData['due_date']) ? $taskData['due_date'] : null;
+                $taskDueDate = $resolveDueDate($rawDueDate);
+
+                if ($managerId && !$project->members()->where('user_id', $managerId)->exists()) {
+                    $project->members()->create(['user_id' => $managerId, 'role' => 'editor']);
+                }
+
+                $task = $project->tasks()->create([
+                    'phase_id' => null,
+                    'group_name' => null,
+                    'title' => $taskTitle,
+                    'description' => $taskData['description'] ?? null,
+                    'status_id' => $defaultTaskStatus,
+                    'manager_id' => $managerId,
+                    'assigned_to' => $managerId,
+                    'due_date' => $taskDueDate,
+                    'created_by' => auth()->id(),
+                    'sort_order' => $maxTaskOrder,
+                ]);
+                $createdTasksCount++;
+
+                $items = $taskData['items'] ?? $taskData['checklist'] ?? $taskData['subtasks'] ?? [];
+                foreach ($items as $iIndex => $itemData) {
+                    $itemTitle = trim(is_string($itemData) ? $itemData : ($itemData['title'] ?? $itemData['name'] ?? ''));
+                    if (empty($itemTitle)) continue;
+
+                    $itemAssignee = is_array($itemData) ? (!empty($itemData['assigned_to']) ? (int)$itemData['assigned_to'] : $managerId) : $managerId;
+                    $rawItemDueDate = is_array($itemData) ? (!empty($itemData['due_date']) ? $itemData['due_date'] : $rawDueDate) : $rawDueDate;
+                    $itemDueDate = $rawItemDueDate ? $resolveDueDate($rawItemDueDate) : $taskDueDate;
+
+                    if ($itemAssignee && !$project->members()->where('user_id', $itemAssignee)->exists()) {
+                        $project->members()->create(['user_id' => $itemAssignee, 'role' => 'editor']);
+                    }
+
+                    $chkItem = $task->checklistItems()->create([
+                        'title' => $itemTitle,
+                        'description' => is_array($itemData) ? ($itemData['description'] ?? null) : null,
+                        'status_id' => $defaultChecklistStatus,
+                        'assigned_to' => $itemAssignee,
+                        'due_date' => $itemDueDate,
+                        'created_by' => auth()->id(),
+                        'is_done' => false,
+                        'sort_order' => $iIndex + 1,
+                    ]);
+                    $createdItemsCount++;
+
+                    if ($itemAssignee) {
+                        $chkItem->syncAssignees([$itemAssignee]);
+                    }
+                }
+
+                $task->syncStatusFromChecklist();
+            }
+
+            ProjectActivity::log(
+                projectId: $project->id,
+                action: 'project.updated',
+                subject: "درون‌ریزی ساختار کارها از فایل JSON ({$createdTasksCount} گروه و {$createdItemsCount} کار)",
+                userId: auth()->id()
+            );
+
+            $project->refreshProgress();
+
+            return [
+                'phases' => $createdPhasesCount,
+                'tasks' => $createdTasksCount,
+                'items' => $createdItemsCount,
+            ];
+        });
+
+        ProjectsTaskSseController::broadcastEvent($project->id, 'checklist_updated', [
+            'action' => 'json_imported',
+            'triggered_by_user_id' => auth()->id(),
+        ]);
+
+        $msgParts = [];
+        if ($resultCounts['phases'] > 0) $msgParts[] = "{$resultCounts['phases']} فاز";
+        if ($resultCounts['tasks'] > 0) $msgParts[] = "{$resultCounts['tasks']} گروه";
+        if ($resultCounts['items'] > 0) $msgParts[] = "{$resultCounts['items']} کار";
+
+        $summaryText = !empty($msgParts) ? implode('، ', $msgParts) : 'اطلاعات';
+
+        return response()->json([
+            'success' => true,
+            'message' => "{$summaryText} با موفقیت به پروژه اضافه شد.",
+            'counts' => $resultCounts,
+        ]);
+    }
+
+    /**
+     * Parse and normalize arbitrary JSON structure into standard phases and unphased tasks.
+     */
+    private function extractAndNormalizeJsonStructure(array $data): array
+    {
+        $structure = ['phases' => [], 'unphased_tasks' => []];
+
+        if (isset($data['structure']) && is_array($data['structure'])) {
+            $rawStructure = $data['structure'];
+            $structure['phases'] = $rawStructure['phases'] ?? $rawStructure['فازها'] ?? [];
+            $structure['unphased_tasks'] = $rawStructure['unphased_tasks'] ?? $rawStructure['گروه‌های عمومی'] ?? $rawStructure['tasks'] ?? $rawStructure['گروه‌ها'] ?? [];
+        } elseif (isset($data['phases']) || isset($data['فازها'])) {
+            $structure['phases'] = $data['phases'] ?? $data['فازها'] ?? [];
+            $structure['unphased_tasks'] = $data['unphased_tasks'] ?? $data['tasks'] ?? $data['گروه‌ها'] ?? [];
+        } elseif (array_is_list($data)) {
+            $hasPhases = false;
+            foreach ($data as $item) {
+                if (is_array($item) && (isset($item['tasks']) || isset($item['فاز']) || isset($item['phases']) || isset($item['کارها']))) {
+                    $hasPhases = true;
+                    break;
+                }
+            }
+            if ($hasPhases) {
+                $structure['phases'] = $data;
+            } else {
+                $structure['unphased_tasks'] = $data;
+            }
+        } elseif (isset($data['tasks']) || isset($data['گروه‌ها']) || isset($data['کارها'])) {
+            $structure['unphased_tasks'] = $data['tasks'] ?? $data['گروه‌ها'] ?? $data['کارها'] ?? [];
+        }
+
+        $colors = ['#6366f1', '#8b5cf6', '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#06b6d4', '#ec4899'];
+        $cleanPhases = [];
+        foreach ($structure['phases'] as $idx => $p) {
+            if (!is_array($p)) continue;
+            $phaseName = trim($p['name'] ?? $p['title'] ?? $p['نام'] ?? $p['عنوان'] ?? "فاز " . ($idx + 1));
+            $tasksList = $p['tasks'] ?? $p['گروه‌ها'] ?? $p['کارها'] ?? $p['items'] ?? [];
+            $cleanTasks = [];
+
+            foreach ($tasksList as $t) {
+                if (!is_array($t)) continue;
+                $tTitle = trim($t['title'] ?? $t['name'] ?? $t['عنوان'] ?? $t['نام'] ?? '');
+                $tItems = $t['items'] ?? $t['checklist'] ?? $t['کارها'] ?? $t['چک‌لیست'] ?? $t['subtasks'] ?? [];
+                if (empty($tTitle) && empty($tItems)) continue;
+
+                $cleanItems = [];
+                foreach ($tItems as $i) {
+                    $iTitle = trim(is_string($i) ? $i : ($i['title'] ?? $i['name'] ?? $i['عنوان'] ?? ''));
+                    if (empty($iTitle)) continue;
+
+                    $cleanItems[] = [
+                        'title' => $iTitle,
+                        'description' => is_array($i) ? trim($i['description'] ?? $i['توضیحات'] ?? '') : '',
+                        'assigned_to' => is_array($i) ? ($i['assigned_to'] ?? $i['مسئول'] ?? '') : '',
+                        'due_date' => is_array($i) ? ($i['due_date'] ?? $i['مهلت'] ?? '') : '',
+                    ];
+                }
+
+                $cleanTasks[] = [
+                    'title' => $tTitle ?: 'گروه کاری ' . (count($cleanTasks) + 1),
+                    'description' => trim($t['description'] ?? $t['توضیحات'] ?? ''),
+                    'manager_id' => $t['manager_id'] ?? $t['assigned_to'] ?? $t['مسئول'] ?? '',
+                    'due_date' => $t['due_date'] ?? $t['مهلت'] ?? '',
+                    'items' => $cleanItems,
+                ];
+            }
+
+            $cleanPhases[] = [
+                'name' => $phaseName,
+                'color' => $p['color'] ?? $p['رنگ'] ?? $colors[$idx % count($colors)],
+                'description' => trim($p['description'] ?? $p['توضیحات'] ?? ''),
+                'tasks' => $cleanTasks,
+            ];
+        }
+
+        $cleanUnphased = [];
+        foreach ($structure['unphased_tasks'] as $t) {
+            if (!is_array($t)) continue;
+            $tTitle = trim($t['title'] ?? $t['name'] ?? $t['عنوان'] ?? $t['نام'] ?? '');
+            $tItems = $t['items'] ?? $t['checklist'] ?? $t['کارها'] ?? $t['چک‌لیست'] ?? $t['subtasks'] ?? [];
+            if (empty($tTitle) && empty($tItems)) continue;
+
+            $cleanItems = [];
+            foreach ($tItems as $i) {
+                $iTitle = trim(is_string($i) ? $i : ($i['title'] ?? $i['name'] ?? $i['عنوان'] ?? ''));
+                if (empty($iTitle)) continue;
+
+                $cleanItems[] = [
+                    'title' => $iTitle,
+                    'description' => is_array($i) ? trim($i['description'] ?? $i['توضیحات'] ?? '') : '',
+                    'assigned_to' => is_array($i) ? ($i['assigned_to'] ?? $i['مسئول'] ?? '') : '',
+                    'due_date' => is_array($i) ? ($i['due_date'] ?? $i['مهلت'] ?? '') : '',
+                ];
+            }
+
+            $cleanUnphased[] = [
+                'title' => $tTitle ?: 'گروه کاری ' . (count($cleanUnphased) + 1),
+                'description' => trim($t['description'] ?? $t['توضیحات'] ?? ''),
+                'manager_id' => $t['manager_id'] ?? $t['assigned_to'] ?? $t['مسئول'] ?? '',
+                'due_date' => $t['due_date'] ?? $t['مهلت'] ?? '',
+                'items' => $cleanItems,
+            ];
+        }
+
+        return [
+            'phases' => $cleanPhases,
+            'unphased_tasks' => $cleanUnphased,
+        ];
+    }
 }
+

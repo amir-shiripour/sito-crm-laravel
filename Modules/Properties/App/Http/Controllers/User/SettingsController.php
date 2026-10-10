@@ -89,6 +89,27 @@ class SettingsController extends Controller
         $rental_pending_host_can_create = PropertySetting::get('rental_pending_host_can_create', 0);
         $rental_default_commission = PropertySetting::get('rental_default_commission', 10);
 
+        // Settlement Rules Settings
+        $rental_settlement_rules_title = PropertySetting::get('rental_settlement_rules_title', 'قوانین و رویه تسویه حساب درآمد:');
+        $rawSettlementRules = PropertySetting::get('rental_settlement_rules');
+        $rental_settlement_rules = $rawSettlementRules ? json_decode($rawSettlementRules, true) : null;
+        if (empty($rental_settlement_rules) || !is_array($rental_settlement_rules)) {
+            $rental_settlement_rules = [
+                [
+                    'title' => 'زمان تسویه',
+                    'text' => 'مبالغ رزروها پس از تحویل اقامتگاه به مسافر و ورود بدون مغایرت در اولین سیکل پایا واریز می‌گردد.',
+                ],
+                [
+                    'title' => 'کارمزد پلتفرم',
+                    'text' => 'سهم پلتفرم از هر رزرو {commission}٪ بوده و مابقی مستقیماً به شبا واریز می‌شود.',
+                ],
+                [
+                    'title' => 'تطابق حساب',
+                    'text' => 'نام صاحب حساب باید با اطلاعات هویتی و کد ملی همخوانی کامل داشته باشد.',
+                ],
+            ];
+        }
+
         // Storage Report
         $storagePath = 'properties';
         $totalSize = 0;
@@ -144,7 +165,9 @@ class SettingsController extends Controller
             'rental_host_auto_approve',
             'rental_property_auto_approve',
             'rental_pending_host_can_create',
-            'rental_default_commission'
+            'rental_default_commission',
+            'rental_settlement_rules_title',
+            'rental_settlement_rules'
         ));
     }
 
@@ -188,6 +211,8 @@ class SettingsController extends Controller
             'rental_property_auto_approve' => 'nullable|boolean',
             'rental_pending_host_can_create' => 'nullable|boolean',
             'rental_default_commission' => 'nullable|numeric|min:0|max:100',
+            'rental_settlement_rules_title' => 'nullable|string|max:255',
+            'rental_settlement_rules' => 'nullable|array',
         ]);
 
         $allowedFileTypes = str_replace(' ', '', $request->allowed_file_types);
@@ -245,6 +270,23 @@ class SettingsController extends Controller
         PropertySetting::set('rental_property_auto_approve', $request->has('rental_property_auto_approve') ? 1 : 0);
         PropertySetting::set('rental_pending_host_can_create', $request->has('rental_pending_host_can_create') ? 1 : 0);
         PropertySetting::set('rental_default_commission', $request->input('rental_default_commission', 10));
+
+        // Save Settlement Rules Settings
+        if ($request->has('rental_settlement_rules_title')) {
+            PropertySetting::set('rental_settlement_rules_title', $request->input('rental_settlement_rules_title', 'قوانین و رویه تسویه حساب درآمد:'));
+        }
+        if ($request->has('rental_settlement_rules') && is_array($request->rental_settlement_rules)) {
+            $cleanRules = [];
+            foreach ($request->rental_settlement_rules as $r) {
+                if (!empty($r['text']) || !empty($r['title'])) {
+                    $cleanRules[] = [
+                        'title' => trim($r['title'] ?? ''),
+                        'text' => trim($r['text'] ?? ''),
+                    ];
+                }
+            }
+            PropertySetting::set('rental_settlement_rules', json_encode($cleanRules, JSON_UNESCAPED_UNICODE));
+        }
 
         return back()->with('success', 'تنظیمات با موفقیت ذخیره شد.');
     }

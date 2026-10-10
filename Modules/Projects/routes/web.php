@@ -92,6 +92,7 @@ Route::middleware(['auth', 'verified'])
                     Route::get('/', [ProjectsTaskController::class, 'index'])->name('index');
                     Route::post('/', [ProjectsTaskController::class, 'store'])->name('store');
                     Route::post('/bulk-destroy', [ProjectsTaskController::class, 'bulkDestroy'])->name('bulkDestroy');
+                    Route::post('/import-json', [ProjectsTaskController::class, 'importJson'])->name('importJson');
                     Route::put('/{task}', [ProjectsTaskController::class, 'update'])->name('update');
                     Route::delete('/{task}', [ProjectsTaskController::class, 'destroy'])->name('destroy');
                     Route::patch('/{task}/status', [ProjectsTaskController::class, 'updateStatus'])->name('status');

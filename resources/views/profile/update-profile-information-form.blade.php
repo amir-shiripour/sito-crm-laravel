@@ -1,7 +1,7 @@
 @php
     $userRoles = auth()->user()->roles->pluck('name')->toArray();
     $userRolesDisplay = auth()->user()->roles->pluck('display_name')->toArray();
-    $customFields = \App\Models\CustomUserField::whereIn('role_name', $userRoles)->orderBy('id')->get()->unique('field_name');
+    $customFields = \App\Models\CustomUserField::whereIn('role_name', $userRoles)->where('show_in_profile', true)->orderBy('id')->get()->unique('field_name');
     $customValues = \App\Models\UserCustomValue::where('user_id', auth()->id())->get()->keyBy('field_name');
     $inputTypes = ['text','number','email','date','datetime-local','time','month','week','url','tel','password','color','range','hidden'];
 
@@ -151,8 +151,8 @@
         <!-- Custom Fields Divider -->
         @if($customFields->count() > 0)
             <div class="md:col-span-2 mt-2 pt-6 border-t border-gray-100 dark:border-gray-700">
-                <h3 class="{{ $titleClass }}"><span class="w-2 h-2 rounded-full bg-emerald-500"></span> {{ __('اطلاعات تکمیلی') }}</h3>
-                <p class="{{ $descClass }}">{{ __('این فیلدها بر اساس نقش کاربری شما در سیستم تعیین شده‌اند.') }}</p>
+                <h3 class="{{ $titleClass }}"><span class="w-2 h-2 rounded-full bg-emerald-500"></span> {{ __('اطلاعات تکمیلی و احراز هویت') }}</h3>
+                <p class="{{ $descClass }}">{{ __('این فیلدها جهت احراز هویت و بر اساس نقش کاربری شما در سیستم تعیین شده‌اند.') }}</p>
             </div>
 
             @foreach($customFields as $field)
@@ -228,7 +228,7 @@
                         </div>
 
                     @else
-                        <input id="custom_{{ $field->field_name }}" type="{{ in_array($type, $inputTypes) ? $type : 'text' }}" class="{{ $inputClass }} {{ $isLtrField ? 'dir-ltr text-left font-mono' : '' }}" wire:model="state.custom.{{ $field->field_name }}" />
+                        <input id="custom_{{ $field->field_name }}" type="{{ in_array($type, $inputTypes) ? $type : 'text' }}" class="{{ $inputClass }} {{ $isLtrField ? 'dir-ltr text-left font-sans' : '' }}" wire:model="state.custom.{{ $field->field_name }}" />
                     @endif
 
                     <x-input-error for="custom.{{ $field->field_name }}" class="mt-2 text-xs text-red-500 font-bold" />

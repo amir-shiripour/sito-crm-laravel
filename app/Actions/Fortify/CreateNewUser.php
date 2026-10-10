@@ -31,7 +31,7 @@ class CreateNewUser implements CreatesNewUsers
 
         // ولیدیشن داینامیک براساس نقش انتخاب شده
         $roleName = $input['role'];
-        $fields = CustomUserField::where('role_name', $roleName)->get();
+        $fields = CustomUserField::where('role_name', $roleName)->where('show_in_register', true)->get();
 
         $dynamicRules = [];
         foreach ($fields as $f) {

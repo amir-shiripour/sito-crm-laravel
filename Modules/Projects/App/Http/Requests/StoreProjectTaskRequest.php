@@ -15,7 +15,7 @@ class StoreProjectTaskRequest extends FormRequest
             'description' => 'nullable|string',
             'due_date' => 'nullable|string',
             'status_id' => 'nullable|exists:projects_statuses,id',
-            'assigned_to' => 'required|integer|exists:users,id',
+            'assigned_to' => 'nullable|integer|exists:users,id',
             'manager_id' => 'nullable|integer|exists:users,id',
             'checklist' => 'nullable|array',
             'checklist.*.id' => 'nullable|integer',
@@ -38,7 +38,6 @@ class StoreProjectTaskRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'assigned_to.required' => 'انتخاب مدیر گروه الزامی است.',
             'title.required' => 'وارد کردن عنوان گروه الزامی است.',
         ];
     }

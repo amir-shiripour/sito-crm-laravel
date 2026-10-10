@@ -68,7 +68,7 @@ class FortifyServiceProvider extends ServiceProvider
             $view = app(RegisteredUserController::class)->create($request);
 
             if ($view instanceof \Illuminate\View\View || $view instanceof \Illuminate\Contracts\View\View) {
-                $view->with('allCustomFields', CustomUserField::all()->groupBy('role_name'));
+                $view->with('allCustomFields', CustomUserField::where('show_in_register', true)->get()->groupBy('role_name'));
             }
 
             return $view;

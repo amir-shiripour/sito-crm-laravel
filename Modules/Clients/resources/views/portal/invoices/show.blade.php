@@ -145,29 +145,52 @@
                     </div>
                 </div>
 
-                <div class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-4 mt-6">
-                    <div class="p-3.5 rounded-2xl bg-white/70 dark:bg-gray-800/80 border border-emerald-500/15 dark:border-emerald-500/25">
-                        <span class="text-xs text-slate-500 dark:text-slate-400 block mb-1">کد پیگیری شاپرک / مرجع</span>
-                        <span class="text-sm sm:text-base font-bold text-gray-900 dark:text-white select-all font-sans">
-                            {{ CalendarUtils::convertNumbers($receipt['ref_id'] ?? '—') }}
-                        </span>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mt-6" x-data="{ copiedRef: false }">
+                    {{-- کد پیگیری شاپرک / مرجع --}}
+                    <div class="col-span-2 sm:col-span-1 md:col-span-1 p-3.5 sm:p-4 rounded-2xl bg-white/70 dark:bg-gray-800/80 border border-emerald-500/15 dark:border-emerald-500/25 min-w-0 flex flex-col justify-between">
+                        <div class="flex items-center justify-between gap-2 mb-1.5">
+                            <span class="text-xs text-slate-500 dark:text-slate-400 font-medium">کد پیگیری شاپرک / مرجع</span>
+                            @if(!empty($receipt['ref_id']) && $receipt['ref_id'] !== '—')
+                                <button type="button"
+                                        @click="navigator.clipboard.writeText('{{ addslashes($receipt['ref_id'] ?? '') }}'); copiedRef = true; setTimeout(() => copiedRef = false, 2500)"
+                                        class="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 transition-colors py-0.5 px-1.5 rounded-md hover:bg-emerald-500/10"
+                                        title="کپی کد پیگیری">
+                                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                                    </svg>
+                                    <span x-show="!copiedRef">کپی</span>
+                                    <span x-show="copiedRef" x-cloak class="text-emerald-600 dark:text-emerald-400">کپی شد!</span>
+                                </button>
+                            @endif
+                        </div>
+                        <div class="min-w-0">
+                            <span class="text-xs sm:text-sm md:text-base font-bold text-gray-900 dark:text-white select-all font-sans break-all block leading-relaxed" dir="ltr">
+                                {{ CalendarUtils::convertNumbers($receipt['ref_id'] ?? '—') }}
+                            </span>
+                        </div>
                     </div>
-                    <div class="p-3.5 rounded-2xl bg-white/70 dark:bg-gray-800/80 border border-emerald-500/15 dark:border-emerald-500/25">
-                        <span class="text-xs text-slate-500 dark:text-slate-400 block mb-1">درگاه پرداخت</span>
-                        <span class="text-sm sm:text-base font-bold text-gray-900 dark:text-white font-sans">
+
+                    {{-- درگاه پرداخت --}}
+                    <div class="p-3.5 sm:p-4 rounded-2xl bg-white/70 dark:bg-gray-800/80 border border-emerald-500/15 dark:border-emerald-500/25 min-w-0 flex flex-col justify-between">
+                        <span class="text-xs text-slate-500 dark:text-slate-400 block mb-1.5 font-medium">درگاه پرداخت</span>
+                        <span class="text-xs sm:text-sm md:text-base font-bold text-gray-900 dark:text-white font-sans break-words block leading-relaxed" title="{{ $receipt['gateway_label'] ?? 'پرداخت آنلاین' }}">
                             {{ $receipt['gateway_label'] ?? 'پرداخت آنلاین' }}
                         </span>
                     </div>
-                    <div class="p-3.5 rounded-2xl bg-white/70 dark:bg-gray-800/80 border border-emerald-500/15 dark:border-emerald-500/25">
-                        <span class="text-xs text-slate-500 dark:text-slate-400 block mb-1">مبلغ تراکنش</span>
-                        <span class="text-sm sm:text-base font-bold text-emerald-600 dark:text-emerald-400 font-sans">
-                            {{ CalendarUtils::convertNumbers(number_format($receipt['amount'] ?? $invoice->total)) }} {{ $invoiceCurrencyLabel }}
+
+                    {{-- زمان ثبت تراکنش --}}
+                    <div class="p-3.5 sm:p-4 rounded-2xl bg-white/70 dark:bg-gray-800/80 border border-emerald-500/15 dark:border-emerald-500/25 min-w-0 flex flex-col justify-between">
+                        <span class="text-xs text-slate-500 dark:text-slate-400 block mb-1.5 font-medium">زمان ثبت تراکنش</span>
+                        <span class="text-xs sm:text-sm md:text-base font-bold text-gray-900 dark:text-white font-sans block leading-relaxed">
+                            {{ CalendarUtils::convertNumbers(jdate($receipt['paid_at'] ?? now())->format('Y/m/d - H:i')) }}
                         </span>
                     </div>
-                    <div class="p-3.5 rounded-2xl bg-white/70 dark:bg-gray-800/80 border border-emerald-500/15 dark:border-emerald-500/25">
-                        <span class="text-xs text-slate-500 dark:text-slate-400 block mb-1">زمان ثبت تراکنش</span>
-                        <span class="text-sm sm:text-base font-bold text-gray-900 dark:text-white font-sans">
-                            {{ CalendarUtils::convertNumbers(jdate($receipt['paid_at'] ?? now())->format('Y/m/d - H:i')) }}
+
+                    {{-- مبلغ تراکنش --}}
+                    <div class="col-span-2 sm:col-span-1 md:col-span-1 p-3.5 sm:p-4 rounded-2xl bg-white/70 dark:bg-gray-800/80 border border-emerald-500/15 dark:border-emerald-500/25 min-w-0 flex flex-col justify-between">
+                        <span class="text-xs text-slate-500 dark:text-slate-400 block mb-1.5 font-medium">مبلغ تراکنش</span>
+                        <span class="text-sm sm:text-base md:text-lg font-black text-emerald-600 dark:text-emerald-400 font-sans block leading-relaxed">
+                            {{ CalendarUtils::convertNumbers(number_format($receipt['amount'] ?? $invoice->total)) }} {{ $invoiceCurrencyLabel }}
                         </span>
                     </div>
                 </div>

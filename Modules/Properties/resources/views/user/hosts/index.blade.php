@@ -95,7 +95,7 @@
                                     'id' => $host->id,
                                     'display_name' => $host->display_name,
                                     'user_name' => optional($host->user)->name ?? 'ثبت نشده',
-                                    'user_email' => optional($host->user)->email ?? 'ندارد',
+                                    'user_phone' => optional($host->user)->phone ?? 'ثبت نشده',
                                     'phone' => $host->phone,
                                     'avatar' => $host->avatar ? asset('storage/' . $host->avatar) : null,
                                     'about' => $host->about,
@@ -104,10 +104,36 @@
                                     'account_owner_name' => $host->account_owner_name,
                                     'national_code' => $host->national_code,
                                     'national_card_image' => $host->national_card_image ? asset('storage/' . $host->national_card_image) : null,
+                                    'verification_fields' => collect($verificationFieldDefs ?? [])->map(function($f) use ($host) {
+                                        $val = optional(optional($host->user)->customValues)->firstWhere('field_name', $f->field_name)->value ?? null;
+                                        if (empty($val) && $f->field_name === 'national_code') {
+                                            $val = $host->national_code;
+                                        }
+                                        if (empty($val) && $f->field_name === 'national_card_image') {
+                                            $val = $host->national_card_image;
+                                        }
+                                        $isImage = false;
+                                        $fileUrl = null;
+                                        if ($f->field_type === 'file' && !empty($val)) {
+                                            $fileUrl = asset('storage/' . $val);
+                                            $ext = strtolower(pathinfo($val, PATHINFO_EXTENSION));
+                                            $isImage = in_array($ext, ['jpg', 'jpeg', 'png', 'webp', 'gif', 'svg']);
+                                        }
+                                        return [
+                                            'name' => $f->field_name,
+                                            'label' => $f->label ?? $f->field_name,
+                                            'type' => $f->field_type,
+                                            'value' => $val,
+                                            'file_url' => $fileUrl,
+                                            'is_image' => $isImage,
+                                            'options' => $f->options ?? [],
+                                        ];
+                                    })->values(),
                                     'kyc_status' => $host->kyc_status,
                                     'kyc_rejection_reason' => $host->kyc_rejection_reason,
                                     'status' => $host->status,
                                     'commission_rate' => $host->effective_commission_rate,
+                                    'raw_commission_rate' => $host->commission_rate,
                                     'created_at' => \Morilog\Jalali\Jalalian::fromCarbon($host->created_at)->format('Y/m/d H:i'),
                                     'properties_count' => $host->properties_count,
                                     'properties' => $host->properties->map(function($p) {
@@ -125,11 +151,11 @@
                                         $host->phone,
                                         $host->national_code,
                                         optional($host->user)->name,
-                                        optional($host->user)->email,
                                         optional($host->user)->phone,
                                         $host->properties->pluck('title')->implode(' '),
                                         $host->properties->pluck('code')->implode(' '),
                                     ]))),
+                                    'update_url' => route('user.properties.hosts.admin.update', $host),
                                     'approve_url' => route('user.properties.hosts.admin.approve', $host),
                                     'approve_kyc_url' => route('user.properties.hosts.admin.approve-kyc', $host),
                                     'reject_url' => route('user.properties.hosts.admin.reject', $host),
@@ -158,7 +184,7 @@
                                                     </span>
                                                 @endif
                                             </div>
-                                            <span class="text-[11px] text-gray-400 mt-0.5">کاربر: {{ optional($host->user)->name ?? '—' }} ({{ optional($host->user)->phone ?? optional($host->user)->email ?? 'بدون اطلاعات' }})</span>
+                                            <span class="text-[11px] text-gray-400 mt-0.5">کاربر: {{ optional($host->user)->name ?? '—' }} ({{ optional($host->user)->phone ?? 'بدون شماره' }})</span>
                                         </div>
                                     </div>
                                 </td>
@@ -217,6 +243,15 @@
                                                 title="مشاهده جزئیات کامل و مدارک">
                                             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
                                             <span class="hidden md:inline">جزئیات</span>
+                                        </button>
+
+                                        {{-- دکمه ویرایش اطلاعات میزبان --}}
+                                        <button type="button" 
+                                                @click="openEditModal({{ json_encode($hostJson) }})"
+                                                class="px-2.5 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:hover:bg-amber-500/25 dark:text-amber-300 dark:border dark:border-amber-500/30 font-bold text-xs transition flex items-center gap-1"
+                                                title="ویرایش کامل اطلاعات و وضعیت میزبان">
+                                            <svg class="w-4 h-4 text-amber-600 dark:text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                                            <span class="hidden md:inline">ویرایش</span>
                                         </button>
 
                                         {{-- دکمه تایید حساب در صورت غیرفعال بودن --}}
@@ -365,8 +400,8 @@
                                     <span class="font-bold text-gray-900 dark:text-gray-100" x-text="selectedHost?.user_name"></span>
                                 </div>
                                 <div class="flex justify-between items-center text-slate-600 dark:text-slate-300">
-                                    <span>ایمیل کاربر:</span>
-                                    <span class="font-bold text-gray-900 dark:text-gray-100 dir-ltr" x-text="selectedHost?.user_email"></span>
+                                    <span>شماره همراه کاربر:</span>
+                                    <span class="font-bold text-gray-900 dark:text-gray-100 dir-ltr font-sans" x-text="selectedHost?.user_phone || 'ثبت نشده'"></span>
                                 </div>
                                 <div class="flex justify-between items-center text-slate-600 dark:text-slate-300">
                                     <span>کارمزد پلتفرم:</span>
@@ -398,40 +433,77 @@
                         </div>
                     </div>
 
-                    {{-- کارت احراز هویت و مدارک هویتی (KYC) --}}
+                    {{-- کارت احراز هویت و مدارک هویتی (KYC) پویا --}}
                     <div class="p-5 rounded-2xl bg-indigo-50/50 dark:bg-indigo-950/30 border border-indigo-100 dark:border-indigo-900/50 space-y-4">
                         <div class="flex items-center justify-between">
                             <h4 class="text-xs font-black text-indigo-950 dark:text-indigo-200 flex items-center gap-2">
                                 <span class="w-2 h-2 rounded-full bg-indigo-600 dark:bg-indigo-400"></span>
-                                مدارک احراز هویت (کد ملی و کارت ملی هوشمند)
+                                مدارک و فیلدهای احراز هویت میزبان
                             </h4>
-                            <div class="text-xs">
-                                <span class="text-slate-600 dark:text-slate-300">کد ملی هوشمند: </span>
-                                <span class="font-bold dir-ltr text-indigo-700 dark:text-indigo-300" x-text="selectedHost?.national_code || 'ثبت نشده'"></span>
-                            </div>
+                            <span class="text-xs px-2.5 py-0.5 rounded-full font-bold font-sans"
+                                  :class="{
+                                      'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20': selectedHost?.kyc_status === 'approved',
+                                      'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20': selectedHost?.kyc_status === 'pending',
+                                      'bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20': selectedHost?.kyc_status === 'rejected',
+                                      'bg-gray-100 dark:bg-gray-700 text-gray-500': !selectedHost?.kyc_status || selectedHost?.kyc_status === 'not_submitted'
+                                  }"
+                                  x-text="selectedHost?.kyc_status === 'approved' ? 'تأیید شده' : (selectedHost?.kyc_status === 'pending' ? 'در انتظار بررسی' : (selectedHost?.kyc_status === 'rejected' ? 'رد شده' : 'ثبت نشده'))"></span>
                         </div>
 
-                        {{-- نمایش تصویر کارت ملی هوشمند --}}
-                        <div class="border border-indigo-100/80 dark:border-indigo-900/40 rounded-2xl p-4 bg-white dark:bg-gray-800/90 text-center shadow-inner">
-                            <template x-if="selectedHost?.national_card_image">
-                                <div class="space-y-3">
-                                    <div class="relative inline-block group">
-                                        <img :src="selectedHost.national_card_image" class="max-h-56 mx-auto rounded-xl object-contain border border-gray-200 dark:border-gray-700 shadow-sm transition hover:brightness-95">
-                                        <a :href="selectedHost.national_card_image" target="_blank" class="absolute bottom-2 left-2 px-3 py-1.5 rounded-lg bg-gray-900/80 hover:bg-gray-900 text-white text-[11px] font-bold flex items-center gap-1.5 backdrop-blur-sm transition">
-                                            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
-                                            مشاهده سایز اصلی
-                                        </a>
+                        {{-- نمایش لیست فیلدها و مدارک احراز هویت داینامیک --}}
+                        <template x-if="selectedHost?.verification_fields && selectedHost.verification_fields.length > 0">
+                            <div class="space-y-3">
+                                <template x-for="vf in selectedHost.verification_fields" :key="vf.name">
+                                    <div class="border border-indigo-100/80 dark:border-indigo-900/40 rounded-2xl p-4 bg-white dark:bg-gray-800/90 shadow-sm space-y-2">
+                                        <div class="flex items-center justify-between text-xs">
+                                            <span class="font-bold text-gray-900 dark:text-white" x-text="vf.label"></span>
+                                            <template x-if="vf.type !== 'file'">
+                                                <span class="font-bold dir-ltr text-indigo-700 dark:text-indigo-300 font-sans" x-text="vf.value || 'ثبت نشده'"></span>
+                                            </template>
+                                        </div>
+
+                                        {{-- اگر فیلد از نوع فایل / تصویر باشد --}}
+                                        <template x-if="vf.type === 'file'">
+                                            <div>
+                                                <template x-if="vf.value && vf.is_image">
+                                                    <div class="space-y-2 text-center pt-1">
+                                                        <div class="relative inline-block group">
+                                                            <img :src="vf.file_url" class="max-h-52 mx-auto rounded-xl object-contain border border-gray-200 dark:border-gray-700 shadow-sm transition hover:brightness-95">
+                                                            <a :href="vf.file_url" target="_blank" class="absolute bottom-2 left-2 px-3 py-1.5 rounded-lg bg-gray-900/80 hover:bg-gray-900 text-white text-[11px] font-bold flex items-center gap-1.5 backdrop-blur-sm transition">
+                                                                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                                                                مشاهده سایز اصلی
+                                                            </a>
+                                                        </div>
+                                                    </div>
+                                                </template>
+                                                <template x-if="vf.value && !vf.is_image">
+                                                    <div class="flex items-center justify-between pt-1">
+                                                        <span class="text-xs text-slate-500 dark:text-slate-400">فایل ضمیمه بارگذاری شده</span>
+                                                        <a :href="vf.file_url" target="_blank" class="px-3 py-1 rounded-xl bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 text-xs font-bold hover:underline">
+                                                            دانلود / مشاهده فایل
+                                                        </a>
+                                                    </div>
+                                                </template>
+                                                <template x-if="!vf.value">
+                                                    <div class="py-3 text-center text-slate-400 text-xs">
+                                                        مدرکی برای این فیلد بارگذاری نشده است.
+                                                    </div>
+                                                </template>
+                                            </div>
+                                        </template>
                                     </div>
-                                    <p class="text-[11px] text-slate-500 dark:text-slate-400">تصویر کارت ملی آپلود شده توسط میزبان (فرمت بهینه شده WebP)</p>
+                                </template>
+                            </div>
+                        </template>
+
+                        {{-- در صورتی که فیلدی تعریف نشده باشد --}}
+                        <template x-if="!selectedHost?.verification_fields || selectedHost.verification_fields.length === 0">
+                            <div class="border border-indigo-100/80 dark:border-indigo-900/40 rounded-2xl p-4 bg-white dark:bg-gray-800/90 text-center shadow-inner">
+                                <div class="py-4 text-slate-500 dark:text-slate-400 text-xs font-sans">
+                                    فیلد احراز هویت سفارشی تعریف نشده است.
                                 </div>
-                            </template>
-                            <template x-if="!selectedHost?.national_card_image">
-                                <div class="py-6 text-slate-500 dark:text-slate-400 text-xs">
-                                    <svg class="w-8 h-8 mx-auto mb-2 text-slate-400 dark:text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                                    تصویر کارت ملی توسط این میزبان هنوز بارگذاری نشده است.
-                                </div>
-                            </template>
-                        </div>
+                            </div>
+                        </template>
                     </div>
 
                     {{-- متن درباره میزبان --}}
@@ -491,6 +563,13 @@
                     </button>
 
                     <div class="flex items-center gap-2">
+                        {{-- دکمه ویرایش اطلاعات میزبان --}}
+                        <button type="button" 
+                                @click="showDetailsModal = false; openEditModal(selectedHost)"
+                                class="px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs shadow-md shadow-amber-500/20 transition flex items-center gap-1.5">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                            <span>ویرایش اطلاعات</span>
+                        </button>
                         {{-- دکمه فعال‌سازی کل حساب میزبان --}}
                         <template x-if="selectedHost?.status !== 'active'">
                             <form :action="selectedHost?.approve_url" method="POST">
@@ -527,7 +606,340 @@
     </div>
 
     {{-- ======================================================== --}}
-    {{-- ۲. مودال ثبت دلیل عدم تأیید / تعلیق (Reject Reason Modal) --}}
+    {{-- ۲. مودال جامع ویرایش اطلاعات میزبان (Host Edit Modal) --}}
+    {{-- ======================================================== --}}
+    <div x-show="showEditModal" 
+         x-cloak 
+         class="fixed inset-0 z-50 overflow-y-auto" 
+         style="display: none;">
+        <div class="min-h-screen px-4 text-center flex items-center justify-center">
+            {{-- پس‌زمینه مات --}}
+            <div class="fixed inset-0 bg-gray-950/70 backdrop-blur-sm transition-opacity" @click="showEditModal = false"></div>
+
+            {{-- بدنه مودال --}}
+            <div class="inline-block w-full max-w-4xl my-8 text-right align-middle transition-all transform bg-white dark:bg-gray-900 rounded-3xl shadow-2xl border border-gray-200 dark:border-gray-800 overflow-hidden relative z-10 font-sans"
+                 x-show="showEditModal"
+                 x-transition:enter="ease-out duration-300"
+                 x-transition:enter-start="opacity-0 scale-95"
+                 x-transition:enter-end="opacity-100 scale-100"
+                 x-transition:leave="ease-in duration-200"
+                 x-transition:leave-start="opacity-100 scale-100"
+                 x-transition:leave-end="opacity-0 scale-95">
+
+                {{-- فرم ارسال ویرایش --}}
+                <form :action="editingHost?.update_url" method="POST" enctype="multipart/form-data">
+                    @csrf
+                    @method('PUT')
+
+                    {{-- سربرگ مودال ویرایش --}}
+                    <div class="relative overflow-hidden p-6 bg-gradient-to-br from-indigo-900 via-indigo-800 to-slate-900 dark:from-indigo-950 dark:via-slate-900 dark:to-gray-950 text-white border-b border-indigo-700/30 dark:border-gray-800">
+                        <div class="absolute -top-16 -left-16 w-48 h-48 bg-amber-500/20 rounded-full blur-2xl pointer-events-none"></div>
+
+                        <div class="relative z-10 flex items-center justify-between">
+                            <div class="flex items-center gap-3">
+                                <div class="w-12 h-12 rounded-2xl bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/20 dark:border-white/10 text-amber-300 flex items-center justify-center font-black text-lg shadow-lg flex-shrink-0">
+                                    <svg class="w-6 h-6 text-amber-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                                </div>
+                                <div>
+                                    <div class="flex items-center gap-2">
+                                        <h3 class="text-base font-black text-white">ویرایش اطلاعات و تنظیمات میزبان</h3>
+                                        <span class="px-2.5 py-0.5 rounded-full bg-indigo-500/30 text-indigo-200 border border-indigo-400/30 text-xs font-bold" x-text="editingHost?.display_name"></span>
+                                    </div>
+                                    <p class="text-xs text-indigo-200/90 dark:text-slate-300 mt-1">
+                                        ویرایش مشخصات تماس، اطلاعات بانکی، فیلدهای احراز هویت و وضعیت حساب کاربری
+                                    </p>
+                                </div>
+                            </div>
+
+                            <button type="button" @click="showEditModal = false" class="p-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white/80 hover:text-white transition focus:outline-none">
+                                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    {{-- بدنه اسکرول‌خور مودال با ساختار Bento --}}
+                    <div class="p-6 space-y-6 max-h-[75vh] overflow-y-auto bg-gray-50/50 dark:bg-gray-900/50">
+
+                        {{-- ردیف ۱: اطلاعات پایه و حساب بانکی --}}
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            
+                            {{-- کارت مشخصات اصلی میزبان --}}
+                            <div class="p-5 rounded-2xl bg-white dark:bg-gray-800/90 border border-gray-200/80 dark:border-gray-700/80 shadow-sm space-y-4">
+                                <h4 class="text-xs font-black text-gray-900 dark:text-white flex items-center gap-2 border-b border-gray-100 dark:border-gray-700/60 pb-2">
+                                    <span class="w-2 h-2 rounded-full bg-indigo-500"></span>
+                                    مشخصات نمایشی و کارمزد
+                                </h4>
+
+                                <div class="space-y-3">
+                                    <div>
+                                        <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                                            نام نمایشی میزبان <span class="text-red-500">*</span>
+                                        </label>
+                                        <input type="text" 
+                                               name="display_name" 
+                                               x-model="editForm.display_name" 
+                                               required
+                                               class="w-full rounded-xl border-gray-200 bg-gray-50/60 p-2.5 text-xs text-gray-900 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 transition-all dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 font-sans"
+                                               placeholder="مثلاً: اقامتگاه بوم‌گردی نگین یا علی حسینی">
+                                    </div>
+
+                                    <div>
+                                        <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                                            تلفن تماس و هماهنگی <span class="text-red-500">*</span>
+                                        </label>
+                                        <input type="text" 
+                                               name="phone" 
+                                               x-model="editForm.phone" 
+                                               required
+                                               class="w-full rounded-xl border-gray-200 bg-gray-50/60 p-2.5 text-xs text-gray-900 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 transition-all dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 font-sans dir-ltr text-right"
+                                               placeholder="0912...">
+                                    </div>
+
+                                    <div>
+                                        <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                                            درصد کارمزد پلتفرم (٪)
+                                        </label>
+                                        <input type="number" 
+                                               step="0.01" 
+                                               min="0" 
+                                               max="100" 
+                                               name="commission_rate" 
+                                               x-model="editForm.commission_rate" 
+                                               class="w-full rounded-xl border-gray-200 bg-gray-50/60 p-2.5 text-xs text-gray-900 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 transition-all dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 font-sans dir-ltr text-right"
+                                               placeholder="خالی = استفاده از پیش‌فرض سامانه">
+                                        <span class="block text-[10px] text-gray-400 mt-1">در صورت خالی گذاشتن، نرخ پیش‌فرض سامانه اعمال می‌گردد.</span>
+                                    </div>
+
+                                    <div>
+                                        <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                                            درباره میزبان و سوابق
+                                        </label>
+                                        <textarea name="about" 
+                                                  x-model="editForm.about" 
+                                                  rows="2" 
+                                                  class="w-full rounded-xl border-gray-200 bg-gray-50/60 p-2.5 text-xs text-gray-900 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 transition-all dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 font-sans resize-none"
+                                                  placeholder="توضیحات کوتاه در مورد میزبان..."></textarea>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {{-- کارت اطلاعات بانکی و شبا --}}
+                            <div class="p-5 rounded-2xl bg-white dark:bg-gray-800/90 border border-gray-200/80 dark:border-gray-700/80 shadow-sm space-y-4">
+                                <h4 class="text-xs font-black text-gray-900 dark:text-white flex items-center gap-2 border-b border-gray-100 dark:border-gray-700/60 pb-2">
+                                    <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                                    مشخصات بانکی و تسویه حساب
+                                </h4>
+
+                                <div class="space-y-3">
+                                    <div>
+                                        <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                                            شماره شبا (۲۴ رقم بدون IR)
+                                        </label>
+                                        <div class="relative">
+                                            <input type="text" 
+                                                   name="shaba_number" 
+                                                   x-model="editForm.shaba_number" 
+                                                   @input="detectEditBank()" 
+                                                   maxlength="24" 
+                                                   class="w-full rounded-xl border-gray-200 bg-gray-50/60 p-2.5 pl-14 text-xs text-gray-900 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 transition-all dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 font-sans dir-ltr text-left tracking-wider"
+                                                   placeholder="000000000000000000000000">
+                                            <span class="absolute inset-y-0 left-3 flex items-center text-xs font-bold text-indigo-500 dark:text-indigo-400 font-sans">IR</span>
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                                            نام بانک
+                                        </label>
+                                        <input type="text" 
+                                               name="bank_name" 
+                                               x-model="editForm.bank_name" 
+                                               class="w-full rounded-xl border-gray-200 bg-gray-50/60 p-2.5 text-xs text-gray-900 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 transition-all dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 font-sans"
+                                               placeholder="نام بانک (تشخیص خودکار از روی شبا)">
+                                    </div>
+
+                                    <div>
+                                        <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                                            نام و نام خانوادگی صاحب حساب
+                                        </label>
+                                        <input type="text" 
+                                               name="account_owner_name" 
+                                               x-model="editForm.account_owner_name" 
+                                               class="w-full rounded-xl border-gray-200 bg-gray-50/60 p-2.5 text-xs text-gray-900 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 transition-all dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 font-sans"
+                                               placeholder="نام دقیق صاحب حساب">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {{-- ردیف ۲: وضعیت حساب و وضعیت احراز هویت (هماهنگ با هم) --}}
+                        <div class="p-5 rounded-2xl bg-indigo-50/50 dark:bg-indigo-950/30 border border-indigo-100 dark:border-indigo-900/50 space-y-4">
+                            <div class="flex items-center justify-between border-b border-indigo-100 dark:border-indigo-900/50 pb-2">
+                                <h4 class="text-xs font-black text-indigo-950 dark:text-indigo-200 flex items-center gap-2">
+                                    <span class="w-2 h-2 rounded-full bg-indigo-600 dark:bg-indigo-400"></span>
+                                    وضعیت حساب کاربری و احراز هویت (هماهنگی یکپارچه)
+                                </h4>
+                                <span class="text-[11px] text-indigo-700 dark:text-indigo-300 font-bold">قابل کنترل مستقل توسط مدیریت</span>
+                            </div>
+
+                            {{-- راهنمای سیستم --}}
+                            <div class="p-3.5 rounded-xl bg-white/80 dark:bg-gray-800/80 border border-indigo-100 dark:border-indigo-900/30 text-xs text-slate-700 dark:text-slate-300 space-y-1">
+                                <div class="flex items-center gap-1.5 font-bold text-indigo-900 dark:text-indigo-300">
+                                    <svg class="w-4 h-4 text-indigo-600 dark:text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                    قاعده هماهنگی سیستمی:
+                                </div>
+                                <p class="text-[11px] leading-relaxed text-slate-600 dark:text-slate-300">
+                                    وضعیت حساب کاربری و وضعیت مدارک هویتی مستقل بوده و مدیریت می‌تواند هر دو را تغییر دهد. چنانچه کاربر در آینده مدارک احراز هویت خود را در پروفایل تغییر دهد، سیستم به صورت خودکار وضعیت احراز هویت را به «در صف بررسی» تغییر خواهد داد تا مجدداً بازبینی شود.
+                                </p>
+                            </div>
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {{-- وضعیت حساب کاربری --}}
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                                        وضعیت حساب کاربری میزبان <span class="text-red-500">*</span>
+                                    </label>
+                                    <select name="status" 
+                                            x-model="editForm.status" 
+                                            required
+                                            class="w-full rounded-xl border-gray-200 bg-white p-2.5 text-xs text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 font-sans font-bold">
+                                        <option value="active">فعال (دارای مجوز و دسترسی به پنل)</option>
+                                        <option value="pending">در انتظار بررسی اولیه</option>
+                                        <option value="suspended">معلق / غیرفعال</option>
+                                    </select>
+                                </div>
+
+                                {{-- وضعیت احراز هویت و مدارک --}}
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                                        وضعیت احراز هویت و مدارک (KYC) <span class="text-red-500">*</span>
+                                    </label>
+                                    <select name="kyc_status" 
+                                            x-model="editForm.kyc_status" 
+                                            required
+                                            class="w-full rounded-xl border-gray-200 bg-white p-2.5 text-xs text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 font-sans font-bold">
+                                        <option value="approved">تأیید شده کامل</option>
+                                        <option value="pending">در صف بررسی مدارک</option>
+                                        <option value="rejected">مدارک رد شده</option>
+                                        <option value="not_submitted">مدارک ارسال نشده</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            {{-- فیلد علت رد یا تعلیق --}}
+                            <div x-show="editForm.status === 'suspended' || editForm.kyc_status === 'rejected'" 
+                                 x-transition 
+                                 class="space-y-1.5 pt-2 border-t border-indigo-100 dark:border-indigo-900/40">
+                                <label class="block text-xs font-bold text-red-700 dark:text-red-300">
+                                    علت عدم تأیید یا تعلیق حساب / مدارک:
+                                </label>
+                                <textarea name="kyc_rejection_reason" 
+                                          x-model="editForm.kyc_rejection_reason" 
+                                          rows="2" 
+                                          class="w-full rounded-xl border-red-200 bg-red-50/50 p-2.5 text-xs text-red-900 focus:border-red-500 focus:bg-white focus:ring-2 focus:ring-red-500/20 transition-all dark:border-red-900 dark:bg-red-950/30 dark:text-red-100 font-sans resize-none"
+                                          placeholder="توضیح دلیل عدم تأیید یا تعلیق جهت اطلاع میزبان..."></textarea>
+                            </div>
+                        </div>
+
+                        {{-- ردیف ۳: فیلدها و مدارک احراز هویت داینامیک --}}
+                        <template x-if="editingHost?.verification_fields && editingHost.verification_fields.length > 0">
+                            <div class="p-5 rounded-2xl bg-white dark:bg-gray-800/90 border border-gray-200/80 dark:border-gray-700/80 shadow-sm space-y-4">
+                                <h4 class="text-xs font-black text-gray-900 dark:text-white flex items-center gap-2 border-b border-gray-100 dark:border-gray-700/60 pb-2">
+                                    <span class="w-2 h-2 rounded-full bg-violet-500"></span>
+                                    فیلدها و مدارک احراز هویت سفارشی
+                                </h4>
+
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <template x-for="vf in editingHost.verification_fields" :key="vf.name">
+                                        <div class="space-y-2 p-3.5 rounded-xl bg-gray-50/80 dark:bg-gray-900/60 border border-gray-200/60 dark:border-gray-700/60">
+                                            <div class="flex items-center justify-between">
+                                                <label class="text-xs font-bold text-gray-900 dark:text-white" x-text="vf.label"></label>
+                                                <span class="text-[10px] text-slate-400" x-text="'نوع: ' + vf.type"></span>
+                                            </div>
+
+                                            {{-- فیلدهای غیر فایل --}}
+                                            <template x-if="vf.type !== 'file' && vf.type !== 'textarea' && vf.type !== 'select'">
+                                                <input :type="vf.type === 'number' ? 'number' : 'text'" 
+                                                       :name="'custom[' + vf.name + ']'" 
+                                                       x-model="editForm.custom_fields[vf.name]" 
+                                                       class="w-full rounded-xl border-gray-200 bg-white p-2 text-xs text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 font-sans">
+                                            </template>
+
+                                            {{-- فیلد چندخطی --}}
+                                            <template x-if="vf.type === 'textarea'">
+                                                <textarea :name="'custom[' + vf.name + ']'" 
+                                                          x-model="editForm.custom_fields[vf.name]" 
+                                                          rows="2" 
+                                                          class="w-full rounded-xl border-gray-200 bg-white p-2 text-xs text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 font-sans resize-none"></textarea>
+                                            </template>
+
+                                            {{-- فیلد سلکت --}}
+                                            <template x-if="vf.type === 'select'">
+                                                <select :name="'custom[' + vf.name + ']'" 
+                                                        x-model="editForm.custom_fields[vf.name]" 
+                                                        class="w-full rounded-xl border-gray-200 bg-white p-2 text-xs text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 font-sans">
+                                                    <option value="">انتخاب کنید...</option>
+                                                    <template x-for="(optVal, optKey) in (vf.options || {})" :key="optKey">
+                                                        <option :value="optKey" x-text="optVal"></option>
+                                                    </template>
+                                                </select>
+                                            </template>
+
+                                            {{-- فیلد فایل / مدرک تصویری --}}
+                                            <template x-if="vf.type === 'file'">
+                                                <div class="space-y-2 pt-1">
+                                                    <template x-if="vf.file_url">
+                                                        <div class="flex items-center justify-between p-2 rounded-lg bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/40 text-xs">
+                                                            <div class="flex items-center gap-2">
+                                                                <template x-if="vf.is_image">
+                                                                    <img :src="vf.file_url" class="w-8 h-8 rounded object-cover border border-gray-200 dark:border-gray-700">
+                                                                </template>
+                                                                <span class="text-[11px] text-slate-700 dark:text-slate-300 font-bold">مدرک فعلی ثبت شده</span>
+                                                            </div>
+                                                            <a :href="vf.file_url" target="_blank" class="text-indigo-600 dark:text-indigo-400 font-bold hover:underline text-[11px]">مشاهده فایل</a>
+                                                        </div>
+                                                    </template>
+
+                                                    <div class="space-y-1">
+                                                        <label class="block text-[11px] text-slate-500 dark:text-slate-400">
+                                                            بارگذاری فایل جدید / جایگزین:
+                                                        </label>
+                                                        <input type="file" 
+                                                               :name="'custom[' + vf.name + ']'" 
+                                                               class="w-full text-xs text-slate-500 file:mr-0 file:ml-3 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-indigo-50 file:text-indigo-700 dark:file:bg-indigo-900/30 dark:file:text-indigo-300 hover:file:bg-indigo-100 font-sans">
+                                                    </div>
+                                                </div>
+                                            </template>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+                        </template>
+
+                    </div>
+
+                    {{-- فوتر مودال ویرایش --}}
+                    <div class="p-5 border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900/90 flex items-center justify-end gap-3">
+                        <button type="button" 
+                                @click="showEditModal = false" 
+                                class="px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 text-slate-700 dark:text-slate-300 text-xs font-bold hover:bg-gray-100 dark:hover:bg-gray-800 transition">
+                            انصراف
+                        </button>
+                        <button type="submit" 
+                                class="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-md shadow-indigo-600/20 transition flex items-center gap-1.5">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+                            <span>ذخیره کلیه تغییرات</span>
+                        </button>
+                    </div>
+
+                </form>
+
+            </div>
+        </div>
+    </div>
+
+    {{-- ======================================================== --}}
+    {{-- ۳. مودال ثبت دلیل عدم تأیید / تعلیق (Reject Reason Modal) --}}
     {{-- ======================================================== --}}
     <div x-show="showRejectModal" 
          x-cloak 
@@ -636,9 +1048,24 @@
         return {
             showDetailsModal: false,
             showRejectModal: false,
+            showEditModal: false,
             selectedHost: null,
             targetHost: null,
+            editingHost: null,
             rejectionReason: '',
+            editForm: {
+                display_name: '',
+                phone: '',
+                commission_rate: '',
+                about: '',
+                shaba_number: '',
+                bank_name: '',
+                account_owner_name: '',
+                status: 'pending',
+                kyc_status: 'pending',
+                kyc_rejection_reason: '',
+                custom_fields: {}
+            },
             searchQuery: '{{ addslashes(request('search', '')) }}',
             statusFilter: '{{ addslashes(request('status', '')) }}',
             searchTimeout: null,
@@ -694,6 +1121,66 @@
                 this.targetHost = host;
                 this.rejectionReason = host.kyc_rejection_reason || '';
                 this.showRejectModal = true;
+            },
+
+            openEditModal(host) {
+                this.editingHost = host;
+                this.editForm = {
+                    display_name: host.display_name || '',
+                    phone: host.phone || '',
+                    commission_rate: (host.raw_commission_rate !== null && host.raw_commission_rate !== undefined) ? host.raw_commission_rate : '',
+                    about: host.about || '',
+                    shaba_number: host.shaba_number || '',
+                    bank_name: host.bank_name || '',
+                    account_owner_name: host.account_owner_name || '',
+                    status: host.status || 'pending',
+                    kyc_status: host.kyc_status || 'pending',
+                    kyc_rejection_reason: host.kyc_rejection_reason || '',
+                    custom_fields: {}
+                };
+
+                if (host.verification_fields && Array.isArray(host.verification_fields)) {
+                    host.verification_fields.forEach(vf => {
+                        this.editForm.custom_fields[vf.name] = (vf.value !== null && vf.value !== undefined) ? vf.value : '';
+                    });
+                }
+
+                this.showEditModal = true;
+            },
+
+            detectEditBank() {
+                if (!this.editForm.shaba_number) return;
+                this.editForm.shaba_number = this.editForm.shaba_number.replace(/\D/g, '');
+
+                const code = this.editForm.shaba_number.substring(2, 5);
+                const bankMap = {
+                    '012': 'بانک ملت',
+                    '017': 'بانک ملی ایران',
+                    '018': 'بانک تجارت',
+                    '019': 'بانک صادرات ایران',
+                    '013': 'بانک رفاه کارگران',
+                    '056': 'بانک سامان',
+                    '054': 'بانک پارسیان',
+                    '055': 'بانک اقتصاد نوین',
+                    '057': 'بانک پاسارگاد',
+                    '061': 'بانک شهر',
+                    '058': 'بانک سرمایه',
+                    '059': 'بانک سینا',
+                    '062': 'بانک آینده',
+                    '051': 'بانک موسسه اعتباری توسعه',
+                    '053': 'بانک کارآفرین',
+                    '020': 'بانک توسعه صادرات',
+                    '021': 'پست بانک ایران',
+                    '022': 'بانک توسعه تعاون',
+                    '014': 'بانک مسکن',
+                    '016': 'بانک کشاورزی',
+                    '011': 'بانک صنعت و معدن',
+                    '015': 'بانک سپه',
+                };
+
+                if (bankMap[code] && !this.editForm.bank_name) {
+                    this.editForm.bank_name = bankMap[code];
+                }
             }
         };
     }

@@ -32,9 +32,13 @@ class UpdateUserProfileInformation implements UpdatesUserProfileInformation
             'photo' => ['nullable', 'mimes:jpg,jpeg,png', 'max:1024'],
         ])->validateWithBag('updateProfileInformation');
 
-        // Dynamic validation and saving for custom fields
+        // Dynamic validation and saving for custom fields (only fields enabled for profile/identity verification)
         $roleNames = $user->roles->pluck('name')->toArray();
-        $fields = CustomUserField::whereIn('role_name', $roleNames)->orderBy('id')->get()->unique('field_name');
+        $fields = CustomUserField::whereIn('role_name', $roleNames)
+            ->where('show_in_profile', true)
+            ->orderBy('id')
+            ->get()
+            ->unique('field_name');
 
         $customRules = [];
         foreach ($fields as $f) {
@@ -50,9 +54,12 @@ class UpdateUserProfileInformation implements UpdatesUserProfileInformation
                 case 'date': $base[] = 'date'; break;
                 case 'email': $base[] = 'email'; break;
                 case 'file':
-                    $base[] = 'file';
-                    // Since it's a Livewire form, files might be passed differently,
-                    // but we apply rules for safety. Livewire handles file uploads via temporary URLs.
+                    // اگر فایل از قبل بارگذاری شده باشد، برای ذخیره مجدد پروفایل اجباری در نظر گرفته نمی‌شود
+                    if (($f->is_required ?? false) && !UserCustomValue::where('user_id', $user->id)->where('field_name', $f->field_name)->whereNotNull('value')->where('value', '!=', '')->exists()) {
+                        $base = ['required'];
+                    } else {
+                        $base = ['nullable'];
+                    }
                     break;
                 case 'checkbox':
                     $base[] = 'array';
