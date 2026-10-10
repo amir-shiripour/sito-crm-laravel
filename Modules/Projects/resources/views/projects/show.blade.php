@@ -121,7 +121,7 @@
                                 {{ $project->title }}
                             </h1>
                             <span
-                                class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold font-mono border bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-500/10 dark:text-indigo-400 dark:border-indigo-500/20">
+                                class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold font-sans border bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-500/10 dark:text-indigo-400 dark:border-indigo-500/20">
                                 {{ $project->code }}
                             </span>
                             @if($project->category)

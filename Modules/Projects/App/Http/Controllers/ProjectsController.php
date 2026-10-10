@@ -15,6 +15,7 @@ use Modules\Projects\App\Http\Models\ProjectSetting;
 use Modules\Projects\App\Http\Models\ProjectStatus;
 use Modules\Projects\App\Http\Requests\StoreProjectRequest;
 use Modules\Projects\App\Services\ProjectsService;
+use Modules\Projects\App\Services\ProjectsUserVisibilityService;
 use Modules\Projects\App\Services\StatusTransitionService;
 
 class ProjectsController extends Controller
@@ -98,7 +99,7 @@ class ProjectsController extends Controller
             $initialClient = Client::find($selectedClientId);
         }
 
-        $users = User::orderBy('name')->get();
+        $users = ProjectsUserVisibilityService::getVisibleUsers();
 
         $nextCode = Project::generateNextCode();
         $codeAuto = ProjectSetting::getBool('projects_code_auto', true);
@@ -162,7 +163,7 @@ class ProjectsController extends Controller
         $statuses = ProjectStatus::forType('project')->get();
         $taskStatuses = ProjectStatus::forType('task')->get();
         $checklistStatuses = ProjectStatus::forType('checklist')->get();
-        $users = User::orderBy('name')->get();
+        $users = ProjectsUserVisibilityService::getVisibleUsers();
         $dashboardStats = $this->svc->dashboardStats($project);
 
         return view('projects::projects.show', compact(
@@ -191,7 +192,7 @@ class ProjectsController extends Controller
                 ? $project->client
                 : Client::find($selectedClientId);
         }
-        $users = User::orderBy('name')->get();
+        $users = ProjectsUserVisibilityService::getVisibleUsers();
         $roles = ProjectRole::orderBy('sort_order')->orderBy('id')->get();
 
         return view('projects::projects.edit', compact('project', 'categories', 'statuses', 'initialClient', 'users', 'roles'));
@@ -271,6 +272,7 @@ class ProjectsController extends Controller
         $limit = min((int)$request->get('limit', 20), 50);
 
         $usersQuery = User::query();
+        ProjectsUserVisibilityService::applyScope($usersQuery);
 
         if ($ids) {
             $idsArray = array_filter(array_map('intval', explode(',', $ids)));

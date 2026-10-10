@@ -15,10 +15,17 @@
     ] : null;
 
     $oldMembers = old('members');
+    $canManageAll = \Modules\Projects\App\Services\ProjectsUserVisibilityService::isSuperAdmin(auth()->user());
     if ($oldMembers && is_array($oldMembers)) {
         $memberUserIds = collect($oldMembers)->pluck('user_id')->filter()->toArray();
-        $loadedUsers = !empty($memberUserIds) ? \App\Models\User::whereIn('id', $memberUserIds)->get()->keyBy('id') : collect();
-        $initialMembers = collect($oldMembers)->map(function ($m) use ($loadedUsers) {
+        $query = \App\Models\User::whereIn('id', $memberUserIds);
+        if (!$canManageAll) {
+            \Modules\Projects\App\Services\ProjectsUserVisibilityService::applyScope($query);
+        }
+        $loadedUsers = !empty($memberUserIds) ? $query->get()->keyBy('id') : collect();
+        $initialMembers = collect($oldMembers)->filter(function ($m) use ($loadedUsers, $canManageAll) {
+            return $canManageAll || $loadedUsers->has($m['user_id'] ?? null);
+        })->map(function ($m) use ($loadedUsers) {
             $u = $loadedUsers->get($m['user_id'] ?? null);
             return [
                 'user_id'    => (string)($m['user_id'] ?? ''),
@@ -246,7 +253,7 @@
                         <input type="text" name="code" value="{{ old('code', !empty($codeAuto) ? $nextCode : '') }}"
                                placeholder="{{ $nextCode ?? 'مثال: PRJ-2026-0001' }}"
                                {{ !empty($codeAuto) ? 'readonly' : '' }}
-                               class="w-full rounded-xl border-gray-200 dark:border-gray-700 {{ !empty($codeAuto) ? 'bg-gray-100 dark:bg-gray-800/60 cursor-not-allowed opacity-90' : 'bg-gray-50 dark:bg-gray-900' }} px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all dark:text-white font-mono dir-ltr text-left">
+                               class="w-full rounded-xl border-gray-200 dark:border-gray-700 {{ !empty($codeAuto) ? 'bg-gray-100 dark:bg-gray-800/60 cursor-not-allowed opacity-90' : 'bg-gray-50 dark:bg-gray-900' }} px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all dark:text-white font-sans dir-ltr text-left">
                     </div>
 
                     {{-- Dates (Jalali Datepicker with shortcuts and validity checks) --}}

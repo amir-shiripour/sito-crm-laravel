@@ -15,10 +15,17 @@
     $initialEndDate = old('end_date', ($project->end_date && class_exists(Jalalian::class)) ? Jalalian::fromCarbon($project->end_date)->format('Y/m/d') : ($project->end_date ? $project->end_date->format('Y/m/d') : ''));
 
     $oldMembers = old('members');
+    $canManageAll = \Modules\Projects\App\Services\ProjectsUserVisibilityService::isSuperAdmin(auth()->user());
     if ($oldMembers && is_array($oldMembers)) {
         $memberUserIds = collect($oldMembers)->pluck('user_id')->filter()->toArray();
-        $loadedUsers = !empty($memberUserIds) ? User::whereIn('id', $memberUserIds)->get()->keyBy('id') : collect();
-        $initialMembers = collect($oldMembers)->map(function ($m) use ($loadedUsers) {
+        $query = User::whereIn('id', $memberUserIds);
+        if (!$canManageAll) {
+            \Modules\Projects\App\Services\ProjectsUserVisibilityService::applyScope($query);
+        }
+        $loadedUsers = !empty($memberUserIds) ? $query->get()->keyBy('id') : collect();
+        $initialMembers = collect($oldMembers)->filter(function ($m) use ($loadedUsers, $canManageAll) {
+            return $canManageAll || $loadedUsers->has($m['user_id'] ?? null);
+        })->map(function ($m) use ($loadedUsers) {
             $u = $loadedUsers->get($m['user_id'] ?? null);
             return [
                 'user_id'    => (string)($m['user_id'] ?? ''),
@@ -28,14 +35,18 @@
             ];
         })->values()->toArray();
     } else {
-        $initialMembers = $project->members->map(function ($m) {
-            return [
-                'user_id'    => (string)$m->user_id,
-                'user_name'  => $m->user?->name ?? '',
-                'user_email' => $m->user?->email ?? ($m->user?->mobile ?? ''),
-                'role'       => $m->role ?? 'viewer',
-            ];
-        })->values()->toArray();
+        $initialMembers = $project->members
+            ->filter(function ($m) use ($canManageAll) {
+                return $canManageAll || \Modules\Projects\App\Services\ProjectsUserVisibilityService::canViewUser($m->user);
+            })
+            ->map(function ($m) {
+                return [
+                    'user_id'    => (string)$m->user_id,
+                    'user_name'  => $m->user?->name ?? '',
+                    'user_email' => $m->user?->email ?? ($m->user?->mobile ?? ''),
+                    'role'       => $m->role ?? 'viewer',
+                ];
+            })->values()->toArray();
     }
 @endphp
 
@@ -235,7 +246,7 @@
                             کد پروژه
                         </label>
                         <input type="text" name="code" value="{{ old('code', $project->code) }}"
-                               class="w-full rounded-xl border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all dark:text-white font-mono">
+                               class="w-full rounded-xl border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all dark:text-white font-sans">
                     </div>
 
                     {{-- Dates (Jalali Datepicker with shortcuts and validity checks) --}}

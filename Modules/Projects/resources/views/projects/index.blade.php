@@ -233,7 +233,7 @@
                                             {{ $project->title }}
                                         </a>
                                         <div class="flex items-center gap-2 mt-1">
-                                            <span class="text-xs px-2 py-0.5 rounded-md bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 font-mono">{{ $project->code }}</span>
+                                            <span class="text-xs px-2 py-0.5 rounded-md bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 font-sans">{{ $project->code }}</span>
                                             @if($project->start_date)
                                                 <span class="text-[11px] text-gray-400">
                                                     شروع: {{ $formatJalali($project->start_date) }}

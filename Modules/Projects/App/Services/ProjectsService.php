@@ -78,7 +78,21 @@ class ProjectsService
     {
         $userIds = collect($members)->pluck('user_id')->filter()->unique()->toArray();
 
-        $project->members()->whereNotIn('user_id', $userIds)->delete();
+        $deleteQuery = $project->members()->whereNotIn('user_id', $userIds);
+
+        if (!ProjectsUserVisibilityService::isSuperAdmin(auth()->user())) {
+            // Protect pure super-admins: do not delete existing members that the current user cannot see
+            $existingMembers = $project->members()->with(['user.roles'])->get();
+            $protectedUserIds = $existingMembers->filter(function ($m) {
+                return $m->user && !ProjectsUserVisibilityService::canViewUser($m->user, auth()->user());
+            })->pluck('user_id')->toArray();
+
+            if (!empty($protectedUserIds)) {
+                $deleteQuery->whereNotIn('user_id', $protectedUserIds);
+            }
+        }
+
+        $deleteQuery->delete();
 
         foreach ($members as $m) {
             if (empty($m['user_id'])) {

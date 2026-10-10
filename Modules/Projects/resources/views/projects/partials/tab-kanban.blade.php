@@ -58,7 +58,10 @@
                 <select x-model="memberFilter"
                         class="bg-transparent text-xs font-bold text-gray-700 dark:text-gray-200 border-none p-0 focus:ring-0 cursor-pointer">
                     <option value="all">همه اعضای پروژه</option>
-                    @foreach($project->members as $m)
+                    @php
+                        $kanbanMembers = \Modules\Projects\App\Services\ProjectsUserVisibilityService::filterMembersCollection($project->members);
+                    @endphp
+                    @foreach($kanbanMembers as $m)
                         <option value="{{ $m->user_id }}">{{ $m->user?->name }}</option>
                     @endforeach
                 </select>
