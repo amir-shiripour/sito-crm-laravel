@@ -13,8 +13,10 @@ use Modules\Projects\App\Http\Models\ProjectPhase;
 use Modules\Projects\App\Http\Models\ProjectSetting;
 use Modules\Projects\App\Http\Models\ProjectStatus;
 use Modules\Projects\App\Http\Models\ProjectTask;
+use App\Models\User;
 use Modules\Projects\App\Http\Requests\StoreProjectTaskRequest;
 use Modules\Projects\App\Services\ProjectsService;
+use Modules\Projects\App\Services\ProjectsUserVisibilityService;
 use Modules\Projects\App\Services\StatusTransitionService;
 use Modules\Projects\App\Traits\HandlesJalaliDate;
 
@@ -50,6 +52,14 @@ class ProjectsTaskController extends Controller
             $data['project_id'] = $project->id;
             $data['created_by'] = auth()->id();
             $managerId = !empty($data['assigned_to']) ? (int)$data['assigned_to'] : (!empty($data['manager_id']) ? (int)$data['manager_id'] : null);
+            if ($managerId && !ProjectsUserVisibilityService::isSuperAdmin(auth()->user())) {
+                $targetManager = User::find($managerId);
+                if ($targetManager && !ProjectsUserVisibilityService::canViewUser($targetManager, auth()->user())) {
+                    throw ValidationException::withMessages([
+                        'assigned_to' => 'شما مجاز به انتخاب این کاربر به عنوان مدیر گروه نیستید.'
+                    ]);
+                }
+            }
             $data['manager_id'] = $managerId;
             $data['assigned_to'] = $managerId;
 
@@ -178,6 +188,14 @@ class ProjectsTaskController extends Controller
             $data = $request->safe()->except('checklist');
             $data['due_date'] = $this->convertJalaliDate($request->input('due_date'));
             $managerId = !empty($data['assigned_to']) ? (int)$data['assigned_to'] : (!empty($data['manager_id']) ? (int)$data['manager_id'] : null);
+            if ($managerId && !ProjectsUserVisibilityService::isSuperAdmin(auth()->user())) {
+                $targetManager = User::find($managerId);
+                if ($targetManager && !ProjectsUserVisibilityService::canViewUser($targetManager, auth()->user())) {
+                    throw ValidationException::withMessages([
+                        'assigned_to' => 'شما مجاز به انتخاب این کاربر به عنوان مدیر گروه نیستید.'
+                    ]);
+                }
+            }
             $data['manager_id'] = $managerId;
             $data['assigned_to'] = $managerId;
 

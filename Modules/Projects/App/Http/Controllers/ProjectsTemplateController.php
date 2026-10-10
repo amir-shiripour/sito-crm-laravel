@@ -16,6 +16,7 @@ use Modules\Projects\App\Http\Models\ProjectStatus;
 use Modules\Projects\App\Http\Models\ProjectTask;
 use Modules\Projects\App\Http\Models\ProjectTemplate;
 use Modules\Projects\App\Http\Requests\StoreProjectTemplateRequest;
+use Modules\Projects\App\Services\ProjectsUserVisibilityService;
 use Modules\Projects\App\Traits\HandlesJalaliDate;
 
 class ProjectsTemplateController extends Controller
@@ -61,7 +62,7 @@ class ProjectsTemplateController extends Controller
         abort_unless(auth()->user()?->can('projects.templates.create'), 403);
 
         $categories = ProjectCategory::active()->ordered()->get();
-        $users = User::select('id', 'name')->orderBy('name')->get();
+        $users = ProjectsUserVisibilityService::getVisibleUsers(['id', 'name']);
 
         $initialData = [
             'title' => '',
@@ -191,7 +192,7 @@ class ProjectsTemplateController extends Controller
             return response()->json($template->load(['category', 'creator']));
         }
 
-        $users = User::select('id', 'name')->get()->keyBy('id');
+        $users = ProjectsUserVisibilityService::getVisibleUsers(['id', 'name'])->keyBy('id');
 
         $sourceProject = $template->sourceProject ? $template->sourceProject->load(['phases.tasks.checklistItems', 'tasks.checklistItems']) : null;
         $structure = $this->normalizeStructure($template->structure, $sourceProject);
@@ -204,7 +205,7 @@ class ProjectsTemplateController extends Controller
         abort_unless(auth()->user()?->can('projects.templates.edit'), 403);
 
         $categories = ProjectCategory::active()->ordered()->get();
-        $users = User::select('id', 'name')->orderBy('name')->get();
+        $users = ProjectsUserVisibilityService::getVisibleUsers(['id', 'name']);
 
         $sourceProject = $template->sourceProject ? $template->sourceProject->load(['phases.tasks.checklistItems', 'tasks.checklistItems']) : null;
         $structure = $this->normalizeStructure($template->structure, $sourceProject);

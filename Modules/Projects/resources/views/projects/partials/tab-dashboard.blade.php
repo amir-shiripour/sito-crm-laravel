@@ -313,7 +313,7 @@
                         {{ $project->client?->full_name ?? 'تعریف نشده' }}
                     </span>
                     @if($project->client?->phone)
-                        <span class="text-gray-400 block mt-0.5 font-mono">{{ $project->client->phone }}</span>
+                        <span class="text-gray-400 block mt-0.5 font-sans">{{ $project->client->phone }}</span>
                     @endif
                 </div>
                 <div
@@ -359,18 +359,21 @@
         {{-- Team Members List (1 col) --}}
         <div
             class="bg-white dark:bg-gray-800/80 p-6 rounded-3xl border border-gray-100 dark:border-gray-700/50 shadow-sm space-y-4">
+            @php
+                $dashboardMembers = \Modules\Projects\App\Services\ProjectsUserVisibilityService::filterMembersCollection($project->members);
+            @endphp
             <div class="flex items-center justify-between">
                 <h3 class="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
                     <svg class="w-5 h-5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                               d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/>
                     </svg>
-                    تیم پروژه ({{ $faNum($project->members->count()) }})
+                    تیم پروژه ({{ $faNum($dashboardMembers->count()) }})
                 </h3>
             </div>
 
             <div class="divide-y divide-gray-100 dark:divide-gray-700/50">
-                @forelse($project->members as $member)
+                @forelse($dashboardMembers as $member)
                     <div class="py-3 flex items-center justify-between gap-3">
                         <div class="flex items-center gap-3">
                             <div

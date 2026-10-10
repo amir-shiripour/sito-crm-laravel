@@ -42,11 +42,11 @@
 
     // Mentionable users (Creator + Members)
     $mentionableUsers = collect();
-    if ($project->createdBy) {
+    if ($project->createdBy && \Modules\Projects\App\Services\ProjectsUserVisibilityService::canViewUser($project->createdBy)) {
         $mentionableUsers->push($project->createdBy);
     }
     foreach ($project->members as $member) {
-        if ($member->user && !$mentionableUsers->contains('id', $member->user->id)) {
+        if ($member->user && \Modules\Projects\App\Services\ProjectsUserVisibilityService::canViewUser($member->user) && !$mentionableUsers->contains('id', $member->user->id)) {
             $mentionableUsers->push($member->user);
         }
     }
@@ -84,14 +84,14 @@
             $placeholder = '___MENTION_USER_' . $idx . '___';
             if (str_contains($escaped, '@' . $userName)) {
                 $escaped = str_replace('@' . $userName, $placeholder, $escaped);
-                $placeholders[$placeholder] = '<span class="' . $badgeClass . '"><span class="opacity-70 font-mono text-xs">@</span>' . $userName . '</span>';
+                $placeholders[$placeholder] = '<span class="' . $badgeClass . '"><span class="opacity-70 font-sans text-xs">@</span>' . $userName . '</span>';
             }
         }
 
         // 2. Generic @mention for any other @word
         $genericBadgeClass = 'inline-flex items-center gap-0.5 px-2 py-0.5 mx-0.5 rounded-lg text-xs font-bold bg-indigo-100 text-indigo-800 border border-indigo-200 dark:bg-indigo-100 dark:text-indigo-800 dark:border-indigo-200 shadow-xs select-none';
         $escaped = preg_replace_callback('/(?<!\w)@([\p{L}\p{N}_-]+)/u', function($matches) use ($genericBadgeClass) {
-            return '<span class="' . $genericBadgeClass . '"><span class="opacity-70 font-mono text-xs">@</span>' . $matches[1] . '</span>';
+            return '<span class="' . $genericBadgeClass . '"><span class="opacity-70 font-sans text-xs">@</span>' . $matches[1] . '</span>';
         }, $escaped);
 
         // 3. Restore member placeholders
@@ -717,7 +717,7 @@
                     <div
                         class="px-2.5 py-1 text-[11px] font-bold text-gray-500 dark:text-gray-400 border-b border-gray-100 dark:border-gray-700/60 flex items-center justify-between select-none">
                         <span>اعضای قابل منشن</span>
-                        <span class="text-indigo-600 dark:text-indigo-400 font-mono font-black">@</span>
+                        <span class="text-indigo-600 dark:text-indigo-400 font-sans font-black">@</span>
                     </div>
                     <template x-for="(member, idx) in filteredMembers" :key="member.id">
                         <button type="button"

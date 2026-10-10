@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
 use Modules\Projects\App\Http\Models\ProjectStatus;
 use Modules\Projects\App\Services\ProjectStatusBuilderService;
+use Modules\Projects\App\Services\ProjectsUserVisibilityService;
 use Spatie\Permission\Models\Role;
 
 class ProjectsStatusBuilderController extends Controller
@@ -21,7 +22,7 @@ class ProjectsStatusBuilderController extends Controller
         $this->authorize('projects.status-builder.manage');
 
         $roles = Role::all();
-        $users = User::all();
+        $users = ProjectsUserVisibilityService::getVisibleUsers();
         $data = array_merge($this->svc->allGrouped(), [
             'roles' => $roles,
             'users' => $users,

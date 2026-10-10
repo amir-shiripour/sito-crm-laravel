@@ -1,5 +1,6 @@
 @php
-    $modalProjectMembers = $project->members->map(function($m) {
+    $filteredMembersForModal = \Modules\Projects\App\Services\ProjectsUserVisibilityService::filterMembersCollection($project->members);
+    $modalProjectMembers = $filteredMembersForModal->map(function($m) {
         return $m->user ? [
             'id' => (string)$m->user->id,
             'name' => $m->user->name,

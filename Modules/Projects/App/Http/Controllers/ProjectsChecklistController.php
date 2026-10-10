@@ -9,7 +9,9 @@ use Modules\Projects\App\Http\Models\ProjectChecklistItem;
 use Modules\Projects\App\Http\Models\ProjectTask;
 use Modules\Projects\App\Http\Models\ProjectActivity;
 use Modules\Projects\App\Http\Models\ProjectStatus;
+use App\Models\User;
 use Modules\Projects\App\Services\ProjectsService;
+use Modules\Projects\App\Services\ProjectsUserVisibilityService;
 use Modules\Projects\App\Traits\HandlesJalaliDate;
 
 class ProjectsChecklistController extends Controller
@@ -422,6 +424,18 @@ class ProjectsChecklistController extends Controller
             'title.required' => 'وارد کردن عنوان کار الزامی است.',
         ]);
 
+        if (!ProjectsUserVisibilityService::isSuperAdmin(auth()->user())) {
+            $assignedUsers = User::whereIn('id', $validated['assigned_to'])->get();
+            foreach ($assignedUsers as $targetU) {
+                if (!ProjectsUserVisibilityService::canViewUser($targetU, auth()->user())) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'شما مجاز به انتخاب این کاربر نیستید.',
+                    ], 403);
+                }
+            }
+        }
+
         $inProgressStatus = ProjectStatus::inProgressFor('checklist')
             ?? ProjectStatus::defaultFor('checklist');
         $statusId = $inProgressStatus?->id;
@@ -532,6 +546,18 @@ class ProjectsChecklistController extends Controller
             'assigned_to.min' => 'انتخاب حداقل یک مسئول کار الزامی است.',
             'title.required' => 'وارد کردن عنوان کار الزامی است.',
         ]);
+
+        if (!ProjectsUserVisibilityService::isSuperAdmin(auth()->user())) {
+            $assignedUsers = User::whereIn('id', $validated['assigned_to'])->get();
+            foreach ($assignedUsers as $targetU) {
+                if (!ProjectsUserVisibilityService::canViewUser($targetU, auth()->user())) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'شما مجاز به انتخاب این کاربر نیستید.',
+                    ], 403);
+                }
+            }
+        }
 
         $statusId = $validated['status_id'] ?? $item->status_id;
         if (!empty($validated['status_id'])) {

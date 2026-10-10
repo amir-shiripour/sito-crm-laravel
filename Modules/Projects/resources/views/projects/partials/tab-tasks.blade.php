@@ -575,7 +575,10 @@
                                 <select name="assigned_to" x-model="form.assigned_to"
                                         class="w-full rounded-xl border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-3 py-2 text-xs focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 dark:text-white cursor-pointer">
                                     <option value="">بدون مدیر گروه (تعیین‌نشده)</option>
-                                    @foreach($project->members as $member)
+                                    @php
+                                        $assignableGroupMembers = \Modules\Projects\App\Services\ProjectsUserVisibilityService::filterMembersCollection($project->members);
+                                    @endphp
+                                    @foreach($assignableGroupMembers as $member)
                                         <option value="{{ $member->user_id }}">{{ $member->user?->name }}</option>
                                     @endforeach
                                 </select>
