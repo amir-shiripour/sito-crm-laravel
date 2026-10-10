@@ -9,17 +9,21 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('projects_templates', function (Blueprint $table) {
-            $table->foreignId('source_project_id')
-                ->nullable()
-                ->after('category_id')
-                ->constrained('projects')
-                ->nullOnDelete();
-        });
+        if (Schema::hasTable('projects_templates') && !Schema::hasColumn('projects_templates', 'source_project_id')) {
+            Schema::table('projects_templates', function (Blueprint $table) {
+                $table->foreignId('source_project_id')
+                    ->nullable()
+                    ->after('category_id')
+                    ->constrained('projects')
+                    ->nullOnDelete();
+            });
+        }
 
         // Link existing template ID 2 to Project ID 2 if exists
         try {
-            DB::table('projects_templates')->where('id', 2)->update(['source_project_id' => 2]);
+            if (Schema::hasTable('projects_templates')) {
+                DB::table('projects_templates')->where('id', 2)->update(['source_project_id' => 2]);
+            }
         } catch (\Throwable) {
             // Ignore if doesn't exist
         }
@@ -27,9 +31,13 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::table('projects_templates', function (Blueprint $table) {
-            $table->dropForeign(['source_project_id']);
-            $table->dropColumn('source_project_id');
-        });
+        if (Schema::hasTable('projects_templates') && Schema::hasColumn('projects_templates', 'source_project_id')) {
+            Schema::table('projects_templates', function (Blueprint $table) {
+                try {
+                    $table->dropForeign(['source_project_id']);
+                } catch (\Throwable) {}
+                $table->dropColumn('source_project_id');
+            });
+        }
     }
 };

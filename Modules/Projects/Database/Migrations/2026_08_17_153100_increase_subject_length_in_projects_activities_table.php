@@ -8,15 +8,19 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration {
     public function up(): void
     {
-        Schema::table('projects_activities', function (Blueprint $table) {
-            $table->text('subject')->nullable()->change();
-        });
+        if (Schema::hasTable('projects_activities') && Schema::hasColumn('projects_activities', 'subject')) {
+            Schema::table('projects_activities', function (Blueprint $table) {
+                $table->text('subject')->nullable()->change();
+            });
+        }
     }
 
     public function down(): void
     {
-        Schema::table('projects_activities', function (Blueprint $table) {
-            $table->string('subject', 120)->nullable()->change();
-        });
+        if (Schema::hasTable('projects_activities') && Schema::hasColumn('projects_activities', 'subject')) {
+            Schema::table('projects_activities', function (Blueprint $table) {
+                $table->string('subject', 120)->nullable()->change();
+            });
+        }
     }
 };

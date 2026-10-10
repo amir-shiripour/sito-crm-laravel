@@ -259,8 +259,20 @@ class BaseModuleInstaller implements ModuleInstallerInterface
                 }
             }
 
-            // اگر تعداد جداول موجود کمتر از جداول ماژول باشد یا ناهمخوانی وجود داشته باشد، جداول ناقص و رکورد مایگریشن‌ها پاک می‌شوند تا از اول ساخته شوند
+            // اگر تعداد جداول موجود کمتر از جداول ماژول باشد یا ناهمخوانی وجود داشته باشد، در صورتی که دیتایی وجود نداشته باشد پاک می‌شوند
             if ($migratedCount > 0 && $existingTablesCount < count($tables)) {
+                $hasData = false;
+                foreach ($tables as $t) {
+                    if (Schema::hasTable($t) && DB::table($t)->exists()) {
+                        $hasData = true;
+                        break;
+                    }
+                }
+                if ($hasData) {
+                    Log::warning("BaseModuleInstaller: Existing data detected in {$this->moduleName} tables. Preserving existing tables and data.");
+                    return;
+                }
+
                 Log::info("BaseModuleInstaller: Found orphaned/incomplete migration state for {$this->moduleName}. Cleaning up...");
                 $this->dropModuleTables();
             }
