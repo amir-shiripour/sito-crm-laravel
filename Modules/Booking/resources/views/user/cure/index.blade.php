@@ -576,6 +576,7 @@
                     لیست طرح‌ها
                 </a>
 
+                @if(\Modules\Booking\Entities\BookingSetting::isLaboratoryEnabled() && (auth()->user()?->can('booking.laboratory.create') || auth()->user()?->can('booking.laboratory.manage')))
                 <template x-if="clientId">
                     <a :href="'{{ route('user.booking.laboratory.index') }}?client_id=' + clientId + '&action=create&teeth=' + (selectedTeeth ? selectedTeeth.join(',') : '')"
                        target="_blank"
@@ -589,6 +590,7 @@
                         <span>ارسال به لابراتوار</span>
                     </a>
                 </template>
+                @endif
 
                 <button type="button"
                         x-show="!isReadOnly"

@@ -108,6 +108,17 @@ class Installer extends BaseModuleInstaller
             'booking.cure.delete.assigned',
             'booking.cure.confirm',
             'booking.cure.manage',
+
+            // Laboratory (مدیریت سفارشات و مراحل لابراتوار)
+            'booking.laboratory.view',
+            'booking.laboratory.view.all',
+            'booking.laboratory.view.own',
+            'booking.laboratory.create',
+            'booking.laboratory.edit',
+            'booking.laboratory.delete',
+            'booking.laboratory.stages.manage',
+            'booking.laboratory.receive',
+            'booking.laboratory.manage',
         ];
 
         $trackerPath = $this->permissionsTrackerPath();

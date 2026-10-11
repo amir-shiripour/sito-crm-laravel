@@ -34,6 +34,7 @@
         </div>
 
         <div class="flex items-center gap-2 w-full sm:w-auto">
+            @can('booking.laboratory.access')
             <a href="{{ route('user.booking.laboratory.daily-board') }}"
                class="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700/60 border border-slate-300 dark:border-slate-700 rounded-xl shadow-xs transition-colors">
                 <svg class="w-4 h-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -41,6 +42,8 @@
                 </svg>
                 کارتابل پیگیری روزانه
             </a>
+            @endcan
+            @canany(['booking.laboratory.create', 'booking.laboratory.manage'])
             <a href="{{ route('user.booking.laboratory.index', ['client_id' => $client->id, 'action' => 'create']) }}"
                class="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-medium text-white bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-600 dark:hover:bg-indigo-500 rounded-xl shadow-xs shadow-indigo-500/20 transition-all">
                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -48,6 +51,7 @@
                 </svg>
                 ثبت سفارش جدید
             </a>
+            @endcanany
         </div>
     </div>
 
@@ -133,7 +137,7 @@
 
                         {{-- Action Buttons --}}
                         <div class="flex flex-wrap items-center gap-2 pt-2 lg:pt-0 border-t lg:border-t-0 border-slate-100 dark:border-slate-800">
-                            @if($order->status === 'received')
+                            @if($order->status === 'received' && (auth()->user()?->can('booking.appointments.create') || auth()->user()?->can('booking.appointments.manage')))
                                 <a href="{{ route('user.booking.appointments.create', [
                                     'client_id' => $client->id,
                                     'doctor_id' => $order->doctor_id,
@@ -184,6 +188,7 @@
             <p class="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto mb-4">
                 برای ثبت روکش، بریج، ایمپلنت یا پروتزهای متحرک این بیمار می‌توانید از دکمه زیر اقدام کنید.
             </p>
+            @canany(['booking.laboratory.create', 'booking.laboratory.manage'])
             <a href="{{ route('user.booking.laboratory.index', ['client_id' => $client->id, 'action' => 'create']) }}"
                class="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-medium text-white bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-600 dark:hover:bg-indigo-500 rounded-xl shadow-xs transition-colors">
                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -191,6 +196,7 @@
                 </svg>
                 ثبت اولین سفارش لابراتوار
             </a>
+            @endcanany
         </div>
     @endif
 </div>

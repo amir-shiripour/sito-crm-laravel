@@ -8,10 +8,11 @@ use Livewire\Attributes\Layout;
 use Modules\Booking\Entities\BookingLaboratoryOrder;
 use Modules\Booking\Entities\BookingLaboratoryStage;
 use Modules\Booking\Entities\BookingLaboratoryDailyLog;
+use Modules\Booking\Entities\BookingSetting;
 use Modules\Booking\Services\LaboratoryService;
 use App\Models\User;
 use Carbon\Carbon;
-use Morilog\Jalali\Jalalian;
+use Morilog\Jalalian;
 
 #[Layout('layouts.user')]
 class LaboratoryDailyBoard extends Component
@@ -52,9 +53,18 @@ class LaboratoryDailyBoard extends Component
     public string $receiveNote = '';
 
     public ?string $toastSuccess = null;
+    public ?string $toastError = null;
 
     public function mount(): void
     {
+        if (!BookingSetting::isLaboratoryEnabled()) {
+            abort(403, 'بخش لابراتوار در تنظیمات نوبت‌دهی فعال نیست.');
+        }
+
+        if (!auth()->user()?->can('booking.laboratory.access')) {
+            abort(403, 'شما مجوز دسترسی به بخش لابراتوار را ندارید.');
+        }
+
         $this->selectedDateJalali = Jalalian::now()->format('Y/m/d');
     }
 
@@ -80,6 +90,12 @@ class LaboratoryDailyBoard extends Component
 
     public function openLogModal(int $orderId, ?int $stageId = null): void
     {
+        $user = auth()->user();
+        if (!$user || (!$user->hasRole('super-admin') && !$user->canAny(['booking.laboratory.stages.manage', 'booking.laboratory.manage']))) {
+            $this->toastError = 'شما مجوز ثبت لاگ و پیگیری مراحل لابراتوار را ندارید.';
+            return;
+        }
+
         $order = BookingLaboratoryOrder::with(['stages', 'dailyLogs.operator', 'client', 'doctor'])->find($orderId);
         if (!$order) return;
 
@@ -100,6 +116,12 @@ class LaboratoryDailyBoard extends Component
 
     public function saveDailyLog(): void
     {
+        $user = auth()->user();
+        if (!$user || (!$user->hasRole('super-admin') && !$user->canAny(['booking.laboratory.stages.manage', 'booking.laboratory.manage']))) {
+            $this->toastError = 'شما مجوز ثبت پیگیری و مدیریت مراحل لابراتوار را ندارید.';
+            return;
+        }
+
         if (!$this->activeOrderId) return;
 
         $order = BookingLaboratoryOrder::with('stages')->find($this->activeOrderId);
@@ -139,6 +161,12 @@ class LaboratoryDailyBoard extends Component
 
     public function openStageModal(int $stageId): void
     {
+        $user = auth()->user();
+        if (!$user || (!$user->hasRole('super-admin') && !$user->canAny(['booking.laboratory.stages.manage', 'booking.laboratory.manage']))) {
+            $this->toastError = 'شما مجوز مدیریت مراحل سفارش را ندارید.';
+            return;
+        }
+
         $this->stageToCompleteId = $stageId;
         $this->stageNote = '';
         $this->showStageModal = true;
@@ -146,6 +174,12 @@ class LaboratoryDailyBoard extends Component
 
     public function confirmStageCompletion(): void
     {
+        $user = auth()->user();
+        if (!$user || (!$user->hasRole('super-admin') && !$user->canAny(['booking.laboratory.stages.manage', 'booking.laboratory.manage']))) {
+            $this->toastError = 'شما مجوز مدیریت مراحل سفارش را ندارید.';
+            return;
+        }
+
         if (!$this->stageToCompleteId) return;
 
         $stage = BookingLaboratoryStage::with('order')->find($this->stageToCompleteId);
@@ -160,6 +194,12 @@ class LaboratoryDailyBoard extends Component
 
     public function openReceiveModal(int $orderId): void
     {
+        $user = auth()->user();
+        if (!$user || (!$user->hasRole('super-admin') && !$user->canAny(['booking.laboratory.receive', 'booking.laboratory.manage']))) {
+            $this->toastError = 'شما مجوز ثبت دریافت سفارش از لابراتوار را ندارید.';
+            return;
+        }
+
         $this->orderToReceiveId = $orderId;
         $this->receiveNote = '';
         $this->showReceiveModal = true;
@@ -167,6 +207,12 @@ class LaboratoryDailyBoard extends Component
 
     public function confirmReceiveOrder(): void
     {
+        $user = auth()->user();
+        if (!$user || (!$user->hasRole('super-admin') && !$user->canAny(['booking.laboratory.receive', 'booking.laboratory.manage']))) {
+            $this->toastError = 'شما مجوز ثبت دریافت سفارش از لابراتوار را ندارید.';
+            return;
+        }
+
         if (!$this->orderToReceiveId) return;
 
         $order = BookingLaboratoryOrder::find($this->orderToReceiveId);
@@ -215,11 +261,25 @@ class LaboratoryDailyBoard extends Component
             $selectedCarbon = Carbon::today()->startOfDay();
         }
 
+        // تفکیک دسترسی مشاهده سفارشات خود vs همه سفارشات در کارتابل روزانه
+        $user = auth()->user();
+        $canViewAll = $user && ($user->hasRole('super-admin') || $user->can('booking.laboratory.view.all') || $user->can('booking.laboratory.manage'));
+        $canViewOwn = $user && $user->can('booking.laboratory.view.own');
+
         // Base active orders query
-        $activeOrders = BookingLaboratoryOrder::with(['stages', 'client', 'doctor', 'dailyLogs.operator'])
+        $ordersQuery = BookingLaboratoryOrder::with(['stages', 'client', 'doctor', 'dailyLogs.operator'])
             ->where('status', '!=', BookingLaboratoryOrder::STATUS_RECEIVED)
-            ->where('status', '!=', BookingLaboratoryOrder::STATUS_CANCELED)
-            ->get();
+            ->where('status', '!=', BookingLaboratoryOrder::STATUS_CANCELED);
+
+        if (!$canViewAll && $canViewOwn) {
+            $ordersQuery->where(function ($q) use ($user) {
+                $q->where('doctor_id', $user->id)
+                  ->orWhere('technician_id', $user->id)
+                  ->orWhere('created_by_user_id', $user->id);
+            });
+        }
+
+        $activeOrders = $ordersQuery->get();
 
         // Process all active orders against the selected date
         $allRows = $activeOrders->map(function ($order) use ($selectedCarbon) {

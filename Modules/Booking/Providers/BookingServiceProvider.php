@@ -3,6 +3,7 @@
 namespace Modules\Booking\Providers;
 
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Facades\Gate;
 use App\Services\Modules\BaseModuleInstaller;
 use Modules\Booking\Entities\BookingSetting;
 use Illuminate\Support\Facades\Schema;
@@ -17,6 +18,20 @@ class BookingServiceProvider extends ServiceProvider
         $this->registerConfig();
         $this->registerViews();
         $this->registerTranslations();
+
+        // 👈 گیت دسترسی مستقل به بخش لابراتوار (بدون وابستگی به سایر بخش‌های نوبت‌دهی)
+        Gate::define('booking.laboratory.access', function ($user) {
+            if (!$user) {
+                return false;
+            }
+            return $user->hasRole('super-admin') ||
+                   $user->canAny([
+                       'booking.laboratory.view',
+                       'booking.laboratory.view.all',
+                       'booking.laboratory.view.own',
+                       'booking.laboratory.manage',
+                   ]);
+        });
 
         \Livewire\Livewire::component('booking.user.schedule-manager', \Modules\Booking\App\Livewire\User\ScheduleManager::class);
         \Livewire\Livewire::component('booking.user.booking-waitlist-manager', \Modules\Booking\App\Livewire\User\BookingWaitlistManager::class);
