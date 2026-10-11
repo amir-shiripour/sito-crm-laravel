@@ -37,6 +37,12 @@ class BookingWaitlistModal extends Component
     #[On('open-add-to-waitlist')]
     public function openModal($clientId = null): void
     {
+        $user = Auth::user();
+        if (!$user || !BookingSetting::isQueueEnabled() || (!$user->hasRole(['super-admin', 'admin']) && !$user->canAny(['booking.appointments.create', 'booking.appointments.manage', 'booking.manage']))) {
+            $this->dispatch('notify', type: 'error', text: 'شما مجوز افزودن مراجع به صف انتظار را ندارید یا صف غیرفعال است.');
+            return;
+        }
+
         $this->reset([
             'clientId', 'clientSearch', 'serviceId', 'providerId', 'durationMinutes',
             'preferredDateJalali', 'notes', 'errorMessage', 'formSchema', 'formType',
@@ -44,7 +50,12 @@ class BookingWaitlistModal extends Component
         ]);
 
         if ($clientId) {
-            $this->clientId = (int) $clientId;
+            $client = Client::query()->visibleForUser($user)->find((int) $clientId);
+            if (!$client) {
+                $this->dispatch('notify', type: 'error', text: 'مراجع مورد نظر یافت نشد یا دسترسی به آن ندارید.');
+                return;
+            }
+            $this->clientId = $client->id;
             $this->lockClient = true;
         } else {
             $this->lockClient = false;
@@ -180,9 +191,21 @@ class BookingWaitlistModal extends Component
     public function save(): void
     {
         $this->errorMessage = '';
+        $user = Auth::user();
+
+        if (!$user || !BookingSetting::isQueueEnabled() || (!$user->hasRole(['super-admin', 'admin']) && !$user->canAny(['booking.appointments.create', 'booking.appointments.manage', 'booking.manage']))) {
+            $this->errorMessage = 'شما مجوز افزودن مراجع به صف انتظار را ندارید.';
+            return;
+        }
 
         if (!$this->clientId) {
             $this->errorMessage = 'لطفاً یک ' . config('clients.labels.singular', 'مراجع') . ' را انتخاب کنید.';
+            return;
+        }
+
+        $client = Client::query()->visibleForUser($user)->find($this->clientId);
+        if (!$client) {
+            $this->errorMessage = 'پرونده مراجع انتخابی یافت نشد یا دسترسی به آن محدود است.';
             return;
         }
 
@@ -242,14 +265,15 @@ class BookingWaitlistModal extends Component
 
     public function render()
     {
+        $user = Auth::user();
         $selectedClient = null;
-        if ($this->clientId) {
-            $selectedClient = Client::find($this->clientId);
+        if ($this->clientId && $user) {
+            $selectedClient = Client::query()->visibleForUser($user)->find($this->clientId);
         }
 
         $clients = [];
-        if (!$this->clientId) {
-            $clientQuery = Client::query();
+        if (!$this->clientId && $user && $user->can('clients.view')) {
+            $clientQuery = Client::query()->visibleForUser($user);
             if (!empty($this->clientSearch)) {
                 $s = trim($this->clientSearch);
                 $clientQuery->where(function ($q) use ($s) {

@@ -61,9 +61,14 @@ class BookingWaitlistManager extends Component
 
     public function mount(): void
     {
+        $user = Auth::user();
+        if (!$user || !$user->can('booking.queue.access')) {
+            abort(403, 'شما مجوز دسترسی به صف انتظار را ندارید یا این قابلیت در تنظیمات سیستم غیرفعال است.');
+        }
+
         if (request()->has('create_for_client')) {
             $clientId = (int) request('create_for_client');
-            $client = Client::find($clientId);
+            $client = Client::query()->visibleForUser($user)->find($clientId);
             if ($client) {
                 $this->modalClientId = $client->id;
                 $this->showCreateModal = true;
@@ -174,6 +179,12 @@ class BookingWaitlistManager extends Component
 
     public function openCreateModal(): void
     {
+        $user = Auth::user();
+        if (!$user || (!$user->hasRole(['super-admin', 'admin']) && !$user->canAny(['booking.appointments.create', 'booking.appointments.manage', 'booking.manage']))) {
+            $this->toastError = 'شما مجوز افزودن مراجع به صف انتظار را ندارید.';
+            return;
+        }
+
         $this->isEditing = false;
         $this->editingEntryId = null;
         $this->modalStatus = BookingWaitlist::STATUS_WAITING;
@@ -187,6 +198,12 @@ class BookingWaitlistManager extends Component
 
     public function openEditModal(int $id): void
     {
+        $user = Auth::user();
+        if (!$user || (!$user->hasRole(['super-admin', 'admin']) && !$user->canAny(['booking.appointments.edit', 'booking.appointments.manage', 'booking.manage']))) {
+            $this->toastError = 'شما مجوز ویرایش نوبت در صف انتظار را ندارید.';
+            return;
+        }
+
         $entry = BookingWaitlist::find($id);
         if (!$entry) {
             $this->toastError = 'آیتم مورد نظر در صف انتظار یافت نشد.';
@@ -247,6 +264,19 @@ class BookingWaitlistManager extends Component
     public function saveWaitlistEntry(): void
     {
         $this->modalError = '';
+        $user = Auth::user();
+
+        if ($this->isEditing && $this->editingEntryId) {
+            if (!$user || (!$user->hasRole(['super-admin', 'admin']) && !$user->canAny(['booking.appointments.edit', 'booking.appointments.manage', 'booking.manage']))) {
+                $this->modalError = 'شما مجوز ویرایش اطلاعات نوبت در صف انتظار را ندارید.';
+                return;
+            }
+        } else {
+            if (!$user || (!$user->hasRole(['super-admin', 'admin']) && !$user->canAny(['booking.appointments.create', 'booking.appointments.manage', 'booking.manage']))) {
+                $this->modalError = 'شما مجوز افزودن مراجع به صف انتظار را ندارید.';
+                return;
+            }
+        }
 
         if (!$this->modalClientId) {
             $this->modalError = 'لطفاً یک مراجع/بیمار را انتخاب کنید.';
@@ -364,6 +394,12 @@ class BookingWaitlistManager extends Component
 
     public function openStatusModal(int $entryId): void
     {
+        $user = Auth::user();
+        if (!$user || (!$user->hasRole(['super-admin', 'admin']) && !$user->canAny(['booking.appointments.edit', 'booking.appointments.manage', 'booking.manage']))) {
+            $this->toastError = 'شما مجوز تغییر وضعیت نوبت در صف را ندارید.';
+            return;
+        }
+
         $entry = BookingWaitlist::find($entryId);
         if ($entry) {
             $this->editingEntryId = $entry->id;
@@ -382,6 +418,12 @@ class BookingWaitlistManager extends Component
     public function updateEntryStatus(): void
     {
         if (!$this->editingEntryId) return;
+
+        $user = Auth::user();
+        if (!$user || (!$user->hasRole(['super-admin', 'admin']) && !$user->canAny(['booking.appointments.edit', 'booking.appointments.manage', 'booking.manage']))) {
+            $this->toastError = 'شما مجوز تغییر وضعیت نوبت در صف را ندارید.';
+            return;
+        }
 
         $entry = BookingWaitlist::find($this->editingEntryId);
         if ($entry) {
@@ -402,6 +444,12 @@ class BookingWaitlistManager extends Component
 
     public function deleteEntry(int $entryId): void
     {
+        $user = Auth::user();
+        if (!$user || (!$user->hasRole(['super-admin', 'admin']) && !$user->canAny(['booking.appointments.cancel', 'booking.appointments.manage', 'booking.manage']))) {
+            $this->toastError = 'شما مجوز حذف مراجع از صف انتظار را ندارید.';
+            return;
+        }
+
         $entry = BookingWaitlist::find($entryId);
         if ($entry) {
             $entry->update(['status' => BookingWaitlist::STATUS_CANCELED]);
@@ -421,9 +469,25 @@ class BookingWaitlistManager extends Component
     {
         $settings = BookingSetting::current();
         $isQueueEnabled = (bool)($settings->queue_enabled ?? false);
+        $user = Auth::user();
+        $monitoringService = app(\Modules\Booking\Services\ClinicMonitoringService::class);
+        $canViewAll = $monitoringService->canViewAllAppointments($user);
 
         $query = BookingWaitlist::query()
             ->with(['client', 'service', 'provider', 'creator', 'appointment']);
+
+        // Scope to provider's own items if restricted
+        if (!$canViewAll && $monitoringService->userIsProvider($user)) {
+            $query->where(function ($q) use ($user) {
+                $q->where('provider_user_id', $user->id)
+                  ->orWhere('created_by_user_id', $user->id);
+            });
+        }
+
+        // Scope clients visible to current user
+        $query->whereHas('client', function ($q) use ($user) {
+            $q->visibleForUser($user);
+        });
 
         if (!empty($this->search)) {
             $s = trim($this->search);
@@ -450,41 +514,62 @@ class BookingWaitlistManager extends Component
 
         $entries = $query->orderBy('created_at', 'asc')->orderBy('id', 'asc')->paginate(15);
 
-        // KPI stats
-        $totalWaitingCount = BookingWaitlist::where('status', BookingWaitlist::STATUS_WAITING)->count();
-        $generalWaitingCount = BookingWaitlist::where('status', BookingWaitlist::STATUS_WAITING)->whereNull('service_id')->count();
-        $convertedCount = BookingWaitlist::where('status', BookingWaitlist::STATUS_CONVERTED)->count();
-        $todayAddedCount = BookingWaitlist::whereDate('created_at', today())->count();
+        // KPI stats accurately scoped for user's permissions
+        $scopedBaseQuery = BookingWaitlist::query();
+        if (!$canViewAll && $monitoringService->userIsProvider($user)) {
+            $scopedBaseQuery->where(function ($q) use ($user) {
+                $q->where('provider_user_id', $user->id)
+                  ->orWhere('created_by_user_id', $user->id);
+            });
+        }
+        $scopedBaseQuery->whereHas('client', function ($q) use ($user) {
+            $q->visibleForUser($user);
+        });
 
-        // Clients for modal search
-        $clientsQuery = Client::query()->visibleForUser(auth()->user());
-        if (!empty($this->modalClientSearch) && strlen($this->modalClientSearch) >= 1) {
-            $cs = trim($this->modalClientSearch);
-            $clientsForModal = $clientsQuery
-                ->where(function ($q) use ($cs) {
-                    $q->where('full_name', 'like', "%{$cs}%")
-                        ->orWhere('phone', 'like', "%{$cs}%")
-                        ->orWhere('national_code', 'like', "%{$cs}%")
-                        ->orWhere('case_number', 'like', "%{$cs}%");
-                })
-                ->orderByDesc('id')
-                ->limit(10)
-                ->get(['id', 'full_name', 'phone', 'national_code', 'case_number']);
+        $totalWaitingCount = (clone $scopedBaseQuery)->where('status', BookingWaitlist::STATUS_WAITING)->count();
+        $generalWaitingCount = (clone $scopedBaseQuery)->where('status', BookingWaitlist::STATUS_WAITING)->whereNull('service_id')->count();
+        $convertedCount = (clone $scopedBaseQuery)->where('status', BookingWaitlist::STATUS_CONVERTED)->count();
+        $todayAddedCount = (clone $scopedBaseQuery)->whereDate('created_at', today())->count();
+
+        // Clients for modal search (respect clients.view permission and scope)
+        $canViewClients = $user && $user->can('clients.view');
+        if ($canViewClients) {
+            $clientsQuery = Client::query()->visibleForUser($user);
+            if (!empty($this->modalClientSearch) && strlen($this->modalClientSearch) >= 1) {
+                $cs = trim($this->modalClientSearch);
+                $clientsForModal = $clientsQuery
+                    ->where(function ($q) use ($cs) {
+                        $q->where('full_name', 'like', "%{$cs}%")
+                            ->orWhere('phone', 'like', "%{$cs}%")
+                            ->orWhere('national_code', 'like', "%{$cs}%")
+                            ->orWhere('case_number', 'like', "%{$cs}%");
+                    })
+                    ->orderByDesc('id')
+                    ->limit(10)
+                    ->get(['id', 'full_name', 'phone', 'national_code', 'case_number']);
+            } else {
+                $clientsForModal = $clientsQuery->orderByDesc('id')->limit(3)->get(['id', 'full_name', 'phone', 'national_code', 'case_number']);
+            }
+            $selectedModalClient = $this->modalClientId ? Client::query()->visibleForUser($user)->find($this->modalClientId) : null;
         } else {
-            $clientsForModal = $clientsQuery->orderByDesc('id')->limit(3)->get(['id', 'full_name', 'phone', 'national_code', 'case_number']);
+            $clientsForModal = collect([]);
+            $selectedModalClient = null;
         }
 
-        $selectedModalClient = $this->modalClientId ? Client::find($this->modalClientId) : null;
-
         $services = BookingService::where('status', BookingService::STATUS_ACTIVE)->orderBy('name')->get();
-        $providers = User::query()
-            ->whereIn('id', function ($q) {
-                $q->select('provider_user_id')->from('booking_service_providers')->where('is_active', true);
-            })
-            ->orderBy('name')
-            ->get();
-        if ($providers->isEmpty()) {
-            $providers = User::orderBy('name')->limit(50)->get();
+
+        if (!$canViewAll && $monitoringService->userIsProvider($user)) {
+            $providers = User::where('id', $user->id)->get();
+        } else {
+            $providers = User::query()
+                ->whereIn('id', function ($q) {
+                    $q->select('provider_user_id')->from('booking_service_providers')->where('is_active', true);
+                })
+                ->orderBy('name')
+                ->get();
+            if ($providers->isEmpty()) {
+                $providers = User::orderBy('name')->limit(50)->get();
+            }
         }
 
         // Modal filtered lists

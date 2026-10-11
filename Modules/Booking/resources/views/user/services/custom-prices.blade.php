@@ -3,6 +3,8 @@
 @php
     $settings = \Modules\Booking\Entities\BookingSetting::current();
     $currencyLabel = ($settings && $settings->currency_unit === 'IRR') ? 'ریال' : 'تومان';
+    $dentalChartEnabled = (bool)($settings && $settings->cure_dental_chart_enabled);
+    $toothNumberingSystem = $settings->cure_tooth_numbering_system ?? 'palmer';
 @endphp
 
 @section('content')
@@ -236,6 +238,17 @@
             padding: 9px 14px;
             border-bottom: 1px solid #f1f5f9;
             transition: background .12s;
+        }
+
+        .brand-row.brand-row-dental {
+            grid-template-columns: 1.1fr 1fr 0.8fr 0.35fr auto;
+        }
+
+        @media (max-width: 768px) {
+            .brand-row.brand-row-dental {
+                grid-template-columns: 1fr;
+                gap: 8px;
+            }
         }
 
         .brand-row:last-of-type {
@@ -514,7 +527,7 @@
     </style>
 
     <div
-        x-data="customPricesApp(@js($customPrices['tabs'] ?? []))"
+        x-data="customPricesApp(@js($customPrices['tabs'] ?? []), {{ $dentalChartEnabled ? 'true' : 'false' }}, '{{ $toothNumberingSystem }}')"
         x-cloak
         class="cp-root max-w-4xl mx-auto py-8 px-4 space-y-5"
     >
@@ -673,9 +686,12 @@
                                 <div class="bg-white dark:bg-gray-900/20">
 
                                     <template x-if="section.brands.length > 0">
-                                        <div class="brand-row"
+                                        <div :class="section.type === 'براساس نقشه دندانی' ? 'brand-row brand-row-dental' : 'brand-row'"
                                              style="padding-top:6px;padding-bottom:6px;border-bottom:1.5px solid #f1f5f9;">
-                                            <span class="sec-label">نام برند / گزینه</span>
+                                            <span class="sec-label">نام گزینه / تعرفه</span>
+                                            <template x-if="section.type === 'براساس نقشه دندانی'">
+                                                <span class="sec-label">دندان‌های منتسب</span>
+                                            </template>
                                             <span class="sec-label">قیمت ({{ $currencyLabel }})</span>
                                             <span class="sec-label text-right pr-6">اقساطی</span>
                                             <span></span>
@@ -683,15 +699,44 @@
                                     </template>
 
                                     <template x-for="(brand, bIdx) in section.brands" :key="bIdx">
-                                        <div class="brand-row">
+                                        <div :class="section.type === 'براساس نقشه دندانی' ? 'brand-row brand-row-dental' : 'brand-row'">
                                             <input type="hidden"
                                                    :name="`tabs[${tIdx}][sections][${sIdx}][brands][${bIdx}][brand_uuid]`"
                                                    :value="brand.brand_uuid" />
                                             <input type="text"
                                                    x-model="brand.name"
                                                    :name="`tabs[${tIdx}][sections][${sIdx}][brands][${bIdx}][name]`"
-                                                   placeholder="نام برند یا گزینه"
+                                                   placeholder="نام گزینه یا تعرفه"
                                                    class="cp-input"/>
+
+                                            {{-- Tooth selection column for 'براساس نقشه دندانی' --}}
+                                            <template x-if="section.type === 'براساس نقشه دندانی'">
+                                                <div class="relative">
+                                                    <template x-for="(toothId, toothIdx) in (brand.teeth || [])" :key="toothIdx">
+                                                        <input type="hidden"
+                                                               :name="`tabs[${tIdx}][sections][${sIdx}][brands][${bIdx}][teeth][]`"
+                                                               :value="toothId" />
+                                                    </template>
+
+                                                    <button type="button"
+                                                            @click="openToothModal(tIdx, sIdx, bIdx)"
+                                                            class="w-full flex items-center justify-between gap-1 px-2.5 py-2 rounded-xl text-xs font-semibold transition-all border outline-none"
+                                                            :class="(brand.teeth && brand.teeth.length > 0)
+                                                                ? 'bg-indigo-50/70 dark:bg-indigo-950/40 border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 shadow-sm hover:border-indigo-400'
+                                                                : 'bg-slate-50 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-indigo-300 dark:hover:border-indigo-600'">
+                                                        <div class="flex items-center gap-1.5 truncate">
+                                                            <svg class="w-3.5 h-3.5 shrink-0 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/>
+                                                            </svg>
+                                                            <span class="truncate" x-text="formatTeethSummary(brand.teeth)"></span>
+                                                        </div>
+                                                        <span class="text-[10px] px-1.5 py-0.5 rounded-md font-bold shrink-0"
+                                                              :class="(brand.teeth && brand.teeth.length > 0) ? 'bg-indigo-200/80 dark:bg-indigo-800/80 text-indigo-800 dark:text-indigo-100' : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'"
+                                                              x-text="`${(brand.teeth || []).length}`"></span>
+                                                    </button>
+                                                </div>
+                                            </template>
+
                                             <div class="price-wrap relative">
                                                 <input type="hidden"
                                                        :name="`tabs[${tIdx}][sections][${sIdx}][brands][${bIdx}][price]`"
@@ -766,6 +811,9 @@
                             <label class="sec-label">نوع / روش محاسبه</label>
                             <select x-model="modalType" class="cp-select">
                                 <option value="" disabled>انتخاب کنید…</option>
+                                @if($dentalChartEnabled)
+                                    <option value="براساس نقشه دندانی">براساس نقشه دندانی</option>
+                                @endif
                                 <option value="چند گزینه‌ای به ازای دندان">چند گزینه‌ای به ازای دندان</option>
                                 <option value="دو گزینه‌ای دارد یا ندارد">دو گزینه‌ای دارد یا ندارد</option>
                                 <option value="به ازای هر واحد">به ازای هر واحد</option>
@@ -794,6 +842,83 @@
             </div>
         </template>
 
+        {{-- ══ DENTAL TOOTH PICKER MODAL ══ --}}
+        <template x-if="showToothModal">
+            <div class="modal-backdrop" @click.self="closeToothModal()">
+                <div class="modal-box max-w-2xl space-y-4">
+                    <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+                        <div class="flex items-center gap-2.5">
+                            <div class="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/>
+                                </svg>
+                            </div>
+                            <div>
+                                <h2 class="text-sm font-bold text-gray-900 dark:text-white">
+                                    انتخاب دندان‌ها برای:
+                                    <span class="text-indigo-600 dark:text-indigo-400" x-text="getActiveBrandName() || 'بدون عنوان'"></span>
+                                </h2>
+                                <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                                    دندان‌های مرتبط با این تعرفه را با کلیک روی نقشه یا دکمه‌های پیش‌فرض انتخاب کنید.
+                                </p>
+                            </div>
+                        </div>
+                        <button type="button" @click="closeToothModal()"
+                                class="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm transition-colors">
+                            ✕
+                        </button>
+                    </div>
+
+                    {{-- Quick Presets --}}
+                    <div class="flex items-center gap-1.5 flex-wrap bg-slate-50 dark:bg-slate-800/50 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800">
+                        <span class="text-[11px] font-bold text-slate-600 dark:text-slate-300 ml-1">انتخاب سریع:</span>
+                        <button type="button" @click="selectTeethPreset('all')" class="px-2 py-1 text-xs rounded-lg font-medium border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:border-indigo-400 transition-colors">همه</button>
+                        <button type="button" @click="selectTeethPreset('upper')" class="px-2 py-1 text-xs rounded-lg font-medium border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:border-indigo-400 transition-colors">فک بالا</button>
+                        <button type="button" @click="selectTeethPreset('lower')" class="px-2 py-1 text-xs rounded-lg font-medium border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:border-indigo-400 transition-colors">فک پایین</button>
+                        <button type="button" @click="selectTeethPreset('anterior')" class="px-2 py-1 text-xs rounded-lg font-medium border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:border-indigo-400 transition-colors">قدامی</button>
+                        <button type="button" @click="selectTeethPreset('premolar')" class="px-2 py-1 text-xs rounded-lg font-medium border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:border-indigo-400 transition-colors">پره‌مولار</button>
+                        <button type="button" @click="selectTeethPreset('molar')" class="px-2 py-1 text-xs rounded-lg font-medium border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:border-indigo-400 transition-colors">مولار و عقل</button>
+                        <button type="button" @click="selectTeethPreset('clear')" class="px-2 py-1 text-xs rounded-lg font-medium border border-rose-200 dark:border-rose-900/50 bg-rose-50/50 dark:bg-rose-950/20 text-rose-600 dark:text-rose-400 hover:bg-rose-100 transition-colors mr-auto">پاکسازی</button>
+                    </div>
+
+                    {{-- Dental Chart SVG --}}
+                    <div class="bg-white dark:bg-slate-900/60 p-3 rounded-2xl border border-slate-200 dark:border-slate-700/80 shadow-inner overflow-hidden max-w-lg mx-auto">
+                        <x-booking::dental-chart />
+                    </div>
+
+                    {{-- Selected Summary Chips --}}
+                    <div class="space-y-1.5">
+                        <div class="flex items-center justify-between text-xs font-semibold text-slate-600 dark:text-slate-300 px-1">
+                            <span>دندان‌های انتخاب‌شده:</span>
+                            <span class="text-indigo-600 dark:text-indigo-400 font-bold" x-text="`${tempSelectedTeeth.length} دندان انتخاب شده`"></span>
+                        </div>
+                        <div class="flex flex-wrap gap-1.5 p-2 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-700/60 max-h-24 overflow-y-auto sc-thin">
+                            <template x-if="tempSelectedTeeth.length === 0">
+                                <span class="text-xs text-slate-400 dark:text-slate-500 py-1">هیچ دندانی انتخاب نشده است (روی دندان‌های نقشه بالا کلیک کنید)</span>
+                            </template>
+                            <template x-for="tId in tempSelectedTeeth" :key="tId">
+                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-700/40 text-xs font-bold">
+                                    <span x-text="`دندان ${getToothLabel(tId).num} (${getToothQuadrantLabel(tId)})`"></span>
+                                    <button type="button" @click.stop="toggleToothInModal(tId)" class="hover:text-rose-500 transition-colors">✕</button>
+                                </span>
+                            </template>
+                        </div>
+                    </div>
+
+                    {{-- Footer Buttons --}}
+                    <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                        <button type="button" @click="closeToothModal()" class="btn btn-ghost">انصراف</button>
+                        <button type="button" @click="saveToothModal()" class="btn btn-indigo">
+                            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/>
+                            </svg>
+                            تأیید و ذخیره دندان‌ها
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </template>
+
     </div>
 
     <script>
@@ -804,7 +929,21 @@
             return 'bu_' + Date.now().toString(36) + '_' + Math.random().toString(36).substr(2, 9);
         }
 
-        function customPricesApp(initialTabs) {
+        function customPricesApp(initialTabs, dentalChartEnabled = true, toothNumberingSystem = 'palmer') {
+            const baseTypeOptions = [
+                'چند گزینه‌ای به ازای دندان',
+                'دو گزینه‌ای دارد یا ندارد',
+                'به ازای هر واحد',
+                'به ازای هر دندان',
+                'به ازای هر فک',
+                'به ازای کوادران',
+                'چند گزینه‌ای',
+                'به ازای واحد دندان‌دار',
+            ];
+            if (dentalChartEnabled) {
+                baseTypeOptions.unshift('براساس نقشه دندانی');
+            }
+
             return {
                 tabs: Array.isArray(initialTabs)
                     ? initialTabs.map(t => ({
@@ -817,7 +956,8 @@
                                         name: b.name ?? '',
                                         price: b.price ? String(b.price) : '',
                                         is_installment: !!b.is_installment,
-                                        brand_uuid: b.brand_uuid || generateUuid()
+                                        brand_uuid: b.brand_uuid || generateUuid(),
+                                        teeth: Array.isArray(b.teeth) ? b.teeth.map(Number) : []
                                     }))
                                     : []
                             }))
@@ -831,17 +971,17 @@
                 modalSectionIdx: null,
                 modalTitle: '',
                 modalType: '',
+                dentalChartEnabled: !!dentalChartEnabled,
+                toothNumberingSystem: toothNumberingSystem || 'palmer',
 
-                typeOptions: [
-                    'چند گزینه‌ای به ازای دندان',
-                    'دو گزینه‌ای دارد یا ندارد',
-                    'به ازای هر واحد',
-                    'به ازای هر دندان',
-                    'به ازای هر فک',
-                    'به ازای کوادران',
-                    'چند گزینه‌ای',
-                    'به ازای واحد دندان‌دار',
-                ],
+                // Tooth Picker Modal State
+                showToothModal: false,
+                toothModalTabIdx: null,
+                toothModalSectionIdx: null,
+                toothModalBrandIdx: null,
+                tempSelectedTeeth: [],
+
+                typeOptions: baseTypeOptions,
 
                 addTab() {
                     this.tabs.push({title: '', sections: []});
@@ -876,51 +1016,58 @@
                     } else {
                         let defaultBrands = [];
                         switch (this.modalType) {
+                            case 'براساس نقشه دندانی':
+                                defaultBrands = [
+                                    { name: 'دندان‌های قدامی', price: '', is_installment: false, brand_uuid: generateUuid(), teeth: [6, 7, 8, 9, 20, 21, 22, 23] },
+                                    { name: 'دندان‌های خلفی و مولار', price: '', is_installment: false, brand_uuid: generateUuid(), teeth: [1, 2, 3, 4, 5, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 24, 25, 26, 27, 28] }
+                                ];
+                                break;
                             case 'دو گزینه‌ای دارد یا ندارد':
                                 defaultBrands = [
-                                    { name: 'دارد', price: '', is_installment: false, brand_uuid: generateUuid() },
-                                    { name: 'ندارد', price: '', is_installment: false, brand_uuid: generateUuid() }
+                                    { name: 'دارد', price: '', is_installment: false, brand_uuid: generateUuid(), teeth: [] },
+                                    { name: 'ندارد', price: '', is_installment: false, brand_uuid: generateUuid(), teeth: [] }
                                 ];
                                 break;
                             case 'به ازای هر واحد':
-                                defaultBrands = [{ name: '۱', price: '', is_installment: false, brand_uuid: generateUuid() }];
+                                defaultBrands = [{ name: '۱', price: '', is_installment: false, brand_uuid: generateUuid(), teeth: [] }];
                                 break;
                             case 'به ازای هر دندان':
                                 defaultBrands = Array.from({length: 7}, (_, i) => ({
                                     name: String(i + 1),
                                     price: '',
                                     is_installment: false,
-                                    brand_uuid: generateUuid()
+                                    brand_uuid: generateUuid(),
+                                    teeth: []
                                 }));
                                 break;
                             case 'به ازای هر فک':
                                 defaultBrands = [
-                                    { name: 'نیم فک بالا', price: '', is_installment: false, brand_uuid: generateUuid() },
-                                    { name: 'نیم فک پایین', price: '', is_installment: false, brand_uuid: generateUuid() },
-                                    { name: 'هر دو فک', price: '', is_installment: false, brand_uuid: generateUuid() }
+                                    { name: 'نیم فک بالا', price: '', is_installment: false, brand_uuid: generateUuid(), teeth: [] },
+                                    { name: 'نیم فک پایین', price: '', is_installment: false, brand_uuid: generateUuid(), teeth: [] },
+                                    { name: 'هر دو فک', price: '', is_installment: false, brand_uuid: generateUuid(), teeth: [] }
                                 ];
                                 break;
                             case 'به ازای کوادران':
                                 defaultBrands = [
-                                    { name: 'بالا راست', price: '', is_installment: false, brand_uuid: generateUuid() },
-                                    { name: 'بالا چپ', price: '', is_installment: false, brand_uuid: generateUuid() },
-                                    { name: 'پایین راست', price: '', is_installment: false, brand_uuid: generateUuid() },
-                                    { name: 'پایین چپ', price: '', is_installment: false, brand_uuid: generateUuid() }
+                                    { name: 'بالا راست', price: '', is_installment: false, brand_uuid: generateUuid(), teeth: [] },
+                                    { name: 'بالا چپ', price: '', is_installment: false, brand_uuid: generateUuid(), teeth: [] },
+                                    { name: 'پایین راست', price: '', is_installment: false, brand_uuid: generateUuid(), teeth: [] },
+                                    { name: 'پایین چپ', price: '', is_installment: false, brand_uuid: generateUuid(), teeth: [] }
                                 ];
                                 break;
                             case 'چند گزینه‌ای به ازای دندان':
                             case 'چند گزینه‌ای':
                                 defaultBrands = [
-                                    { name: '', price: '', is_installment: false, brand_uuid: generateUuid() },
-                                    { name: '', price: '', is_installment: false, brand_uuid: generateUuid() },
-                                    { name: '', price: '', is_installment: false, brand_uuid: generateUuid() }
+                                    { name: '', price: '', is_installment: false, brand_uuid: generateUuid(), teeth: [] },
+                                    { name: '', price: '', is_installment: false, brand_uuid: generateUuid(), teeth: [] },
+                                    { name: '', price: '', is_installment: false, brand_uuid: generateUuid(), teeth: [] }
                                 ];
                                 break;
                             case 'به ازای واحد دندان‌دار':
-                                defaultBrands = [{ name: 'هر واحد دندان‌دار', price: '', is_installment: false, brand_uuid: generateUuid() }];
+                                defaultBrands = [{ name: 'هر واحد دندان‌دار', price: '', is_installment: false, brand_uuid: generateUuid(), teeth: [] }];
                                 break;
                             default:
-                                defaultBrands = [{ name: '', price: '', is_installment: false, brand_uuid: generateUuid() }];
+                                defaultBrands = [{ name: '', price: '', is_installment: false, brand_uuid: generateUuid(), teeth: [] }];
                         }
                         tab.sections.push({title: this.modalTitle, type: this.modalType, brands: defaultBrands});
                     }
@@ -931,7 +1078,123 @@
                     this.tabs[tIdx].sections.splice(sIdx, 1);
                 },
                 addBrand(tIdx, sIdx) {
-                    this.tabs[tIdx].sections[sIdx].brands.push({name: '', price: '', is_installment: false, brand_uuid: generateUuid()});
+                    this.tabs[tIdx].sections[sIdx].brands.push({name: '', price: '', is_installment: false, brand_uuid: generateUuid(), teeth: []});
+                },
+                removeBrand(tIdx, sIdx, bIdx) {
+                    this.tabs[tIdx].sections[sIdx].brands.splice(bIdx, 1);
+                },
+
+                // Tooth Picker Modal Methods
+                openToothModal(tIdx, sIdx, bIdx) {
+                    this.toothModalTabIdx = tIdx;
+                    this.toothModalSectionIdx = sIdx;
+                    this.toothModalBrandIdx = bIdx;
+                    const brand = this.tabs[tIdx]?.sections?.[sIdx]?.brands?.[bIdx];
+                    this.tempSelectedTeeth = Array.isArray(brand?.teeth) ? [...brand.teeth] : [];
+                    this.showToothModal = true;
+                },
+
+                closeToothModal() {
+                    this.showToothModal = false;
+                },
+
+                saveToothModal() {
+                    if (this.toothModalTabIdx !== null && this.toothModalSectionIdx !== null && this.toothModalBrandIdx !== null) {
+                        const brand = this.tabs[this.toothModalTabIdx]?.sections?.[this.toothModalSectionIdx]?.brands?.[this.toothModalBrandIdx];
+                        if (brand) {
+                            brand.teeth = [...this.tempSelectedTeeth].sort((a, b) => a - b);
+                        }
+                    }
+                    this.showToothModal = false;
+                },
+
+                toggleToothInModal(id) {
+                    id = Number(id);
+                    if (this.tempSelectedTeeth.includes(id)) {
+                        this.tempSelectedTeeth = this.tempSelectedTeeth.filter(t => t !== id);
+                    } else {
+                        this.tempSelectedTeeth.push(id);
+                        this.tempSelectedTeeth.sort((a, b) => a - b);
+                    }
+                },
+
+                isToothSelectedInModal(id) {
+                    return this.tempSelectedTeeth.includes(Number(id));
+                },
+
+                // Compatibility with <x-booking::dental-chart /> component
+                toggle(id) {
+                    this.toggleToothInModal(id);
+                },
+                is(id) {
+                    return this.isToothSelectedInModal(id) ? 'tooth-path tooth-selected' : 'tooth-path tooth-unselected';
+                },
+
+                selectTeethPreset(type) {
+                    const upper = Array.from({length: 14}, (_, i) => i + 1); // 1..14
+                    const lower = Array.from({length: 14}, (_, i) => i + 15); // 15..28
+                    const anterior = [6, 7, 8, 9, 20, 21, 22, 23];
+                    const premolar = [4, 5, 10, 11, 18, 19, 24, 25];
+                    const molar = [1, 2, 3, 12, 13, 14, 15, 16, 17, 26, 27, 28];
+
+                    switch(type) {
+                        case 'all':
+                            this.tempSelectedTeeth = Array.from({length: 28}, (_, i) => i + 1);
+                            break;
+                        case 'upper':
+                            this.tempSelectedTeeth = [...upper];
+                            break;
+                        case 'lower':
+                            this.tempSelectedTeeth = [...lower];
+                            break;
+                        case 'anterior':
+                            this.tempSelectedTeeth = [...anterior];
+                            break;
+                        case 'premolar':
+                            this.tempSelectedTeeth = [...premolar];
+                            break;
+                        case 'molar':
+                            this.tempSelectedTeeth = [...molar];
+                            break;
+                        case 'clear':
+                            this.tempSelectedTeeth = [];
+                            break;
+                    }
+                },
+
+                getActiveBrandName() {
+                    if (this.toothModalTabIdx !== null && this.toothModalSectionIdx !== null && this.toothModalBrandIdx !== null) {
+                        return this.tabs[this.toothModalTabIdx]?.sections?.[this.toothModalSectionIdx]?.brands?.[this.toothModalBrandIdx]?.name || '';
+                    }
+                    return '';
+                },
+
+                getToothLabel(id) {
+                    const system = this.toothNumberingSystem;
+                    const palmerMap = {1:{num:7,pos:'UR'},2:{num:6,pos:'UR'},3:{num:5,pos:'UR'},4:{num:4,pos:'UR'},5:{num:3,pos:'UR'},6:{num:2,pos:'UR'},7:{num:1,pos:'UR'},8:{num:1,pos:'UL'},9:{num:2,pos:'UL'},10:{num:3,pos:'UL'},11:{num:4,pos:'UL'},12:{num:5,pos:'UL'},13:{num:6,pos:'UL'},14:{num:7,pos:'UL'},15:{num:7,pos:'LR'},16:{num:6,pos:'LR'},17:{num:5,pos:'LR'},18:{num:4,pos:'LR'},19:{num:3,pos:'LR'},20:{num:2,pos:'LR'},21:{num:1,pos:'LR'},22:{num:1,pos:'LL'},23:{num:2,pos:'LL'},24:{num:3,pos:'LL'},25:{num:4,pos:'LL'},26:{num:5,pos:'LL'},27:{num:6,pos:'LL'},28:{num:7,pos:'LL'}};
+                    const fdiMap = {1:{num:17,pos:'UR'},2:{num:16,pos:'UR'},3:{num:15,pos:'UR'},4:{num:14,pos:'UR'},5:{num:13,pos:'UR'},6:{num:12,pos:'UR'},7:{num:11,pos:'UR'},8:{num:21,pos:'UL'},9:{num:22,pos:'UL'},10:{num:23,pos:'UL'},11:{num:24,pos:'UL'},12:{num:25,pos:'UL'},13:{num:26,pos:'UL'},14:{num:27,pos:'UL'},15:{num:47,pos:'LR'},16:{num:46,pos:'LR'},17:{num:45,pos:'LR'},18:{num:44,pos:'LR'},19:{num:43,pos:'LR'},20:{num:42,pos:'LR'},21:{num:41,pos:'LR'},22:{num:31,pos:'LL'},23:{num:32,pos:'LL'},24:{num:33,pos:'LL'},25:{num:34,pos:'LL'},26:{num:35,pos:'LL'},27:{num:36,pos:'LL'},28:{num:37,pos:'LL'}};
+                    return (system === 'fdi' ? fdiMap : palmerMap)[id] ?? { num: id, pos: 'UR' };
+                },
+
+                getToothQuadrantLabel(id) {
+                    const pos = this.getToothLabel(id).pos;
+                    switch(pos) {
+                        case 'UR': return 'بالا راست';
+                        case 'UL': return 'بالا چپ';
+                        case 'LR': return 'پایین راست';
+                        case 'LL': return 'پایین چپ';
+                        default: return '';
+                    }
+                },
+
+                formatTeethSummary(teeth) {
+                    if (!teeth || teeth.length === 0) return 'انتخاب دندان…';
+                    if (teeth.length === 28) return 'تمام دندان‌ها (۲۸)';
+                    const labels = teeth.map(t => this.getToothLabel(t).num);
+                    if (labels.length <= 4) {
+                        return 'دندان‌های ' + labels.join('، ');
+                    }
+                    return `${teeth.length} دندان (${labels.slice(0, 3).join('، ')}…)`;
                 },
                 removeBrand(tIdx, sIdx, bIdx) {
                     this.tabs[tIdx].sections[sIdx].brands.splice(bIdx, 1);

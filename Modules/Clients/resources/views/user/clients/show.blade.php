@@ -500,7 +500,7 @@
                         </section>
 
                         {{-- Active Waitlists for this client (Only if Booking Queue and Form Builder Field is enabled) --}}
-                        @if(isset($isBookingQueueEnabled) && $isBookingQueueEnabled && isset($clientWaitlists) && $clientWaitlists->isNotEmpty())
+                        @if(isset($isBookingQueueEnabled) && $isBookingQueueEnabled && isset($clientWaitlists) && $clientWaitlists->isNotEmpty() && auth()->user()?->can('booking.queue.access'))
                             <section>
                                 <div class="flex items-center justify-between mb-4">
                                     <h3 class="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2">
@@ -537,13 +537,13 @@
                                                 </div>
 
                                                 <div class="flex items-center gap-2">
-                                                    @if(Route::has('user.booking.appointments.create'))
+                                                    @if(Route::has('user.booking.appointments.create') && (auth()->user()?->can('booking.appointments.create') || auth()->user()?->can('booking.appointments.manage')))
                                                         <a href="{{ route('user.booking.appointments.create', ['waitlist_id' => $cw->id, 'client_id' => $client->id]) }}"
                                                            class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition shadow-xs">
                                                             <span>ثبت نوبت ↵</span>
                                                         </a>
                                                     @endif
-                                                    @if(Route::has('user.booking.waitlist.index'))
+                                                    @if(Route::has('user.booking.waitlist.index') && auth()->user()?->can('booking.queue.access'))
                                                         <a href="{{ route('user.booking.waitlist.index') }}"
                                                            class="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 text-xs font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition">
                                                             <span>مشاهده در لیست صف</span>

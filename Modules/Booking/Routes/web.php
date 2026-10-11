@@ -157,8 +157,8 @@ Route::prefix('user')->name('user.')->middleware(['web', 'auth'])->group(functio
 
         Route::get('appointments', [UserAppointmentController::class, 'index'])->name('appointments.index')->middleware('can:booking.appointments.view');
         Route::get('schedule', [UserAppointmentController::class, 'schedule'])->name('schedule.index')->middleware('can:booking.appointments.view');
-        Route::get('waitlist', \Modules\Booking\App\Livewire\User\BookingWaitlistManager::class)->name('waitlist.index')->middleware('can:booking.appointments.view');
-        Route::get('monitoring', \Modules\Booking\App\Livewire\User\ClinicLiveMonitoring::class)->name('monitoring.index')->middleware('can:booking.appointments.view');
+        Route::get('waitlist', \Modules\Booking\App\Livewire\User\BookingWaitlistManager::class)->name('waitlist.index')->middleware('can:booking.queue.access');
+        Route::get('monitoring', \Modules\Booking\App\Livewire\User\ClinicLiveMonitoring::class)->name('monitoring.index')->middleware('can:booking.monitoring.access');
         Route::get('laboratory', \Modules\Booking\App\Livewire\User\LaboratoryManager::class)->name('laboratory.index')->middleware('can:booking.laboratory.access');
         Route::get('laboratory/daily-board', \Modules\Booking\App\Livewire\User\LaboratoryDailyBoard::class)->name('laboratory.daily-board')->middleware('can:booking.laboratory.access');
         Route::get('csrf-token', function () {

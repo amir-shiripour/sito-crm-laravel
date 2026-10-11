@@ -55,12 +55,14 @@
             </p>
         </div>
 
+        @canany(['booking.appointments.create', 'booking.appointments.manage'])
         <div class="flex items-center gap-3">
             <button wire:click="openCreateModal" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold shadow-lg shadow-teal-500/20 transition-all cursor-pointer">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                 + افزودن به صف انتظار
             </button>
         </div>
+        @endcanany
     </div>
 
     {{-- KPI Cards --}}
@@ -211,7 +213,13 @@
                             {{-- Client Info --}}
                             <td class="px-4 py-3">
                                 <div class="flex flex-col">
-                                    <span class="font-medium text-gray-900 dark:text-gray-100 text-sm">{{ $entry->client?->full_name ?? '—' }}</span>
+                                    @if($entry->client_id && auth()->user()?->can('clients.view'))
+                                        <a href="{{ route('user.clients.show', $entry->client_id) }}" class="font-medium text-gray-900 dark:text-gray-100 hover:text-indigo-600 dark:hover:text-indigo-400 text-sm transition-colors">
+                                            {{ $entry->client?->full_name ?? '—' }}
+                                        </a>
+                                    @else
+                                        <span class="font-medium text-gray-900 dark:text-gray-100 text-sm">{{ $entry->client?->full_name ?? '—' }}</span>
+                                    @endif
                                     <span class="text-xs text-gray-500 dark:text-gray-400 mt-0.5 dir-ltr text-right">{{ $entry->client?->phone }} @if($entry->client?->national_code) • {{ $entry->client?->national_code }} @endif</span>
                                 </div>
                             </td>
@@ -271,15 +279,17 @@
                             <td class="px-4 py-3 text-center">
                                 <div class="inline-flex items-center gap-1.5">
                                     {{-- Edit Entry Button --}}
+                                    @canany(['booking.appointments.edit', 'booking.appointments.manage'])
                                     <button wire:click="openEditModal({{ $entry->id }})" title="ویرایش اطلاعات نوبت در صف"
                                             class="p-1.5 rounded-lg text-gray-500 hover:text-teal-600 hover:bg-teal-50 dark:hover:bg-teal-900/30 transition-colors cursor-pointer">
                                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                                         </svg>
                                     </button>
+                                    @endcanany
 
                                     {{-- Create Appointment Direct Link --}}
-                                    @if(in_array($entry->status, ['waiting', 'notified', 'in_progress']))
+                                    @if(in_array($entry->status, ['waiting', 'notified', 'in_progress']) && (auth()->user()?->can('booking.appointments.create') || auth()->user()?->can('booking.appointments.manage')))
                                         <a href="{{ route('user.booking.appointments.create', array_filter(['client_id' => $entry->client_id, 'service_id' => $entry->service_id, 'provider_user_id' => $entry->provider_user_id, 'waitlist_id' => $entry->id])) }}"
                                            title="ثبت نوبت در تقویم برای این مراجع"
                                            class="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 transition-colors font-bold text-xs flex items-center gap-0.5">
@@ -288,12 +298,14 @@
                                     @endif
 
                                     {{-- Delete Entry Button --}}
+                                    @canany(['booking.appointments.cancel', 'booking.appointments.manage'])
                                     <button wire:click="deleteEntry({{ $entry->id }})" wire:confirm="آیا از حذف این مراجع از صف انتظار مطمئن هستید؟" title="حذف از صف انتظار"
                                             class="p-1.5 rounded-lg text-gray-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/30 transition-colors cursor-pointer">
                                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
                                         </svg>
                                     </button>
+                                    @endcanany
                                 </div>
                             </td>
                         </tr>
