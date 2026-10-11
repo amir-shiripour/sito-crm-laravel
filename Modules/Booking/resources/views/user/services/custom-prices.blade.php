@@ -1089,8 +1089,10 @@
                     this.toothModalTabIdx = tIdx;
                     this.toothModalSectionIdx = sIdx;
                     this.toothModalBrandIdx = bIdx;
-                    const brand = this.tabs[tIdx]?.sections?.[sIdx]?.brands?.[bIdx];
-                    this.tempSelectedTeeth = Array.isArray(brand?.teeth) ? [...brand.teeth] : [];
+                    const tab = this.tabs[tIdx];
+                    const sec = tab && tab.sections ? tab.sections[sIdx] : null;
+                    const brand = sec && sec.brands ? sec.brands[bIdx] : null;
+                    this.tempSelectedTeeth = brand && Array.isArray(brand.teeth) ? [...brand.teeth] : [];
                     this.showToothModal = true;
                 },
 
@@ -1100,7 +1102,9 @@
 
                 saveToothModal() {
                     if (this.toothModalTabIdx !== null && this.toothModalSectionIdx !== null && this.toothModalBrandIdx !== null) {
-                        const brand = this.tabs[this.toothModalTabIdx]?.sections?.[this.toothModalSectionIdx]?.brands?.[this.toothModalBrandIdx];
+                        const tab = this.tabs[this.toothModalTabIdx];
+                        const sec = tab && tab.sections ? tab.sections[this.toothModalSectionIdx] : null;
+                        const brand = sec && sec.brands ? sec.brands[this.toothModalBrandIdx] : null;
                         if (brand) {
                             brand.teeth = [...this.tempSelectedTeeth].sort((a, b) => a - b);
                         }
@@ -1122,7 +1126,7 @@
                     return this.tempSelectedTeeth.includes(Number(id));
                 },
 
-                // Compatibility with <x-booking::dental-chart /> component
+                // Compatibility with dental chart component methods
                 toggle(id) {
                     this.toggleToothInModal(id);
                 },
@@ -1164,7 +1168,10 @@
 
                 getActiveBrandName() {
                     if (this.toothModalTabIdx !== null && this.toothModalSectionIdx !== null && this.toothModalBrandIdx !== null) {
-                        return this.tabs[this.toothModalTabIdx]?.sections?.[this.toothModalSectionIdx]?.brands?.[this.toothModalBrandIdx]?.name || '';
+                        const tab = this.tabs[this.toothModalTabIdx];
+                        const sec = tab && tab.sections ? tab.sections[this.toothModalSectionIdx] : null;
+                        const brand = sec && sec.brands ? sec.brands[this.toothModalBrandIdx] : null;
+                        return (brand && brand.name) ? brand.name : '';
                     }
                     return '';
                 },
@@ -1173,7 +1180,8 @@
                     const system = this.toothNumberingSystem;
                     const palmerMap = {1:{num:7,pos:'UR'},2:{num:6,pos:'UR'},3:{num:5,pos:'UR'},4:{num:4,pos:'UR'},5:{num:3,pos:'UR'},6:{num:2,pos:'UR'},7:{num:1,pos:'UR'},8:{num:1,pos:'UL'},9:{num:2,pos:'UL'},10:{num:3,pos:'UL'},11:{num:4,pos:'UL'},12:{num:5,pos:'UL'},13:{num:6,pos:'UL'},14:{num:7,pos:'UL'},15:{num:7,pos:'LR'},16:{num:6,pos:'LR'},17:{num:5,pos:'LR'},18:{num:4,pos:'LR'},19:{num:3,pos:'LR'},20:{num:2,pos:'LR'},21:{num:1,pos:'LR'},22:{num:1,pos:'LL'},23:{num:2,pos:'LL'},24:{num:3,pos:'LL'},25:{num:4,pos:'LL'},26:{num:5,pos:'LL'},27:{num:6,pos:'LL'},28:{num:7,pos:'LL'}};
                     const fdiMap = {1:{num:17,pos:'UR'},2:{num:16,pos:'UR'},3:{num:15,pos:'UR'},4:{num:14,pos:'UR'},5:{num:13,pos:'UR'},6:{num:12,pos:'UR'},7:{num:11,pos:'UR'},8:{num:21,pos:'UL'},9:{num:22,pos:'UL'},10:{num:23,pos:'UL'},11:{num:24,pos:'UL'},12:{num:25,pos:'UL'},13:{num:26,pos:'UL'},14:{num:27,pos:'UL'},15:{num:47,pos:'LR'},16:{num:46,pos:'LR'},17:{num:45,pos:'LR'},18:{num:44,pos:'LR'},19:{num:43,pos:'LR'},20:{num:42,pos:'LR'},21:{num:41,pos:'LR'},22:{num:31,pos:'LL'},23:{num:32,pos:'LL'},24:{num:33,pos:'LL'},25:{num:34,pos:'LL'},26:{num:35,pos:'LL'},27:{num:36,pos:'LL'},28:{num:37,pos:'LL'}};
-                    return (system === 'fdi' ? fdiMap : palmerMap)[id] ?? { num: id, pos: 'UR' };
+                    const map = system === 'fdi' ? fdiMap : palmerMap;
+                    return map[id] || { num: id, pos: 'UR' };
                 },
 
                 getToothQuadrantLabel(id) {
@@ -1195,9 +1203,6 @@
                         return 'دندان‌های ' + labels.join('، ');
                     }
                     return `${teeth.length} دندان (${labels.slice(0, 3).join('، ')}…)`;
-                },
-                removeBrand(tIdx, sIdx, bIdx) {
-                    this.tabs[tIdx].sections[sIdx].brands.splice(bIdx, 1);
                 },
 
                 formatPriceDisplay(val) {
