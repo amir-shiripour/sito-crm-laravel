@@ -123,12 +123,16 @@ class ProjectsUserVisibilityService
         }
 
         // Preload roles on users that haven't loaded them yet to prevent N+1 queries
-        $usersToLoad = $members->pluck('user')->filter(function ($u) {
-            return $u && !$u->relationLoaded('roles');
-        });
+        if ($members instanceof \Illuminate\Database\Eloquent\Collection) {
+            $members->loadMissing('user.roles');
+        } else {
+            $usersToLoad = $members->pluck('user')->filter(function ($u) {
+                return $u && is_object($u) && method_exists($u, 'relationLoaded') && !$u->relationLoaded('roles');
+            });
 
-        if ($usersToLoad->isNotEmpty()) {
-            $usersToLoad->load('roles');
+            if ($usersToLoad->isNotEmpty()) {
+                (new \Illuminate\Database\Eloquent\Collection($usersToLoad->values()))->load('roles');
+            }
         }
 
         return $members->filter(function ($member) use ($viewer) {
