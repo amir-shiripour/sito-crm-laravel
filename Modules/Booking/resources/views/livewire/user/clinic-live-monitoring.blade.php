@@ -51,6 +51,7 @@
             </button>
 
             {{-- پیوند به ثبت نوبت جدید --}}
+            @canany(['booking.appointments.create', 'booking.appointments.manage'])
             <a href="{{ route('user.booking.appointments.create') }}" 
                class="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-sm transition">
                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -58,6 +59,7 @@
                 </svg>
                 <span>ثبت نوبت جدید</span>
             </a>
+            @endcanany
 
             {{-- پیوند به لیست نوبت‌ها و تقویم --}}
             <a href="{{ route('user.booking.appointments.index') }}" 
@@ -681,7 +683,7 @@
                                     @endif
 
                                     {{-- دکمه‌های عملیات سریع برای هر مراجع هم‌زمان --}}
-                                    @if($quickStatusEnabled && $activePatients->count() > 1)
+                                    @if($quickStatusEnabled && $activePatients->count() > 1 && (auth()->user()?->can('booking.appointments.edit') || auth()->user()?->can('booking.appointments.manage')))
                                         <div class="flex flex-wrap items-center gap-2 pt-1 border-t border-gray-100 dark:border-gray-700">
                                             <button wire:click="finishVisit({{ $activeItem->id }})" 
                                                     type="button" 
@@ -718,7 +720,7 @@
                 </div>
 
                 {{-- دکمه‌های عملیات سریع برای حالت تکی بیمار فعلی --}}
-                @if($activePatients && $activePatients->count() === 1 && $quickStatusEnabled)
+                @if($activePatients && $activePatients->count() === 1 && $quickStatusEnabled && (auth()->user()?->can('booking.appointments.edit') || auth()->user()?->can('booking.appointments.manage')))
                     @php $singleActive = $activePatients->first(); @endphp
                     <div class="mt-6 pt-4 border-t border-gray-100 dark:border-gray-700 flex flex-wrap gap-2">
                         <button wire:click="finishVisit({{ $singleActive->id }})" 
@@ -871,7 +873,7 @@
                             </div>
 
                             {{-- ابزارهای هوشمند مدیریت تاخیر و صف (قبل و بعد از زمان نوبت) --}}
-                            @if(empty($nextInQueue->entry_at_utc) && $quickStatusEnabled)
+                            @if(empty($nextInQueue->entry_at_utc) && $quickStatusEnabled && (auth()->user()?->can('booking.appointments.edit') || auth()->user()?->can('booking.appointments.manage')))
                                 <div class="bg-amber-50/70 dark:bg-amber-950/30 p-3 rounded-xl border border-amber-200 dark:border-amber-800/60 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5">
                                     <div>
                                         @if($nextDeclaredDelay > 0)
@@ -954,7 +956,7 @@
                                                         <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-teal-100 text-teal-800 dark:bg-teal-900/50">حاضر در لابی</span>
                                                     @endif
                                                 </div>
-                                                @if($quickStatusEnabled)
+                                                @if($quickStatusEnabled && (auth()->user()?->can('booking.appointments.edit') || auth()->user()?->can('booking.appointments.manage')))
                                                     <button wire:click="startVisit({{ $concurrentNext->id }})" 
                                                             type="button" 
                                                             class="px-2 py-0.5 text-[10px] font-bold text-teal-700 bg-teal-50 dark:bg-teal-900/40 hover:bg-teal-100 rounded">
@@ -986,7 +988,7 @@
                 </div>
 
                 {{-- دکمه‌های عملیات سریع برای نفر بعدی --}}
-                @if($nextInQueue && $quickStatusEnabled)
+                @if($nextInQueue && $quickStatusEnabled && (auth()->user()?->can('booking.appointments.edit') || auth()->user()?->can('booking.appointments.manage')))
                     <div class="mt-6 pt-4 border-t border-gray-100 dark:border-gray-700 flex flex-wrap gap-2">
                         @if(empty($nextInQueue->entry_at_utc))
                             <button wire:click="checkIn({{ $nextInQueue->id }})" 
@@ -1132,7 +1134,7 @@
                                 @endif
                             </td>
                             <td class="py-3.5 px-4 text-center">
-                                @if($quickStatusEnabled)
+                                @if($quickStatusEnabled && (auth()->user()?->can('booking.appointments.edit') || auth()->user()?->can('booking.appointments.manage')))
                                     <div class="inline-flex items-center gap-1.5 justify-center">
                                         {{-- ثبت ورود به لابی --}}
                                         @if(empty($apt->entry_at_utc) && $isRowActive)

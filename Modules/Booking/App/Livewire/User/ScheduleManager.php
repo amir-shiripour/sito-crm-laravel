@@ -671,7 +671,11 @@ class ScheduleManager extends Component
 
     public function setModalClientTab(string $tab): void
     {
-        $isQueueEnabled = class_exists(\Modules\Booking\Entities\BookingWaitlist::class) && BookingSetting::isQueueEnabled();
+        $user = Auth::user();
+        $isQueueEnabled = class_exists(\Modules\Booking\Entities\BookingWaitlist::class)
+            && BookingSetting::isQueueEnabled()
+            && ($user && $user->can('booking.queue.access'));
+
         if ($tab === 'waitlist' && !$isQueueEnabled) {
             $tab = 'search';
         }
@@ -686,9 +690,37 @@ class ScheduleManager extends Component
             return;
         }
 
-        $entry = \Modules\Booking\Entities\BookingWaitlist::with(['client', 'service', 'provider'])->find($waitlistId);
+        $user = Auth::user();
+        if (!$user || !$user->can('booking.queue.access') || !BookingSetting::isQueueEnabled()) {
+            return;
+        }
+
+        $query = \Modules\Booking\Entities\BookingWaitlist::with(['client', 'service', 'provider']);
+
+        $canViewAllWaitlist = $this->isAdminUser($user)
+            || $user->can('booking.appointments.view.all')
+            || $user->can('booking.manage')
+            || $user->can('booking.appointments.manage');
+
+        $userIsProvider = \Modules\Booking\Entities\BookingServiceProvider::where('provider_user_id', $user->id)->exists();
+
+        if (!$canViewAllWaitlist && $userIsProvider) {
+            $query->where(function ($q) use ($user) {
+                $q->where('provider_user_id', $user->id)
+                  ->orWhere('created_by_user_id', $user->id);
+            });
+        }
+
+        $entry = $query->find($waitlistId);
         if (!$entry) {
             return;
+        }
+
+        if ($entry->client_id && class_exists(Client::class)) {
+            $client = Client::query()->visibleForUser($user)->find($entry->client_id);
+            if (!$client) {
+                return;
+            }
         }
 
         $this->modalWaitlistId = $entry->id;
@@ -720,6 +752,12 @@ class ScheduleManager extends Component
 
     public function toggleWaitlistDrawer(): void
     {
+        $user = Auth::user();
+        if (!$user || !$user->can('booking.queue.access') || !BookingSetting::isQueueEnabled()) {
+            $this->showWaitlistDrawer = false;
+            return;
+        }
+
         $this->showWaitlistDrawer = !$this->showWaitlistDrawer;
     }
 
@@ -1007,9 +1045,36 @@ class ScheduleManager extends Component
         // Close drawer so operator clearly sees the booking modal
         $this->showWaitlistDrawer = false;
 
+        $user = Auth::user();
+        if (!$user || !$user->can('booking.queue.access') || !BookingSetting::isQueueEnabled()) {
+            return;
+        }
+
+        if (!$this->isAdminUser($user) && !$user->can('booking.appointments.create') && !$user->can('booking.appointments.manage')) {
+            return;
+        }
+
         $entry = null;
         if (class_exists(\Modules\Booking\Entities\BookingWaitlist::class)) {
-            $entry = \Modules\Booking\Entities\BookingWaitlist::find($waitlistId);
+            $query = \Modules\Booking\Entities\BookingWaitlist::query();
+            $canViewAllWaitlist = $this->isAdminUser($user)
+                || $user->can('booking.appointments.view.all')
+                || $user->can('booking.manage')
+                || $user->can('booking.appointments.manage');
+            $userIsProvider = \Modules\Booking\Entities\BookingServiceProvider::where('provider_user_id', $user->id)->exists();
+
+            if (!$canViewAllWaitlist && $userIsProvider) {
+                $query->where(function ($q) use ($user) {
+                    $q->where('provider_user_id', $user->id)
+                      ->orWhere('created_by_user_id', $user->id);
+                });
+            }
+
+            $entry = $query->find($waitlistId);
+        }
+
+        if (!$entry) {
+            return;
         }
 
         $targetProviderId = $entry?->provider_user_id ?: $this->selectedProviderId;
@@ -2864,13 +2929,22 @@ class ScheduleManager extends Component
         }
 
         // 🔸 بررسی وضعیت فعال بودن صف انتظار و بارگذاری برای کشوی هوشمند و مودال ثبت سریع
-        $isQueueEnabled = class_exists(\Modules\Booking\Entities\BookingWaitlist::class) && BookingSetting::isQueueEnabled();
+        $isQueueEnabled = class_exists(\Modules\Booking\Entities\BookingWaitlist::class)
+            && BookingSetting::isQueueEnabled()
+            && ($user && $user->can('booking.queue.access'));
         $waitlistForModal = collect();
         $waitlistForDrawer = collect();
         $waitlistCount = 0;
         $selectedWaitlistEntry = null;
 
         if ($isQueueEnabled) {
+            $canViewAllWaitlist = $this->isAdminUser($user)
+                || $user->can('booking.appointments.view.all')
+                || $user->can('booking.manage')
+                || $user->can('booking.appointments.manage');
+
+            $userIsProvider = $user ? \Modules\Booking\Entities\BookingServiceProvider::where('provider_user_id', $user->id)->exists() : false;
+
             $baseWaitlistQuery = \Modules\Booking\Entities\BookingWaitlist::query()
                 ->whereIn('status', [
                     \Modules\Booking\Entities\BookingWaitlist::STATUS_WAITING,
@@ -2878,6 +2952,22 @@ class ScheduleManager extends Component
                     \Modules\Booking\Entities\BookingWaitlist::STATUS_IN_PROGRESS
                 ])
                 ->with(['client', 'service', 'provider']);
+
+            if ($user && !$canViewAllWaitlist && $userIsProvider) {
+                $baseWaitlistQuery->where(function ($q) use ($user) {
+                    $q->where('provider_user_id', $user->id)
+                      ->orWhere('created_by_user_id', $user->id);
+                });
+            }
+
+            if ($user && class_exists(Client::class)) {
+                $baseWaitlistQuery->where(function ($q) use ($user) {
+                    $q->whereNull('client_id')
+                      ->orWhereHas('client', function ($cq) use ($user) {
+                          $cq->visibleForUser($user);
+                      });
+                });
+            }
 
             $waitlistCount = (clone $baseWaitlistQuery)->count();
 

@@ -368,15 +368,28 @@ class ClientController extends Controller
         // ── Booking Waitlists check ──────────────────────────────────
         $isBookingQueueEnabled = $this->isBookingQueueEnabled();
         $clientWaitlists = collect([]);
-        if ($isBookingQueueEnabled && class_exists(BookingWaitlist::class)) {
+        $currentUser = auth()->user();
+        if ($isBookingQueueEnabled && class_exists(BookingWaitlist::class) && $currentUser && ($currentUser->hasRole(['super-admin', 'admin']) || $currentUser->can('booking.queue.access'))) {
             try {
-                $clientWaitlists = BookingWaitlist::with(['service', 'provider'])
+                $waitlistQuery = BookingWaitlist::with(['service', 'provider'])
                     ->where('client_id', $client->id)
                     ->whereIn('status', [
                         BookingWaitlist::STATUS_WAITING,
                         BookingWaitlist::STATUS_NOTIFIED,
                         BookingWaitlist::STATUS_IN_PROGRESS
-                    ])
+                    ]);
+
+                if (class_exists(\Modules\Booking\Services\ClinicMonitoringService::class)) {
+                    $monitoringService = app(\Modules\Booking\Services\ClinicMonitoringService::class);
+                    if (!$monitoringService->canViewAllAppointments($currentUser) && $monitoringService->userIsProvider($currentUser)) {
+                        $waitlistQuery->where(function ($q) use ($currentUser) {
+                            $q->where('provider_user_id', $currentUser->id)
+                              ->orWhere('created_by_user_id', $currentUser->id);
+                        });
+                    }
+                }
+
+                $clientWaitlists = $waitlistQuery
                     ->get()
                     ->sortBy(fn($item) => $item->queue_rank ?? $item->position ?? 0)
                     ->values();

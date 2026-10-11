@@ -550,6 +550,8 @@ class ServiceController extends Controller
             'tabs.*.sections.*.brands.*.price' => ['nullable', 'numeric', 'min:0'],
             'tabs.*.sections.*.brands.*.is_installment' => ['nullable', 'in:0,1,true,false'],
             'tabs.*.sections.*.brands.*.brand_uuid' => ['nullable', 'string', 'max:64'],
+            'tabs.*.sections.*.brands.*.teeth' => ['nullable', 'array'],
+            'tabs.*.sections.*.brands.*.teeth.*' => ['nullable', 'integer', 'min:1', 'max:28'],
         ]);
 
         $sanitizedTabs = [];
@@ -563,11 +565,17 @@ class ServiceController extends Controller
                 foreach ($section['brands'] ?? [] as $brand) {
                     if (!empty($brand['name']) || isset($brand['price'])) {
                         $brandUuid = !empty($brand['brand_uuid']) ? trim($brand['brand_uuid']) : (string) \Illuminate\Support\Str::uuid();
+                        $teeth = [];
+                        if (!empty($brand['teeth']) && is_array($brand['teeth'])) {
+                            $teeth = array_values(array_unique(array_map('intval', array_filter($brand['teeth']))));
+                            sort($teeth);
+                        }
                         $brands[] = [
                             'name'  => $brand['name'] ?? '',
                             'price' => $brand['price'] !== null ? (float)$brand['price'] : 0,
                             'is_installment' => isset($brand['is_installment']) ? (bool)$brand['is_installment'] : false,
                             'brand_uuid' => $brandUuid,
+                            'teeth' => $teeth,
                         ];
                     }
                 }

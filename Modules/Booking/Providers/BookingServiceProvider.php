@@ -33,6 +33,32 @@ class BookingServiceProvider extends ServiceProvider
                    ]);
         });
 
+        // 👈 گیت دسترسی به مانیتورینگ زنده (پشتیبانی از دسترسی سراسری یا پزشکان با دسترسی اختصاصی)
+        Gate::define('booking.monitoring.access', function ($user) {
+            if (!$user) {
+                return false;
+            }
+            return $user->hasRole(['super-admin', 'admin']) ||
+                   $user->canAny([
+                       'booking.manage',
+                       'booking.appointments.manage',
+                       'booking.appointments.view',
+                       'booking.appointments.view.all',
+                       'booking.appointments.view.own',
+                   ]);
+        });
+
+        // 👈 گیت دسترسی به صف انتظار (مشروط به فعال بودن صف در تنظیمات و داشتن مجوز نوبت‌دهی)
+        Gate::define('booking.queue.access', function ($user) {
+            if (!$user) {
+                return false;
+            }
+            if (!\Modules\Booking\Entities\BookingSetting::isQueueEnabled()) {
+                return false;
+            }
+            return $user->can('booking.monitoring.access');
+        });
+
         \Livewire\Livewire::component('booking.user.schedule-manager', \Modules\Booking\App\Livewire\User\ScheduleManager::class);
         \Livewire\Livewire::component('booking.user.booking-waitlist-manager', \Modules\Booking\App\Livewire\User\BookingWaitlistManager::class);
         \Livewire\Livewire::component('booking.user.booking-waitlist-modal', \Modules\Booking\App\Livewire\User\BookingWaitlistModal::class);

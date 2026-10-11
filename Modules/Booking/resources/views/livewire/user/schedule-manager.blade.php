@@ -2033,12 +2033,14 @@
                             </div>
                         </div>
                         <div class="flex items-center gap-2">
+                            @if(\Modules\Booking\Entities\BookingSetting::isQueueEnabled() && auth()->user()?->can('booking.queue.access'))
                             <a href="{{ route('user.booking.waitlist.index') }}" target="_blank"
                                class="px-3 py-1.5 rounded-xl bg-gray-100 dark:bg-gray-700/80 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-600 text-xs font-bold transition shadow-2xs flex items-center gap-1"
                                title="ورود به صفحه مدیریت کامل صف">
                                 <span>مدیریت صف</span>
                                 <span class="text-xs">↗</span>
                             </a>
+                            @endif
                             <button type="button" wire:click="closeWaitlistDrawer"
                                     class="p-2 rounded-xl bg-gray-100 dark:bg-gray-700/80 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/60 dark:hover:text-rose-300 text-gray-500 dark:text-gray-300 border border-gray-200 dark:border-gray-600 transition shadow-2xs cursor-pointer"
                                     title="بستن کشو">
@@ -2104,8 +2106,10 @@
                                 $statusColors = \Modules\Booking\Entities\BookingWaitlist::statusColors()[$wItem->status] ?? 'amber';
                                 $isMatchingCalendarService = $selectedServiceId && $wItem->service_id == $selectedServiceId;
                                 $isMatchingCalendarProvider = $selectedProviderId && $wItem->provider_user_id == $selectedProviderId;
-                                $clientDisplayName = $wItem->client?->full_name ?? $wItem->client?->username ?? 'مشتری نامشخص';
-                                $clientDisplayPhone = $wItem->client?->phone ?? ($wItem->client?->national_code ?? '—');
+                                $canViewClientDetails = auth()->user()?->can('clients.view');
+                                $clientDisplayName = $canViewClientDetails ? ($wItem->client?->full_name ?? $wItem->client?->username ?? 'مشتری نامشخص') : 'مشتری #' . ($wItem->client_id ?? '—');
+                                $clientDisplayPhone = $canViewClientDetails ? ($wItem->client?->phone ?? ($wItem->client?->national_code ?? '—')) : '—';
+                                $canCreateAppt = auth()->user()?->canany(['booking.appointments.create', 'booking.appointments.manage']) || auth()->user()?->hasRole(['super-admin', 'admin']);
                             @endphp
                             <div class="bg-white dark:bg-gray-800 rounded-2xl border {{ ($isMatchingCalendarService && $isMatchingCalendarProvider) ? 'border-amber-400 dark:border-amber-500 ring-2 ring-amber-400/40 dark:ring-amber-500/30' : 'border-gray-200 dark:border-gray-700' }} p-4 shadow-sm hover:shadow-md transition-all space-y-3">
                                 
@@ -2180,7 +2184,7 @@
                                 @endif
 
                                 {{-- Action Buttons --}}
-                                <div class="grid grid-cols-2 gap-2.5 pt-1.5 border-t border-gray-100 dark:border-gray-700/80">
+                                <div class="grid {{ $canCreateAppt ? 'grid-cols-2' : 'grid-cols-1' }} gap-2.5 pt-1.5 border-t border-gray-100 dark:border-gray-700/80">
                                     {{-- Action 1: Filter Calendar & Sync Step --}}
                                     <button type="button"
                                             wire:click="applyWaitlistFilter({{ $wItem->id }})"
@@ -2191,6 +2195,7 @@
                                     </button>
 
                                     {{-- Action 2: Direct Book / Quick Modal --}}
+                                    @if($canCreateAppt)
                                     <button type="button"
                                             wire:click="bookFromWaitlist({{ $wItem->id }})"
                                             class="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white text-[11px] font-black transition-all shadow-xs active:scale-98 cursor-pointer"
@@ -2198,6 +2203,7 @@
                                         <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
                                         <span>ثبت نوبت فوری</span>
                                     </button>
+                                    @endif
                                 </div>
                             </div>
                         @empty
@@ -2224,9 +2230,11 @@
                         <span class="flex items-center gap-1 text-gray-600 dark:text-gray-300">
                             💡 کلیک روی دکمه‌ها کشوی صف را می‌بندد تا تقویم یا فرم ثبت را ببینید.
                         </span>
+                        @if(\Modules\Booking\Entities\BookingSetting::isQueueEnabled() && auth()->user()?->can('booking.queue.access'))
                         <a href="{{ route('user.booking.waitlist.index') }}" class="text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 hover:underline font-black shrink-0">
                             مدیریت صف ↵
                         </a>
+                        @endif
                     </div>
                 </div>
             </div>

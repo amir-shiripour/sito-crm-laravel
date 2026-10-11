@@ -101,7 +101,10 @@ return [
     [
         'title'      => __('booking::menu.monitoring'),
         'route'      => 'user.booking.monitoring.index',
-        'permission' => 'booking.appointments.view',
+        'permission' => 'booking.monitoring.access',
+        'show'       => function() {
+            return auth()->user()?->can('booking.monitoring.access');
+        },
         'icon'       => '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5">
             <rect x="2" y="3" width="20" height="14" rx="2" />
             <line x1="8" y1="21" x2="16" y2="21" />
@@ -116,10 +119,9 @@ return [
     [
         'title'      => __('booking::menu.waitlist'),
         'route'      => 'user.booking.waitlist.index',
-        'permission' => 'booking.appointments.view',
+        'permission' => 'booking.queue.access',
         'show'       => function() {
-            return \Modules\Booking\Entities\BookingSetting::isQueueEnabled() &&
-                   auth()->user()?->can('booking.appointments.view');
+            return auth()->user()?->can('booking.queue.access');
         },
         'icon'       => '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5">
             <path stroke="none" d="M0 0h24v24H0z" fill="none"/>

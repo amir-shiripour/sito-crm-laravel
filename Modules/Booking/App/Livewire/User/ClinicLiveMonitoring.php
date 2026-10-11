@@ -60,8 +60,8 @@ class ClinicLiveMonitoring extends Component
     public function mount(ClinicMonitoringService $monitoringService): void
     {
         $user = Auth::user();
-        if (! $user || ! $user->can('booking.appointments.view')) {
-            abort(403, 'شما مجوز مشاهده نوبت‌ها را ندارید.');
+        if (! $user || ! $user->can('booking.monitoring.access')) {
+            abort(403, 'شما مجوز دسترسی به مانیتورینگ زنده نوبت‌ها را ندارید.');
         }
 
         $settings = BookingSetting::current();

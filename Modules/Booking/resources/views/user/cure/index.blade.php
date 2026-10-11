@@ -1041,53 +1041,80 @@
                                                 <div x-show="section.title" class="text-xs font-semibold text-violet-600 dark:text-violet-400 mb-2">
                                                     <span x-text="section.title"></span>
                                                 </div>
-                                                <div class="relative" x-data="{ ddOpen: false }">
-                                                    <div @click="ddOpen = !ddOpen" class="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 text-sm cursor-pointer flex justify-between items-center">
-                                                        <div class="truncate">
-                                                            <template x-if="getSelectedCountForTabAndSection(tIdx, sIdx) === 0">
-                                                                <span class="text-gray-500">انتخاب برند...</span>
-                                                            </template>
-                                                            <template x-if="getSelectedCountForTabAndSection(tIdx, sIdx) > 0">
-                                                                <span class="font-bold text-indigo-600" x-text="getSelectedCountForTabAndSection(tIdx, sIdx) + ' برند انتخاب شده'"></span>
+                                                <template x-if="section.type === 'براساس نقشه دندانی'">
+                                                    <div class="p-4 rounded-2xl border border-indigo-200 dark:border-indigo-800/60 bg-indigo-50/40 dark:bg-indigo-950/20 space-y-2.5">
+                                                        <div class="flex items-center justify-between text-xs flex-wrap gap-2">
+                                                            <div class="flex items-center gap-1.5 font-bold text-indigo-700 dark:text-indigo-300">
+                                                                <svg class="w-4 h-4 text-indigo-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                                                                </svg>
+                                                                <span>محاسبه خودکار براساس نقشه دندانی فعال است</span>
+                                                            </div>
+                                                            <span class="text-[11px] text-slate-500 dark:text-slate-400">با انتخاب دندان‌ها روی نقشه، تعرفه هر دندان خودکار محاسبه می‌شود</span>
+                                                        </div>
+                                                        <div class="flex flex-wrap gap-1.5 pt-1">
+                                                            <template x-for="(brand, bIdx) in (section.brands || [])" :key="bIdx">
+                                                                <button type="button"
+                                                                        @click="selectDentalGroupTeeth(brand)"
+                                                                        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium border bg-white dark:bg-slate-800 border-indigo-200 dark:border-indigo-700/60 text-slate-700 dark:text-slate-200 hover:border-indigo-500 transition-colors shadow-xs">
+                                                                    <span class="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
+                                                                    <span class="font-bold" x-text="brand.name"></span>
+                                                                    <span class="text-indigo-600 dark:text-indigo-400 font-semibold" x-text="`(${formatPrice(brand.price)})`"></span>
+                                                                    <span class="text-[10px] bg-slate-100 dark:bg-slate-700 px-1.5 py-0.5 rounded text-slate-500 dark:text-slate-300 font-medium" x-text="`${(brand.teeth || []).length} دندان`"></span>
+                                                                </button>
                                                             </template>
                                                         </div>
-                                                        <svg class="w-4 h-4 transition-transform" :class="ddOpen ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-                                                        </svg>
                                                     </div>
-                                                    <div x-show="ddOpen" @click.away="ddOpen = false" class="absolute z-50 w-full mt-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-xl max-h-60 overflow-y-auto sc-thin">
-                                                        <template x-for="(brand, bIdx) in (section.brands || [])" :key="bIdx">
-                                                            <label class="flex items-center gap-3 px-4 py-3 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 cursor-pointer border-b border-gray-100 dark:border-gray-700 last:border-0">
-                                                                <input type="checkbox" :checked="isBrandSelectedInBatch(tIdx, sIdx, bIdx)" @change="toggleBatchBrand(tIdx, sIdx, bIdx)" class="w-5 h-5 text-indigo-600 rounded border-gray-300">
-                                                                <div class="flex-1">
-                                                                    <div class="flex items-center gap-2">
-                                                                        <p class="font-medium" x-text="brand.name"></p>
-                                                                        <span x-show="brand.is_installment && getInstallmentPlansForBrand(selectedService?.id, tab.title, section.title, brand.name).length > 0" class="inst-badge">
-                                                                            <svg class="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                                                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
-                                                                            </svg>
-                                                                            اقساطی
-                                                                        </span>
-                                                                    </div>
-                                                                    <p class="text-xs text-gray-500" x-text="(Number(brand.price)||0).toLocaleString('fa-IR') + ' ' + currencyLabel"></p>
-                                                                    <template x-if="brand.is_installment && isBrandSelectedInBatch(tIdx, sIdx, bIdx)">
-                                                                        <div class="mt-2 space-y-1">
-                                                                            <template x-for="instPlan in getInstallmentPlansForBrand(selectedService?.id, tab.title, section.title, brand.name)" :key="instPlan.id">
-                                                                                <div class="text-[10px] text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/20 px-2 py-1 rounded-lg">
-                                                                                    <span x-text="instPlan.title"></span>
-                                                                                    <span class="mx-1">·</span>
-                                                                                    <span x-text="getEffectiveDownPayment(instPlan, selectedService?.id, tab.title, section.title, brand.name) + '% پیش‌پرداخت'"></span>
-                                                                                    <span class="mx-1">·</span>
-                                                                                    <span x-text="getEffectiveMonths(instPlan, selectedService?.id, tab.title, section.title, brand.name) + ' ماه'"></span>
-                                                                                </div>
-                                                                            </template>
+                                                </template>
+                                                <template x-if="section.type !== 'براساس نقشه دندانی'">
+                                                    <div class="relative" x-data="{ ddOpen: false }">
+                                                        <div @click="ddOpen = !ddOpen" class="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 text-sm cursor-pointer flex justify-between items-center">
+                                                            <div class="truncate">
+                                                                <template x-if="getSelectedCountForTabAndSection(tIdx, sIdx) === 0">
+                                                                    <span class="text-gray-500">انتخاب برند...</span>
+                                                                </template>
+                                                                <template x-if="getSelectedCountForTabAndSection(tIdx, sIdx) > 0">
+                                                                    <span class="font-bold text-indigo-600" x-text="getSelectedCountForTabAndSection(tIdx, sIdx) + ' برند انتخاب شده'"></span>
+                                                                </template>
+                                                            </div>
+                                                            <svg class="w-4 h-4 transition-transform" :class="ddOpen ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                                                            </svg>
+                                                        </div>
+                                                        <div x-show="ddOpen" @click.away="ddOpen = false" class="absolute z-50 w-full mt-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-xl max-h-60 overflow-y-auto sc-thin">
+                                                            <template x-for="(brand, bIdx) in (section.brands || [])" :key="bIdx">
+                                                                <label class="flex items-center gap-3 px-4 py-3 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 cursor-pointer border-b border-gray-100 dark:border-gray-700 last:border-0">
+                                                                    <input type="checkbox" :checked="isBrandSelectedInBatch(tIdx, sIdx, bIdx)" @change="toggleBatchBrand(tIdx, sIdx, bIdx)" class="w-5 h-5 text-indigo-600 rounded border-gray-300">
+                                                                    <div class="flex-1">
+                                                                        <div class="flex items-center gap-2">
+                                                                            <p class="font-medium" x-text="brand.name"></p>
+                                                                            <span x-show="brand.is_installment && getInstallmentPlansForBrand(selectedService?.id, tab.title, section.title, brand.name).length > 0" class="inst-badge">
+                                                                                <svg class="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+                                                                                </svg>
+                                                                                اقساطی
+                                                                            </span>
                                                                         </div>
-                                                                    </template>
-                                                                </div>
-                                                            </label>
-                                                        </template>
+                                                                        <p class="text-xs text-gray-500" x-text="(Number(brand.price)||0).toLocaleString('fa-IR') + ' ' + currencyLabel"></p>
+                                                                        <template x-if="brand.is_installment && isBrandSelectedInBatch(tIdx, sIdx, bIdx)">
+                                                                            <div class="mt-2 space-y-1">
+                                                                                <template x-for="instPlan in getInstallmentPlansForBrand(selectedService?.id, tab.title, section.title, brand.name)" :key="instPlan.id">
+                                                                                    <div class="text-[10px] text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/20 px-2 py-1 rounded-lg">
+                                                                                        <span x-text="instPlan.title"></span>
+                                                                                        <span class="mx-1">·</span>
+                                                                                        <span x-text="getEffectiveDownPayment(instPlan, selectedService?.id, tab.title, section.title, brand.name) + '% پیش‌پرداخت'"></span>
+                                                                                        <span class="mx-1">·</span>
+                                                                                        <span x-text="getEffectiveMonths(instPlan, selectedService?.id, tab.title, section.title, brand.name) + ' ماه'"></span>
+                                                                                    </div>
+                                                                                </template>
+                                                                            </div>
+                                                                        </template>
+                                                                    </div>
+                                                                </label>
+                                                            </template>
+                                                        </div>
                                                     </div>
-                                                </div>
+                                                </template>
                                             </div>
                                         </template>
                                     </div>
@@ -1148,7 +1175,13 @@
                                                                             <span class="text-gray-400">انتخاب برند از این بخش...</span>
                                                                         </template>
                                                                         <template x-if="getToothSelectedCountForTabAndSection(aIdx, tIdx, sIdx) > 0">
-                                                                            <span class="font-bold text-violet-600" x-text="getToothSelectedCountForTabAndSection(aIdx, tIdx, sIdx) + ' برند انتخاب شده'"></span>
+                                                                            <div class="flex items-center gap-1.5 truncate">
+                                                                                <span :class="section.type === 'براساس نقشه دندانی' ? 'font-bold text-indigo-600 dark:text-indigo-400' : 'font-bold text-violet-600 dark:text-violet-400'"
+                                                                                      x-text="getToothSelectedBrandNames(aIdx, tIdx, sIdx) || (getToothSelectedCountForTabAndSection(aIdx, tIdx, sIdx) + ' برند انتخاب شده')"></span>
+                                                                                <template x-if="section.type === 'براساس نقشه دندانی'">
+                                                                                    <span class="text-[9px] px-1.5 py-0.5 rounded-md font-bold bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 shrink-0">محاسبه خودکار</span>
+                                                                                </template>
+                                                                            </div>
                                                                         </template>
                                                                     </div>
                                                                     <svg class="w-4 h-4 text-gray-400 transition-transform" :class="ddOpen ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1162,6 +1195,9 @@
                                                                             <div class="flex-1">
                                                                                 <div class="flex items-center gap-2">
                                                                                     <p class="font-medium" x-text="brand.name"></p>
+                                                                                    <template x-if="section.type === 'براساس نقشه دندانی' && Array.isArray(brand.teeth) && brand.teeth.map(Number).includes(Number(assignment.toothId))">
+                                                                                        <span class="text-[9px] text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/40 px-1.5 py-0.5 rounded font-bold">مطابق با این دندان</span>
+                                                                                    </template>
                                                                                     <span x-show="brand.is_installment && getInstallmentPlansForBrand(selectedService?.id, tab.title, section.title, brand.name).length > 0" class="inst-badge">اقساطی</span>
                                                                                 </div>
                                                                                 <p class="text-xs text-gray-500" x-text="(Number(brand.price)||0).toLocaleString('fa-IR') + ' ' + currencyLabel"></p>
@@ -3051,7 +3087,7 @@ snapshots: existingPlan?.snapshots || [],
                 },
 
                 isSingleChoiceType(type) {
-                    const singleTypes = ['دو گزینه‌ای دارد یا ندارد', 'به ازای هر واحد', 'به ازای هر دندان', 'به ازای هر فک', 'به ازای کوادران', 'به ازای واحد دندان‌دار'];
+                    const singleTypes = ['براساس نقشه دندانی', 'دو گزینه‌ای دارد یا ندارد', 'به ازای هر واحد', 'به ازای هر دندان', 'به ازای هر فک', 'به ازای کوادران', 'به ازای واحد دندان‌دار'];
                     return singleTypes.includes(type);
                 },
 
@@ -4917,6 +4953,11 @@ snapshots: existingPlan?.snapshots || [],
                     if (this.serviceDragMoved) return;
                     if (this.selectedService && this.selectedService.id === service.id) { this.cancelAssignment(); return; }
                     this.selectedService = service;
+                    this.perToothAssignments = [];
+                    this.batchBrandSelections = {};
+                    if (this.selectedTeeth.length > 0) {
+                        this.buildPerToothAssignments();
+                    }
                 },
 
                 cancelAssignment() {
@@ -4933,12 +4974,97 @@ snapshots: existingPlan?.snapshots || [],
                     return counts;
                 },
 
+                get hasDentalChartPricing() {
+                    return (this.selectedService?.custom_prices?.tabs ?? []).some(t =>
+                        (t.sections ?? []).some(s => s.type === 'براساس نقشه دندانی')
+                    );
+                },
+
+                get dentalChartPricingItems() {
+                    const items = [];
+                    (this.selectedService?.custom_prices?.tabs ?? []).forEach((tab, tIdx) => {
+                        (tab.sections ?? []).forEach((section, sIdx) => {
+                            if (section.type === 'براساس نقشه دندانی') {
+                                (section.brands ?? []).forEach((brand, bIdx) => {
+                                    items.push({
+                                        tabTitle: tab.title,
+                                        sectionTitle: section.title,
+                                        name: brand.name,
+                                        price: Number(brand.price) || 0,
+                                        teeth: Array.isArray(brand.teeth) ? brand.teeth.map(Number) : [],
+                                        is_installment: !!brand.is_installment,
+                                        tabIdx: tIdx,
+                                        sectionIdx: sIdx,
+                                        brandIdx: bIdx
+                                    });
+                                });
+                            }
+                        });
+                    });
+                    return items;
+                },
+
+                selectDentalGroupTeeth(brand) {
+                    if (this.isReadOnly || !brand || !Array.isArray(brand.teeth) || brand.teeth.length === 0) return;
+                    const brandTeeth = brand.teeth.map(Number);
+                    brandTeeth.forEach(t => {
+                        if (!this.selectedTeeth.includes(t)) {
+                            this.selectedTeeth.push(t);
+                        }
+                    });
+                    this.selectedTeeth.sort((a, b) => a - b);
+                    this.preset = 'none';
+                    this.buildPerToothAssignments();
+                    showToast(`دندان‌های تعرفه «${brand.name || ''}» روی نقشه انتخاب شدند`, 'info');
+                },
 
                 buildPerToothAssignments() {
                     if (this.isReadOnly) return;
                     const basePrice = Number(this.selectedService?.base_price) || 0;
                     const existing = this.perToothAssignments.reduce((acc, a) => { acc[a.toothId] = a; return acc; }, {});
-                    this.perToothAssignments = this.selectedTeeth.map(id => existing[id] || { toothId: id, brands: [], brandSelections: {}, price: 0, modified: false });
+
+                    const hasDentalChartSections = (this.selectedService?.custom_prices?.tabs ?? []).some(t =>
+                        (t.sections ?? []).some(s => s.type === 'براساس نقشه دندانی')
+                    );
+
+                    this.perToothAssignments = this.selectedTeeth.map(id => {
+                        if (existing[id]) {
+                            return existing[id];
+                        }
+
+                        const assignment = { toothId: id, brands: [], brandSelections: {}, price: 0, modified: false, autoMatched: false };
+
+                        if (hasDentalChartSections) {
+                            (this.selectedService?.custom_prices?.tabs ?? []).forEach((tab, tIdx) => {
+                                (tab.sections ?? []).forEach((section, sIdx) => {
+                                    if (section.type === 'براساس نقشه دندانی') {
+                                        const key = `${tIdx}-${sIdx}`;
+                                        const matchBIdx = (section.brands ?? []).findIndex(b =>
+                                            Array.isArray(b.teeth) && b.teeth.map(Number).includes(Number(id))
+                                        );
+                                        if (matchBIdx !== -1) {
+                                            assignment.brandSelections[key] = [matchBIdx];
+                                            assignment.modified = true;
+                                            assignment.autoMatched = true;
+                                        }
+                                    }
+                                });
+                            });
+                        }
+
+                        return assignment;
+                    });
+
+                    this.perToothAssignments.forEach((_, aIdx) => {
+                        this.recalculateToothPrice(aIdx);
+                    });
+                },
+
+                getToothSelectedBrandNames(aIdx, tIdx, sIdx) {
+                    const a = this.perToothAssignments[aIdx];
+                    const sel = (a?.brandSelections?.[`${tIdx}-${sIdx}`] || []).map(Number);
+                    const section = this.selectedService?.custom_prices?.tabs?.[tIdx]?.sections?.[sIdx];
+                    return sel.map(bIdx => section?.brands?.[bIdx]?.name).filter(Boolean).join('، ');
                 },
 
                 isBrandSelectedForTooth(aIdx, tabIdx, sectionIdx, brandIdx) {
