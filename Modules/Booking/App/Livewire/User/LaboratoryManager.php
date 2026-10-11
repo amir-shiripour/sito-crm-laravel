@@ -75,6 +75,14 @@ class LaboratoryManager extends Component
 
     public function mount(): void
     {
+        if (!BookingSetting::isLaboratoryEnabled()) {
+            abort(403, 'بخش لابراتوار در تنظیمات نوبت‌دهی فعال نیست.');
+        }
+
+        if (!auth()->user()?->can('booking.laboratory.access')) {
+            abort(403, 'شما مجوز دسترسی به بخش لابراتوار را ندارید.');
+        }
+
         $settings = BookingSetting::current();
         $this->labPartnerName = $settings->laboratory_default_partner ?: 'آرمان سلامت';
         $this->sentAtJalali = Jalalian::now()->format('Y/m/d');
@@ -84,23 +92,28 @@ class LaboratoryManager extends Component
         $teeth = request()->query('teeth');
         $doctorId = request()->query('doctor_id');
 
-        if ($clientId) {
-            $client = Client::find($clientId);
-            if ($client) {
-                $this->openCreateModal();
-                $this->selectClient($client->id);
-                if ($teeth) {
-                    $this->teethNumbers = $teeth;
-                    $teethList = array_filter(array_map('trim', explode(',', $teeth)));
-                    if (count($teethList) > 0) {
-                        $this->unitsCount = count($teethList);
+        $user = auth()->user();
+        $canCreate = $user && ($user->hasRole('super-admin') || $user->canAny(['booking.laboratory.create', 'booking.laboratory.manage']));
+
+        if ($clientId && $canCreate) {
+            if ($user->hasRole('super-admin') || $user->can('clients.view')) {
+                $client = Client::query()->visibleForUser($user)->find($clientId);
+                if ($client) {
+                    $this->openCreateModal();
+                    $this->selectClient($client->id);
+                    if ($teeth) {
+                        $this->teethNumbers = $teeth;
+                        $teethList = array_filter(array_map('trim', explode(',', $teeth)));
+                        if (count($teethList) > 0) {
+                            $this->unitsCount = count($teethList);
+                        }
+                    }
+                    if ($doctorId) {
+                        $this->selectedDoctorId = (int) $doctorId;
                     }
                 }
-                if ($doctorId) {
-                    $this->selectedDoctorId = (int) $doctorId;
-                }
             }
-        } elseif ($action === 'create') {
+        } elseif ($action === 'create' && $canCreate) {
             $this->openCreateModal();
         }
     }
@@ -133,6 +146,12 @@ class LaboratoryManager extends Component
 
     public function openCreateModal(): void
     {
+        $user = auth()->user();
+        if (!$user || (!$user->hasRole('super-admin') && !$user->canAny(['booking.laboratory.create', 'booking.laboratory.manage']))) {
+            $this->toastError = 'شما مجوز ثبت سفارش جدید در لابراتوار را ندارید.';
+            return;
+        }
+
         $settings = BookingSetting::current();
         $labService = app(LaboratoryService::class);
 
@@ -168,6 +187,12 @@ class LaboratoryManager extends Component
 
     public function openEditModal(int $orderId): void
     {
+        $user = auth()->user();
+        if (!$user || (!$user->hasRole('super-admin') && !$user->canAny(['booking.laboratory.edit', 'booking.laboratory.manage']))) {
+            $this->toastError = 'شما مجوز ویرایش سفارش لابراتوار را ندارید.';
+            return;
+        }
+
         $order = BookingLaboratoryOrder::with('client')->find($orderId);
         if (!$order) {
             $this->toastError = 'سفارش مورد نظر یافت نشد.';
@@ -209,8 +234,17 @@ class LaboratoryManager extends Component
 
     public function selectClient(int $id): void
     {
-        $client = Client::find($id);
-        if (!$client) return;
+        $user = auth()->user();
+        if (!$user || (!$user->hasRole('super-admin') && !$user->can('clients.view'))) {
+            $this->toastError = 'شما مجوز مشاهده و انتخاب پرونده مشتری را ندارید.';
+            return;
+        }
+
+        $client = Client::query()->visibleForUser($user)->find($id);
+        if (!$client) {
+            $this->toastError = 'پرونده مورد نظر یافت نشد یا شما دسترسی به آن را ندارید.';
+            return;
+        }
 
         $this->selectedClientId = $client->id;
         $this->patientName = $client->full_name;
@@ -234,6 +268,18 @@ class LaboratoryManager extends Component
 
     public function saveOrder(): void
     {
+        $user = auth()->user();
+        if ($this->editingOrderId) {
+            if (!$user || (!$user->hasRole('super-admin') && !$user->canAny(['booking.laboratory.edit', 'booking.laboratory.manage']))) {
+                $this->toastError = 'شما مجوز ویرایش سفارش لابراتوار را ندارید.';
+                return;
+            }
+        } else {
+            if (!$user || (!$user->hasRole('super-admin') && !$user->canAny(['booking.laboratory.create', 'booking.laboratory.manage']))) {
+                $this->toastError = 'شما مجوز ثبت سفارش جدید را ندارید.';
+                return;
+            }
+        }
         $this->validate([
             'patientName'   => ['required', 'string', 'max:255'],
             'sentAtJalali'  => ['required', 'string'],
@@ -296,6 +342,12 @@ class LaboratoryManager extends Component
 
     public function openStageModal(int $stageId): void
     {
+        $user = auth()->user();
+        if (!$user || (!$user->hasRole('super-admin') && !$user->canAny(['booking.laboratory.stages.manage', 'booking.laboratory.manage']))) {
+            $this->toastError = 'شما مجوز مدیریت مراحل سفارش را ندارید.';
+            return;
+        }
+
         $this->activeStageId = $stageId;
         $this->stageNote = '';
         $this->showStageModal = true;
@@ -303,6 +355,12 @@ class LaboratoryManager extends Component
 
     public function confirmStageCompletion(): void
     {
+        $user = auth()->user();
+        if (!$user || (!$user->hasRole('super-admin') && !$user->canAny(['booking.laboratory.stages.manage', 'booking.laboratory.manage']))) {
+            $this->toastError = 'شما مجوز مدیریت مراحل سفارش را ندارید.';
+            return;
+        }
+
         if (!$this->activeStageId) return;
 
         $stage = BookingLaboratoryStage::with('order')->find($this->activeStageId);
@@ -318,6 +376,12 @@ class LaboratoryManager extends Component
 
     public function openReceiveModal(int $orderId): void
     {
+        $user = auth()->user();
+        if (!$user || (!$user->hasRole('super-admin') && !$user->canAny(['booking.laboratory.receive', 'booking.laboratory.manage']))) {
+            $this->toastError = 'شما مجوز ثبت دریافت سفارش از لابراتوار را ندارید.';
+            return;
+        }
+
         $this->activeOrderId = $orderId;
         $this->receiveNote = '';
         $this->showReceiveModal = true;
@@ -325,6 +389,12 @@ class LaboratoryManager extends Component
 
     public function confirmReceiveOrder(): void
     {
+        $user = auth()->user();
+        if (!$user || (!$user->hasRole('super-admin') && !$user->canAny(['booking.laboratory.receive', 'booking.laboratory.manage']))) {
+            $this->toastError = 'شما مجوز ثبت دریافت سفارش از لابراتوار را ندارید.';
+            return;
+        }
+
         if (!$this->activeOrderId) return;
 
         $order = BookingLaboratoryOrder::with('stages')->find($this->activeOrderId);
@@ -340,6 +410,12 @@ class LaboratoryManager extends Component
 
     public function deleteOrder(int $orderId): void
     {
+        $user = auth()->user();
+        if (!$user || (!$user->hasRole('super-admin') && !$user->canAny(['booking.laboratory.delete', 'booking.laboratory.manage']))) {
+            $this->toastError = 'شما مجوز حذف یا لغو سفارش لابراتوار را ندارید.';
+            return;
+        }
+
         $order = BookingLaboratoryOrder::find($orderId);
         if ($order) {
             $order->delete();
@@ -369,6 +445,19 @@ class LaboratoryManager extends Component
     public function render()
     {
         $query = BookingLaboratoryOrder::with(['stages', 'client', 'doctor', 'technician']);
+
+        // تفکیک دسترسی مشاهده سفارشات خود vs همه سفارشات
+        $user = auth()->user();
+        $canViewAll = $user && ($user->hasRole('super-admin') || $user->can('booking.laboratory.view.all') || $user->can('booking.laboratory.manage'));
+        $canViewOwn = $user && $user->can('booking.laboratory.view.own');
+
+        if (!$canViewAll && $canViewOwn) {
+            $query->where(function ($q) use ($user) {
+                $q->where('doctor_id', $user->id)
+                  ->orWhere('technician_id', $user->id)
+                  ->orWhere('created_by_user_id', $user->id);
+            });
+        }
 
         // Search
         if (!empty($this->search)) {
@@ -419,19 +508,23 @@ class LaboratoryManager extends Component
             ])->find($this->detailOrderId);
         }
 
-        // Client search results for modal (search by national_code, full_name, phone, case_number)
+        // Client search results for modal (مطابق با مجوزهای ماژول کلاینت)
         $clientResults = [];
         $queryTerm = trim($this->clientSearchQuery);
         if (mb_strlen($queryTerm) >= 2 && !$this->selectedClientId) {
-            $clientResults = Client::query()
-                ->where(function ($q) use ($queryTerm) {
-                    $q->where('full_name', 'like', "%{$queryTerm}%")
-                      ->orWhere('national_code', 'like', "%{$queryTerm}%")
-                      ->orWhere('phone', 'like', "%{$queryTerm}%")
-                      ->orWhere('case_number', 'like', "%{$queryTerm}%");
-                })
-                ->limit(8)
-                ->get(['id', 'full_name', 'phone', 'national_code', 'case_number']);
+            if ($user && ($user->hasRole('super-admin') || $user->can('clients.view'))) {
+                $clientQuery = Client::query();
+                $clientQuery->visibleForUser($user);
+                $clientResults = $clientQuery
+                    ->where(function ($q) use ($queryTerm) {
+                        $q->where('full_name', 'like', "%{$queryTerm}%")
+                          ->orWhere('national_code', 'like', "%{$queryTerm}%")
+                          ->orWhere('phone', 'like', "%{$queryTerm}%")
+                          ->orWhere('case_number', 'like', "%{$queryTerm}%");
+                    })
+                    ->limit(8)
+                    ->get(['id', 'full_name', 'phone', 'national_code', 'case_number']);
+            }
         }
 
         $doctors = User::whereHas('roles', function ($q) {

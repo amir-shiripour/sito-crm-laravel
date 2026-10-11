@@ -433,9 +433,21 @@ class ClientController extends Controller
         $clientLabOrders = collect([]);
         if ($isBookingActive && class_exists(\Modules\Booking\Entities\BookingLaboratoryOrder::class)) {
             try {
-                $clientLabOrders = $client->laboratoryOrders()
-                    ->with(['stages', 'doctor'])
-                    ->get();
+                $user = auth()->user();
+                if ($user && ($user->hasRole('super-admin') || $user->can('booking.laboratory.access'))) {
+                    $canViewAllLab = $user->hasRole('super-admin') || $user->can('booking.laboratory.view.all') || $user->can('booking.laboratory.manage');
+                    $canViewOwnLab = $user->can('booking.laboratory.view.own');
+
+                    $labQuery = $client->laboratoryOrders()->with(['stages', 'doctor']);
+                    if (!$canViewAllLab && $canViewOwnLab) {
+                        $labQuery->where(function ($q) use ($user) {
+                            $q->where('doctor_id', $user->id)
+                              ->orWhere('technician_id', $user->id)
+                              ->orWhere('created_by_user_id', $user->id);
+                        });
+                    }
+                    $clientLabOrders = $labQuery->get();
+                }
             } catch (Exception $e) {
                 $clientLabOrders = collect([]);
             }

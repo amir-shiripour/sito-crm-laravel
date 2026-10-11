@@ -288,6 +288,7 @@
                     </button>
 
                     {{-- Tab: Laboratory Orders (سفارشات لابراتوار) --}}
+                    @if(\Modules\Booking\Entities\BookingSetting::isLaboratoryEnabled() && auth()->user()?->can('booking.laboratory.access'))
                     <button @click="setTab('laboratory')"
                             :class="activeTab === 'laboratory' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/25' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/50'"
                             class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 active:scale-95">
@@ -301,6 +302,7 @@
                             {{ isset($clientLabOrders) ? $faNum($clientLabOrders->count()) : '۰' }}
                         </span>
                     </button>
+                    @endif
                 @endif
 
                 @if($showWorkflowTab)
@@ -1111,6 +1113,7 @@
                 </div>
 
                 {{-- ================= Laboratory Tab (سفارشات لابراتوار) ================= --}}
+                @if(\Modules\Booking\Entities\BookingSetting::isLaboratoryEnabled() && auth()->user()?->can('booking.laboratory.access'))
                 <div x-show="activeTab === 'laboratory'" x-cloak x-transition:enter="transition ease-out duration-200"
                      x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" class="p-6 sm:p-8">
                     @include('booking::partials.client-laboratory-tab', [
@@ -1119,6 +1122,7 @@
                         'faNum' => $faNum
                     ])
                 </div>
+                @endif
             @endif
 
             @if($showWorkflowTab)

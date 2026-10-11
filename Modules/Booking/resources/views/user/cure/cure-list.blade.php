@@ -574,6 +574,7 @@
                                         }
                                         $planTeethStr = implode(',', array_unique($allPlanTeeth));
                                     @endphp
+                                    @if(\Modules\Booking\Entities\BookingSetting::isLaboratoryEnabled() && (auth()->user()?->can('booking.laboratory.create') || auth()->user()?->can('booking.laboratory.manage')))
                                     <a href="{{ route('user.booking.laboratory.index', [
                                             'client_id' => $plan->client_id,
                                             'action' => 'create',
@@ -587,6 +588,7 @@
                                         </svg>
                                         ارسال به لابراتوار
                                     </a>
+                                    @endif
 
                                     @if(class_exists(\Modules\ContractForge\App\Models\Contract::class))
                                         @php

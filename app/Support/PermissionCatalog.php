@@ -186,6 +186,10 @@ class PermissionCatalog
                 'title' => 'نوبت‌دهی: طرح درمان (Cure)',
                 'matchers' => ['booking.cure.'],
             ],
+            'booking_laboratory' => [
+                'title' => 'نوبت‌دهی: لابراتوار (Laboratory)',
+                'matchers' => ['booking.laboratory.'],
+            ],
 
             // Accounting module
             'accounting' => [
@@ -563,6 +567,17 @@ class PermissionCatalog
             'booking.cure.delete.assigned' => 'حذف طرح درمان منتسب شده',
             'booking.cure.confirm' => 'تایید طرح درمان',
             'booking.cure.manage' => 'مدیریت طرح‌های درمان',
+
+            // Booking Laboratory
+            'booking.laboratory.view' => 'مشاهده بخش لابراتوار',
+            'booking.laboratory.view.all' => 'مشاهده همه سفارشات لابراتوار',
+            'booking.laboratory.view.own' => 'مشاهده سفارشات لابراتوار خود',
+            'booking.laboratory.create' => 'ثبت سفارش جدید در لابراتوار',
+            'booking.laboratory.edit' => 'ویرایش اطلاعات سفارش لابراتوار',
+            'booking.laboratory.delete' => 'حذف یا لغو سفارش لابراتوار',
+            'booking.laboratory.stages.manage' => 'مدیریت و پیگیری مراحل ساخت لابراتوار',
+            'booking.laboratory.receive' => 'ثبت دریافت سفارش از لابراتوار',
+            'booking.laboratory.manage' => 'مدیریت کامل ماژول لابراتوار',
 
             // Accounting
             'accounting.view' => 'مشاهده ماژول حسابداری',
