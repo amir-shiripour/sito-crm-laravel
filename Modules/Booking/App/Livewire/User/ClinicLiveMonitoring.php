@@ -222,7 +222,7 @@ class ClinicLiveMonitoring extends Component
         }
 
         $this->toastSuccess = 'فیلترها با موفقیت به حالت پیش‌فرض بازگردانده شدند.';
-        $this->dispatch('notify', ['type' => 'success', 'text' => $this->toastSuccess]);
+        $this->dispatch('notify', type: 'success', text: $this->toastSuccess);
     }
 
     protected function convertJalaliToGregorian(string $jalaliDate): ?string
@@ -256,7 +256,7 @@ class ClinicLiveMonitoring extends Component
         $settings = BookingSetting::current();
         if (! $settings->isMonitoringQuickStatusEnabled()) {
             $this->toastError = 'قابلیت تغییر وضعیت سریع در تنظیمات غیرفعال است.';
-            $this->dispatch('notify', ['type' => 'error', 'text' => $this->toastError]);
+            $this->dispatch('notify', type: 'error', text: $this->toastError);
 
             return;
         }
@@ -266,7 +266,7 @@ class ClinicLiveMonitoring extends Component
 
         if (! $user || (! $monitoringService->isAdminUser($user) && ! $user->can('booking.appointments.edit'))) {
             $this->toastError = 'شما مجوز تغییر وضعیت نوبت را ندارید.';
-            $this->dispatch('notify', ['type' => 'error', 'text' => $this->toastError]);
+            $this->dispatch('notify', type: 'error', text: $this->toastError);
 
             return;
         }
@@ -274,7 +274,7 @@ class ClinicLiveMonitoring extends Component
         $appointment = Appointment::query()->find($appointmentId);
         if (! $appointment) {
             $this->toastError = 'نوبت مورد نظر یافت نشد.';
-            $this->dispatch('notify', ['type' => 'error', 'text' => $this->toastError]);
+            $this->dispatch('notify', type: 'error', text: $this->toastError);
 
             return;
         }
@@ -283,7 +283,7 @@ class ClinicLiveMonitoring extends Component
         if (! $monitoringService->canViewAllAppointments($user) && $monitoringService->userIsProvider($user)) {
             if ((int) $appointment->provider_user_id !== (int) $user->id) {
                 $this->toastError = 'شما فقط مجاز به ویرایش نوبت‌های خود هستید.';
-                $this->dispatch('notify', ['type' => 'error', 'text' => $this->toastError]);
+                $this->dispatch('notify', type: 'error', text: $this->toastError);
 
                 return;
             }
@@ -292,7 +292,7 @@ class ClinicLiveMonitoring extends Component
         $validStatuses = array_keys(Appointment::statusesList());
         if (! in_array($newStatus, $validStatuses)) {
             $this->toastError = 'وضعیت انتخاب شده نامعتبر است.';
-            $this->dispatch('notify', ['type' => 'error', 'text' => $this->toastError]);
+            $this->dispatch('notify', type: 'error', text: $this->toastError);
 
             return;
         }
@@ -323,7 +323,7 @@ class ClinicLiveMonitoring extends Component
         }
 
         $this->toastSuccess = "وضعیت نوبت #{$appointment->id} به «{$appointment->status_label}» تغییر یافت.";
-        $this->dispatch('notify', ['type' => 'success', 'text' => $this->toastSuccess]);
+        $this->dispatch('notify', type: 'success', text: $this->toastSuccess);
     }
 
     public function quickChangeStatus(int $appointmentId, string $newStatus): void
@@ -338,7 +338,7 @@ class ClinicLiveMonitoring extends Component
 
         if (! $user || (! $monitoringService->isAdminUser($user) && ! $user->can('booking.appointments.edit'))) {
             $this->toastError = 'شما مجوز ثبت ورود بیمار را ندارید.';
-            $this->dispatch('notify', ['type' => 'error', 'text' => $this->toastError]);
+            $this->dispatch('notify', type: 'error', text: $this->toastError);
 
             return;
         }
@@ -351,7 +351,7 @@ class ClinicLiveMonitoring extends Component
         if (! $monitoringService->canViewAllAppointments($user) && $monitoringService->userIsProvider($user)) {
             if ((int) $appointment->provider_user_id !== (int) $user->id) {
                 $this->toastError = 'شما فقط مجاز به ویرایش نوبت‌های خود هستید.';
-                $this->dispatch('notify', ['type' => 'error', 'text' => $this->toastError]);
+                $this->dispatch('notify', type: 'error', text: $this->toastError);
 
                 return;
             }
@@ -361,7 +361,7 @@ class ClinicLiveMonitoring extends Component
         $appointment->save();
 
         $this->toastSuccess = 'ورود مراجع با موفقیت در سیستم ثبت گردید.';
-        $this->dispatch('notify', ['type' => 'success', 'text' => $this->toastSuccess]);
+        $this->dispatch('notify', type: 'success', text: $this->toastSuccess);
     }
 
     public function startVisit(int $appointmentId): void
@@ -371,7 +371,7 @@ class ClinicLiveMonitoring extends Component
 
         if (! $user || (! $monitoringService->isAdminUser($user) && ! $user->can('booking.appointments.edit'))) {
             $this->toastError = 'شما مجوز مدیریت ویزیت را ندارید.';
-            $this->dispatch('notify', ['type' => 'error', 'text' => $this->toastError]);
+            $this->dispatch('notify', type: 'error', text: $this->toastError);
 
             return;
         }
@@ -384,7 +384,7 @@ class ClinicLiveMonitoring extends Component
         if (! $monitoringService->canViewAllAppointments($user) && $monitoringService->userIsProvider($user)) {
             if ((int) $appointment->provider_user_id !== (int) $user->id) {
                 $this->toastError = 'شما فقط مجاز به ویرایش نوبت‌های خود هستید.';
-                $this->dispatch('notify', ['type' => 'error', 'text' => $this->toastError]);
+                $this->dispatch('notify', type: 'error', text: $this->toastError);
 
                 return;
             }
@@ -393,13 +393,21 @@ class ClinicLiveMonitoring extends Component
         if (empty($appointment->entry_at_utc)) {
             $appointment->entry_at_utc = now('UTC');
         }
-        if (in_array($appointment->status, [Appointment::STATUS_PENDING, Appointment::STATUS_PENDING_PAYMENT, Appointment::STATUS_DRAFT])) {
-            $appointment->status = Appointment::STATUS_CONFIRMED;
-        }
+
+        $previousStatus = $appointment->status;
+        $appointment->status = Appointment::STATUS_IN_PROGRESS;
         $appointment->save();
 
-        $this->toastSuccess = 'ویزیت مراجع با موفقیت آغاز شد.';
-        $this->dispatch('notify', ['type' => 'success', 'text' => $this->toastSuccess]);
+        if ($previousStatus !== Appointment::STATUS_IN_PROGRESS) {
+            try {
+                app(AppointmentService::class)->triggerStatusWorkflows($appointment, $previousStatus);
+            } catch (\Throwable $e) {
+                Log::warning('Workflow trigger failed on startVisit: '.$e->getMessage());
+            }
+        }
+
+        $this->toastSuccess = 'ویزیت مراجع با موفقیت آغاز شد (در حال انجام).';
+        $this->dispatch('notify', type: 'success', text: $this->toastSuccess);
     }
 
     public function finishVisit(int $appointmentId): void
@@ -414,7 +422,7 @@ class ClinicLiveMonitoring extends Component
 
         if (! $user || (! $monitoringService->isAdminUser($user) && ! $user->can('booking.appointments.edit'))) {
             $this->toastError = 'شما مجوز ثبت تاخیر مراجع را ندارید.';
-            $this->dispatch('notify', ['type' => 'error', 'text' => $this->toastError]);
+            $this->dispatch('notify', type: 'error', text: $this->toastError);
 
             return;
         }
@@ -427,7 +435,7 @@ class ClinicLiveMonitoring extends Component
         if (! $monitoringService->canViewAllAppointments($user) && $monitoringService->userIsProvider($user)) {
             if ((int) $appointment->provider_user_id !== (int) $user->id) {
                 $this->toastError = 'شما فقط مجاز به ویرایش نوبت‌های خود هستید.';
-                $this->dispatch('notify', ['type' => 'error', 'text' => $this->toastError]);
+                $this->dispatch('notify', type: 'error', text: $this->toastError);
 
                 return;
             }
@@ -446,7 +454,7 @@ class ClinicLiveMonitoring extends Component
         $appointment->save();
 
         $this->toastSuccess = "اعلام تاخیر {$cleanDelay} دقیقه‌ای برای نوبت #{$appointment->id} ثبت شد.";
-        $this->dispatch('notify', ['type' => 'success', 'text' => $this->toastSuccess]);
+        $this->dispatch('notify', type: 'success', text: $this->toastSuccess);
     }
 
     public function clearClientDelay(int $appointmentId): void
@@ -456,7 +464,7 @@ class ClinicLiveMonitoring extends Component
 
         if (! $user || (! $monitoringService->isAdminUser($user) && ! $user->can('booking.appointments.edit'))) {
             $this->toastError = 'شما مجوز ویرایش تاخیر مراجع را ندارید.';
-            $this->dispatch('notify', ['type' => 'error', 'text' => $this->toastError]);
+            $this->dispatch('notify', type: 'error', text: $this->toastError);
 
             return;
         }
@@ -469,7 +477,7 @@ class ClinicLiveMonitoring extends Component
         if (! $monitoringService->canViewAllAppointments($user) && $monitoringService->userIsProvider($user)) {
             if ((int) $appointment->provider_user_id !== (int) $user->id) {
                 $this->toastError = 'شما فقط مجاز به ویرایش نوبت‌های خود هستید.';
-                $this->dispatch('notify', ['type' => 'error', 'text' => $this->toastError]);
+                $this->dispatch('notify', type: 'error', text: $this->toastError);
 
                 return;
             }
@@ -484,7 +492,7 @@ class ClinicLiveMonitoring extends Component
         $appointment->save();
 
         $this->toastSuccess = "اعلام تاخیر نوبت #{$appointment->id} با موفقیت لغو شد.";
-        $this->dispatch('notify', ['type' => 'success', 'text' => $this->toastSuccess]);
+        $this->dispatch('notify', type: 'success', text: $this->toastSuccess);
     }
 
     public function callNextInQueue(int $nextAppointmentId, ?int $delayedAppointmentId = null): void

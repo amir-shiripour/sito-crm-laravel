@@ -10,6 +10,33 @@
 @endphp
 
 <div @if($pollInterval > 0) wire:poll.{{ $pollInterval }}s @endif class="space-y-6">
+    {{-- هشدارهای اعلان و تغییر وضعیت (Toast / Alerts) --}}
+    @if ($toastSuccess)
+        <div x-data="{ show: true }" x-show="show" x-init="setTimeout(() => { show = false; $wire.set('toastSuccess', null); }, 6000)"
+             class="flex items-center justify-between gap-3 rounded-2xl border border-emerald-200 dark:border-emerald-800/60 bg-emerald-50 dark:bg-emerald-950/40 px-5 py-3.5 text-emerald-900 dark:text-emerald-200 shadow-sm transition-all animate-in fade-in">
+            <div class="flex items-center gap-3">
+                <span class="w-8 h-8 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M5 13l4 4L19 7"></path></svg>
+                </span>
+                <span class="text-xs sm:text-sm font-bold">{{ $toastSuccess }}</span>
+            </div>
+            <button wire:click="$set('toastSuccess', null)" @click="show = false" class="text-emerald-600 hover:text-emerald-900 dark:text-emerald-400 dark:hover:text-emerald-100 font-bold p-1">&times;</button>
+        </div>
+    @endif
+
+    @if ($toastError)
+        <div x-data="{ show: true }" x-show="show" x-init="setTimeout(() => { show = false; $wire.set('toastError', null); }, 7000)"
+             class="flex items-center justify-between gap-3 rounded-2xl border border-rose-200 dark:border-rose-800/60 bg-rose-50 dark:bg-rose-950/40 px-5 py-3.5 text-rose-900 dark:text-rose-200 shadow-sm transition-all animate-in fade-in">
+            <div class="flex items-center gap-3">
+                <span class="w-8 h-8 rounded-xl bg-rose-500/15 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                </span>
+                <span class="text-xs sm:text-sm font-bold">{{ $toastError }}</span>
+            </div>
+            <button wire:click="$set('toastError', null)" @click="show = false" class="text-rose-600 hover:text-rose-900 dark:text-rose-400 dark:hover:text-rose-100 font-bold p-1">&times;</button>
+        </div>
+    @endif
+
     {{-- هدر صفحه و ابزارها --}}
     <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
         <div>
@@ -167,7 +194,7 @@
     </div>
 
     {{-- کارت‌های آمار و شمارنده‌های وضعیت (KPI Cards) هماهنگ با فیلترها --}}
-    <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
+    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-9 gap-2.5">
         {{-- کل نوبت‌ها --}}
         <button type="button" 
                 wire:click="$set('selectedStatus', '')"
@@ -230,6 +257,18 @@
             <div class="flex items-baseline justify-between mt-1.5">
                 <span class="text-xl font-black text-emerald-600 dark:text-emerald-400">{{ $statusCounts['confirmed'] }}</span>
                 <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+            </div>
+        </button>
+
+        {{-- در حال انجام --}}
+        <button type="button" 
+                wire:click="$set('selectedStatus', '{{ $selectedStatus === 'IN_PROGRESS' ? '' : 'IN_PROGRESS' }}')"
+                title="فیلتر نوبت‌های در حال انجام"
+                class="bg-white dark:bg-gray-800 p-3.5 rounded-2xl border text-right transition cursor-pointer hover:shadow-md {{ $selectedStatus === 'IN_PROGRESS' ? 'border-cyan-500 ring-2 ring-cyan-500/20 dark:border-cyan-400' : 'border-cyan-100 dark:border-cyan-900/30 hover:border-cyan-300' }} shadow-sm flex flex-col justify-between">
+            <span class="text-[11px] font-medium text-cyan-700 dark:text-cyan-300">در حال انجام</span>
+            <div class="flex items-baseline justify-between mt-1.5">
+                <span class="text-xl font-black text-cyan-600 dark:text-cyan-400">{{ $statusCounts['in_progress'] ?? 0 }}</span>
+                <span class="w-2 h-2 rounded-full bg-cyan-500"></span>
             </div>
         </button>
 
@@ -1077,7 +1116,7 @@
                             $isRowActive = !in_array($apt->status, ['DONE', 'CANCELED_BY_ADMIN', 'CANCELED_BY_CLIENT', 'NO_SHOW']);
                         @endphp
                         <tr class="hover:bg-gray-50/80 dark:hover:bg-gray-700/30 transition {{ ($aptDeclaredDelay > 0 || $rowIsLate) ? 'bg-amber-50/40 dark:bg-amber-950/20' : '' }}">
-                            <td class="py-3.5 px-4 font-mono text-gray-400">{{ $index + 1 }}</td>
+                            <td class="py-3.5 px-4 font-sans text-gray-400">{{ $index + 1 }}</td>
                             <td class="py-3.5 px-4">
                                 <div class="font-bold text-gray-900 dark:text-white">
                                     {{ $apt->start_at_utc ? $apt->start_at_utc->timezone($tz)->format('H:i') : '—' }}

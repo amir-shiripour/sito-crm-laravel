@@ -10,7 +10,12 @@ use Modules\Properties\Entities\PropertyAttribute;
 use Modules\Properties\Entities\PropertySetting;
 use Modules\Properties\Entities\PropertyCategory;
 use Modules\Properties\Entities\PropertyBuilding;
+use Modules\Properties\Entities\PropertyRentalBooking;
+use Modules\Properties\Services\RentalBookingService;
+use Modules\Clients\Entities\Client;
 use App\Services\GapGPTService;
+use Illuminate\Validation\ValidationException;
+use Illuminate\Support\Str;
 
 class PropertyController extends Controller
 {
@@ -356,7 +361,24 @@ class PropertyController extends Controller
             $calendarData = $rentalPublicService->getCalendarData($property, 2);
             $currency = PropertySetting::get('currency', 'toman');
 
-            return view('properties::rental.show', compact('property', 'visibilitySettings', 'calendarData', 'currency'));
+            // وضعیت احراز رزرو تأیید شده مسافر یا مدیریت
+            $hasConfirmedBooking = $rentalPublicService->hasConfirmedBooking($property, $user);
+
+            // استخراج تنظیمات اختصاصی نمایش اقامتگاه، نقشه و تماس
+            $rentalDisplaySettings = [
+                'show_host_box' => PropertySetting::get('rental_show_host_box', 'all'),
+                'host_show_avatar' => (bool) PropertySetting::get('rental_host_show_avatar', 1),
+                'host_show_badge' => (bool) PropertySetting::get('rental_host_show_badge', 1),
+                'host_show_about' => (bool) PropertySetting::get('rental_host_show_about', 1),
+                'host_show_phone' => PropertySetting::get('rental_host_show_phone', 'confirmed_booking'),
+                'show_address' => PropertySetting::get('rental_show_address', 'all'),
+                'show_map' => PropertySetting::get('rental_show_map', 'all'),
+                'map_display_type' => PropertySetting::get('rental_map_display_type', 'circle_then_exact'),
+                'map_circle_radius' => (int) PropertySetting::get('rental_map_circle_radius', 300),
+                'show_direct_call_btn' => PropertySetting::get('rental_show_direct_call_btn', 'all'),
+            ];
+
+            return view('properties::rental.show', compact('property', 'visibilitySettings', 'rentalDisplaySettings', 'hasConfirmedBooking', 'calendarData', 'currency'));
         }
 
         return view('properties::show', compact('property', 'visibilitySettings'));
@@ -495,5 +517,172 @@ class PropertyController extends Controller
         $string = preg_replace('/^```\s*/i', '', $string);
         $string = preg_replace('/\s*```$/', '', $string);
         return trim($string);
+    }
+
+    private function resolveProperty($slug): Property
+    {
+        if (strlen($slug) > 15) {
+            $identifier = substr($slug, 15);
+        } else {
+            $parts = explode('-', $slug);
+            $identifier = end($parts);
+        }
+
+        $property = Property::with(['status', 'rentalConfig', 'host'])
+            ->where(function($query) use ($identifier) {
+                $query->where('code', $identifier)
+                      ->orWhere('id', $identifier);
+            })
+            ->first();
+
+        if (!$property) {
+            abort(404, 'اقامتگاه مورد نظر یافت نشد.');
+        }
+
+        return $property;
+    }
+
+    public function calculateQuote(Request $request, $slug)
+    {
+        $property = $this->resolveProperty($slug);
+
+        $request->validate([
+            'check_in_date'  => 'required|string',
+            'check_out_date' => 'required|string',
+            'guests_count'   => 'nullable|integer|min:1',
+        ]);
+
+        try {
+            $bookingService = app(RentalBookingService::class);
+            $quote = $bookingService->calculateQuote(
+                $property,
+                $request->check_in_date,
+                $request->check_out_date,
+                (int)($request->guests_count ?? 1)
+            );
+
+            return response()->json([
+                'success' => true,
+                'quote'   => $quote,
+            ]);
+        } catch (ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => collect($e->errors())->flatten()->first(),
+                'errors'  => $e->errors(),
+            ], 422);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function book(Request $request, $slug)
+    {
+        $property = $this->resolveProperty($slug);
+
+        $isClientAuth = auth('client')->check();
+
+        // انطباق کلیدهای ارسالی فرم با قواعد اعتبارسنجی
+        if ($request->has('check_in') && !$request->has('check_in_date')) {
+            $request->merge(['check_in_date' => $request->check_in]);
+        }
+        if ($request->has('check_out') && !$request->has('check_out_date')) {
+            $request->merge(['check_out_date' => $request->check_out]);
+        }
+        if ($request->has('guest_notes') && !$request->has('notes')) {
+            $request->merge(['notes' => $request->guest_notes]);
+        }
+
+        $rules = [
+            'check_in_date'       => 'required|string',
+            'check_out_date'      => 'required|string',
+            'guests_count'        => 'required|integer|min:1',
+            'notes'               => 'nullable|string|max:1000',
+            'guest_national_code' => 'nullable|string|max:20',
+        ];
+
+        if (!$isClientAuth) {
+            $rules['guest_full_name'] = 'required|string|max:190';
+            $rules['guest_phone']     = 'required|string|max:25';
+        }
+
+        $request->validate($rules, [
+            'check_in_date.required'   => 'لطفاً تاریخ ورود را انتخاب کنید.',
+            'check_out_date.required'  => 'لطفاً تاریخ خروج را انتخاب کنید.',
+            'guests_count.required'    => 'لطفاً تعداد مهمانان را مشخص کنید.',
+            'guest_full_name.required' => 'لطفاً نام و نام خانوادگی مهمان را وارد کنید.',
+            'guest_phone.required'     => 'لطفاً شماره موبایل مهمان را وارد کنید.',
+        ]);
+
+        try {
+            // ۱. تعیین کلاینت (مهمان در پورتال کلاینت)
+            $client = auth('client')->user();
+
+            if (!$client) {
+                $rawPhone = $request->guest_phone;
+                $phone = class_exists(\Modules\Clients\App\Http\Controllers\Portal\ClientAuthController::class)
+                    ? \Modules\Clients\App\Http\Controllers\Portal\ClientAuthController::normalizePhoneNumber($rawPhone)
+                    : preg_replace('/[^0-9]/', '', $rawPhone);
+
+                if (empty($phone) || strlen($phone) < 10) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'شماره موبایل وارد شده معتبر نمی‌باشد (مثال: 09123456789).'
+                    ], 422);
+                }
+
+                $client = Client::where('phone', $phone)->first();
+                if (!$client) {
+                    $client = Client::create([
+                        'full_name'     => trim($request->guest_full_name) ?: 'مهمان اقامتگاه',
+                        'phone'         => $phone,
+                        'national_code' => $request->guest_national_code,
+                        'username'      => $phone,
+                        'password'      => bcrypt(Str::random(16)),
+                    ]);
+                } else {
+                    if ($request->filled('guest_full_name') && (empty($client->full_name) || $client->full_name === 'مهمان اقامتگاه')) {
+                        $client->update(['full_name' => trim($request->guest_full_name)]);
+                    }
+                }
+
+                // ورود خودکار کلاینت برای اتصال بی‌وقفه به پورتال
+                auth('client')->login($client);
+            }
+
+            // ۲. ثبت رزرو توسط سرویس مرکزی
+            $bookingService = app(RentalBookingService::class);
+            $booking = $bookingService->createBooking($property, $client, $request->all());
+
+            $isAwaitingPayment = $booking->status === PropertyRentalBooking::STATUS_AWAITING_PAYMENT;
+            $msg = $isAwaitingPayment
+                ? 'رزرو آنی شما با موفقیت ثبت شد. در حال هدایت به درگاه پرداخت...'
+                : 'درخواست رزرو شما با موفقیت ثبت شد و جهت تأیید برای میزبان ارسال گردید.';
+
+            return response()->json([
+                'success'      => true,
+                'message'      => $msg,
+                'booking_id'   => $booking->id,
+                'booking_code' => $booking->booking_code,
+                'status'       => $booking->status,
+                'redirect_url' => route('client.rental-bookings.show', $booking->id),
+            ]);
+
+        } catch (ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => collect($e->errors())->flatten()->first(),
+                'errors'  => $e->errors(),
+            ], 422);
+        } catch (\Throwable $e) {
+            Log::error('Booking creation error: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'خطا در ثبت رزرو: ' . $e->getMessage(),
+            ], 500);
+        }
     }
 }

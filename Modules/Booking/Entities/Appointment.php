@@ -16,6 +16,7 @@ class Appointment extends Model
     public const STATUS_PENDING = 'PENDING';
     public const STATUS_PENDING_PAYMENT = 'PENDING_PAYMENT';
     public const STATUS_CONFIRMED = 'CONFIRMED';
+    public const STATUS_IN_PROGRESS = 'IN_PROGRESS';
     public const STATUS_CANCELED_BY_CLIENT = 'CANCELED_BY_CLIENT';
     public const STATUS_CANCELED_BY_ADMIN = 'CANCELED_BY_ADMIN';
     public const STATUS_NO_SHOW = 'NO_SHOW';
@@ -125,7 +126,8 @@ class Appointment extends Model
             self::STATUS_DRAFT => ['label' => 'پیش‌نویس', 'class' => 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200'],
             self::STATUS_PENDING => ['label' => 'در انتظار تایید', 'class' => 'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-200'],
             self::STATUS_PENDING_PAYMENT => ['label' => 'در انتظار پرداخت', 'class' => 'bg-orange-50 text-orange-700 dark:bg-orange-900/30 dark:text-orange-200'],
-            self::STATUS_CONFIRMED => ['label' => 'تایید شده', 'class' => 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-200'],
+            self::STATUS_CONFIRMED => ['label' => 'تایید شده', 'class' => 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-200 border-emerald-200 dark:border-emerald-800'],
+            self::STATUS_IN_PROGRESS => ['label' => 'در حال انجام', 'class' => 'bg-cyan-50 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-200 border-cyan-200 dark:border-cyan-800'],
             self::STATUS_CANCELED_BY_ADMIN => ['label' => 'لغو شده (ادمین)', 'class' => 'bg-rose-50 text-rose-700 dark:bg-rose-900/30 dark:text-rose-200'],
             self::STATUS_CANCELED_BY_CLIENT => ['label' => 'لغو شده (مشتری)', 'class' => 'bg-rose-50 text-rose-700 dark:bg-rose-900/30 dark:text-rose-200'],
             self::STATUS_NO_SHOW => ['label' => 'عدم حضور', 'class' => 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200'],
@@ -143,6 +145,7 @@ class Appointment extends Model
             'PENDING' => 'در انتظار تایید',
             'PENDING_PAYMENT' => 'در انتظار پرداخت',
             'CONFIRMED' => 'تایید شده',
+            'IN_PROGRESS' => 'در حال انجام',
             'CANCELED_BY_ADMIN', 'CANCELLED_BY_ADMIN' => 'لغو شده (ادمین)',
             'CANCELED_BY_CLIENT', 'CANCELLED_BY_CLIENT' => 'لغو شده (مشتری)',
             'CANCELED', 'CANCELLED' => 'لغو شده',

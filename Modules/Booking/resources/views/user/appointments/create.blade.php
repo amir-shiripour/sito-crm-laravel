@@ -5,12 +5,25 @@
     : null;
     $clientLabel = config('clients.labels.singular', 'مشتری');
 
-    $statusOptions = [
-        \Modules\Booking\Entities\Appointment::STATUS_DRAFT => 'پیش‌نویس',
-        \Modules\Booking\Entities\Appointment::STATUS_PENDING => 'در انتظار تایید',
-        \Modules\Booking\Entities\Appointment::STATUS_PENDING_PAYMENT => 'در انتظار پرداخت',
-        \Modules\Booking\Entities\Appointment::STATUS_CONFIRMED => 'تایید شده',
-    ];
+    $settingStatuses = $settings->appointment_statuses ?? [];
+    if (empty($settingStatuses) || !is_array($settingStatuses)) {
+        $settingStatuses = \Modules\Booking\Entities\BookingSetting::defaultAppointmentStatuses();
+    }
+    $statusOptions = [];
+    foreach ($settingStatuses as $st) {
+        if (!empty($st['step_booking_enabled']) && !empty($st['id'])) {
+            $statusOptions[$st['id']] = $st['name'] ?? $st['id'];
+        }
+    }
+    if (empty($statusOptions)) {
+        $statusOptions = [
+            \Modules\Booking\Entities\Appointment::STATUS_DRAFT => 'پیش‌نویس',
+            \Modules\Booking\Entities\Appointment::STATUS_PENDING => 'در انتظار تایید',
+            \Modules\Booking\Entities\Appointment::STATUS_PENDING_PAYMENT => 'در انتظار پرداخت',
+            \Modules\Booking\Entities\Appointment::STATUS_CONFIRMED => 'تایید شده',
+            \Modules\Booking\Entities\Appointment::STATUS_IN_PROGRESS => 'در حال انجام',
+        ];
+    }
 
     $currencyMap = ['IRR' => 'ریال', 'IRT' => 'تومان', 'rial' => 'ریال', 'toman' => 'تومان'];
     $currencyUnit = $settings->currency_unit ?? 'IRT';

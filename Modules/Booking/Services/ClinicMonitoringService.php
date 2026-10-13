@@ -190,38 +190,17 @@ class ClinicMonitoringService
     }
 
     /**
-     * Resolve all active in-visit patients (supporting concurrent multiple appointments):
-     * Priority 1: entry_at_utc IS NOT NULL AND exit_at_utc IS NULL and not terminal, ordered by entry_at_utc ASC.
-     * Priority 2: In-window fallback: status == CONFIRMED AND start_at_utc <= now('UTC') AND end_at_utc >= now('UTC') ordered by start_at_utc ASC.
+     * Resolve all active in-visit patients currently in treatment:
+     * Condition: status == STATUS_IN_PROGRESS AND exit_at_utc IS NULL (ordered by entry_at_utc ASC, id ASC).
+     * No automatic time-window fallback is applied, ensuring patients are only placed in room upon explicit start.
      */
     public function resolveActivePatients(Builder $baseQuery): Collection
     {
-        // 1. Physically checked-in patients currently in consultation (earliest entry prioritized)
-        $entered = (clone $baseQuery)
-            ->whereNotNull('entry_at_utc')
-            ->whereNull('exit_at_utc')
-            ->whereNotIn('status', [
-                Appointment::STATUS_DONE,
-                Appointment::STATUS_CANCELED_BY_ADMIN,
-                Appointment::STATUS_CANCELED_BY_CLIENT,
-                Appointment::STATUS_NO_SHOW,
-            ])
-            ->orderBy('entry_at_utc', 'asc')
-            ->with(['service', 'client', 'provider'])
-            ->get();
-
-        if ($entered->isNotEmpty()) {
-            return $entered;
-        }
-
-        // 2. Currently within scheduled window fallback (may have multiple appointments in same window)
-        $nowUtc = now('UTC');
         return (clone $baseQuery)
-            ->where('status', Appointment::STATUS_CONFIRMED)
-            ->where('start_at_utc', '<=', $nowUtc)
-            ->where('end_at_utc', '>=', $nowUtc)
+            ->where('status', Appointment::STATUS_IN_PROGRESS)
             ->whereNull('exit_at_utc')
-            ->orderBy('start_at_utc', 'asc')
+            ->orderBy('entry_at_utc', 'asc')
+            ->orderBy('id', 'asc')
             ->with(['service', 'client', 'provider'])
             ->get();
     }
@@ -289,6 +268,7 @@ class ClinicMonitoringService
                 SUM(CASE WHEN entry_at_utc IS NOT NULL AND status NOT IN ('CANCELED_BY_ADMIN', 'CANCELED_BY_CLIENT', 'NO_SHOW') THEN 1 ELSE 0 END) as attended,
                 SUM(CASE WHEN status IN ('PENDING', 'PENDING_PAYMENT') THEN 1 ELSE 0 END) as waiting,
                 SUM(CASE WHEN status = 'CONFIRMED' THEN 1 ELSE 0 END) as confirmed,
+                SUM(CASE WHEN status = 'IN_PROGRESS' THEN 1 ELSE 0 END) as in_progress,
                 SUM(CASE WHEN status IN ('CANCELED_BY_ADMIN', 'CANCELED_BY_CLIENT') THEN 1 ELSE 0 END) as cancelled,
                 SUM(CASE WHEN status = 'NO_SHOW' THEN 1 ELSE 0 END) as noshow,
                 SUM(CASE WHEN status = 'DONE' THEN 1 ELSE 0 END) as done,
@@ -305,6 +285,7 @@ class ClinicMonitoringService
             'attended' => (int) ($raw->attended ?? 0),
             'waiting' => (int) ($raw->waiting ?? 0),
             'confirmed' => (int) ($raw->confirmed ?? 0),
+            'in_progress' => (int) ($raw->in_progress ?? 0),
             'cancelled' => (int) ($raw->cancelled ?? 0),
             'noshow' => (int) ($raw->noshow ?? 0),
             'done' => (int) ($raw->done ?? 0),
@@ -382,18 +363,8 @@ class ClinicMonitoringService
                 Appointment::STATUS_NO_SHOW,
             ]))->count();
 
-            // 1. Physically checked-in patients currently in consultation
-            $activePatients = $providerApts->filter(fn ($a) => ! empty($a->entry_at_utc) && empty($a->exit_at_utc) && ! in_array($a->status, [
-                Appointment::STATUS_DONE,
-                Appointment::STATUS_CANCELED_BY_ADMIN,
-                Appointment::STATUS_CANCELED_BY_CLIENT,
-                Appointment::STATUS_NO_SHOW,
-            ]))->values();
-
-            // 2. In-window fallback
-            if ($activePatients->isEmpty()) {
-                $activePatients = $providerApts->filter(fn ($a) => $a->status === Appointment::STATUS_CONFIRMED && $a->start_at_utc <= $nowUtc && $a->end_at_utc >= $nowUtc && empty($a->exit_at_utc))->values();
-            }
+            // 1. Physically checked-in patients currently in consultation (strictly STATUS_IN_PROGRESS)
+            $activePatients = $providerApts->filter(fn ($a) => $a->status === Appointment::STATUS_IN_PROGRESS && empty($a->exit_at_utc))->values();
 
             $activeIds = $activePatients->pluck('id')->all();
 
@@ -437,6 +408,7 @@ class ClinicMonitoringService
             ->whereNotNull('entry_at_utc')
             ->whereNull('exit_at_utc')
             ->whereNotIn('status', [
+                Appointment::STATUS_IN_PROGRESS,
                 Appointment::STATUS_DONE,
                 Appointment::STATUS_CANCELED_BY_ADMIN,
                 Appointment::STATUS_CANCELED_BY_CLIENT,

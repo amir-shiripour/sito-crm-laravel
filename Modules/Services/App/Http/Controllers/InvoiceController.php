@@ -459,6 +459,10 @@ class InvoiceController extends Controller
                         '_baseQuantity' => (float)($meta['_baseQuantity'] ?? $item->quantity ?? 1),
                         '_baseCustomFieldQuantities' => $meta['_baseCustomFieldQuantities'] ?? ($meta['custom_fields_quantities'] ?? []),
                         '_baseCustomFieldValues' => $meta['_baseCustomFieldValues'] ?? ($meta['custom_fields'] ?? []),
+                        'source_order_id' => $meta['source_order_id'] ?? ($inv->meta['source_order_id'] ?? null),
+                        'is_renewal_item' => !empty($meta['is_renewal_item']) || !empty($inv->meta['is_renewal']),
+                        'original_invoice_id' => $inv->id,
+                        'original_item_id' => $item->id,
                     ];
                 }
             }
@@ -565,9 +569,21 @@ class InvoiceController extends Controller
                 $sourceInvoices = Invoice::whereIn('id', $sourceInvoiceIds)->get();
 
                 $mergedOrderIdsByInvoice = [];
-                foreach ($sourceInvoiceIds as $sId) {
-                    $mergedOrderIdsByInvoice[$sId] = Order::where('invoice_id', $sId)->pluck('id')->all();
+                $allMergedOrderIds = [];
+                foreach ($sourceInvoices as $sourceInv) {
+                    $invOrderIds = Order::where('invoice_id', $sourceInv->id)->pluck('id')->all();
+                    $sMeta = is_array($sourceInv->meta) ? $sourceInv->meta : (json_decode($sourceInv->meta, true) ?? []);
+                    if (!empty($sMeta['source_order_id'])) {
+                        $invOrderIds[] = (int)$sMeta['source_order_id'];
+                    }
+                    if (!empty($sMeta['merged_order_ids']) && is_array($sMeta['merged_order_ids'])) {
+                        $invOrderIds = array_merge($invOrderIds, $sMeta['merged_order_ids']);
+                    }
+                    $invOrderIds = array_values(array_unique(array_filter(array_map('intval', $invOrderIds))));
+                    $mergedOrderIdsByInvoice[$sourceInv->id] = $invOrderIds;
+                    $allMergedOrderIds = array_merge($allMergedOrderIds, $invOrderIds);
                 }
+                $allMergedOrderIds = array_values(array_unique(array_filter($allMergedOrderIds)));
 
                 // Transfer payments and orders only if it's merge mode
                 if ($request->has('merge_invoices') || $request->filled('merged_from_invoice_ids')) {
@@ -600,6 +616,7 @@ class InvoiceController extends Controller
                 $newMeta = is_array($invoice->meta) ? $invoice->meta : (json_decode($invoice->meta, true) ?? []);
                 $newMeta['is_merged_invoice'] = true;
                 $newMeta['merged_from_invoice_ids'] = $sourceInvoiceIds;
+                $newMeta['merged_order_ids'] = $allMergedOrderIds;
                 $invoice->update(['meta' => $newMeta]);
             }
 
@@ -838,22 +855,43 @@ class InvoiceController extends Controller
                 $sourceInvoiceIds = array_values(array_unique($debtIds));
                 $sourceInvoices = Invoice::whereIn('id', $sourceInvoiceIds)->get();
 
+                $mergedOrderIdsByInvoice = [];
+                $currentMeta = is_array($invoice->meta) ? $invoice->meta : (json_decode($invoice->meta, true) ?? []);
+                $allMergedOrderIds = $currentMeta['merged_order_ids'] ?? [];
+                if (!is_array($allMergedOrderIds)) $allMergedOrderIds = [];
+
+                foreach ($sourceInvoices as $sourceInv) {
+                    $invOrderIds = Order::where('invoice_id', $sourceInv->id)->pluck('id')->all();
+                    $sMeta = is_array($sourceInv->meta) ? $sourceInv->meta : (json_decode($sourceInv->meta, true) ?? []);
+                    if (!empty($sMeta['source_order_id'])) {
+                        $invOrderIds[] = (int)$sMeta['source_order_id'];
+                    }
+                    if (!empty($sMeta['merged_order_ids']) && is_array($sMeta['merged_order_ids'])) {
+                        $invOrderIds = array_merge($invOrderIds, $sMeta['merged_order_ids']);
+                    }
+                    $invOrderIds = array_values(array_unique(array_filter(array_map('intval', $invOrderIds))));
+                    $mergedOrderIdsByInvoice[$sourceInv->id] = $invOrderIds;
+                    $allMergedOrderIds = array_merge($allMergedOrderIds, $invOrderIds);
+                }
+                $allMergedOrderIds = array_values(array_unique(array_filter($allMergedOrderIds)));
+
                 $mergedStatus = Status::where('type', 'invoice')->where('name', 'ادغام شده')->first();
                 foreach ($sourceInvoices as $sourceInv) {
                     $meta = is_array($sourceInv->meta) ? $sourceInv->meta : (json_decode($sourceInv->meta, true) ?? []);
                     if (isset($meta['is_merged_invoice'])) unset($meta['is_merged_invoice']);
                     $meta['was_merged_into'] = $invoice->id;
+                    $meta['merged_order_ids'] = $mergedOrderIdsByInvoice[$sourceInv->id] ?? [];
                     $sourceInv->update([
                         'status_id' => $mergedStatus?->id ?? $sourceInv->status_id,
                         'meta' => $meta,
                     ]);
                 }
 
-                $currentMeta = is_array($invoice->meta) ? $invoice->meta : (json_decode($invoice->meta, true) ?? []);
                 $currentMeta['is_merged_invoice'] = true;
                 $existingMergedIds = $currentMeta['merged_from_invoice_ids'] ?? [];
                 if (!is_array($existingMergedIds)) $existingMergedIds = [];
                 $currentMeta['merged_from_invoice_ids'] = array_values(array_unique(array_merge($existingMergedIds, $sourceInvoiceIds)));
+                $currentMeta['merged_order_ids'] = $allMergedOrderIds;
                 $invoice->update(['meta' => $currentMeta]);
             }
 
@@ -2102,6 +2140,9 @@ class InvoiceController extends Controller
                     '_isMerged' => $item['_isMerged'] ?? false,
                     '_isDebt' => !empty($item['_isDebt']) || (($item['mode'] ?? '') === 'debt'),
                     'debt_invoice_ids' => $item['debt_invoice_ids'] ?? null,
+                    'source_order_id' => !empty($item['source_order_id']) ? (int)$item['source_order_id'] : (!empty($item['meta']['source_order_id']) ? (int)$item['meta']['source_order_id'] : null),
+                    'is_renewal_item' => !empty($item['is_renewal_item']) || !empty($item['meta']['is_renewal_item']),
+                    'original_invoice_id' => $item['original_invoice_id'] ?? ($item['meta']['original_invoice_id'] ?? null),
                     'type' => (!empty($item['product_id']) || !empty($item['product_variant_id'])) ? 'product' : (!empty($item['service_id']) ? 'service' : (!empty($item['_isDebt']) || (($item['mode'] ?? '') === 'debt') ? 'debt' : 'manual')),
                 ],
             ];
@@ -2598,6 +2639,106 @@ class InvoiceController extends Controller
 
                 return;
             }
+        }
+
+        $isMerged = $invoice->isMerged() 
+            || !empty($invoiceMeta['is_merged_invoice']) 
+            || !empty($invoiceMeta['merged_from_invoice_ids']);
+
+        if ($isMerged) {
+            $mergedOrderIds = is_array($invoiceMeta['merged_order_ids'] ?? null) 
+                ? array_values(array_unique(array_filter(array_map('intval', $invoiceMeta['merged_order_ids'])))) 
+                : [];
+
+            // If merged_order_ids was not populated in meta, recover from source invoices
+            if (empty($mergedOrderIds) && !empty($invoiceMeta['merged_from_invoice_ids'])) {
+                $srcInvs = Invoice::whereIn('id', (array)$invoiceMeta['merged_from_invoice_ids'])->get();
+                foreach ($srcInvs as $sInv) {
+                    $sMeta = is_array($sInv->meta) ? $sInv->meta : (json_decode($sInv->meta, true) ?? []);
+                    $ordIds = Order::where('invoice_id', $sInv->id)->pluck('id')->all();
+                    if (!empty($sMeta['source_order_id'])) $ordIds[] = (int)$sMeta['source_order_id'];
+                    if (!empty($sMeta['merged_order_ids']) && is_array($sMeta['merged_order_ids'])) {
+                        $ordIds = array_merge($ordIds, $sMeta['merged_order_ids']);
+                    }
+                    $mergedOrderIds = array_merge($mergedOrderIds, $ordIds);
+                }
+                $mergedOrderIds = array_values(array_unique(array_filter(array_map('intval', $mergedOrderIds))));
+                if (!empty($mergedOrderIds)) {
+                    $invoiceMeta['merged_order_ids'] = $mergedOrderIds;
+                    $invoice->update(['meta' => $invoiceMeta]);
+                }
+            }
+
+            // Also check items' source_order_id
+            foreach ($serviceItems as $it) {
+                if (!empty($it['meta']['source_order_id'])) {
+                    $mergedOrderIds[] = (int)$it['meta']['source_order_id'];
+                }
+            }
+            $mergedOrderIds = array_values(array_unique(array_filter($mergedOrderIds)));
+
+            // If the merged invoice is paid: activate all source orders
+            if ($invoice->isPaid() && !empty($mergedOrderIds)) {
+                $activeStatus = Status::where('type', 'order')->where('name', 'فعال')->first()
+                    ?? Status::where('type', 'order')->where('name', 'LIKE', '%فعال%')->first();
+
+                if ($activeStatus) {
+                    Order::whereIn('id', $mergedOrderIds)->where('status_id', '!=', $activeStatus->id)->update([
+                        'status_id' => $activeStatus->id,
+                    ]);
+                }
+            }
+
+            // Identify which service items correspond to existing merged/renewal orders
+            $matchedOrderIds = [];
+            $unmatchedItems = [];
+
+            foreach ($serviceItems as $item) {
+                $itemSourceOrderId = (int)($item['meta']['source_order_id'] ?? 0);
+                $isItemRenewal = !empty($item['meta']['is_renewal_item']);
+
+                // If explicit source_order_id
+                if ($itemSourceOrderId && in_array($itemSourceOrderId, $mergedOrderIds)) {
+                    $matchedOrderIds[] = $itemSourceOrderId;
+                    continue;
+                }
+
+                // Match by service_id among remaining merged orders
+                $serviceId = $item['service_id'] ?? null;
+                $candidateOrderId = null;
+                if ($serviceId && !empty($mergedOrderIds)) {
+                    foreach ($mergedOrderIds as $mId) {
+                        if (!in_array($mId, $matchedOrderIds)) {
+                            $mOrd = Order::find($mId);
+                            if ($mOrd && $mOrd->service_id == $serviceId) {
+                                $candidateOrderId = $mId;
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                if ($candidateOrderId || $isItemRenewal) {
+                    if ($candidateOrderId) {
+                        $matchedOrderIds[] = $candidateOrderId;
+                    }
+                    continue;
+                }
+
+                // If truly a brand-new service item added into the merged invoice
+                $unmatchedItems[] = $item;
+            }
+
+            // Clean up any ghost duplicate orders created for the merged orders
+            Order::where('invoice_id', $invoice->id)->whereNotIn('id', $mergedOrderIds)->delete();
+
+            // If there are no brand-new items, we are completely done!
+            if (empty($unmatchedItems)) {
+                return;
+            }
+
+            // Otherwise, only sync the truly unmatched new items into service_orders
+            $serviceItems = $unmatchedItems;
         }
 
         $existingOrders = Order::where('invoice_id', $invoice->id)->orderBy('id')->get();

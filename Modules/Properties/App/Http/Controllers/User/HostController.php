@@ -52,6 +52,11 @@ class HostController extends Controller
     public function storeHostRequest(Request $request)
     {
         $user = auth()->user();
+        $multiHostEnabled = (bool) PropertySetting::get('rental_multi_host_enabled', 0);
+
+        if (!$multiHostEnabled) {
+            return redirect()->route('user.properties.index')->with('error', 'سیستم چندمیزبانی در حال حاضر غیرفعال است.');
+        }
 
         $request->validate([
             'display_name' => 'required|string|max:255',
@@ -128,18 +133,28 @@ class HostController extends Controller
     }
 
     /**
-     * داشبورد اختصاصی میزبان
+     * پروفایل و داشبورد اختصاصی میزبان
      */
     public function dashboard()
     {
         $user = auth()->user();
+        $multiHostEnabled = (bool) PropertySetting::get('rental_multi_host_enabled', 0);
+        $isAdminOrStaff = $user->hasRole(['super-admin', 'admin']) || $user->can('properties.manage');
+
+        if (!$multiHostEnabled && !$isAdminOrStaff) {
+            return redirect()->route('user.properties.index')->with('error', 'سیستم چندمیزبانی غیرفعال است و مدیریت اقامتگاه‌ها به صورت متمرکز انجام می‌شود.');
+        }
+
         $host = PropertyHost::where('user_id', $user->id)->first();
 
         if (!$host) {
             return redirect()->route('user.properties.hosts.register');
         }
 
-        $properties = Property::where('host_id', $host->id)->with('rentalConfig', 'status')->latest()->get();
+        $properties = Property::where('host_id', $host->id)
+            ->with(['rentalConfig', 'status', 'category', 'pendingRevision', 'latestRevision'])
+            ->latest()
+            ->get();
 
         $stats = [
             'total' => $properties->count(),
@@ -148,11 +163,96 @@ class HostController extends Controller
             'rejected' => $properties->where('approval_status', 'rejected')->count(),
         ];
 
+        // بررسی پویا وضعیت تکمیل فیلدهای احراز هویت (CustomUserField)
+        $roleNames = $user->roles->pluck('name')->toArray();
+        if (!in_array('property_host', $roleNames)) {
+            $roleNames[] = 'property_host';
+        }
+
+        $customFields = CustomUserField::whereIn('role_name', $roleNames)
+            ->where('show_in_profile', true)
+            ->orderBy('id')
+            ->get()
+            ->unique('field_name');
+
+        $customValues = UserCustomValue::where('user_id', $user->id)
+            ->get()
+            ->keyBy('field_name');
+
+        $totalKycFieldsCount = $customFields->count();
+        $completedKycFieldsCount = 0;
+        $missingKycFieldLabels = [];
+
+        foreach ($customFields as $field) {
+            $valRecord = $customValues->get($field->field_name);
+            $hasVal = $valRecord && $valRecord->value !== null && trim((string) $valRecord->value) !== '';
+            if ($hasVal) {
+                $completedKycFieldsCount++;
+            } elseif ($field->is_required) {
+                $missingKycFieldLabels[] = $field->label;
+            }
+        }
+
+        $isKycFieldsComplete = count($missingKycFieldLabels) === 0 && ($totalKycFieldsCount === 0 || $completedKycFieldsCount > 0 || $host->kyc_status === 'approved');
+        $isBankComplete = !empty($host->shaba_number);
+        $isBasicComplete = !empty($host->display_name) && !empty($host->phone);
+        $isAccountApproved = $host->status === 'active';
+
+        // محاسبه درصد پیشرفت آمادگی میزبانی (۴ گام کلیدی)
+        $completedSteps = 0;
+        if ($isBasicComplete) $completedSteps++;
+        if ($isKycFieldsComplete || $host->kyc_status === 'approved') $completedSteps++;
+        if ($isBankComplete) $completedSteps++;
+        if ($isAccountApproved) $completedSteps++;
+        $onboardingProgress = (int) round(($completedSteps / 4) * 100);
+
+        // نمایش بخش وضعیت تکمیل پروفایل فقط زمانی که ۱۰۰٪ تکمیل و تأیید نشده باشد
+        $showOnboardingStepper = ($onboardingProgress < 100 || $host->status !== 'active' || $host->kyc_status !== 'approved');
+
         // تعیین دسترسی میزبان به ثبت اقامتگاه جدید بر اساس وضعیت و تنظیمات سیستم
         $pendingCanCreate = (bool) PropertySetting::get('rental_pending_host_can_create', 0);
         $canCreateProperty = ($host->status === 'active') || ($host->status === 'pending' && $pendingCanCreate);
 
-        return view('properties::user.hosts.dashboard', compact('host', 'properties', 'stats', 'canCreateProperty', 'pendingCanCreate'));
+        // واکشی تنظیمات پویا برای بخش «نکات کلیدی میزبانی موفق»
+        $hostTipsEnabled = (bool) PropertySetting::get('rental_host_tips_enabled', 1);
+        $hostTipsTitle = PropertySetting::get('rental_host_tips_title', 'نکات کلیدی میزبانی موفق');
+        $rawHostTips = PropertySetting::get('rental_host_tips');
+        $hostTips = $rawHostTips ? json_decode($rawHostTips, true) : null;
+        if (empty($hostTips) || !is_array($hostTips)) {
+            $hostTips = [
+                [
+                    'title' => 'بروزرسانی تقویم',
+                    'text' => 'روزهایی که اقامتگاه خارج از پلتفرم پر شده است را از بخش «مدیریت تقویم» مسدود نمایید تا از تداخل رزرو جلوگیری شود.',
+                ],
+                [
+                    'title' => 'نرخ‌گذاری فصلی و پیک',
+                    'text' => 'تعیین نرخ دقیق آخر هفته و ایام پیک باعث افزایش رتبه نمایش اقامتگاه شما در نتایج جستجو می‌شود.',
+                ],
+                [
+                    'title' => 'ویرایش مدارک هویتی',
+                    'text' => 'در صورت تغییر اطلاعات احراز هویت پس از تأیید، وضعیت مدارک مجدداً جهت بررسی امنیتی به حالت «در انتظار بررسی» تغییر می‌یابد.',
+                ],
+            ];
+        }
+
+        return view('properties::user.hosts.dashboard', compact(
+            'host',
+            'properties',
+            'stats',
+            'canCreateProperty',
+            'pendingCanCreate',
+            'totalKycFieldsCount',
+            'completedKycFieldsCount',
+            'missingKycFieldLabels',
+            'isKycFieldsComplete',
+            'isBankComplete',
+            'isBasicComplete',
+            'onboardingProgress',
+            'showOnboardingStepper',
+            'hostTipsEnabled',
+            'hostTipsTitle',
+            'hostTips'
+        ));
     }
 
     /**
@@ -317,6 +417,10 @@ class HostController extends Controller
             $fieldName = $f->field_name;
             $type = strtolower($f->field_type ?? 'text');
 
+            $existingVal = UserCustomValue::where('user_id', $user->id)
+                ->where('field_name', $fieldName)
+                ->value('value');
+
             if ($type === 'file') {
                 if ($request->hasFile("custom.{$fieldName}")) {
                     $file = $request->file("custom.{$fieldName}");
@@ -336,19 +440,21 @@ class HostController extends Controller
                     if (is_array($val)) {
                         $val = json_encode($val, JSON_UNESCAPED_UNICODE);
                     }
-                    UserCustomValue::updateOrCreate(
-                        ['user_id' => $user->id, 'field_name' => $fieldName],
-                        ['value' => $val]
-                    );
-                    if ($fieldName === 'national_code') {
-                        $data['national_code'] = $val;
+                    if (trim((string) $val) !== trim((string) $existingVal)) {
+                        UserCustomValue::updateOrCreate(
+                            ['user_id' => $user->id, 'field_name' => $fieldName],
+                            ['value' => $val]
+                        );
+                        if ($fieldName === 'national_code') {
+                            $data['national_code'] = $val;
+                        }
+                        $hasVerificationChanges = true;
                     }
-                    $hasVerificationChanges = true;
                 }
             }
         }
 
-        // احراز هویت مجدد: در صورت هرگونه تغییر در اطلاعات یا مدارک احراز هویت، مدارک مجدداً جهت بررسی به صف انتظار می‌روند
+        // احراز هویت مجدد: در صورت هرگونه تغییر واقعی در اطلاعات یا مدارک احراز هویت، مدارک مجدداً جهت بررسی به صف انتظار می‌روند
         if ($hasVerificationChanges) {
             $data['kyc_status'] = 'pending';
             $data['kyc_rejection_reason'] = null;
@@ -367,6 +473,11 @@ class HostController extends Controller
         $user = auth()->user();
         if (!$user->hasRole(['super-admin', 'admin']) && !$user->can('properties.hosts.view') && !$user->can('properties.manage')) {
             abort(403);
+        }
+
+        $multiHostEnabled = (bool) PropertySetting::get('rental_multi_host_enabled', 0);
+        if (!$multiHostEnabled) {
+            return redirect()->route('user.properties.index')->with('info', 'سیستم چندمیزبانی در تنظیمات غیرفعال شده است.');
         }
 
         $query = PropertyHost::with(['user.customValues', 'owner', 'properties' => function($q) {
@@ -580,6 +691,145 @@ class HostController extends Controller
         ->get(['id', 'display_name', 'phone', 'avatar', 'status', 'kyc_status']);
 
         return response()->json($hosts);
+    }
+
+    /**
+     * مدیریت رزروهای میزبان
+     */
+    public function bookingsIndex(Request $request)
+    {
+        $user = auth()->user();
+        $host = PropertyHost::where('user_id', $user->id)->first();
+        if (!$host) {
+            return redirect()->route('user.properties.hosts.register');
+        }
+
+        $query = \Modules\Properties\Entities\PropertyRentalBooking::with(['property.primaryImage', 'client'])
+            ->where('host_id', $host->id);
+
+        $status = $request->get('status', 'all');
+        if ($status && $status !== 'all') {
+            if ($status === 'active') {
+                $query->whereIn('status', [
+                    \Modules\Properties\Entities\PropertyRentalBooking::STATUS_PENDING_HOST,
+                    \Modules\Properties\Entities\PropertyRentalBooking::STATUS_AWAITING_PAYMENT,
+                    \Modules\Properties\Entities\PropertyRentalBooking::STATUS_CONFIRMED,
+                    \Modules\Properties\Entities\PropertyRentalBooking::STATUS_CHECKED_IN,
+                ]);
+            } else {
+                $query->where('status', $status);
+            }
+        }
+
+        if ($search = $request->get('search')) {
+            $query->where(function($q) use ($search) {
+                $q->where('booking_code', 'like', "%{$search}%")
+                  ->orWhere('guest_full_name', 'like', "%{$search}%")
+                  ->orWhere('guest_phone', 'like', "%{$search}%")
+                  ->orWhereHas('property', function($pq) use ($search) {
+                      $pq->where('title', 'like', "%{$search}%")
+                         ->orWhere('code', 'like', "%{$search}%");
+                  });
+            });
+        }
+
+        $bookings = $query->orderByDesc('id')->paginate(15)->withQueryString();
+
+        $counts = [
+            'all' => \Modules\Properties\Entities\PropertyRentalBooking::where('host_id', $host->id)->count(),
+            'pending_host' => \Modules\Properties\Entities\PropertyRentalBooking::where('host_id', $host->id)
+                ->where('status', \Modules\Properties\Entities\PropertyRentalBooking::STATUS_PENDING_HOST)->count(),
+            'awaiting_payment' => \Modules\Properties\Entities\PropertyRentalBooking::where('host_id', $host->id)
+                ->where('status', \Modules\Properties\Entities\PropertyRentalBooking::STATUS_AWAITING_PAYMENT)->count(),
+            'confirmed' => \Modules\Properties\Entities\PropertyRentalBooking::where('host_id', $host->id)
+                ->where('status', \Modules\Properties\Entities\PropertyRentalBooking::STATUS_CONFIRMED)->count(),
+            'checked_in' => \Modules\Properties\Entities\PropertyRentalBooking::where('host_id', $host->id)
+                ->where('status', \Modules\Properties\Entities\PropertyRentalBooking::STATUS_CHECKED_IN)->count(),
+            'completed' => \Modules\Properties\Entities\PropertyRentalBooking::where('host_id', $host->id)
+                ->where('status', \Modules\Properties\Entities\PropertyRentalBooking::STATUS_COMPLETED)->count(),
+        ];
+
+        return view('properties::user.hosts.bookings.index', compact('host', 'bookings', 'counts', 'status'));
+    }
+
+    /**
+     * تأیید درخواست رزرو توسط میزبان
+     */
+    public function approveBooking(\Modules\Properties\Entities\PropertyRentalBooking $booking, \Modules\Properties\Services\RentalBookingService $bookingService)
+    {
+        $user = auth()->user();
+        $host = PropertyHost::where('user_id', $user->id)->first();
+        if (!$host || $booking->host_id !== $host->id) {
+            abort(403);
+        }
+
+        try {
+            $bookingService->approveByHost($booking, $user->id);
+            return back()->with('success', "درخواست رزرو {$booking->booking_code} با موفقیت تأیید شد و جهت پرداخت به مهمان اطلاع داده شد.");
+        } catch (\Exception $e) {
+            return back()->with('error', $e->getMessage());
+        }
+    }
+
+    /**
+     * رد درخواست رزرو توسط میزبان
+     */
+    public function rejectBooking(Request $request, \Modules\Properties\Entities\PropertyRentalBooking $booking, \Modules\Properties\Services\RentalBookingService $bookingService)
+    {
+        $user = auth()->user();
+        $host = PropertyHost::where('user_id', $user->id)->first();
+        if (!$host || $booking->host_id !== $host->id) {
+            abort(403);
+        }
+
+        $request->validate([
+            'rejection_reason' => 'required|string|max:500'
+        ]);
+
+        try {
+            $bookingService->rejectByHost($booking, $request->input('rejection_reason'), $user->id);
+            return back()->with('success', "درخواست رزرو {$booking->booking_code} رد شد.");
+        } catch (\Exception $e) {
+            return back()->with('error', $e->getMessage());
+        }
+    }
+
+    /**
+     * ثبت ورود مهمان (Check-in) توسط میزبان
+     */
+    public function checkInBooking(\Modules\Properties\Entities\PropertyRentalBooking $booking, \Modules\Properties\Services\RentalBookingService $bookingService)
+    {
+        $user = auth()->user();
+        $host = PropertyHost::where('user_id', $user->id)->first();
+        if (!$host || $booking->host_id !== $host->id) {
+            abort(403);
+        }
+
+        try {
+            $bookingService->checkIn($booking, $user->id);
+            return back()->with('success', "ورود مهمان برای رزرو {$booking->booking_code} ثبت شد.");
+        } catch (\Exception $e) {
+            return back()->with('error', $e->getMessage());
+        }
+    }
+
+    /**
+     * ثبت تحویل و خروج مهمان (Check-out / Complete)
+     */
+    public function completeBooking(\Modules\Properties\Entities\PropertyRentalBooking $booking, \Modules\Properties\Services\RentalBookingService $bookingService)
+    {
+        $user = auth()->user();
+        $host = PropertyHost::where('user_id', $user->id)->first();
+        if (!$host || $booking->host_id !== $host->id) {
+            abort(403);
+        }
+
+        try {
+            $bookingService->complete($booking, $user->id);
+            return back()->with('success', "اقامت رزرو {$booking->booking_code} پایان یافته و وضعیت به تکمیل‌شده تغییر یافت.");
+        } catch (\Exception $e) {
+            return back()->with('error', $e->getMessage());
+        }
     }
 }
 

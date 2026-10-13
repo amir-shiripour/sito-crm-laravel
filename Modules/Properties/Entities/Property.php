@@ -36,6 +36,8 @@ class Property extends Model
         'is_convertible',
         'convertible_with',
         'address',
+        'province',
+        'city',
         'latitude',
         'longitude',
         'area',
@@ -88,6 +90,88 @@ class Property extends Model
         'draft' => 'پیش‌نویس',
         'published' => 'منتشر شده',
     ];
+
+    const DEFAULT_RENTAL_PROPERTY_TYPES = [
+        'villa' => [
+            'key' => 'villa',
+            'label' => 'ویلا',
+            'is_active' => true,
+        ],
+        'apartment' => [
+            'key' => 'apartment',
+            'label' => 'آپارتمان و سوئیت',
+            'is_active' => true,
+        ],
+        'cottage' => [
+            'key' => 'cottage',
+            'label' => 'کلبه و اقامتگاه چوبی',
+            'is_active' => true,
+        ],
+        'ecolodge' => [
+            'key' => 'ecolodge',
+            'label' => 'بوم‌گردی و سنتی',
+            'is_active' => true,
+        ],
+        'resort' => [
+            'key' => 'resort',
+            'label' => 'مجتمع اقامتی و هتل‌آپارتمان',
+            'is_active' => true,
+        ],
+    ];
+
+    /**
+     * استخراج انواع اقامتگاه از تنظیمات یا مقادیر پیش‌فرض
+     *
+     * @param bool $onlyActive
+     * @return array
+     */
+    public static function getRentalPropertyTypes(bool $onlyActive = false): array
+    {
+        $raw = PropertySetting::get('rental_property_types');
+        $types = null;
+
+        if ($raw) {
+            $decoded = is_string($raw) ? json_decode($raw, true) : $raw;
+            if (is_array($decoded) && !empty($decoded)) {
+                $types = $decoded;
+            }
+        }
+
+        if ($types === null) {
+            $types = self::DEFAULT_RENTAL_PROPERTY_TYPES;
+        }
+
+        if ($onlyActive) {
+            $types = array_filter($types, function ($item) {
+                return !empty($item['is_active']);
+            });
+        }
+
+        return $types;
+    }
+
+    /**
+     * اکسسور برای نمایش برچسب فارسی نوع ملک یا اقامتگاه
+     *
+     * @return string
+     */
+    public function getPropertyTypeLabelAttribute(): string
+    {
+        if ($this->listing_type === 'daily_rental') {
+            $rentalTypes = self::getRentalPropertyTypes();
+            if (isset($rentalTypes[$this->property_type]['label'])) {
+                return $rentalTypes[$this->property_type]['label'];
+            }
+        }
+
+        return match ($this->property_type) {
+            'apartment' => 'خانه و آپارتمان',
+            'villa' => 'ویلا و باغچه',
+            'land' => 'زمین و کلنگی',
+            'office' => 'اداری و تجاری',
+            default => $this->property_type ?? '—'
+        };
+    }
 
     public function creator()
     {
@@ -142,6 +226,29 @@ class Property extends Model
     public function images()
     {
         return $this->hasMany(PropertyImage::class)->orderBy('sort_order');
+    }
+
+    public function primaryImage(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(PropertyImage::class, 'property_id')->oldestOfMany('sort_order');
+    }
+
+    public function getPrimaryImageUrlAttribute(): string
+    {
+        if ($this->cover_image) {
+            return asset('storage/' . $this->cover_image);
+        }
+
+        if ($this->relationLoaded('primaryImage') && $this->primaryImage) {
+            return $this->primaryImage->image_url;
+        }
+
+        $image = $this->primaryImage ?: $this->images()->first();
+        if ($image) {
+            return $image->image_url;
+        }
+
+        return asset('assets/images/placeholder.jpg');
     }
 
     public function attributeValues()
@@ -288,5 +395,10 @@ class Property extends Model
     public function latestRevision(): \Illuminate\Database\Eloquent\Relations\HasOne
     {
         return $this->hasOne(PropertyRevision::class, 'property_id')->latestOfMany();
+    }
+
+    public function rentalBookings(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(PropertyRentalBooking::class, 'property_id');
     }
 }

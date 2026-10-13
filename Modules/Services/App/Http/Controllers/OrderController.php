@@ -19,6 +19,7 @@ use Modules\Services\App\Http\Models\InvoiceItem;
 use Modules\Services\App\Http\Models\ActivityLog;
 use Modules\Settings\Entities\Setting;
 use Modules\Workflows\Services\WorkflowEngine;
+use Modules\Services\App\Services\InvoiceMergeService;
 
 class OrderController extends Controller
 {
@@ -399,6 +400,18 @@ class OrderController extends Controller
                 $renewalInvoice,
                 "فاکتور تمدید دوره‌ای دستی شماره {$renewalInvoice->invoice_number} برای سفارش {$order->order_number} صادر گردید."
             );
+
+            // Check and auto-merge concurrent invoices if enabled in settings
+            if (class_exists(InvoiceMergeService::class)) {
+                try {
+                    $mergedInvoice = app(InvoiceMergeService::class)->checkAndAutoMergeConcurrentInvoices($renewalInvoice);
+                    if ($mergedInvoice) {
+                        $renewalInvoice = $mergedInvoice;
+                    }
+                } catch (\Throwable $e) {
+                    Log::error('[OrderController] Auto-merge check failed: ' . $e->getMessage());
+                }
+            }
 
             // Trigger invoice_created workflow on the renewal invoice so other workflows continue to run
             if (class_exists(WorkflowEngine::class)) {

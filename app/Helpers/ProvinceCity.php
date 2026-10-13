@@ -64,4 +64,14 @@ class ProvinceCity
         $data = self::loadData();
         return $data[$provinceName] ?? [];
     }
+
+    /**
+     * Get the full mapping of provinces to cities.
+     *
+     * @return array
+     */
+    public static function getAll(): array
+    {
+        return self::loadData();
+    }
 }

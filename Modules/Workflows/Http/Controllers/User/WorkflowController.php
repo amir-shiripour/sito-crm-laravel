@@ -115,6 +115,18 @@ class WorkflowController extends Controller
             ];
         }
 
+        if (class_exists(\Modules\Properties\Entities\PropertyRentalBooking::class)) {
+            $triggerOptions['RENTAL_BOOKING'] = [
+                'rental_booking_created'   => 'ثبت درخواست رزرو اقامتگاه',
+                'rental_booking_approved'  => 'تأیید درخواست رزرو توسط میزبان',
+                'rental_booking_confirmed' => 'قطعی شدن و پرداخت رزرو اقامتگاه',
+                'rental_booking_rejected'  => 'رد رزرو توسط میزبان',
+                'rental_booking_cancelled' => 'لغو رزرو اقامتگاه',
+                'rental_booking_checked_in'=> 'ثبت ورود مسافر (Check-in)',
+                'rental_booking_completed' => 'تخلیه و پایان اقامت (Completed)',
+            ];
+        }
+
         return $triggerOptions;
     }
 

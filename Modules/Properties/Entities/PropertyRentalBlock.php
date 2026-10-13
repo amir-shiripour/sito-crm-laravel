@@ -13,6 +13,7 @@ class PropertyRentalBlock extends Model
 
     protected $fillable = [
         'property_id',
+        'booking_id',
         'start_date',
         'end_date',
         'reason',
@@ -26,5 +27,10 @@ class PropertyRentalBlock extends Model
     public function property()
     {
         return $this->belongsTo(Property::class, 'property_id');
+    }
+
+    public function booking()
+    {
+        return $this->belongsTo(PropertyRentalBooking::class, 'booking_id');
     }
 }

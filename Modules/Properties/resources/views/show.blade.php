@@ -169,6 +169,8 @@
                     <div class="grid grid-cols-2 md:grid-cols-3 gap-y-6 gap-x-8">
                         @php
                             $specs = collect();
+                            if($property->province) $specs->push(['name' => 'استان', 'value' => $property->province]);
+                            if($property->city) $specs->push(['name' => 'شهر', 'value' => $property->city]);
                             if($property->listing_type) $specs->push(['name' => 'نوع فایل', 'value' => match($property->listing_type) {'sale' => 'فروش', 'rent' => 'رهن و اجاره', 'presale' => 'پیش‌فروش', default => $property->listing_type}]);
                             if($property->property_type) $specs->push(['name' => 'نوع ملک', 'value' => match($property->property_type) {'apartment' => 'آپارتمان', 'villa' => 'ویلایی', 'land' => 'زمین', 'commercial' => 'تجاری', 'office' => 'اداری', default => $property->property_type}]);
                             if($property->category) $specs->push(['name' => 'دسته‌بندی', 'value' => $property->category->name]);

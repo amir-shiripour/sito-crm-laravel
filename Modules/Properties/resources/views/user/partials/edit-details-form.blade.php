@@ -98,7 +98,7 @@
     </div>
 
     {{-- ویدیو --}}
-    <div class="{{ $cardClass }} p-5">
+    <div class="{{ $cardClass }} p-5" x-show="!(listingType === 'daily_rental' && !rentalVideoEnabled)" x-transition>
         <label class="{{ $labelClass }}">ویدیو ملک</label>
         <div class="relative w-full h-32 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl p-2 flex flex-col items-center justify-center hover:border-indigo-400 transition-colors overflow-hidden bg-gray-50 dark:bg-gray-900/30">
 

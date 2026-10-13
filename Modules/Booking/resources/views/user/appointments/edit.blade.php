@@ -17,6 +17,7 @@
         \Modules\Booking\Entities\Appointment::STATUS_PENDING => 'در انتظار تایید',
         \Modules\Booking\Entities\Appointment::STATUS_PENDING_PAYMENT => 'در انتظار پرداخت',
         \Modules\Booking\Entities\Appointment::STATUS_CONFIRMED => 'تایید شده',
+        \Modules\Booking\Entities\Appointment::STATUS_IN_PROGRESS => 'در حال انجام',
         \Modules\Booking\Entities\Appointment::STATUS_CANCELED_BY_ADMIN => 'لغو شده (ادمین)',
         \Modules\Booking\Entities\Appointment::STATUS_CANCELED_BY_CLIENT => 'لغو شده (مشتری)',
         \Modules\Booking\Entities\Appointment::STATUS_NO_SHOW => 'عدم حضور',

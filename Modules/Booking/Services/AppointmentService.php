@@ -596,6 +596,7 @@ class AppointmentService
 
         $statuses = (array) config('booking.capacity_consuming_statuses', [
             Appointment::STATUS_CONFIRMED,
+            Appointment::STATUS_IN_PROGRESS,
             Appointment::STATUS_PENDING_PAYMENT,
             Appointment::STATUS_PENDING,
             Appointment::STATUS_DRAFT,
@@ -697,6 +698,7 @@ class AppointmentService
 
         $statuses = (array) config('booking.capacity_consuming_statuses', [
             Appointment::STATUS_CONFIRMED,
+            Appointment::STATUS_IN_PROGRESS,
             Appointment::STATUS_PENDING_PAYMENT,
             Appointment::STATUS_PENDING,
             Appointment::STATUS_DRAFT,

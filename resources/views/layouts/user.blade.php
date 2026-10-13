@@ -41,7 +41,10 @@
         items: [],
         notify(e) {
             const id = Date.now() + Math.random();
-            const detail = (e && e.detail !== undefined) ? e.detail : e;
+            let detail = (e && e.detail !== undefined) ? e.detail : e;
+            if (Array.isArray(detail) && detail.length > 0) {
+                detail = detail[0];
+            }
             const validTypes = ['success', 'error', 'warning', 'info', 'danger'];
             let type = 'info';
             let text = '';

@@ -83,7 +83,21 @@ class InvoiceMergeService
         $totalDiscount = 0;
         $totalTax = 0;
 
+        $allMergedOrderIds = [];
+        $mergedOrderIdsByInvoice = [];
         foreach ($invoices as $inv) {
+            $invMeta = is_array($inv->meta) ? $inv->meta : (json_decode($inv->meta, true) ?? []);
+            $invOrderIds = Order::where('invoice_id', $inv->id)->pluck('id')->all();
+            if (!empty($invMeta['source_order_id'])) {
+                $invOrderIds[] = (int)$invMeta['source_order_id'];
+            }
+            if (!empty($invMeta['merged_order_ids']) && is_array($invMeta['merged_order_ids'])) {
+                $invOrderIds = array_merge($invOrderIds, $invMeta['merged_order_ids']);
+            }
+            $invOrderIds = array_values(array_unique(array_filter(array_map('intval', $invOrderIds))));
+            $mergedOrderIdsByInvoice[$inv->id] = $invOrderIds;
+            $allMergedOrderIds = array_merge($allMergedOrderIds, $invOrderIds);
+
             $invNumber = $inv->invoice_number ?: (string)$inv->id;
             foreach ($inv->items as $item) {
                 $itemMeta = is_array($item->meta) ? $item->meta : (json_decode($item->meta, true) ?? []);
@@ -95,6 +109,14 @@ class InvoiceMergeService
                 $itemMeta['_packageTitle'] = $packageTitle;
                 $itemMeta['original_invoice_id'] = $inv->id;
                 $itemMeta['original_item_id'] = $item->id;
+
+                $itemSourceOrderId = $itemMeta['source_order_id'] ?? ($invMeta['source_order_id'] ?? null);
+                if ($itemSourceOrderId) {
+                    $itemMeta['source_order_id'] = (int)$itemSourceOrderId;
+                }
+                if (!empty($invMeta['is_renewal']) || !empty($itemMeta['is_renewal_item'])) {
+                    $itemMeta['is_renewal_item'] = true;
+                }
 
                 $itemSubtotal = ($item->unit_price * (float)$item->quantity);
                 $itemDiscount = (int)$item->discount;
@@ -120,6 +142,7 @@ class InvoiceMergeService
                 ];
             }
         }
+        $allMergedOrderIds = array_values(array_unique(array_filter($allMergedOrderIds)));
 
         $grandTotal = max(0, $subtotal + $totalTax - $totalDiscount);
 
@@ -160,11 +183,13 @@ class InvoiceMergeService
             &$newInvoice, $customerId, $firstInvoice, $pendingStatus, $mergedStatus,
             $clientName, $clientPhone, $clientEmail, $issueDate, $dueDate,
             $subtotal, $totalDiscount, $totalTax, $roundedGrandTotal, $currency,
-            $actorId, $preparedItems, $invoices, $invoiceIds, $roundingMeta
+            $actorId, $preparedItems, $invoices, $invoiceIds, $roundingMeta,
+            $allMergedOrderIds, $mergedOrderIdsByInvoice
         ) {
             $meta = [
                 'is_merged_invoice' => true,
                 'merged_from_invoice_ids' => $invoiceIds,
+                'merged_order_ids' => $allMergedOrderIds,
                 'auto_merged' => true,
             ];
             if ($roundingMeta) {
@@ -206,7 +231,7 @@ class InvoiceMergeService
 
             if (Module::has('Market') && Module::isEnabled('Market')) {
                 if (Schema::hasTable('market_orders') && Schema::hasColumn('market_orders', 'source_invoice_id')) {
-                    \Modules\Market\Entities\MarketOrder::whereIn('source_invoice_id', $invoiceIds)
+                    DB::table('market_orders')->whereIn('source_invoice_id', $invoiceIds)
                         ->update(['source_invoice_id' => $newInvoice->id]);
                 }
             }
@@ -216,6 +241,7 @@ class InvoiceMergeService
                 $sMeta = is_array($sourceInv->meta) ? $sourceInv->meta : (json_decode($sourceInv->meta, true) ?? []);
                 unset($sMeta['is_merged_invoice']);
                 $sMeta['was_merged_into'] = $newInvoice->id;
+                $sMeta['merged_order_ids'] = $mergedOrderIdsByInvoice[$sourceInv->id] ?? [];
                 $sourceInv->update([
                     'status_id' => $mergedStatus?->id ?? $sourceInv->status_id,
                     'meta' => $sMeta,
@@ -286,7 +312,7 @@ class InvoiceMergeService
                       ->orWhere('paid_amount', '<', DB::raw('total'));
                 });
 
-            $eligibleInvoices = $query->get()->filter(function (Invoice $inv) {
+            $eligibleInvoices = $query->with(['status', 'items'])->get()->filter(function (Invoice $inv) {
                 return !$inv->isCanceled() && !$inv->isMerged() && !$inv->isPaid();
             });
 

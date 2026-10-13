@@ -47,12 +47,62 @@
         $canViewOwner = $checkVisibility('owner_info', true);
         $canViewNotes = $checkVisibility('confidential_notes', true);
         $canViewPrice = $checkVisibility('price_info', false);
-        $canViewMap   = $checkVisibility('map_info', false);
+        $canViewMapPermission = $checkVisibility('map_info', false);
         $canViewCover = $checkVisibility('cover_image', false);
         $canViewGallery = $checkVisibility('gallery_images', false);
 
+        // تنظیمات پویا کنترل نمایش اقامتگاه (Display & Privacy Settings)
+        $rSettings = $rentalDisplaySettings ?? [
+            'show_host_box' => \Modules\Properties\Entities\PropertySetting::get('rental_show_host_box', 'all'),
+            'host_show_avatar' => (bool) \Modules\Properties\Entities\PropertySetting::get('rental_host_show_avatar', 1),
+            'host_show_badge' => (bool) \Modules\Properties\Entities\PropertySetting::get('rental_host_show_badge', 1),
+            'host_show_about' => (bool) \Modules\Properties\Entities\PropertySetting::get('rental_host_show_about', 1),
+            'host_show_phone' => \Modules\Properties\Entities\PropertySetting::get('rental_host_show_phone', 'confirmed_booking'),
+            'show_address' => \Modules\Properties\Entities\PropertySetting::get('rental_show_address', 'all'),
+            'show_map' => \Modules\Properties\Entities\PropertySetting::get('rental_show_map', 'all'),
+            'map_display_type' => \Modules\Properties\Entities\PropertySetting::get('rental_map_display_type', 'circle_then_exact'),
+            'map_circle_radius' => (int) \Modules\Properties\Entities\PropertySetting::get('rental_map_circle_radius', 300),
+            'show_direct_call_btn' => \Modules\Properties\Entities\PropertySetting::get('rental_show_direct_call_btn', 'all'),
+        ];
+
+        $isConfirmedOrPrivileged = isset($hasConfirmedBooking) ? (bool) $hasConfirmedBooking : false;
+        if (!isset($hasConfirmedBooking) && auth()->check()) {
+            $isConfirmedOrPrivileged = app(\Modules\Properties\Services\RentalPublicService::class)->hasConfirmedBooking($property, auth()->user());
+        }
+
+        // بررسی شرط دسترسی بر مبنای 'all' | 'confirmed_booking' | 'none'
+        $evalRule = function($settingVal) use ($isConfirmedOrPrivileged) {
+            if ($settingVal === 'none') return false;
+            if ($settingVal === 'confirmed_booking') return $isConfirmedOrPrivileged;
+            return true; // 'all'
+        };
+
+        // فلگ‌های نمایش
+        $canShowHostBox = $evalRule($rSettings['show_host_box'] ?? 'all');
+        $canShowHostAvatar = !empty($rSettings['host_show_avatar']);
+        $canShowHostBadge = !empty($rSettings['host_show_badge']);
+        $canShowHostAbout = !empty($rSettings['host_show_about']);
+        $canShowHostPhoneInBox = $evalRule($rSettings['host_show_phone'] ?? 'confirmed_booking');
+
+        $canShowAddress = $evalRule($rSettings['show_address'] ?? 'all');
+        $canShowMap = $canViewMapPermission && $evalRule($rSettings['show_map'] ?? 'all');
+        $canShowDirectCall = $evalRule($rSettings['show_direct_call_btn'] ?? 'all');
+
+        // نحوه نمایش نقشه: 'circle' یا 'exact'
+        $mapDisplaySetting = $rSettings['map_display_type'] ?? 'circle_then_exact';
+        $circleRadius = max(50, (int) ($rSettings['map_circle_radius'] ?? 300));
+        if ($mapDisplaySetting === 'exact') {
+            $isMapExact = true;
+        } elseif ($mapDisplaySetting === 'circle') {
+            $isMapExact = false;
+        } else {
+            // 'circle_then_exact': اگر رزرو تایید شده باشد دقیق، در غیر این صورت محدوده
+            $isMapExact = $isConfirmedOrPrivileged;
+        }
+
         $displayAgent = $property->agent ?? $property->creator;
         $host = $property->host;
+        $hostPhone = $host && $host->phone ? $host->phone : ($displayAgent->mobile ?? $displayAgent->phone ?? null);
         $config = $property->rentalConfig;
         $currencyLabel = $currency === 'toman' ? 'تومان' : 'ریال';
         $images = $property->images;
@@ -96,14 +146,7 @@
         if ($property->property_type) {
             $detailSpecs->push([
                 'name' => 'نوع اقامتگاه',
-                'value' => match($property->property_type) {
-                    'apartment' => 'آپارتمان',
-                    'villa' => 'ویلایی',
-                    'land' => 'زمین / باغ',
-                    'commercial' => 'تجاری',
-                    'office' => 'اداری',
-                    default => $property->property_type
-                }
+                'value' => $property->property_type_label ?? $property->property_type
             ]);
         }
 
@@ -171,10 +214,23 @@
         // قوانین اقامتگاه
         $houseRules = $config ? ($config->house_rules ?? []) : [];
         $customRules = $houseRules['custom_rules'] ?? [];
+        // مشخصات کلاینت لاگین‌شده در صورت وجود
+        $currentClient = auth('client')->user();
+        $clientPayload = $currentClient ? [
+            'is_logged_in' => true,
+            'name' => $currentClient->name ?? '',
+            'phone' => $currentClient->phone ?? '',
+            'national_code' => $currentClient->national_code ?? '',
+        ] : [
+            'is_logged_in' => false,
+            'name' => '',
+            'phone' => '',
+            'national_code' => '',
+        ];
     @endphp
 
     <div class="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-10 w-full font-sans" 
-         x-data="rentalBookingApp(@js($calendarData['flatDates'] ?? []), @js($config), '{{ $currencyLabel }}', '{{ addslashes($property->title) }}', '{{ $property->code }}')">
+         x-data="rentalBookingApp(@js($calendarData['flatDates'] ?? []), @js($config), '{{ $currencyLabel }}', '{{ addslashes($property->title) }}', '{{ $property->code }}', @js($clientPayload), '{{ route('properties.book', $property->slug ?: $property->code) }}')">
 
         {{-- نوار ناوبری و عنوان --}}
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
@@ -205,17 +261,37 @@
             <h1 class="text-2xl sm:text-3xl font-black text-gray-900 dark:text-white leading-tight mb-2">
                 {{ $property->title }}
             </h1>
-            <p class="text-xs sm:text-sm font-bold text-gray-500 dark:text-gray-400 flex items-center gap-1.5">
-                <svg class="w-4 h-4 text-rose-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                </svg>
-                <span>{{ $property->address ?? 'منطقه اقامتی' }}</span>
-                @if($property->category)
-                    <span class="inline-block w-1.5 h-1.5 rounded-full bg-gray-300 dark:bg-gray-600 mx-1"></span>
-                    <span class="text-indigo-600 dark:text-indigo-400">{{ $property->category->name }}</span>
-                @endif
-            </p>
+            @php
+                $subTitleAddress = null;
+                if ($canShowAddress) {
+                    $parts = array_filter([$property->province, $property->city, $property->address]);
+                    $subTitleAddress = !empty($parts) ? implode('، ', array_unique($parts)) : $property->address;
+                } else {
+                    $locationParts = array_filter([$property->province, $property->city]);
+                    if (!empty($locationParts)) {
+                        $subTitleAddress = implode('، ', $locationParts);
+                    } else {
+                        $subTitleAddress = 'محدوده اقامتگاه';
+                    }
+                }
+            @endphp
+            @if($subTitleAddress || $property->category)
+                <p class="text-xs sm:text-sm font-bold text-gray-500 dark:text-gray-400 flex items-center gap-1.5">
+                    @if($subTitleAddress)
+                        <svg class="w-4 h-4 text-rose-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                        </svg>
+                        <span>{{ $subTitleAddress }}</span>
+                    @endif
+                    @if($property->category)
+                        @if($subTitleAddress)
+                            <span class="inline-block w-1.5 h-1.5 rounded-full bg-gray-300 dark:bg-gray-600 mx-1"></span>
+                        @endif
+                        <span class="text-indigo-600 dark:text-indigo-400">{{ $property->category->name }}</span>
+                    @endif
+                </p>
+            @endif
         </div>
 
         {{-- گالری تصاویر مدرن موزاییکی (Hero Mosaic Gallery) --}}
@@ -400,52 +476,52 @@
             <div class="lg:col-span-2 space-y-8">
 
                 {{-- کارت میزبان و هویت (Host Identity Card) --}}
-                <div class="bg-white dark:bg-gray-900/90 backdrop-blur-md rounded-3xl p-6 sm:p-7 shadow-sm border border-gray-200/80 dark:border-gray-800">
-                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-5">
-                        <div class="flex items-center gap-4">
-                            @if($host && $host->avatar)
-                                <img src="{{ asset('storage/' . $host->avatar) }}" alt="{{ $host->display_name }}" class="w-16 h-16 rounded-2xl object-cover border-2 border-indigo-100 dark:border-indigo-900/50 shadow-sm">
-                            @else
-                                <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-black text-2xl shadow-md shadow-indigo-500/20">
-                                    {{ mb_substr($host ? $host->display_name : ($displayAgent->name ?? 'م'), 0, 1) }}
-                                </div>
-                            @endif
-
-                            <div>
-                                <div class="flex items-center gap-2 mb-1">
-                                    <h3 class="text-lg font-black text-gray-900 dark:text-white">
-                                        {{ $host ? $host->display_name : ($displayAgent->name ?? 'میزبان اقامتگاه') }}
-                                    </h3>
-                                    @if($host && $host->kyc_status === 'approved')
-                                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 text-[11px] font-bold border border-emerald-200/80 dark:border-emerald-800/40">
-                                            <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
-                                            میزبان تایید هویت شده
-                                        </span>
+                @if($canShowHostBox)
+                    <div class="bg-white dark:bg-gray-900/90 backdrop-blur-md rounded-3xl p-6 sm:p-7 shadow-sm border border-gray-200/80 dark:border-gray-800">
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-5">
+                            <div class="flex items-center gap-4">
+                                @if($canShowHostAvatar)
+                                    @if($host && $host->avatar)
+                                        <img src="{{ asset('storage/' . $host->avatar) }}" alt="{{ $host->display_name }}" class="w-16 h-16 rounded-2xl object-cover border-2 border-indigo-100 dark:border-indigo-900/50 shadow-sm">
+                                    @else
+                                        <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-black text-2xl shadow-md shadow-indigo-500/20">
+                                            {{ mb_substr($host ? $host->display_name : ($displayAgent->name ?? 'م'), 0, 1) }}
+                                        </div>
                                     @endif
+                                @endif
+
+                                <div>
+                                    <div class="flex items-center gap-2 mb-1">
+                                        <h3 class="text-lg font-black text-gray-900 dark:text-white">
+                                            {{ $host ? $host->display_name : ($displayAgent->name ?? 'میزبان اقامتگاه') }}
+                                        </h3>
+                                        @if($canShowHostBadge && $host && $host->kyc_status === 'approved')
+                                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 text-[11px] font-bold border border-emerald-200/80 dark:border-emerald-800/40">
+                                                <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                                                میزبان تایید هویت شده
+                                            </span>
+                                        @endif
+                                    </div>
                                 </div>
-                                <p class="text-xs text-gray-500 dark:text-gray-400">میزبان مستقل در پلتفرم اقامتگاهی</p>
+                            </div>
+
+                            <div class="flex items-center gap-2.5">
+                                @if($canShowHostPhoneInBox && $hostPhone)
+                                    <a href="tel:{{ $hostPhone }}" class="px-4 py-2.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 transition text-xs font-bold flex items-center gap-2 border border-indigo-200/60 dark:border-indigo-800/50">
+                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg>
+                                        تماس با میزبان
+                                    </a>
+                                @endif
                             </div>
                         </div>
 
-                        <div class="flex items-center gap-2.5">
-                            @php
-                                $hostPhone = $host && $host->phone ? $host->phone : ($displayAgent->mobile ?? $displayAgent->phone ?? null);
-                            @endphp
-                            @if($hostPhone)
-                                <a href="tel:{{ $hostPhone }}" class="px-4 py-2.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 transition text-xs font-bold flex items-center gap-2 border border-indigo-200/60 dark:border-indigo-800/50">
-                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg>
-                                    تماس با میزبان
-                                </a>
-                            @endif
-                        </div>
+                        @if($canShowHostAbout && $host && $host->about)
+                            <div class="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800 text-xs text-gray-600 dark:text-gray-300 leading-relaxed">
+                                {{ $host->about }}
+                            </div>
+                        @endif
                     </div>
-
-                    @if($host && $host->about)
-                        <div class="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800 text-xs text-gray-600 dark:text-gray-300 leading-relaxed">
-                            {{ $host->about }}
-                        </div>
-                    @endif
-                </div>
+                @endif
 
                 {{-- توضیحات اقامتگاه و ویدئو تور --}}
                 <div class="bg-white dark:bg-gray-900/90 backdrop-blur-md rounded-3xl p-6 sm:p-7 shadow-sm border border-gray-200/80 dark:border-gray-800 space-y-5">
@@ -751,8 +827,12 @@
                     </div>
                 </div>
 
-                {{-- موقعیت روی نقشه --}}
-                @if($canViewMap && $property->latitude && $property->longitude)
+                {{-- موقعیت روی نقشه و آدرس دسترسی --}}
+                @php
+                    $hasAddressToShow = $canShowAddress && !empty($property->address);
+                    $hasMapToShow = $canShowMap && $property->latitude && $property->longitude;
+                @endphp
+                @if($hasMapToShow || $hasAddressToShow)
                     <div class="bg-white dark:bg-gray-900/90 backdrop-blur-md rounded-3xl p-6 sm:p-7 shadow-sm border border-gray-200/80 dark:border-gray-800">
                         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6 pb-4 border-b border-gray-100 dark:border-gray-800">
                             <div>
@@ -760,13 +840,28 @@
                                     <span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
                                     موقعیت جغرافیایی و دسترسی
                                 </h2>
-                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">محدوده تقریبی اقامتگاه جهت حفظ حریم شخصی</p>
+                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                    @if($isMapExact)
+                                        موقعیت دقیق اقامتگاه
+                                    @else
+                                        محدوده تقریبی اقامتگاه
+                                    @endif
+                                </p>
                             </div>
-                            <span class="text-xs font-bold text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 px-3.5 py-1.5 rounded-xl self-start sm:self-auto">
-                                {{ $property->address }}
-                            </span>
+                            @if($hasAddressToShow)
+                                <span class="text-xs font-bold text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 px-3.5 py-1.5 rounded-xl self-start sm:self-auto">
+                                    {{ $property->address }}
+                                </span>
+                            @endif
                         </div>
-                        <div id="map" class="w-full h-[350px] rounded-2xl z-0 border border-gray-200 dark:border-gray-700 shadow-inner"></div>
+                        @if($hasMapToShow)
+                            <div id="map" class="w-full h-[350px] rounded-2xl z-0 border border-gray-200 dark:border-gray-700 shadow-inner"></div>
+                        @elseif($property->latitude && $property->longitude && ($rSettings['show_map'] ?? 'all') === 'confirmed_booking')
+                            <div class="w-full py-8 px-4 rounded-2xl bg-gray-50 dark:bg-gray-800/50 border border-dashed border-gray-200 dark:border-gray-700 text-center text-xs text-gray-500 dark:text-gray-400 flex flex-col items-center justify-center gap-2">
+                                <svg class="w-6 h-6 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                                <span>نقشه و موقعیت مکانی پس از تأیید نهایی رزرو اقامتگاه در دسترس قرار می‌گیرد.</span>
+                            </div>
+                        @endif
                     </div>
                 @endif
             </div>
@@ -887,14 +982,14 @@
                     {{-- دکمه‌های اقدام رزرو و تماس --}}
                     <div class="space-y-3">
                         <button type="button" 
-                                @click="submitBookingInquiry()" 
+                                @click="openBookingModal()" 
                                 :disabled="hasBlockedDays"
                                 class="w-full py-3.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-black text-sm transition-all shadow-lg shadow-indigo-600/30 hover:shadow-indigo-600/50 flex items-center justify-center gap-2 disabled:opacity-50">
                             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
                             <span>ثبت درخواست رزرو اقامتگاه</span>
                         </button>
 
-                        @if($hostPhone)
+                        @if($canShowDirectCall && $hostPhone)
                             <a href="tel:{{ $hostPhone }}" class="w-full py-3 px-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 hover:bg-gray-100 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-800 dark:text-gray-200 font-bold text-xs transition flex items-center justify-center gap-2">
                                 <svg class="w-4 h-4 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg>
                                 <span>تماس مستقیم با میزبان ({{ $hostPhone }})</span>
@@ -940,10 +1035,129 @@
                 <span class="text-lg font-black text-indigo-600 dark:text-indigo-400" x-text="formatNumber(basePrice) + ' ' + currencyLabel"></span>
             </div>
             <button type="button" 
-                    @click="document.getElementById('rental_checkin').scrollIntoView({ behavior: 'smooth' }); document.getElementById('rental_checkin').focus();"
+                    @click="openBookingModal()"
                     class="px-5 py-2.5 rounded-xl bg-indigo-600 text-white font-black text-xs shadow-md shadow-indigo-600/30">
                 بررسی و ثبت رزرو
             </button>
+        </div>
+
+        {{-- مودال اختصاصی ثبت درخواست رزرو اقامتگاه --}}
+        <div x-cloak 
+             x-show="showBookingModal" 
+             class="fixed inset-0 z-50 overflow-y-auto" 
+             role="dialog" 
+             aria-modal="true">
+            <div class="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity" 
+                 x-show="showBookingModal"
+                 x-transition:enter="ease-out duration-300"
+                 x-transition:enter-start="opacity-0"
+                 x-transition:enter-end="opacity-100"
+                 x-transition:leave="ease-in duration-200"
+                 x-transition:leave-start="opacity-100"
+                 x-transition:leave-end="opacity-0"
+                 @click="closeBookingModal()"></div>
+
+            <div class="flex min-h-screen items-center justify-center p-4 text-center sm:p-0">
+                <div x-show="showBookingModal"
+                     x-transition:enter="ease-out duration-300"
+                     x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+                     x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100"
+                     x-transition:leave="ease-in duration-200"
+                     x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
+                     x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+                     class="relative transform overflow-hidden rounded-3xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 text-right shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-lg p-6 sm:p-7 space-y-6">
+
+                    {{-- هدر مودال --}}
+                    <div class="flex items-center justify-between border-b border-gray-100 dark:border-gray-800 pb-4">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-2xl bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold">
+                                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                            </div>
+                            <div>
+                                <h3 class="text-sm sm:text-base font-black text-gray-900 dark:text-white">ثبت درخواست رزرو اقامتگاه</h3>
+                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5 line-clamp-1">{{ $property->title }}</p>
+                            </div>
+                        </div>
+
+                        <button type="button" @click="closeBookingModal()" class="w-8 h-8 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 flex items-center justify-center transition">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+                    </div>
+
+                    {{-- کارت خلاصه اطلاعات اقامت --}}
+                    <div class="p-4 rounded-2xl bg-gray-50 dark:bg-gray-800/50 border border-gray-200/70 dark:border-gray-700/70 space-y-2.5 text-xs font-bold font-sans">
+                        <div class="flex items-center justify-between text-gray-600 dark:text-gray-300">
+                            <span>بازه اقامت:</span>
+                            <span class="text-gray-900 dark:text-white font-black" x-text="checkIn + ' تا ' + checkOut + ' (' + nightsCount + ' شب)'"></span>
+                        </div>
+                        <div class="flex items-center justify-between text-gray-600 dark:text-gray-300">
+                            <span>تعداد مهمانان:</span>
+                            <span class="text-gray-900 dark:text-white font-black" x-text="guests + ' نفر'"></span>
+                        </div>
+                        <div class="flex items-center justify-between pt-2 border-t border-gray-200/50 dark:border-gray-700/50 text-indigo-600 dark:text-indigo-400 font-black">
+                            <span>مبلغ برآورد کل:</span>
+                            <span class="text-sm" x-text="formatNumber(grandTotal) + ' ' + currencyLabel"></span>
+                        </div>
+                    </div>
+
+                    {{-- پیام خطای رزرو --}}
+                    <div x-show="bookingErrorMessage" x-text="bookingErrorMessage" class="p-3 rounded-xl bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800 text-xs font-bold leading-relaxed"></div>
+
+                    {{-- فرم مشخصات مهمان --}}
+                    <div class="space-y-4 text-xs font-bold">
+                        <template x-if="!isClientLoggedIn">
+                            <div class="space-y-3">
+                                <div>
+                                    <label class="block text-gray-700 dark:text-gray-300 mb-1">نام و نام خانوادگی مهمان اصلی <span class="text-red-500">*</span></label>
+                                    <input type="text" x-model="guestFullName" placeholder="مثال: علی احمدی" class="w-full rounded-xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800 px-3.5 py-2.5 text-xs font-bold text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500/20 font-sans">
+                                </div>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <div>
+                                        <label class="block text-gray-700 dark:text-gray-300 mb-1">شماره موبایل (جهت دریافت ووچر و پیگیری) <span class="text-red-500">*</span></label>
+                                        <input type="text" x-model="guestPhone" placeholder="۰۹۱۲۳۴۵۶۷۸۹" dir="ltr" class="w-full rounded-xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800 px-3.5 py-2.5 text-xs font-bold text-right text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500/20 font-sans">
+                                    </div>
+                                    <div>
+                                        <label class="block text-gray-700 dark:text-gray-300 mb-1">کد ملی (اختیاری)</label>
+                                        <input type="text" x-model="guestNationalCode" placeholder="۱۰ رقم کد ملی" dir="ltr" class="w-full rounded-xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800 px-3.5 py-2.5 text-xs font-bold text-right text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500/20 font-sans">
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
+
+                        <template x-if="isClientLoggedIn">
+                            <div class="p-3 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200/60 dark:border-emerald-800/40 text-emerald-800 dark:text-emerald-300 text-xs font-bold flex items-center justify-between font-sans">
+                                <span>رزرو با حساب کاربری: <span x-text="guestFullName || 'مشتری'"></span></span>
+                                <span class="text-[11px] opacity-80" x-text="guestPhone"></span>
+                            </div>
+                        </template>
+
+                        <div>
+                            <label class="block text-gray-700 dark:text-gray-300 mb-1">توضیحات یا درخواست خاص از میزبان (اختیاری):</label>
+                            <textarea x-model="bookingNotes" rows="2" placeholder="اگر درخواست خاصی درباره ساعت ورود یا همراهان دارید بنویسید..." class="w-full rounded-xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800 px-3.5 py-2 text-xs font-bold text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500/20 resize-none font-sans"></textarea>
+                        </div>
+                    </div>
+
+                    {{-- دکمه‌های اقدام --}}
+                    <div class="pt-3 border-t border-gray-100 dark:border-gray-800 flex items-center gap-3">
+                        <button type="button" 
+                                @click="closeBookingModal()" 
+                                class="w-1/3 py-3 px-4 rounded-xl border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 font-bold text-xs transition">
+                            انصراف
+                        </button>
+                        <button type="button" 
+                                @click="submitBookingOrder()" 
+                                :disabled="bookingLoading"
+                                class="w-2/3 py-3 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs transition shadow-lg shadow-indigo-600/30 flex items-center justify-center gap-2 disabled:opacity-50">
+                            <span x-show="!bookingLoading">تأیید و ارسال درخواست رزرو</span>
+                            <span x-show="bookingLoading" class="flex items-center gap-2">
+                                <svg class="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg>
+                                <span>در حال ثبت...</span>
+                            </span>
+                        </button>
+                    </div>
+
+                </div>
+            </div>
         </div>
 
     </div>
@@ -968,13 +1182,25 @@
 @push('scripts')
     <script>
         // اپلیکیشن آلپاین محاسبه‌گر زنده رزرواسیون
-        function rentalBookingApp(flatDates, config, currencyLabel, propertyTitle, propertyCode) {
+        function rentalBookingApp(flatDates, config, currencyLabel, propertyTitle, propertyCode, clientData, bookUrl) {
             return {
                 flatDates: flatDates || {},
                 config: config || {},
                 currencyLabel: currencyLabel,
                 propertyTitle: propertyTitle,
                 propertyCode: propertyCode,
+                bookUrl: bookUrl || '',
+
+                // مشخصات مهمان و وضعیت مدال رزرو
+                showBookingModal: false,
+                bookingLoading: false,
+                bookingErrorMessage: '',
+                bookingSuccessMessage: '',
+                isClientLoggedIn: !!(clientData && clientData.is_logged_in),
+                guestFullName: (clientData && clientData.name) ? clientData.name : '',
+                guestPhone: (clientData && clientData.phone) ? clientData.phone : '',
+                guestNationalCode: (clientData && clientData.national_code) ? clientData.national_code : '',
+                bookingNotes: '',
 
                 basePrice: config ? Number(config.price_per_night || 0) : 0,
                 baseGuests: config ? Number(config.base_guests || 2) : 2,
@@ -1182,6 +1408,98 @@
                     this.grandTotal = this.nightsTotal + this.extraGuestsFeeTotal + this.cleaningFee;
                 },
 
+                openBookingModal() {
+                    this.bookingErrorMessage = '';
+                    let cIn = this.normalizeDate(this.checkIn);
+                    let cOut = this.normalizeDate(this.checkOut);
+                    if (!cIn || !cOut) {
+                        alert('لطفاً ابتدا تاریخ ورود و خروج را در تقویم رزرو انتخاب نمایید.');
+                        return;
+                    }
+                    if (this.hasBlockedDays) {
+                        alert('برخی از روزهای انتخابی شما مسدود یا رزرو شده است. لطفاً تاریخ دیگری انتخاب کنید.');
+                        return;
+                    }
+                    if (this.nightsCount < this.minStayNights) {
+                        alert('حداقل مدت اقامت در این اقامتگاه ' + this.minStayNights + ' شب می‌باشد.');
+                        return;
+                    }
+                    this.showBookingModal = true;
+                },
+
+                closeBookingModal() {
+                    this.showBookingModal = false;
+                    this.bookingErrorMessage = '';
+                },
+
+                async submitBookingOrder() {
+                    this.bookingErrorMessage = '';
+
+                    let cIn = this.normalizeDate(this.checkIn);
+                    let cOut = this.normalizeDate(this.checkOut);
+                    if (!cIn || !cOut) {
+                        this.bookingErrorMessage = 'لطفاً تاریخ ورود و خروج را مشخص نمایید.';
+                        return;
+                    }
+
+                    if (!this.isClientLoggedIn) {
+                        if (!this.guestFullName || !this.guestFullName.trim()) {
+                            this.bookingErrorMessage = 'لطفاً نام و نام خانوادگی خود را وارد نمایید.';
+                            return;
+                        }
+                        if (!this.guestPhone || !this.guestPhone.trim()) {
+                            this.bookingErrorMessage = 'لطفاً شماره موبایل معتبر وارد نمایید.';
+                            return;
+                        }
+                    }
+
+                    this.bookingLoading = true;
+
+                    try {
+                        let tokenEl = document.querySelector('meta[name="csrf-token"]');
+                        let csrfToken = tokenEl ? tokenEl.getAttribute('content') : '{{ csrf_token() }}';
+
+                        let payload = {
+                            check_in: cIn,
+                            check_out: cOut,
+                            guests_count: this.guests,
+                            guest_full_name: this.guestFullName,
+                            guest_phone: this.guestPhone,
+                            guest_national_code: this.guestNationalCode,
+                            guest_notes: this.bookingNotes
+                        };
+
+                        let response = await fetch(this.bookUrl, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Accept': 'application/json',
+                                'X-CSRF-TOKEN': csrfToken
+                            },
+                            body: JSON.stringify(payload)
+                        });
+
+                        let data = await response.json();
+
+                        if (!response.ok || !data.success) {
+                            this.bookingErrorMessage = data.message || 'خطا در ثبت درخواست رزرو. لطفاً مجدداً تلاش کنید.';
+                            this.bookingLoading = false;
+                            return;
+                        }
+
+                        // موفقیت‌آمیز: هدایت به صفحه جزئیات ووچر در پنل مشتریان
+                        if (data.redirect_url) {
+                            window.location.href = data.redirect_url;
+                        } else {
+                            window.location.reload();
+                        }
+                    } catch (err) {
+                        console.error('Booking submission error:', err);
+                        this.bookingErrorMessage = 'خطای غیرمنتظره در برقراری ارتباط با سرور. لطفاً مجدداً تلاش نمایید.';
+                        this.bookingLoading = false;
+                    }
+                },
+
                 submitBookingInquiry() {
                     if (this.hasBlockedDays) {
                         alert('برخی از شب‌های انتخابی شما مسدود است. لطفاً تاریخ دیگری انتخاب کنید.');
@@ -1268,24 +1586,37 @@
         }
 
         // نقشه Leaflet
-        @if($canViewMap && $property->latitude && $property->longitude)
+        @if($canShowMap && $property->latitude && $property->longitude)
             document.addEventListener('DOMContentLoaded', function() {
                 if (typeof L !== 'undefined') {
                     const lat = {{ $property->latitude }};
                     const lng = {{ $property->longitude }};
-                    const map = L.map('map').setView([lat, lng], 14);
+                    @if($isMapExact)
+                        const map = L.map('map').setView([lat, lng], 16);
+                        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                            attribution: '&copy; OpenStreetMap'
+                        }).addTo(map);
 
-                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                        attribution: '&copy; OpenStreetMap'
-                    }).addTo(map);
+                        // موقعیت دقیق اقامتگاه
+                        L.marker([lat, lng]).addTo(map)
+                            .bindPopup('<div class="p-2 text-center font-sans font-bold text-xs text-gray-800">موقعیت دقیق اقامتگاه</div>')
+                            .openPopup();
+                    @else
+                        const map = L.map('map').setView([lat, lng], 14);
+                        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                            attribution: '&copy; OpenStreetMap'
+                        }).addTo(map);
 
-                    // محدوده یا دایره امن اقامتگاه
-                    L.circle([lat, lng], {
-                        color: '#4f46e5',
-                        fillColor: '#6366f1',
-                        fillOpacity: 0.25,
-                        radius: 300
-                    }).addTo(map).bindPopup('<b>محدوده تقریبی اقامتگاه</b>');
+                        // محدوده تقریبی اقامتگاه با شعاع تنظیمی
+                        const circle = L.circle([lat, lng], {
+                            color: '#4f46e5',
+                            fillColor: '#6366f1',
+                            fillOpacity: 0.22,
+                            weight: 2,
+                            radius: {{ $circleRadius }}
+                        }).addTo(map);
+                        circle.bindPopup('<div class="p-2 text-center font-sans font-bold text-xs text-gray-800">محدوده تقریبی اقامتگاه</div>');
+                    @endif
                 }
             });
         @endif

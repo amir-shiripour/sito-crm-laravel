@@ -41,6 +41,30 @@
                                 {{ config('app.name') }}
                             </span>
                     </div>
+
+                    {{-- ناوبری سریع در دسکتاپ --}}
+                    @auth('client')
+                        <nav class="hidden lg:flex items-center gap-1 mr-6 text-xs font-bold text-gray-600 dark:text-gray-300">
+                            <a href="{{ route('client.dashboard') }}" class="px-3 py-1.5 rounded-xl transition {{ request()->routeIs('client.dashboard') ? 'bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 font-black' : 'hover:bg-gray-100 dark:hover:bg-gray-800' }}">
+                                داشبورد
+                            </a>
+                            @if(class_exists('\Modules\Properties\Entities\PropertySetting') && (bool)\Modules\Properties\Entities\PropertySetting::get('rental_system_enabled', 0))
+                                <a href="{{ route('client.rental-bookings.index') }}" class="px-3 py-1.5 rounded-xl transition {{ request()->routeIs('client.rental-bookings.*') ? 'bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 font-black' : 'hover:bg-gray-100 dark:hover:bg-gray-800' }}">
+                                    رزروهای اقامتگاه
+                                </a>
+                            @endif
+                            @if(class_exists('\Modules\Services\App\Http\Models\Invoice') && \Illuminate\Support\Facades\Schema::hasTable('service_invoices'))
+                                <a href="{{ route('client.invoices.index') }}" class="px-3 py-1.5 rounded-xl transition {{ request()->routeIs('client.invoices.*') ? 'bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 font-black' : 'hover:bg-gray-100 dark:hover:bg-gray-800' }}">
+                                    فاکتورها
+                                </a>
+                            @endif
+                            @if(class_exists('\Modules\Booking\Entities\Appointment') && \Illuminate\Support\Facades\Schema::hasTable('appointments'))
+                                <a href="{{ route('client.appointments.index') }}" class="px-3 py-1.5 rounded-xl transition {{ request()->routeIs('client.appointments.*') ? 'bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 font-black' : 'hover:bg-gray-100 dark:hover:bg-gray-800' }}">
+                                    نوبت‌ها
+                                </a>
+                            @endif
+                        </nav>
+                    @endauth
                 </div>
 
                 {{-- بخش پروفایل و خروج --}}

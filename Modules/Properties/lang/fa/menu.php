@@ -11,6 +11,6 @@ return [
     'manage_attributes' => 'مدیریت ویژگی‌ها',
     'property_statuses' => 'وضعیت‌های ملک',
     'property_import' => 'ایمپورت املاک',
-    'host_dashboard' => 'میزکار میزبانی اقامتگاه',
+    'host_dashboard' => 'پروفایل میزبانی',
     'manage_hosts' => 'مدیریت میزبانان',
 ];
