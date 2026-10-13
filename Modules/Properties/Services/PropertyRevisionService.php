@@ -105,12 +105,18 @@ class PropertyRevisionService
                 $oldValue = $oldValue ? (number_format((float)$oldValue) . ' ' . $currency) : '—';
                 $newValue = $newValue ? (number_format((float)$newValue) . ' ' . $currency) : '—';
             } elseif ($key === 'property_type') {
+                $rentalTypes = Property::getRentalPropertyTypes();
                 $typesMap = [
                     'apartment' => 'خانه و آپارتمان',
                     'villa' => 'ویلا و باغچه',
                     'land' => 'زمین و کلنگی',
                     'office' => 'اداری و تجاری',
                 ];
+                foreach ($rentalTypes as $rKey => $rItem) {
+                    if (isset($rItem['label'])) {
+                        $typesMap[$rKey] = $rItem['label'];
+                    }
+                }
                 $oldValue = $typesMap[$oldValue] ?? $oldValue;
                 $newValue = $typesMap[$newValue] ?? $newValue;
             } elseif ($key === 'listing_type') {

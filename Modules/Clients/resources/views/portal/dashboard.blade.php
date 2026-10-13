@@ -77,6 +77,7 @@
             if ($showMarketFeatures) $activeCards++;
             if ($showInvoiceFeatures ?? false) $activeCards++;
             if ($showOrderFeatures ?? false) $activeCards++;
+            if ($showRentalFeatures ?? false) $activeCards++;
 
             $gridColsClass = match(true) {
                 $activeCards >= 4 => 'lg:grid-cols-4',
@@ -85,6 +86,20 @@
             };
         @endphp
         <div class="grid grid-cols-1 md:grid-cols-2 {{ $gridColsClass }} gap-6">
+
+            {{-- کارت رزروهای اقامتگاهی من --}}
+            @if($showRentalFeatures ?? false)
+                <a href="{{ route('client.rental-bookings.index') }}" class="group bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700 shadow-sm hover:shadow-md transition-all cursor-pointer block">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="p-3 rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-900/20 dark:text-indigo-400 group-hover:scale-110 transition-transform">
+                            <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>
+                        </div>
+                        <span class="text-xs text-gray-400 dark:text-gray-500">جاری و فعال</span>
+                    </div>
+                    <div class="text-2xl font-bold text-gray-900 dark:text-white mb-1 font-sans">{{ \Morilog\Jalali\CalendarUtils::convertNumbers($activeRentalBookingsCount ?? 0) }}</div>
+                    <div class="text-sm text-gray-500 dark:text-gray-400 group-hover:text-indigo-600 transition-colors">رزروهای اقامتگاه من &larr;</div>
+                </a>
+            @endif
 
             {{-- کارت نوبت ها --}}
             @if($showBookingFeatures)
@@ -214,7 +229,17 @@
                     </a>
                 @endif
 
-                @if(!$showBookingFeatures && !$showMarketFeatures && !($showInvoiceFeatures ?? false))
+                {{-- دکمه رزرو اقامتگاه --}}
+                @if($showRentalFeatures ?? false)
+                    <a href="{{ route('client.rental-bookings.index') }}" class="flex flex-col items-center justify-center gap-3 p-6 rounded-2xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-indigo-500 dark:hover:border-indigo-500 hover:shadow-md transition-all group">
+                        <div class="w-10 h-10 rounded-full bg-gray-50 dark:bg-gray-700 flex items-center justify-center text-gray-600 dark:text-gray-300 group-hover:bg-indigo-50 group-hover:text-indigo-600 transition-colors">
+                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>
+                        </div>
+                        <span class="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-indigo-600">رزروهای اقامتگاه</span>
+                    </a>
+                @endif
+
+                @if(!$showBookingFeatures && !$showMarketFeatures && !($showInvoiceFeatures ?? false) && !($showRentalFeatures ?? false))
                     {{-- آیتم‌های غیرفعال (Placeholder) --}}
                     <div class="flex items-center justify-center p-6 rounded-2xl border border-dashed border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/40 text-gray-400 dark:text-gray-500 text-sm">
                         سایر بخش‌ها...
@@ -326,7 +351,12 @@
                                 <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
                                 @foreach($recentPayments as $payment)
                                     @continue(in_array($payment->status, ['CANCELED', 'CANCELLED'], true))
-                                    <tr class="hover:bg-gray-50/50 dark:hover:bg-gray-700/50 transition-colors cursor-pointer" onclick="window.location.href='{{ route('client.payments.show', ['type' => $payment->type, 'id' => $payment->id]) }}'">
+                                    @php
+                                        $paymentTargetUrl = ($payment->type === 'rental') 
+                                            ? route('client.rental-bookings.show', $payment->id) 
+                                            : route('client.payments.show', ['type' => $payment->type, 'id' => $payment->id]);
+                                    @endphp
+                                    <tr class="hover:bg-gray-50/50 dark:hover:bg-gray-700/50 transition-colors cursor-pointer" onclick="window.location.href='{{ $paymentTargetUrl }}'">
                                         <td class="px-6 py-4 text-gray-900 dark:text-white font-medium">
                                             <div class="flex flex-col">
                                                 <span>{{ \Morilog\Jalali\CalendarUtils::convertNumbers(number_format($payment->amount_display)) }} <span class="text-xs font-normal text-gray-500">{{ $payment->currency_label }}</span></span>

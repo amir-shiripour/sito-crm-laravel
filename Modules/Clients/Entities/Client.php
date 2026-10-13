@@ -205,4 +205,9 @@ class Client extends Authenticatable
             ->values()
             ->all();
     }
+
+    public function rentalBookings(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(\Modules\Properties\Entities\PropertyRentalBooking::class, 'client_id');
+    }
 }

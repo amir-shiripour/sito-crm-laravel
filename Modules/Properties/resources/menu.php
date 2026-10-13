@@ -8,6 +8,15 @@ return [
         'group' => 'properties',
         'position' => 10,
         'permission' => 'properties.view',
+        'show' => function() {
+            $user = auth()->user();
+            if (!$user) return false;
+            // کاربران دارای نقش میزبان که دسترسی مدیریتی ندارند نیازی به مشاهده لیست عمومی املاک در منو ندارند
+            if ($user->hasRole('property_host') && !$user->hasRole(['super-admin', 'admin']) && !$user->can('properties.manage') && !$user->can('properties.view.all')) {
+                return false;
+            }
+            return true;
+        },
     ],
     [
         'title' => __('properties::menu.add_property'),
@@ -40,6 +49,11 @@ return [
         'group' => 'properties',
         'position' => 26,
         'permission' => 'properties.hosts.view',
+        'show' => function() {
+            $rentalModeEnabled = (bool) \Modules\Properties\Entities\PropertySetting::get('rental_mode_enabled', 0);
+            $multiHostEnabled = (bool) \Modules\Properties\Entities\PropertySetting::get('rental_multi_host_enabled', 0);
+            return $rentalModeEnabled && $multiHostEnabled;
+        },
     ],
     [
         'title' => __('properties::menu.host_dashboard'),
@@ -47,7 +61,17 @@ return [
         'icon' => '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5 shrink-0"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M3 12l2 -2m0 0l7 -7l7 7m2 2l-2 2m-2 -2v10a1 1 0 0 1 -1 1h-3m-6 0a1 1 0 0 1 -1 -1v-4a1 1 0 0 1 1 -1h2a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-6" /></svg>',
         'group' => 'properties',
         'position' => 27,
-        'permission' => 'properties.view',
+        'permission' => 'properties.rental.manage',
+        'show' => function() {
+            $rentalModeEnabled = (bool) \Modules\Properties\Entities\PropertySetting::get('rental_mode_enabled', 0);
+            $multiHostEnabled = (bool) \Modules\Properties\Entities\PropertySetting::get('rental_multi_host_enabled', 0);
+            if (!$rentalModeEnabled || !$multiHostEnabled) {
+                return false;
+            }
+            $user = auth()->user();
+            if (!$user) return false;
+            return $user->hasRole('property_host') || \Modules\Properties\Entities\PropertyHost::where('user_id', $user->id)->exists() || $user->hasRole(['super-admin', 'admin']) || $user->can('properties.manage');
+        },
     ],
     [
         'title' => __('properties::menu.manage_buildings'),
@@ -56,6 +80,13 @@ return [
         'group' => 'properties',
         'position' => 28,
         'permission' => 'properties.buildings.view',
+        'show' => function() {
+            $rentalModeEnabled = (bool) \Modules\Properties\Entities\PropertySetting::get('rental_mode_enabled', 0);
+            if ($rentalModeEnabled) {
+                return (bool) \Modules\Properties\Entities\PropertySetting::get('rental_building_enabled', 1);
+            }
+            return true;
+        },
     ],
     [
         'title' => __('properties::menu.property_settings'),

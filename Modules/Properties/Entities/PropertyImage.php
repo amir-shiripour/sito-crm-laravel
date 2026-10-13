@@ -15,4 +15,12 @@ class PropertyImage extends Model
     {
         return $this->belongsTo(Property::class);
     }
+
+    public function getImageUrlAttribute(): string
+    {
+        if ($this->path) {
+            return asset('storage/' . $this->path);
+        }
+        return asset('assets/images/placeholder.jpg');
+    }
 }

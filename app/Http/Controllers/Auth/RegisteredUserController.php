@@ -252,7 +252,16 @@ class RegisteredUserController extends Controller
 
                 Auth::login($user);
 
-                return redirect()->route('user.properties.hosts.dashboard')
+                $redirectHostToDashboard = class_exists(\Modules\Properties\Entities\PropertySetting::class)
+                    ? (bool) \Modules\Properties\Entities\PropertySetting::get('rental_redirect_host_to_dashboard', 1)
+                    : true;
+
+                if ($redirectHostToDashboard && \Illuminate\Support\Facades\Route::has('user.properties.hosts.dashboard')) {
+                    return redirect()->route('user.properties.hosts.dashboard')
+                        ->with('success', 'به جمع میزبانان ما خوش آمدید! حساب کاربری شما با موفقیت ایجاد شد.');
+                }
+
+                return redirect('/dashboard')
                     ->with('success', 'به جمع میزبانان ما خوش آمدید! حساب کاربری شما با موفقیت ایجاد شد.');
             }
 

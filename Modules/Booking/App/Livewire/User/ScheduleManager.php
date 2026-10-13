@@ -1380,6 +1380,7 @@ class ScheduleManager extends Component
             Appointment::STATUS_PENDING => ['label' => 'در انتظار تایید', 'badge' => 'bg-amber-50 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300 border-amber-300'],
             Appointment::STATUS_PENDING_PAYMENT => ['label' => 'در انتظار پرداخت', 'badge' => 'bg-yellow-50 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300 border-yellow-300'],
             Appointment::STATUS_CONFIRMED => ['label' => 'قطعی / تایید شده', 'badge' => 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 border-emerald-300'],
+            Appointment::STATUS_IN_PROGRESS => ['label' => 'در حال انجام', 'badge' => 'bg-cyan-50 text-cyan-700 dark:bg-cyan-900/40 dark:text-cyan-300 border-cyan-300'],
             Appointment::STATUS_DONE => ['label' => 'انجام شده', 'badge' => 'bg-blue-50 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 border-blue-300'],
             Appointment::STATUS_NO_SHOW => ['label' => 'عدم حضور', 'badge' => 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border-slate-400'],
             Appointment::STATUS_CANCELED_BY_ADMIN => ['label' => 'لغو شده (ادمین)', 'badge' => 'bg-rose-50 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300 border-rose-300'],

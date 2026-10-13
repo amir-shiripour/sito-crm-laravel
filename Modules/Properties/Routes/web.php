@@ -23,6 +23,8 @@ Route::middleware(['web'])->group(function() {
         Route::get('/map', [PublicPropertyController::class, 'map'])->name('map');
         Route::post('/ai-search', [PublicPropertyController::class, 'aiSearch'])->name('ai.search.public');
         Route::get('/{slug}', [PublicPropertyController::class, 'show'])->name('show');
+        Route::post('/{slug}/quote', [PublicPropertyController::class, 'calculateQuote'])->name('quote');
+        Route::post('/{slug}/book', [PublicPropertyController::class, 'book'])->name('book');
     });
 });
 
@@ -92,6 +94,11 @@ Route::middleware(['web', 'auth'])
                     Route::get('/become', [HostController::class, 'becomeHost'])->name('register');
                     Route::post('/become', [HostController::class, 'storeHostRequest'])->name('store');
                     Route::get('/dashboard', [HostController::class, 'dashboard'])->name('dashboard');
+                    Route::get('/bookings', [HostController::class, 'bookingsIndex'])->name('bookings.index');
+                    Route::post('/bookings/{booking}/approve', [HostController::class, 'approveBooking'])->name('bookings.approve');
+                    Route::post('/bookings/{booking}/reject', [HostController::class, 'rejectBooking'])->name('bookings.reject');
+                    Route::post('/bookings/{booking}/check-in', [HostController::class, 'checkInBooking'])->name('bookings.check-in');
+                    Route::post('/bookings/{booking}/complete', [HostController::class, 'completeBooking'])->name('bookings.complete');
                     Route::get('/profile', [HostController::class, 'profile'])->name('profile');
                     Route::put('/profile', [HostController::class, 'updateProfile'])->name('profile.update');
                     Route::get('/manage', [HostController::class, 'adminIndex'])->name('admin.index');
@@ -99,6 +106,14 @@ Route::middleware(['web', 'auth'])
                     Route::post('/{host}/approve', [HostController::class, 'approveHost'])->name('admin.approve');
                     Route::post('/{host}/approve-kyc', [HostController::class, 'approveKyc'])->name('admin.approve-kyc');
                     Route::post('/{host}/reject', [HostController::class, 'rejectHost'])->name('admin.reject');
+                });
+
+                // CRM Vacation Rental Bookings Management (مدیریت کل رزروهای اقامتگاهی در CRM)
+                Route::prefix('bookings')->name('bookings.')->group(function () {
+                    Route::get('/', [\Modules\Properties\App\Http\Controllers\User\BookingController::class, 'index'])->name('index');
+                    Route::get('/{booking}', [\Modules\Properties\App\Http\Controllers\User\BookingController::class, 'show'])->name('show');
+                    Route::post('/{booking}/confirm', [\Modules\Properties\App\Http\Controllers\User\BookingController::class, 'confirm'])->name('confirm');
+                    Route::post('/{booking}/cancel', [\Modules\Properties\App\Http\Controllers\User\BookingController::class, 'cancel'])->name('cancel');
                 });
 
                 // Vacation Rental Configuration & Calendar Routes

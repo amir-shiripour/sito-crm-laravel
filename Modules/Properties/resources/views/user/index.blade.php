@@ -7,25 +7,37 @@
     $aiSearchEnabled = \Modules\Properties\Entities\PropertySetting::get('ai_property_search', 0);
     $isTrash = request('trashed') == '1';
     $isAiSearch = request('ai_search') == '1';
+    $rentalModeEnabled = isset($rentalModeEnabled) ? (bool) $rentalModeEnabled : (bool) \Modules\Properties\Entities\PropertySetting::get('rental_mode_enabled', 0);
 @endphp
 
 @section('content')
-    <div class="max-w-7xl mx-auto px-4 py-8 space-y-6" x-data="propertyList()"
+    <div class="w-full max-w-full space-y-6 font-sans" x-data="propertyList()"
          @speech-result.window="handleSpeechResult($event.detail)"
          @speech-status.window="isVoiceTyping = $event.detail; if(isVoiceTyping) aiQueryBeforeSpeech = aiQuery || ''">
 
         {{-- Page Header --}}
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-gray-800 p-5 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm">
             <div>
-                <h1 class="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                    <span class="flex items-center justify-center w-8 h-8 rounded-lg bg-indigo-100 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-300">
+                <div class="flex items-center gap-3">
+                    <span class="flex items-center justify-center w-9 h-9 rounded-xl bg-indigo-100 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-300">
                         <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
                     </span>
-                    {{ $isTrash ? 'سطل زباله املاک' : ($isAiSearch ? 'نتایج جستجوی هوشمند' : 'لیست املاک') }}
-                </h1>
-                <p class="text-sm text-gray-500 dark:text-gray-400 mt-1 mr-10">
-                    {{ $isTrash ? 'مشاهده و مدیریت املاک حذف شده' : ($isAiSearch ? 'نتایج یافت‌شده بر اساس تحلیل هوش مصنوعی' : 'مدیریت و مشاهده وضعیت املاک ثبت شده') }}
-                </p>
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <h1 class="text-xl font-bold text-gray-900 dark:text-white">
+                                {{ $isTrash ? 'سطل زباله املاک' : ($isAiSearch ? 'نتایج جستجوی هوشمند' : 'لیست املاک') }}
+                            </h1>
+                            @if(isset($properties) && method_exists($properties, 'total'))
+                                <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-600 dark:bg-gray-700/60 dark:text-gray-300 font-sans border border-gray-200/60 dark:border-gray-600/40">
+                                    {{ number_format($properties->total()) }} ملک
+                                </span>
+                            @endif
+                        </div>
+                        <p class="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-1">
+                            {{ $isTrash ? 'مشاهده و مدیریت املاک حذف شده' : ($isAiSearch ? 'نتایج یافت‌شده بر اساس تحلیل هوش مصنوعی' : 'مدیریت و مشاهده وضعیت املاک ثبت شده') }}
+                        </p>
+                    </div>
+                </div>
             </div>
 
             <div class="flex items-center gap-3 self-end sm:self-auto">
@@ -36,6 +48,14 @@
                             <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
                             جستجوی هوشمند
                         </button>
+                    @endif
+
+                    @if(\Modules\Properties\Entities\PropertySetting::get('rental_system_enabled', 0))
+                        <a href="{{ route('user.properties.bookings.index') }}"
+                           class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 text-xs font-bold hover:bg-indigo-100 transition-all">
+                            <svg class="w-4 h-4 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                            <span>مدیریت رزرواسیون اقامتگاه</span>
+                        </a>
                     @endif
 
                     <a href="{{ route('user.properties.create') }}"
@@ -181,19 +201,19 @@
         {{-- Properties Table --}}
         <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
             <div class="overflow-x-auto">
-                <table class="min-w-full whitespace-nowrap text-sm text-right">
-                    <thead class="bg-gray-50/50 dark:bg-gray-900/40 border-b border-gray-200 dark:border-gray-700">
+                <table class="min-w-full whitespace-nowrap text-sm text-right divide-y divide-gray-200 dark:divide-gray-700">
+                    <thead class="bg-gray-50/70 dark:bg-gray-900/40 border-b border-gray-200 dark:border-gray-700">
                         <tr>
-                            <th class="px-6 py-4 font-bold text-gray-600 dark:text-gray-300">ملک</th>
-                            <th class="px-6 py-4 font-bold text-gray-600 dark:text-gray-300">قیمت</th>
-                            <th class="px-6 py-4 font-bold text-gray-600 dark:text-gray-300 hidden sm:table-cell">نوع</th>
-                            <th class="px-6 py-4 font-bold text-gray-600 dark:text-gray-300">وضعیت</th>
-                            <th class="px-6 py-4 font-bold text-gray-600 dark:text-gray-300 hidden md:table-cell">دسته‌بندی</th>
+                            <th class="px-6 py-4 font-bold text-gray-700 dark:text-gray-300">ملک</th>
+                            <th class="px-6 py-4 font-bold text-gray-700 dark:text-gray-300">قیمت</th>
+                            <th class="px-6 py-4 font-bold text-gray-700 dark:text-gray-300 hidden sm:table-cell">نوع</th>
+                            <th class="px-6 py-4 font-bold text-gray-700 dark:text-gray-300">وضعیت</th>
+                            <th class="px-6 py-4 font-bold text-gray-700 dark:text-gray-300 hidden md:table-cell">دسته‌بندی</th>
                             @if($canManageProperties)
-                                <th class="px-6 py-4 font-bold text-gray-600 dark:text-gray-300 hidden lg:table-cell">مشاور</th>
-                                <th class="px-6 py-4 font-bold text-gray-600 dark:text-gray-300 hidden lg:table-cell">ایجاد کننده</th>
+                                <th class="px-6 py-4 font-bold text-gray-700 dark:text-gray-300 hidden lg:table-cell">{{ $rentalModeEnabled ? 'میزبان' : 'مشاور' }}</th>
+                                <th class="px-6 py-4 font-bold text-gray-700 dark:text-gray-300 hidden lg:table-cell">ایجاد کننده</th>
                             @endif
-                            <th class="px-6 py-4 font-bold text-gray-600 dark:text-gray-300 text-left pl-6">عملیات</th>
+                            <th class="px-6 py-4 font-bold text-gray-700 dark:text-gray-300 text-left pl-6">عملیات</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-100 dark:divide-gray-700/50">

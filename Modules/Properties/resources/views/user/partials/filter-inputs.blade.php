@@ -55,6 +55,14 @@
             <option value="villa" {{ request('property_type') == 'villa' ? 'selected' : '' }}>ویلا</option>
             <option value="land" {{ request('property_type') == 'land' ? 'selected' : '' }}>زمین</option>
             <option value="office" {{ request('property_type') == 'office' ? 'selected' : '' }}>اداری</option>
+            @php
+                $configuredRentalTypes = \Modules\Properties\Entities\Property::getRentalPropertyTypes(true);
+            @endphp
+            @foreach($configuredRentalTypes as $rKey => $rItem)
+                @if(!in_array($rKey, ['apartment', 'villa', 'land', 'office']))
+                    <option value="{{ $rKey }}" {{ request('property_type') == $rKey ? 'selected' : '' }}>{{ $rItem['label'] }} (اقامتگاه)</option>
+                @endif
+            @endforeach
         </select>
         <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
             <svg class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
@@ -95,6 +103,10 @@
 </div>
 
 {{-- Building --}}
+@php
+    $rentalBuildingEnabled = isset($rentalBuildingEnabled) ? (bool) $rentalBuildingEnabled : (bool) \Modules\Properties\Entities\PropertySetting::get('rental_building_enabled', 1);
+@endphp
+@if(!($rentalModeEnabled && !$rentalBuildingEnabled))
 <div>
     <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2">ساختمان</label>
     <div class="relative">
@@ -109,6 +121,7 @@
         </div>
     </div>
 </div>
+@endif
 
 {{-- Publication Status --}}
 <div>
@@ -125,26 +138,43 @@
     </div>
 </div>
 
-{{-- Agent (for admins) --}}
-@if($canManageProperties && !empty($agents))
-    <div>
-        <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2">مشاور</label>
-        <div class="relative">
-            <select name="agent_id" class="w-full appearance-none pl-10 pr-4 py-2.5 rounded-xl border-gray-200 bg-gray-50 text-sm focus:border-indigo-500 focus:ring-indigo-500 focus:bg-white transition-all dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:focus:bg-gray-800">
-                <option value="">همه مشاوران</option>
-                @foreach($agents as $agent)
-                    <option value="{{ $agent->id }}" {{ request('agent_id') == $agent->id ? 'selected' : '' }}>{{ $agent->name }}</option>
-                @endforeach
-            </select>
-            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <svg class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+{{-- Agent or Host filter (for admins) --}}
+@if($canManageProperties)
+    @if($rentalModeEnabled && !empty($hosts))
+        <div>
+            <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2">میزبان</label>
+            <div class="relative">
+                <select name="host_id" class="w-full appearance-none pl-10 pr-4 py-2.5 rounded-xl border-gray-200 bg-gray-50 text-sm focus:border-indigo-500 focus:ring-indigo-500 focus:bg-white transition-all dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:focus:bg-gray-800">
+                    <option value="">همه میزبان‌ها</option>
+                    @foreach($hosts as $host)
+                        <option value="{{ $host->id }}" {{ request('host_id') == $host->id ? 'selected' : '' }}>{{ $host->display_name }}</option>
+                    @endforeach
+                </select>
+                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <svg class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                </div>
             </div>
         </div>
-    </div>
+    @elseif(!empty($agents))
+        <div>
+            <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-2">مشاور</label>
+            <div class="relative">
+                <select name="agent_id" class="w-full appearance-none pl-10 pr-4 py-2.5 rounded-xl border-gray-200 bg-gray-50 text-sm focus:border-indigo-500 focus:ring-indigo-500 focus:bg-white transition-all dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:focus:bg-gray-800">
+                    <option value="">همه مشاوران</option>
+                    @foreach($agents as $agent)
+                        <option value="{{ $agent->id }}" {{ request('agent_id') == $agent->id ? 'selected' : '' }}>{{ $agent->name }}</option>
+                    @endforeach
+                </select>
+                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <svg class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                </div>
+            </div>
+        </div>
+    @endif
 @endif
 
 {{-- Buttons and Show All toggle --}}
-<div class="col-span-1 sm:col-span-2 lg:col-span-4 flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-gray-100 dark:border-gray-700 mt-2">
+<div class="col-span-full flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-gray-100 dark:border-gray-700 mt-2">
     @if(auth()->user()->hasRole(['super-admin', 'admin']) || auth()->user()->can('properties.view.all') || auth()->user()->can('properties.manage'))
         <label class="inline-flex items-center cursor-pointer group">
             <div class="relative">

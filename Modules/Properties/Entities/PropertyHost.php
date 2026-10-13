@@ -76,4 +76,9 @@ class PropertyHost extends Model
 
         return (float) PropertySetting::get('rental_default_commission', 10);
     }
+
+    public function rentalBookings(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(PropertyRentalBooking::class, 'host_id');
+    }
 }

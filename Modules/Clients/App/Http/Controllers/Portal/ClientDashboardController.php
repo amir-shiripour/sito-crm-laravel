@@ -19,6 +19,7 @@ class ClientDashboardController extends Controller
         $isBookingActive  = $this->isModuleActive('Booking', 'appointments');
         $isMarketActive   = $this->isModuleActive('Market', 'market_orders');
         $isServicesActive = $this->isModuleActive('Services', 'service_invoices');
+        $isRentalActive   = $this->isModuleActive('Properties', 'property_rental_bookings') && (bool) \Modules\Properties\Entities\PropertySetting::get('rental_system_enabled', 0);
 
         // 2. دریافت تنظیمات واحد پول نوبت‌دهی برای نمایش صحیح مبالغ
         $bookingCurrencyUnit  = 'IRR';
@@ -36,12 +37,14 @@ class ClientDashboardController extends Controller
         $marketData          = $isMarketActive  ? $this->getMarketData($client)  : $this->getEmptyModuleData();
         $servicesInvoiceData = $isServicesActive ? $this->getServicesInvoiceData($client) : $this->getEmptyModuleData();
         $servicesOrderData   = $isServicesActive ? $this->getServicesOrderData($client) : $this->getEmptyModuleData();
+        $rentalData          = $isRentalActive ? $this->getRentalData($client) : $this->getEmptyModuleData();
 
-        // 4. ترکیب تمامی پرداخت‌ها و صورت‌حساب‌ها (خدمات + نوبت‌دهی + فروشگاه)
+        // 4. ترکیب تمامی پرداخت‌ها و صورت‌حساب‌ها (خدمات + نوبت‌دهی + فروشگاه + اقامتگاه)
         $allPayments = collect()
             ->merge($servicesInvoiceData['payments'] ?? collect())
             ->merge($bookingData['payments'])
             ->merge($marketData['payments'])
+            ->merge($rentalData['payments'])
             ->sortByDesc('date')
             ->values();
 
@@ -58,6 +61,7 @@ class ClientDashboardController extends Controller
             'showMarketFeatures'      => $isMarketActive,
             'showInvoiceFeatures'     => $isServicesActive,
             'showOrderFeatures'       => $isServicesActive,
+            'showRentalFeatures'      => $isRentalActive,
 
             // واحد پول برای نمایش داینامیک نوبت‌دهی
             'bookingCurrencyUnit'     => $bookingCurrencyUnit,
@@ -80,6 +84,10 @@ class ClientDashboardController extends Controller
             'activeOrdersCount'       => $servicesOrderData['activeCount'] ?? 0,
             'totalOrdersCount'        => $servicesOrderData['totalCount'] ?? 0,
             'recentOrders'            => $servicesOrderData['recent'] ?? collect(),
+
+            // داده‌های رزرو اقامتگاه
+            'activeRentalBookingsCount' => $rentalData['activeCount'] ?? 0,
+            'recentRentalBookings'      => $rentalData['recent'] ?? collect(),
 
             // داده‌های مالی ترکیبی
             'unpaidInvoicesSum'       => $unpaidInvoicesSum,
@@ -309,6 +317,71 @@ class ClientDashboardController extends Controller
                     'status'         => $normalizedStatus,
                     'date'           => $order->created_at,
                     'is_pending'     => in_array(strtolower($normalizedStatus), ['pending', 'unpaid']),
+                ];
+            });
+        }
+
+        return [
+            'activeCount' => $activeCount,
+            'recent'      => $recent,
+            'payments'    => $payments,
+        ];
+    }
+
+    /**
+     * واکشی اطلاعات مربوط به ماژول رزرو اقامتگاه
+     */
+    private function getRentalData($client): array
+    {
+        $activeCount = 0;
+        $recent = collect();
+        $payments = collect();
+
+        if (class_exists(\Modules\Properties\Entities\PropertyRentalBooking::class)) {
+            $activeCount = \Modules\Properties\Entities\PropertyRentalBooking::where('client_id', $client->id)
+                ->whereIn('status', [
+                    \Modules\Properties\Entities\PropertyRentalBooking::STATUS_PENDING_HOST,
+                    \Modules\Properties\Entities\PropertyRentalBooking::STATUS_AWAITING_PAYMENT,
+                    \Modules\Properties\Entities\PropertyRentalBooking::STATUS_CONFIRMED,
+                    \Modules\Properties\Entities\PropertyRentalBooking::STATUS_CHECKED_IN,
+                ])
+                ->count();
+
+            $recent = \Modules\Properties\Entities\PropertyRentalBooking::with(['property.primaryImage', 'host'])
+                ->where('client_id', $client->id)
+                ->latest()
+                ->take(5)
+                ->get();
+
+            $bookings = \Modules\Properties\Entities\PropertyRentalBooking::where('client_id', $client->id)
+                ->latest()
+                ->take(15)
+                ->get();
+
+            $currency = \Modules\Properties\Entities\PropertySetting::get('rental_currency', 'IRT');
+            $currLabel = $currency === 'IRR' ? 'ریال' : 'تومان';
+
+            $payments = $bookings->map(function ($booking) use ($currency, $currLabel) {
+                $rawAmount = (float) $booking->total_price;
+                $amountInRials = in_array(strtolower($currency), ['toman', 'irt', 'تومان']) ? ($rawAmount * 10) : $rawAmount;
+                $isPending = in_array($booking->status, [
+                    \Modules\Properties\Entities\PropertyRentalBooking::STATUS_PENDING_HOST,
+                    \Modules\Properties\Entities\PropertyRentalBooking::STATUS_AWAITING_PAYMENT,
+                ]);
+
+                return (object)[
+                    'id'             => $booking->id,
+                    'type'           => 'rental',
+                    'type_label'     => 'رزرو اقامتگاه',
+                    'amount'         => $booking->total_price,
+                    'amount_display' => $rawAmount,
+                    'amount_in_rials'=> $amountInRials,
+                    'currency_label' => $currLabel,
+                    'status'         => strtoupper($booking->payment_status),
+                    'date'           => $booking->created_at,
+                    'is_pending'     => $isPending,
+                    'booking_code'   => $booking->booking_code,
+                    'url'            => route('client.rental-bookings.show', $booking->id),
                 ];
             });
         }

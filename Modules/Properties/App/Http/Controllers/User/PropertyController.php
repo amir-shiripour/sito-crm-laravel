@@ -30,6 +30,12 @@ class PropertyController extends Controller
     {
         $user = auth()->user();
 
+        // دسترسی میزبان: کاربران با نقش میزبان که دسترسی مدیریتی املاک ندارند، به پروفایل میزبانی خود هدایت می‌شوند
+        $canViewAll = $user->hasRole(['super-admin', 'admin']) || $user->can('properties.view.all') || $user->can('properties.manage');
+        if ($user->hasRole('property_host') && !$canViewAll) {
+            return redirect()->route('user.properties.hosts.dashboard');
+        }
+
         // Start Query manually to control visibility logic
         $query = Property::query()
             ->with('status', 'creator', 'agent', 'category', 'building', 'host');
@@ -82,6 +88,9 @@ class PropertyController extends Controller
         }
         if ($request->filled('agent_id') && $canViewAll) {
             $query->where('agent_id', $request->agent_id);
+        }
+        if ($request->filled('host_id') && $canViewAll) {
+            $query->where('host_id', $request->host_id);
         }
         if ($request->filled('category_id')) {
             $query->where('category_id', $request->category_id);
@@ -158,23 +167,36 @@ class PropertyController extends Controller
             }
         }
 
+        // لیست میزبان‌ها برای فیلتر در صورت فعال بودن اجاره روزانه و چندمیزبانی
+        $hosts = [];
+        $rentalModeEnabled = (bool) PropertySetting::get('rental_mode_enabled', 0);
+        $rentalMultiHostEnabled = (bool) PropertySetting::get('rental_multi_host_enabled', 0);
+        if ($canViewAll && $rentalModeEnabled && $rentalMultiHostEnabled) {
+            $hosts = \Modules\Properties\Entities\PropertyHost::where('status', 'active')->orderBy('display_name')->get(['id', 'display_name']);
+        }
+
         // شمارش اقامتگاه‌های در انتظار بررسی
         $pendingReviewCount = 0;
         if (\Modules\Properties\Services\PropertyRevisionService::canManagePublication($user)) {
             $pendingReviewCount = Property::where('approval_status', 'pending_review')->count();
         }
 
-        return view('properties::user.index', compact('properties', 'statuses', 'agents', 'categories', 'buildings', 'propertyAttributes', 'pendingReviewCount'));
+        // وضعیت فعال بودن ساختمان در حالت اجاره روزانه
+        $rentalBuildingEnabled = (bool) PropertySetting::get('rental_building_enabled', 1);
+
+        return view('properties::user.index', compact('properties', 'statuses', 'agents', 'hosts', 'categories', 'buildings', 'propertyAttributes', 'pendingReviewCount', 'rentalBuildingEnabled', 'rentalModeEnabled', 'rentalMultiHostEnabled'));
     }
 
     public function create()
     {
         $user = auth()->user();
         $isAdmin = $user->hasRole(['super-admin', 'admin']) || $user->can('properties.manage');
+        $userRoles = $user->getRoleNames();
+        $isOnlyHost = $userRoles->contains('property_host') && $userRoles->count() === 1;
         $currentUserHost = \Modules\Properties\Entities\PropertyHost::where('user_id', $user->id)->first();
 
-        // بررسی محدودیت میزبان در وضعیت در انتظار تایید یا معلق
-        if (!$isAdmin && $currentUserHost && $currentUserHost->status !== 'active') {
+        // بررسی محدودیت میزبان در وضعیت در انتظار تایید یا معلق (صرفاً برای کاربران تک‌نقشی میزبان)
+        if (!$isAdmin && $isOnlyHost && $currentUserHost && $currentUserHost->status !== 'active') {
             $pendingCanCreate = (bool) PropertySetting::get('rental_pending_host_can_create', 0);
             if (!$pendingCanCreate) {
                 $statusText = $currentUserHost->status === 'suspended' ? 'معلق است' : 'در انتظار تایید مدیریت است';
@@ -193,19 +215,26 @@ class PropertyController extends Controller
         $agentRoles = json_decode(PropertySetting::get('agent_roles', '[]'), true);
         $agents = User::role($agentRoles)->get();
         $owners = PropertyOwner::latest()->get();
-        $hosts = \Modules\Properties\Entities\PropertyHost::where('status', 'active')->latest()->get();
+        $rentalMultiHostEnabled = (bool) PropertySetting::get('rental_multi_host_enabled', 0);
+        $hosts = $rentalMultiHostEnabled ? \Modules\Properties\Entities\PropertyHost::where('status', 'active')->latest()->get() : collect();
+        $rentalVideoEnabled = (bool) PropertySetting::get('rental_video_enabled', 1);
+        $rentalBuildingEnabled = (bool) PropertySetting::get('rental_building_enabled', 1);
+        $rentalPropertyTypes = Property::getRentalPropertyTypes(true);
+        $provincesData = \App\Helpers\ProvinceCity::getAll();
 
-        return view('properties::user.create', compact('maxGalleryImages', 'maxFileSize', 'allowedFileTypes', 'maxVideoSize', 'allowedVideoTypes', 'statuses', 'agents', 'owners', 'hosts', 'currentUserHost'));
+        return view('properties::user.create', compact('maxGalleryImages', 'maxFileSize', 'allowedFileTypes', 'maxVideoSize', 'allowedVideoTypes', 'statuses', 'agents', 'owners', 'hosts', 'currentUserHost', 'rentalVideoEnabled', 'rentalBuildingEnabled', 'rentalPropertyTypes', 'rentalMultiHostEnabled', 'provincesData'));
     }
 
     public function store(Request $request)
     {
         $user = auth()->user();
         $isAdmin = $user->hasRole(['super-admin', 'admin']) || $user->can('properties.manage');
+        $userRoles = $user->getRoleNames();
+        $isOnlyHost = $userRoles->contains('property_host') && $userRoles->count() === 1;
         $currentUserHost = \Modules\Properties\Entities\PropertyHost::where('user_id', $user->id)->first();
 
-        // بررسی محدودیت میزبان در وضعیت در انتظار تایید یا معلق
-        if (!$isAdmin && $currentUserHost && $currentUserHost->status !== 'active') {
+        // بررسی محدودیت میزبان در وضعیت در انتظار تایید یا معلق (صرفاً برای کاربران تک‌نقشی میزبان)
+        if (!$isAdmin && $isOnlyHost && $currentUserHost && $currentUserHost->status !== 'active') {
             $pendingCanCreate = (bool) PropertySetting::get('rental_pending_host_can_create', 0);
             if (!$pendingCanCreate) {
                 $statusText = $currentUserHost->status === 'suspended' ? 'معلق است' : 'در انتظار تایید مدیریت است';
@@ -252,11 +281,19 @@ class PropertyController extends Controller
             ]);
         }
 
+        if ($request->input('listing_type') === 'daily_rental') {
+            $allowedRentalTypes = array_keys(Property::getRentalPropertyTypes());
+            $allowedRentalTypes = array_unique(array_merge($allowedRentalTypes, ['apartment', 'villa', 'cottage', 'ecolodge', 'resort']));
+            $propertyTypeRule = 'required|in:' . implode(',', $allowedRentalTypes);
+        } else {
+            $propertyTypeRule = 'required|in:apartment,villa,land,office';
+        }
+
         $validated = $request->validate([
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
             'listing_type' => 'required|in:' . $allowedListingTypes,
-            'property_type' => 'required|in:apartment,villa,land,office',
+            'property_type' => $propertyTypeRule,
             'document_type' => 'nullable|string',
             'building_id' => 'nullable|integer',
             'owner_id' => 'nullable|exists:property_owners,id',
@@ -268,6 +305,8 @@ class PropertyController extends Controller
             'delivery_date' => 'nullable|required_if:listing_type,presale|date',
             'code' => 'nullable|string|max:255',
             'category_id' => 'nullable|exists:property_categories,id',
+            'province' => 'nullable|string|max:100',
+            'city' => 'nullable|string|max:100',
             'address' => 'nullable|string',
             'latitude' => 'nullable|numeric',
             'longitude' => 'nullable|numeric',
@@ -307,8 +346,21 @@ class PropertyController extends Controller
             $data['cover_image'] = $this->uploadFile($request->file('cover_image'), 'properties/covers');
         }
 
-        if ($request->hasFile('video')) {
+        if (($data['listing_type'] ?? '') === 'daily_rental') {
+            $rentalVideoEnabled = (bool) PropertySetting::get('rental_video_enabled', 1);
+            $rentalBuildingEnabled = (bool) PropertySetting::get('rental_building_enabled', 1);
+
+            if (!$rentalBuildingEnabled) {
+                $data['building_id'] = null;
+            }
+        } else {
+            $rentalVideoEnabled = true;
+        }
+
+        if ($rentalVideoEnabled && $request->hasFile('video')) {
             $data['video'] = $this->uploadFile($request->file('video'), 'properties/videos');
+        } else {
+            unset($data['video']);
         }
 
         $data['created_by'] = auth()->id();
@@ -346,21 +398,27 @@ class PropertyController extends Controller
         // انتساب هوشمند میزبان
         $user = auth()->user();
         $isAdmin = $user->hasRole(['super-admin', 'admin']) || $user->can('properties.hosts.manage') || $user->can('properties.manage');
-        $currentUserHost = \Modules\Properties\Entities\PropertyHost::where('user_id', $user->id)->first();
+        $rentalMultiHostEnabled = (bool) PropertySetting::get('rental_multi_host_enabled', 0);
+        $currentUserHost = $rentalMultiHostEnabled ? \Modules\Properties\Entities\PropertyHost::where('user_id', $user->id)->first() : null;
 
-        if ($isAdmin && $request->has('host_id')) {
-            $data['host_id'] = $request->filled('host_id') ? $request->host_id : null;
-            if ($data['host_id'] && empty($data['owner_id'])) {
-                $chosenHost = \Modules\Properties\Entities\PropertyHost::find($data['host_id']);
-                if ($chosenHost && $chosenHost->owner_id) {
-                    $data['owner_id'] = $chosenHost->owner_id;
+        if ($rentalMultiHostEnabled) {
+            if ($isAdmin && $request->has('host_id')) {
+                $data['host_id'] = $request->filled('host_id') ? $request->host_id : null;
+                if ($data['host_id'] && empty($data['owner_id'])) {
+                    $chosenHost = \Modules\Properties\Entities\PropertyHost::find($data['host_id']);
+                    if ($chosenHost && $chosenHost->owner_id) {
+                        $data['owner_id'] = $chosenHost->owner_id;
+                    }
+                }
+            } elseif ($currentUserHost && $data['listing_type'] === 'daily_rental') {
+                $data['host_id'] = $currentUserHost->id;
+                if (empty($data['owner_id']) && $currentUserHost->owner_id) {
+                    $data['owner_id'] = $currentUserHost->owner_id;
                 }
             }
-        } elseif ($currentUserHost && $data['listing_type'] === 'daily_rental') {
-            $data['host_id'] = $currentUserHost->id;
-            if (empty($data['owner_id']) && $currentUserHost->owner_id) {
-                $data['owner_id'] = $currentUserHost->owner_id;
-            }
+        } else {
+            // در حالت مدیریت متمرکز (تک‌میزبانی)، اقامتگاه به عنوان ملک پلتفرم ثبت می‌شود
+            $data['host_id'] = null;
         }
 
         // وضعیت تایید برای اقامتگاه روزانه
@@ -702,10 +760,21 @@ class PropertyController extends Controller
 
         $agentRoles = json_decode(PropertySetting::get('agent_roles', '[]'), true);
         $agents = User::role($agentRoles)->get();
-        $hosts = \Modules\Properties\Entities\PropertyHost::where('status', 'active')->latest()->get();
+        $rentalMultiHostEnabled = (bool) PropertySetting::get('rental_multi_host_enabled', 0);
+        $hosts = $rentalMultiHostEnabled ? \Modules\Properties\Entities\PropertyHost::where('status', 'active')->latest()->get() : collect();
         $currentUserHost = \Modules\Properties\Entities\PropertyHost::where('user_id', auth()->id())->first();
+        $rentalVideoEnabled = (bool) PropertySetting::get('rental_video_enabled', 1);
+        $rentalBuildingEnabled = (bool) PropertySetting::get('rental_building_enabled', 1);
+        $rentalPropertyTypes = Property::getRentalPropertyTypes(true);
+        if ($property->listing_type === 'daily_rental' && $property->property_type) {
+            $allRentalTypes = Property::getRentalPropertyTypes();
+            if (isset($allRentalTypes[$property->property_type]) && !isset($rentalPropertyTypes[$property->property_type])) {
+                $rentalPropertyTypes[$property->property_type] = $allRentalTypes[$property->property_type];
+            }
+        }
+        $provincesData = \App\Helpers\ProvinceCity::getAll();
 
-        return view('properties::user.edit', compact('property', 'maxGalleryImages', 'maxFileSize', 'allowedFileTypes', 'maxVideoSize', 'allowedVideoTypes', 'customDetails', 'customFeatures', 'owners', 'statuses', 'agents', 'hosts', 'currentUserHost'));
+        return view('properties::user.edit', compact('property', 'maxGalleryImages', 'maxFileSize', 'allowedFileTypes', 'maxVideoSize', 'allowedVideoTypes', 'customDetails', 'customFeatures', 'owners', 'statuses', 'agents', 'hosts', 'currentUserHost', 'rentalVideoEnabled', 'rentalBuildingEnabled', 'rentalPropertyTypes', 'rentalMultiHostEnabled', 'provincesData'));
     }
 
     public function update(Request $request, Property $property)
@@ -764,11 +833,24 @@ class PropertyController extends Controller
             ]);
         }
 
+        $isDailyRental = ($request->input('listing_type') === 'daily_rental') || ($property->listing_type === 'daily_rental' && !$request->has('listing_type'));
+        if ($isDailyRental) {
+            $allowedRentalTypes = array_keys(Property::getRentalPropertyTypes());
+            $allowedRentalTypes = array_unique(array_merge($allowedRentalTypes, ['apartment', 'villa', 'cottage', 'ecolodge', 'resort']));
+            if ($property->property_type) {
+                $allowedRentalTypes[] = $property->property_type;
+                $allowedRentalTypes = array_unique($allowedRentalTypes);
+            }
+            $propertyTypeRule = 'required|in:' . implode(',', $allowedRentalTypes);
+        } else {
+            $propertyTypeRule = 'required|in:apartment,villa,land,office';
+        }
+
         $data = $request->validate([
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
             'listing_type' => 'required|in:' . $allowedListingTypes,
-            'property_type' => 'required|in:apartment,villa,land,office',
+            'property_type' => $propertyTypeRule,
             'document_type' => 'nullable|string',
             'building_id' => 'nullable|integer',
             'registered_at' => 'nullable|date',
@@ -780,6 +862,8 @@ class PropertyController extends Controller
             'code' => 'nullable|string|max:255|unique:properties,code,' . $property->id,
             'category_id' => 'nullable|exists:property_categories,id',
             'owner_id' => 'nullable|exists:property_owners,id',
+            'province' => 'nullable|string|max:100',
+            'city' => 'nullable|string|max:100',
             'address' => 'nullable|string',
             'latitude' => 'nullable|numeric',
             'longitude' => 'nullable|numeric',
@@ -826,7 +910,18 @@ class PropertyController extends Controller
             }
         }
 
-        if ($request->hasFile('video')) {
+        if (($data['listing_type'] ?? $property->listing_type) === 'daily_rental') {
+            $rentalVideoEnabled = (bool) PropertySetting::get('rental_video_enabled', 1);
+            $rentalBuildingEnabled = (bool) PropertySetting::get('rental_building_enabled', 1);
+
+            if (!$rentalBuildingEnabled) {
+                $data['building_id'] = null;
+            }
+        } else {
+            $rentalVideoEnabled = true;
+        }
+
+        if ($rentalVideoEnabled && $request->hasFile('video')) {
             $file = $request->file('video');
             if ($file->isValid()) {
                 if ($property->video) {
@@ -874,7 +969,8 @@ class PropertyController extends Controller
 
         $isAdmin = $user->hasRole(['super-admin', 'admin']);
         $canManageHosts = $isAdmin || $user->can('properties.hosts.manage') || $user->can('properties.manage');
-        if ($canManageHosts && $request->has('host_id')) {
+        $rentalMultiHostEnabled = (bool) PropertySetting::get('rental_multi_host_enabled', 0);
+        if ($rentalMultiHostEnabled && $canManageHosts && $request->has('host_id')) {
             $data['host_id'] = $request->filled('host_id') ? $request->host_id : null;
         } else {
             unset($data['host_id']);
@@ -991,6 +1087,12 @@ class PropertyController extends Controller
         }
 
         $property->delete();
+
+        $canViewAll = $user->hasRole(['super-admin', 'admin']) || $user->can('properties.view.all') || $user->can('properties.manage');
+        if ($user->hasRole('property_host') && !$canViewAll) {
+            return redirect()->route('user.properties.hosts.dashboard')->with('success', 'اقامتگاه به سطل زباله منتقل شد.');
+        }
+
         return redirect()->route('user.properties.index')->with('success', 'ملک به سطل زباله منتقل شد.');
     }
 

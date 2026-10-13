@@ -1431,6 +1431,65 @@ class WorkflowEngine
             }
         }
 
+        // Handle RENTAL_BOOKING context
+        if ($instance->related_type === 'RENTAL_BOOKING' && class_exists(\Modules\Properties\Entities\PropertyRentalBooking::class)) {
+            $booking = \Modules\Properties\Entities\PropertyRentalBooking::with(['property', 'host.user', 'client'])->find($instance->related_id);
+            if ($booking) {
+                $data['rental_booking'] = $booking;
+                if ($booking->client) {
+                    $data['client'] = $booking->client;
+                }
+
+                $currencyLabel = 'تومان';
+                $propertyTitle = $booking->property?->title ?? '';
+                $propertyCode  = $booking->property?->code ?? '';
+                $propertyCity  = $booking->property?->city ?? '';
+                $propertyAddr  = $booking->property?->address ?? '';
+
+                $hostName = $booking->host?->display_name ?? $booking->host?->user?->name ?? 'میزبان';
+                $hostPhone = $booking->host?->phone ?? $booking->host?->user?->phone ?? $booking->host?->user?->mobile ?? '';
+
+                $guestName = $booking->guest_full_name ?? $booking->client?->full_name ?? 'مهمان';
+                $guestPhone = $booking->guest_phone ?? $booking->client?->phone ?? '';
+
+                $remainingAmount = max(0, (float)$booking->grand_total - (float)$booking->paid_amount);
+
+                $rentalTokens = [
+                    'booking_code'        => $booking->booking_code,
+                    'booking_id'          => $booking->id,
+                    'property_title'      => $propertyTitle,
+                    'property_code'       => $propertyCode,
+                    'property_city'       => $propertyCity,
+                    'property_address'    => $propertyAddr,
+                    'guest_name'          => $guestName,
+                    'guest_phone'         => $guestPhone,
+                    'guest_national_code' => $booking->guest_national_code ?? '',
+                    'host_name'           => $hostName,
+                    'host_phone'          => $hostPhone,
+                    'check_in_jalali'     => $booking->check_in_jalali ?? '',
+                    'check_out_jalali'    => $booking->check_out_jalali ?? '',
+                    'nights_count'        => $booking->nights_count,
+                    'guests_count'        => $booking->guests_count,
+                    'extra_guests_count'  => $booking->extra_guests_count ?? 0,
+                    'grand_total'         => self::formatCurrencyValue($booking->grand_total, $currencyLabel),
+                    'grand_total_raw'     => $booking->grand_total,
+                    'prepayment_amount'   => self::formatCurrencyValue($booking->prepayment_amount, $currencyLabel),
+                    'paid_amount'         => self::formatCurrencyValue($booking->paid_amount, $currencyLabel),
+                    'remaining_amount'    => self::formatCurrencyValue($remainingAmount, $currencyLabel),
+                    'currency'            => $currencyLabel,
+                    'booking_status'      => $booking->status_label ?? $booking->status,
+                    'payment_status'      => $booking->payment_status_label ?? $booking->payment_status,
+                    'payment_deadline'    => $booking->payment_deadline_at ? \Morilog\Jalali\Jalalian::fromCarbon($booking->payment_deadline_at)->format('Y/m/d H:i') : '',
+                    'voucher_link'        => route('client.portal.rental-bookings.show', $booking->id),
+                    // Standard tokens compatibility
+                    'client_name'         => $guestName,
+                    'client_phone'        => $guestPhone,
+                ];
+
+                $data['tokens'] = array_merge($data['tokens'], $rentalTokens);
+            }
+        }
+
         // Handle TASK / FOLLOW_UP context
         if (($instance->related_type === 'TASK' || $instance->related_type === 'FOLLOW_UP') && class_exists(\Modules\Tasks\Entities\Task::class)) {
             $task = \Modules\Tasks\Entities\Task::find($instance->related_id);
@@ -1767,6 +1826,11 @@ class WorkflowEngine
                     return $task->related_id;
                 }
             }
+        } elseif ($instance->related_type === 'RENTAL_BOOKING') {
+            if (class_exists(\Modules\Properties\Entities\PropertyRentalBooking::class)) {
+                $booking = \Modules\Properties\Entities\PropertyRentalBooking::find($instance->related_id);
+                return $booking?->client_id;
+            }
         }
         return null;
     }
@@ -1862,6 +1926,14 @@ class WorkflowEngine
             $taskObj = $context['task'] ?? $context['followup'];
             $user = \App\Models\User::find($taskObj->assignee_id);
             return $user?->phone ?? $user?->mobile ?? null;
+        }
+
+        if ($target === 'RENTAL_GUEST') {
+            return $context['tokens']['guest_phone'] ?? $context['tokens']['client_phone'] ?? null;
+        }
+
+        if ($target === 'RENTAL_HOST') {
+            return $context['tokens']['host_phone'] ?? null;
         }
 
         return null;

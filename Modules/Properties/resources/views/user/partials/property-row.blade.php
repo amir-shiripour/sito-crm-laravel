@@ -11,6 +11,8 @@
     $canDelete = auth()->user()->hasRole('super-admin') ||
                  auth()->user()->can('properties.delete.all') ||
                  (auth()->user()->can('properties.delete') && ($isMyProperty || auth()->user()->can('properties.manage')));
+
+    $rentalModeEnabled = isset($rentalModeEnabled) ? (bool) $rentalModeEnabled : (bool) \Modules\Properties\Entities\PropertySetting::get('rental_mode_enabled', 0);
 @endphp
 
 <tr class="group {{ $rowClass }} transition-colors duration-150">
@@ -27,11 +29,11 @@
                     </div>
                 @endif
             </div>
-            <div class="flex flex-col max-w-[130px]">
-                <span class="font-bold text-gray-900 dark:text-white truncate block" title="{{ $property->title }}">{{ $property->title }}</span>
+            <div class="flex flex-col min-w-[180px] max-w-xs xl:max-w-md">
+                <span class="font-bold text-gray-900 dark:text-white truncate block text-sm" title="{{ $property->title }}">{{ $property->title }}</span>
                 <span class="text-xs text-gray-500 dark:text-gray-400 font-sans mt-0.5">کد: {{ $property->code }}</span>
-                @if($property->host)
-                    <span class="text-[10px] text-indigo-600 dark:text-indigo-400 truncate font-sans">میزبان: {{ $property->host->display_name }}</span>
+                @if(!$rentalModeEnabled && $property->host)
+                    <span class="text-[11px] text-indigo-600 dark:text-indigo-400 truncate font-sans font-medium">میزبان: {{ $property->host->display_name }}</span>
                 @endif
             </div>
         </div>
@@ -128,15 +130,39 @@
         @endif
     </td>
 
-    {{-- Agent --}}
+    {{-- Agent or Host --}}
     @if($canManageProperties)
         <td class="px-6 py-4 text-gray-600 dark:text-gray-400 hidden lg:table-cell">
-            <div class="flex items-center gap-1.5">
-                <div class="w-6 h-6 rounded-full bg-purple-100 dark:bg-purple-900/20 flex items-center justify-center text-[10px] text-purple-600 dark:text-purple-300">
-                    {{ mb_substr(optional($property->agent)->name ?? '?', 0, 1) }}
+            @if($rentalModeEnabled)
+                @if($property->host)
+                    <div class="flex items-center gap-2">
+                        <div class="w-7 h-7 rounded-full bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 flex items-center justify-center text-xs font-bold overflow-hidden border border-indigo-200 dark:border-indigo-800 shrink-0">
+                            @if($property->host->avatar)
+                                <img src="{{ asset('storage/' . $property->host->avatar) }}" class="w-full h-full object-cover" alt="{{ $property->host->display_name }}">
+                            @else
+                                {{ mb_substr($property->host->display_name ?? '?', 0, 1) }}
+                            @endif
+                        </div>
+                        <div class="flex flex-col min-w-0">
+                            <span class="text-xs font-bold text-gray-900 dark:text-white truncate max-w-[130px] xl:max-w-[170px]" title="{{ $property->host->display_name }}">
+                                {{ $property->host->display_name }}
+                            </span>
+                            @if($property->host->phone)
+                                <span class="text-[10px] text-gray-400 font-sans mt-0.5">{{ $property->host->phone }}</span>
+                            @endif
+                        </div>
+                    </div>
+                @else
+                    <span class="text-xs text-slate-500 dark:text-slate-400 font-sans">پلتفرم (مرکزی)</span>
+                @endif
+            @else
+                <div class="flex items-center gap-1.5">
+                    <div class="w-6 h-6 rounded-full bg-purple-100 dark:bg-purple-900/20 flex items-center justify-center text-[10px] text-purple-600 dark:text-purple-300 shrink-0">
+                        {{ mb_substr(optional($property->agent)->name ?? '?', 0, 1) }}
+                    </div>
+                    <span class="text-xs font-sans">{{ optional($property->agent)->name ?? 'نامشخص' }}</span>
                 </div>
-                <span class="text-xs">{{ optional($property->agent)->name ?? 'نامشخص' }}</span>
-            </div>
+            @endif
         </td>
     @endif
 

@@ -159,4 +159,91 @@ class RentalPublicService
             'officialHolidays' => $officialHolidayMap,
         ];
     }
+
+    /**
+     * بررسی اینکه آیا کاربر جاری برای این اقامتگاه خاص در آن لحظه رزرو با وضعیت «تأیید شده» (confirmed) دارد یا خیر
+     *
+     * @param Property $property اقامتگاهی که کاربر هم‌اکنون در حال مشاهده آن است
+     * @param mixed $user کاربر جاری
+     * @return bool
+     */
+    public function hasConfirmedBooking(Property $property, $user = null): bool
+    {
+        if (!$user && auth()->check()) {
+            $user = auth()->user();
+        }
+
+        if (!$user) {
+            return false;
+        }
+
+        // ادمین‌ها، مدیران پلتفرم و مالک/مشاور/میزبان خود اقامتگاه دسترسی کامل دارند
+        if (is_object($user) && method_exists($user, 'hasRole')) {
+            if ($user->hasRole(['super-admin', 'admin']) ||
+                (method_exists($user, 'can') && ($user->can('properties.view.all') || $user->can('properties.manage'))) ||
+                (isset($user->id) && ($property->created_by === $user->id || $property->agent_id === $user->id || ($property->host && $property->host->user_id === $user->id)))) {
+                return true;
+            }
+        }
+
+        // بررسی رزرو با مدل اصلی PropertyRentalBooking
+        $client = null;
+        if ($user instanceof \Modules\Clients\Entities\Client) {
+            $client = $user;
+        } elseif (auth('client')->check()) {
+            $client = auth('client')->user();
+        } elseif ($user) {
+            $client = \Modules\Clients\Entities\Client::where(function($q) use ($user) {
+                if (!empty($user->mobile)) $q->orWhere('phone', $user->mobile);
+                if (!empty($user->phone)) $q->orWhere('phone', $user->phone);
+                if (!empty($user->email)) $q->orWhere('email', $user->email);
+            })->first();
+        }
+
+        if ($client) {
+            $hasBooking = \Modules\Properties\Entities\PropertyRentalBooking::where('property_id', $property->id)
+                ->where('client_id', $client->id)
+                ->whereIn('status', [
+                    \Modules\Properties\Entities\PropertyRentalBooking::STATUS_CONFIRMED,
+                    \Modules\Properties\Entities\PropertyRentalBooking::STATUS_CHECKED_IN,
+                ])
+                ->whereDate('check_out_date', '>=', now()->toDateString())
+                ->exists();
+
+            if ($hasBooking) {
+                return true;
+            }
+        }
+
+        // بررسی در سایر جدول‌های محتمل رزرواسیون
+        $bookingTables = ['property_bookings', 'rental_bookings', 'bookings'];
+        foreach ($bookingTables as $table) {
+            if (\Illuminate\Support\Facades\Schema::hasTable($table)) {
+                $query = \Illuminate\Support\Facades\DB::table($table)
+                    ->where('property_id', $property->id)
+                    ->where('user_id', $user->id);
+
+                // بررسی وضعیت: فقط وضعیت «تایید شده» (confirmed)
+                if (\Illuminate\Support\Facades\Schema::hasColumn($table, 'status')) {
+                    $query->where(function($q) {
+                        $q->where('status', 'confirmed')
+                          ->orWhere('status', 'تایید شده');
+                    });
+                }
+
+                // بررسی بازه زمانی «در آن لحظه»: رزرو منقضی یا پایان یافته نباشد
+                if (\Illuminate\Support\Facades\Schema::hasColumn($table, 'check_out')) {
+                    $query->whereDate('check_out', '>=', now()->toDateString());
+                } elseif (\Illuminate\Support\Facades\Schema::hasColumn($table, 'end_date')) {
+                    $query->whereDate('end_date', '>=', now()->toDateString());
+                }
+
+                if ($query->exists()) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
 }

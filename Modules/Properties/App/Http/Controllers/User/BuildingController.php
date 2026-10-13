@@ -4,6 +4,7 @@ namespace Modules\Properties\App\Http\Controllers\User;
 
 use Illuminate\Routing\Controller;
 use Modules\Properties\Entities\PropertyBuilding;
+use Modules\Properties\Entities\PropertySetting;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 
@@ -15,6 +16,20 @@ class BuildingController extends Controller
         $this->middleware('permission:properties.buildings.create|properties.buildings.manage')->only('store');
         $this->middleware('permission:properties.buildings.edit|properties.buildings.manage')->only('update');
         $this->middleware('permission:properties.buildings.delete|properties.buildings.manage')->only('destroy');
+
+        $this->middleware(function ($request, $next) {
+            $rentalModeEnabled = (bool) PropertySetting::get('rental_mode_enabled', 0);
+            if ($rentalModeEnabled) {
+                $rentalBuildingEnabled = (bool) PropertySetting::get('rental_building_enabled', 1);
+                if (!$rentalBuildingEnabled) {
+                    if ($request->expectsJson() || $request->is('*/search')) {
+                        return response()->json([]);
+                    }
+                    abort(403, 'امکان مدیریت ساختمان‌ها در حالت اجاره روزانه غیرفعال است.');
+                }
+            }
+            return $next($request);
+        });
     }
 
     public function index()
@@ -90,6 +105,11 @@ class BuildingController extends Controller
 
     public function search(Request $request)
     {
+        $rentalModeEnabled = (bool) PropertySetting::get('rental_mode_enabled', 0);
+        if ($rentalModeEnabled && !(bool) PropertySetting::get('rental_building_enabled', 1)) {
+            return response()->json([]);
+        }
+
         $query = $request->input('q');
 
         if (empty($query)) {

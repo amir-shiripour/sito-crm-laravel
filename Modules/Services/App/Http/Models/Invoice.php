@@ -241,7 +241,12 @@ class Invoice extends Model
     public function isMerged(): bool
     {
         $statusName = $this->status?->name ?? '';
-        return str_contains($statusName, 'ادغام');
+        if (str_contains($statusName, 'ادغام')) {
+            return true;
+        }
+
+        $meta = is_array($this->meta) ? $this->meta : (json_decode($this->meta, true) ?? []);
+        return !empty($meta['was_merged_into']);
     }
 
     public function isEditable(): bool
@@ -274,7 +279,8 @@ class Invoice extends Model
         if ($this->isCanceled() || $this->isMerged()) {
             return false;
         }
-        return max(0, $this->total - $this->calculatePaidAmount()) <= 0;
+        $paid = max($this->calculatePaidAmount(), (int)$this->paid_amount);
+        return max(0, $this->total - $paid) <= 0;
     }
 
     public function isOverdue(): bool

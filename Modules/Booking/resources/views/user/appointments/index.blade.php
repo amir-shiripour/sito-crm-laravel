@@ -76,6 +76,7 @@
                         <option value="">همه وضعیت‌ها</option>
                         @foreach([
                             \Modules\Booking\Entities\Appointment::STATUS_CONFIRMED => 'تایید شده',
+                            \Modules\Booking\Entities\Appointment::STATUS_IN_PROGRESS => 'در حال انجام',
                             \Modules\Booking\Entities\Appointment::STATUS_PENDING => 'در انتظار تایید',
                             \Modules\Booking\Entities\Appointment::STATUS_PENDING_PAYMENT => 'در انتظار پرداخت',
                             \Modules\Booking\Entities\Appointment::STATUS_DONE => 'انجام شده',

@@ -187,6 +187,20 @@ Route::prefix('clients')
             Route::get('market/orders/{id}', [ClientPaymentController::class, 'marketOrderShow'])
                 ->name('market.orders.show');
 
+            // 🏡 Vacation Rental Bookings Routes (مدیریت رزروهای اقامتگاهی مهمان / کلاینت)
+            Route::prefix('rental-bookings')->name('rental-bookings.')->group(function () {
+                Route::get('/', [\Modules\Clients\App\Http\Controllers\Portal\ClientRentalBookingController::class, 'index'])
+                    ->name('index');
+                Route::get('/{booking}', [\Modules\Clients\App\Http\Controllers\Portal\ClientRentalBookingController::class, 'show'])
+                    ->name('show');
+                Route::get('/{booking}/print', [\Modules\Clients\App\Http\Controllers\Portal\ClientRentalBookingController::class, 'print'])
+                    ->name('print');
+                Route::post('/{booking}/pay', [\Modules\Clients\App\Http\Controllers\Portal\ClientRentalBookingController::class, 'pay'])
+                    ->name('pay');
+                Route::post('/{booking}/cancel', [\Modules\Clients\App\Http\Controllers\Portal\ClientRentalBookingController::class, 'cancel'])
+                    ->name('cancel');
+            });
+
             if (class_exists('Modules\Market\App\Livewire\Client\InteractionsManager')) {
                 Route::get('market/interactions', \Modules\Market\App\Livewire\Client\InteractionsManager::class)
                     ->name('market.interactions');

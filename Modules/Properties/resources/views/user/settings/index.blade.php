@@ -14,12 +14,18 @@
 <div x-data="propertySettingsManager({
     activeTab: window.location.hash ? window.location.hash.substring(1) : 'general',
     rentalEnabled: {{ ($rental_mode_enabled ?? 0) ? 'true' : 'false' }},
+    rentalVideoEnabled: {{ ($rental_video_enabled ?? 1) ? 'true' : 'false' }},
+    rentalBuildingEnabled: {{ ($rental_building_enabled ?? 1) ? 'true' : 'false' }},
+    rentalPropertyTypes: @js(array_values($rental_property_types ?? [])),
     multiHostEnabled: {{ ($rental_multi_host_enabled ?? 0) ? 'true' : 'false' }},
     mapService: '{{ $map_service ?? 'leaflet' }}',
     officeLat: {{ $office_location_lat ?? 35.6892 }},
     officeLng: {{ $office_location_lng ?? 51.3890 }},
     rulesTitle: @js($rental_settlement_rules_title ?? 'قوانین و رویه تسویه حساب درآمد:'),
-    rules: @js($rental_settlement_rules ?? [])
+    rules: @js($rental_settlement_rules ?? []),
+    hostTipsEnabled: {{ ($rental_host_tips_enabled ?? 1) ? 'true' : 'false' }},
+    hostTipsTitle: @js($rental_host_tips_title ?? 'نکات کلیدی میزبانی موفق'),
+    hostTips: @js($rental_host_tips ?? [])
 })" class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6 font-sans">
 
     {{-- هدر صفحه با بردکرامب و دکمه ذخیره سریع --}}
@@ -267,6 +273,120 @@
 
                     {{-- زیرمجموعه اجاره روزانه --}}
                     <div x-show="rentalEnabled" x-transition class="space-y-4 pt-2">
+                        {{-- امکانات و فیلدهای فرم اقامتگاه (اجاره روزانه) --}}
+                        <div class="p-4 rounded-2xl border border-gray-200/80 dark:border-gray-700/60 bg-white/70 dark:bg-gray-800/70 space-y-3">
+                            <div class="flex items-center gap-2 pb-2 border-b border-gray-100 dark:border-gray-700/60">
+                                <span class="w-2 h-2 rounded-full bg-indigo-600 dark:bg-indigo-400"></span>
+                                <span class="text-xs font-bold text-gray-900 dark:text-white">امکانات و فیلدهای فرم اقامتگاه (اجاره روزانه)</span>
+                                <span class="text-[10px] text-slate-500 dark:text-slate-400">کنترل فیلدهای اختیاری در فرم ایجاد و ویرایش ملک</span>
+                            </div>
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+                                {{-- سوییچ ویدیو معرفی --}}
+                                <label class="flex items-start justify-between p-3.5 rounded-xl border border-gray-200/80 dark:border-gray-700/60 bg-gray-50/60 dark:bg-gray-900/40 cursor-pointer hover:bg-white dark:hover:bg-gray-800 transition">
+                                    <div class="flex flex-col pr-1">
+                                        <span class="text-xs font-bold text-gray-900 dark:text-white flex items-center gap-1.5">
+                                            <svg class="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                                            ویدیو معرفی (اختیاری)
+                                        </span>
+                                        <span class="text-[11px] text-slate-600 dark:text-slate-300 mt-1 leading-relaxed">
+                                            در صورت غیرفعال بودن، کادر بارگذاری ویدیو در فرم‌های ثبت و ویرایش اقامتگاه مخفی می‌شود.
+                                        </span>
+                                    </div>
+                                    <input type="checkbox" name="rental_video_enabled" value="1" x-model="rentalVideoEnabled" {{ ($rental_video_enabled ?? 1) ? 'checked' : '' }} class="{{ $checkboxClass }} shrink-0 mt-0.5">
+                                </label>
+
+                                {{-- سوییچ ساختمان / برج --}}
+                                <label class="flex items-start justify-between p-3.5 rounded-xl border border-gray-200/80 dark:border-gray-700/60 bg-gray-50/60 dark:bg-gray-900/40 cursor-pointer hover:bg-white dark:hover:bg-gray-800 transition">
+                                    <div class="flex flex-col pr-1">
+                                        <span class="text-xs font-bold text-gray-900 dark:text-white flex items-center gap-1.5">
+                                            <svg class="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
+                                            ساختمان / برج
+                                        </span>
+                                        <span class="text-[11px] text-slate-600 dark:text-slate-300 mt-1 leading-relaxed">
+                                            در صورت غیرفعال بودن، فیلد ساختمان در فرم‌ها مخفی شده و منوی مدیریت ساختمان‌ها نیز از سایدبار حذف می‌گردد.
+                                        </span>
+                                    </div>
+                                    <input type="checkbox" name="rental_building_enabled" value="1" x-model="rentalBuildingEnabled" {{ ($rental_building_enabled ?? 1) ? 'checked' : '' }} class="{{ $checkboxClass }} shrink-0 mt-0.5">
+                                </label>
+                            </div>
+                        </div>
+
+                        {{-- کارت مدیریت انواع اقامتگاه (نوع ملک در اجاره روزانه) --}}
+                        <div class="p-4 sm:p-5 rounded-2xl border border-gray-200/80 dark:border-gray-700/60 bg-white/70 dark:bg-gray-800/70 space-y-4">
+                            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-gray-100 dark:border-gray-700/60">
+                                <div class="flex items-center gap-2.5">
+                                    <span class="w-2.5 h-2.5 rounded-full bg-teal-500 shadow-[0_0_8px_rgba(20,184,166,0.5)]"></span>
+                                    <div>
+                                        <h3 class="text-xs font-bold text-gray-900 dark:text-white">انواع اقامتگاه (دسته‌بندی نوع ملک در اجاره روزانه)</h3>
+                                        <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                                            مدیریت گزینه‌های انتخابی سلکتور «نوع ملک» در اقامتگاه‌ها. می‌توانید گزینه‌های غیرضروری را غیرفعال کرده یا عنوان نمایشی آن‌ها را ویرایش نمایید.
+                                        </p>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <button type="button" @click="resetDefaultRentalTypes()" class="px-2.5 py-1.5 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 text-[11px] font-bold dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 transition">
+                                        بازنشانی پیش‌فرض
+                                    </button>
+                                    <button type="button" @click="addRentalType()" class="px-3 py-1.5 rounded-xl bg-indigo-50 text-indigo-600 hover:bg-indigo-100 dark:bg-indigo-900/30 dark:text-indigo-300 dark:hover:bg-indigo-900/50 text-[11px] font-bold transition flex items-center gap-1.5">
+                                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                                        افزودن نوع جدید
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="space-y-2.5">
+                                <template x-for="(typeItem, idx) in rentalPropertyTypes" :key="typeItem.key || idx">
+                                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-xl border border-gray-200/70 dark:border-gray-700/60 bg-gray-50/70 dark:bg-gray-900/40 hover:bg-white dark:hover:bg-gray-800 transition">
+                                        {{-- فیلدهای فرم مخفی و عنوان --}}
+                                        <div class="flex items-center gap-3 flex-1 min-w-0">
+                                            {{-- سوییچ فعال/غیرفعال --}}
+                                            <label class="flex items-center gap-2 cursor-pointer shrink-0">
+                                                <input type="checkbox"
+                                                       :name="'rental_property_types[' + typeItem.key + '][is_active]'"
+                                                       value="1"
+                                                       x-model="typeItem.is_active"
+                                                       class="{{ $checkboxClass }}">
+                                                <span class="text-[11px] font-bold px-2 py-0.5 rounded-full"
+                                                      :class="typeItem.is_active ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300' : 'bg-gray-200 text-gray-500 dark:bg-gray-800 dark:text-gray-400'"
+                                                      x-text="typeItem.is_active ? 'فعال' : 'غیرفعال'"></span>
+                                            </label>
+
+                                            {{-- کلید سیستمی --}}
+                                            <input type="hidden" :name="'rental_property_types[' + typeItem.key + '][key]'" :value="typeItem.key">
+                                            
+                                            <span class="px-2 py-1 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 text-[10px] font-sans border border-gray-200 dark:border-gray-700 shrink-0"
+                                                  title="شناسه فنی ذخیره‌سازی در دیتابیس">
+                                                کلید: <span class="font-bold" x-text="typeItem.key"></span>
+                                            </span>
+
+                                            {{-- فیلد ویرایش عنوان فارسی --}}
+                                            <div class="flex-1 min-w-0">
+                                                <input type="text"
+                                                       :name="'rental_property_types[' + typeItem.key + '][label]'"
+                                                       x-model="typeItem.label"
+                                                       class="{{ $inputClass }} text-xs py-2 w-full"
+                                                       placeholder="عنوان نمایشی (فارسی)..."
+                                                       required>
+                                            </div>
+                                        </div>
+
+                                        {{-- دکمه حذف برای موارد اضافه شده توسط کاربر --}}
+                                        <div class="flex items-center justify-end gap-2 shrink-0">
+                                            <template x-if="!['villa', 'apartment', 'cottage', 'ecolodge', 'resort'].includes(typeItem.key)">
+                                                <button type="button" @click="removeRentalType(idx)" class="p-1.5 text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg transition" title="حذف این مورد">
+                                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                                </button>
+                                            </template>
+                                            <template x-if="['villa', 'apartment', 'cottage', 'ecolodge', 'resort'].includes(typeItem.key)">
+                                                <span class="text-[10px] text-slate-400 dark:text-slate-500 px-2 py-1 select-none">پیش‌فرض سیستمی</span>
+                                            </template>
+                                        </div>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+
                         <label class="flex items-center justify-between p-4 rounded-2xl border border-indigo-100 dark:border-indigo-900/50 bg-indigo-50/40 dark:bg-indigo-950/20 cursor-pointer hover:bg-indigo-50/70 dark:hover:bg-indigo-950/40 transition">
                             <div class="flex flex-col">
                                 <span class="text-xs font-bold text-indigo-950 dark:text-indigo-200 flex items-center gap-2">
@@ -295,11 +415,19 @@
                                 </div>
                             </label>
 
-                            <label class="md:col-span-2 flex items-center gap-3 p-3.5 rounded-xl border border-gray-200/80 dark:border-gray-700/60 bg-white dark:bg-gray-800/90 cursor-pointer">
+                            <label class="flex items-center gap-3 p-3.5 rounded-xl border border-gray-200/80 dark:border-gray-700/60 bg-white dark:bg-gray-800/90 cursor-pointer">
                                 <input type="checkbox" name="rental_pending_host_can_create" value="1" {{ ($rental_pending_host_can_create ?? 0) ? 'checked' : '' }} class="{{ $checkboxClass }}">
                                 <div class="flex flex-col">
                                     <span class="text-xs font-bold text-gray-800 dark:text-gray-200">امکان ثبت اقامتگاه در وضعیت «در انتظار تأیید مدیریت»</span>
                                     <span class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">در صورت غیرفعال بودن (پیش‌فرض امنیتی)، میزبان تا زمان تایید هویت امکان ثبت اقامتگاه را نخواهد داشت.</span>
+                                </div>
+                            </label>
+
+                            <label class="flex items-center gap-3 p-3.5 rounded-xl border border-gray-200/80 dark:border-gray-700/60 bg-white dark:bg-gray-800/90 cursor-pointer">
+                                <input type="checkbox" name="rental_redirect_host_to_dashboard" value="1" {{ ($rental_redirect_host_to_dashboard ?? 1) ? 'checked' : '' }} class="{{ $checkboxClass }}">
+                                <div class="flex flex-col">
+                                    <span class="text-xs font-bold text-gray-800 dark:text-gray-200">هدایت خودکار پیشخوان به «پروفایل میزبانی»</span>
+                                    <span class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">هدایت کاربرانی که فقط نقش میزبان دارند به پروفایل میزبانی (کاربران چندنقشی محدود نمی‌شوند)</span>
                                 </div>
                             </label>
 
@@ -444,6 +572,266 @@
                                 </li>
                             </template>
                         </ul>
+                    </div>
+                </div>
+
+            </div>
+
+            {{-- ======================================================== --}}
+            {{-- کارت اختصاصی: مدیریت متن و آیتم‌های «نکات کلیدی میزبانی موفق» --}}
+            {{-- ======================================================== --}}
+            <div class="{{ $cardClass }} p-5 sm:p-6 space-y-6 border-indigo-100 dark:border-indigo-900/50">
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-gray-100 dark:border-gray-700/60 pb-3">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-2xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold">
+                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" /></svg>
+                        </div>
+                        <div>
+                            <h2 class="text-xs font-black text-gray-900 dark:text-white flex items-center gap-2">
+                                <span>مدیریت متن و آیتم‌های «نکات کلیدی میزبانی موفق»</span>
+                                <span class="px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 text-[10px] font-bold">صفحه پروفایل میزبانی</span>
+                            </h2>
+                            <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                                آیتم‌های راهنمای نمایش‌داده‌شده در صفحه اصلی پروفایل میزبانی (`/user/properties/hosts/dashboard`) از این بخش مدیریت می‌شود.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-2">
+                        <button type="button"
+                                @click="resetDefaultHostTips()"
+                                class="px-3 py-1.5 rounded-xl border border-gray-200 dark:border-gray-700 text-slate-600 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-gray-800 text-[11px] font-bold transition">
+                            بازنشانی به پیش‌فرض
+                        </button>
+                        <button type="button"
+                                @click="addHostTip()"
+                                class="px-3 py-1.5 rounded-xl bg-indigo-50 text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-500/15 dark:text-indigo-300 dark:border dark:border-indigo-500/30 text-[11px] font-bold transition flex items-center gap-1">
+                            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
+                            <span>افزودن نکته جدید</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
+                    {{-- تیک فعال‌سازی نمایش بخش --}}
+                    <label class="flex items-center gap-3 p-3.5 rounded-xl border border-gray-200/80 dark:border-gray-700/60 bg-gray-50/60 dark:bg-gray-900/40 cursor-pointer">
+                        <input type="checkbox" name="rental_host_tips_enabled" value="1" x-model="hostTipsEnabled" class="{{ $checkboxClass }}">
+                        <div class="flex flex-col">
+                            <span class="text-xs font-bold text-gray-800 dark:text-gray-200">نمایش بخش «نکات کلیدی میزبانی» در پروفایل میزبانی</span>
+                            <span class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">در صورت برداشتن تیک، این بخش در صفحه پروفایل میزبانی نمایش داده نمی‌شود</span>
+                        </div>
+                    </label>
+
+                    {{-- فیلد عنوان بخش --}}
+                    <div class="space-y-1.5">
+                        <label class="{{ $labelClass }}">
+                            عنوان اصلی بخش در پروفایل میزبانی:
+                        </label>
+                        <input type="text"
+                               name="rental_host_tips_title"
+                               x-model="hostTipsTitle"
+                               class="{{ $inputClass }} font-bold text-xs"
+                               placeholder="نکات کلیدی میزبانی موفق">
+                    </div>
+                </div>
+
+                {{-- لیست تکرارکننده آیتم‌های نکات میزبانی --}}
+                <div class="space-y-3" :class="!hostTipsEnabled && 'opacity-60'">
+                    <template x-for="(tip, idx) in hostTips" :key="idx">
+                        <div class="p-4 rounded-2xl bg-gray-50/70 dark:bg-gray-900/40 border border-gray-200/70 dark:border-gray-700/70 space-y-3 relative transition hover:border-indigo-300 dark:hover:border-indigo-800">
+                            <div class="flex items-center justify-between">
+                                <span class="text-xs font-bold text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
+                                    <span class="w-5 h-5 rounded-lg bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 flex items-center justify-center text-[10px] font-bold font-sans" x-text="idx + 1"></span>
+                                    <span>نکته شماره <span x-text="idx + 1"></span></span>
+                                </span>
+
+                                <button type="button"
+                                        @click="removeHostTip(idx)"
+                                        class="p-1 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 transition"
+                                        title="حذف این نکته">
+                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                </button>
+                            </div>
+
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                <div>
+                                    <label class="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
+                                        عنوان نکته (مثلاً: بروزرسانی تقویم):
+                                    </label>
+                                    <input type="text"
+                                           :name="'rental_host_tips[' + idx + '][title]'"
+                                           x-model="tip.title"
+                                           class="{{ $inputClass }}"
+                                           placeholder="عنوان کوتاه نکته...">
+                                </div>
+
+                                <div class="md:col-span-2">
+                                    <label class="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
+                                        متن کامل راهنما:
+                                    </label>
+                                    <textarea :name="'rental_host_tips[' + idx + '][text]'"
+                                              x-model="tip.text"
+                                              rows="2"
+                                              class="{{ $inputClass }} resize-none"
+                                              placeholder="شرح کامل نکته کلیدی برای میزبانان..."></textarea>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+
+            {{-- ======================================================== --}}
+            {{-- کارت اختصاصی: تنظیمات نمایش اقامتگاه، نقشه و تماس مسافر --}}
+            {{-- ======================================================== --}}
+            <div class="{{ $cardClass }} p-5 sm:p-6 space-y-6 border-teal-100 dark:border-teal-900/50">
+                <div class="flex items-center justify-between border-b border-gray-100 dark:border-gray-700/60 pb-3">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-2xl bg-teal-50 dark:bg-teal-950/40 text-teal-600 dark:text-teal-400 flex items-center justify-center font-bold">
+                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                        </div>
+                        <div>
+                            <h2 class="text-xs font-black text-gray-900 dark:text-white flex items-center gap-2">
+                                <span>تنظیمات نمایش صفحه اقامتگاه، نقشه و تماس</span>
+                                <span class="px-2 py-0.5 rounded-full bg-teal-500/10 text-teal-600 dark:text-teal-400 border border-teal-500/20 text-[10px] font-bold">حریم خصوصی و مسافران</span>
+                            </h2>
+                            <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                                تعیین نحوه نمایش باکس معرفی میزبان، موقعیت جغرافیایی و نقشه، و دکمه تماس مستقیم قبل یا بعد از رزرو تأیید شده
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- ۱. بخش باکس معرفی میزبان --}}
+                <div class="p-4.5 rounded-2xl bg-gray-50/70 dark:bg-gray-900/40 border border-gray-200/70 dark:border-gray-700/60 space-y-4">
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-gray-200/50 dark:border-gray-700/50">
+                        <div class="flex items-center gap-2">
+                            <span class="w-2 h-2 rounded-full bg-teal-500"></span>
+                            <h3 class="text-xs font-black text-gray-900 dark:text-white">۱. باکس معرفی و هویت میزبان</h3>
+                        </div>
+                        <div class="w-full sm:w-64">
+                            <select name="rental_show_host_box" class="{{ $inputClass }} font-bold text-xs">
+                                <option value="all" {{ ($rental_show_host_box ?? 'all') === 'all' ? 'selected' : '' }}>نمایش عمومی (برای همه بازدیدکنندگان)</option>
+                                <option value="confirmed_booking" {{ ($rental_show_host_box ?? '') === 'confirmed_booking' ? 'selected' : '' }}>فقط پس از رزرو تأیید شده مسافر</option>
+                                <option value="none" {{ ($rental_show_host_box ?? '') === 'none' ? 'selected' : '' }}>عدم نمایش (مخفی کامل)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    {{-- تفکیک اجزای داخل باکس میزبان --}}
+                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 pt-1">
+                        <label class="flex items-center gap-2.5 p-2.5 rounded-xl border border-gray-200/60 dark:border-gray-700/60 bg-white dark:bg-gray-800/90 cursor-pointer hover:border-teal-400 transition">
+                            <input type="checkbox" name="rental_host_show_avatar" value="1" {{ ($rental_host_show_avatar ?? 1) ? 'checked' : '' }} class="{{ $checkboxClass }}">
+                            <span class="text-[11px] font-bold text-gray-700 dark:text-gray-300">عکس آواتار میزبان</span>
+                        </label>
+
+                        <label class="flex items-center gap-2.5 p-2.5 rounded-xl border border-gray-200/60 dark:border-gray-700/60 bg-white dark:bg-gray-800/90 cursor-pointer hover:border-teal-400 transition">
+                            <input type="checkbox" name="rental_host_show_badge" value="1" {{ ($rental_host_show_badge ?? 1) ? 'checked' : '' }} class="{{ $checkboxClass }}">
+                            <span class="text-[11px] font-bold text-gray-700 dark:text-gray-300">نشان تأیید هویت (KYC)</span>
+                        </label>
+
+                        <label class="flex items-center gap-2.5 p-2.5 rounded-xl border border-gray-200/60 dark:border-gray-700/60 bg-white dark:bg-gray-800/90 cursor-pointer hover:border-teal-400 transition">
+                            <input type="checkbox" name="rental_host_show_about" value="1" {{ ($rental_host_show_about ?? 1) ? 'checked' : '' }} class="{{ $checkboxClass }}">
+                            <span class="text-[11px] font-bold text-gray-700 dark:text-gray-300">متن درباره میزبان (بیو)</span>
+                        </label>
+
+                        <div class="flex flex-col">
+                            <label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1">شماره تماس در کارت میزبان:</label>
+                            <select name="rental_host_show_phone" class="{{ $inputClass }} py-1.5 text-[11px] font-bold">
+                                <option value="all" {{ ($rental_host_show_phone ?? '') === 'all' ? 'selected' : '' }}>نمایش عمومی</option>
+                                <option value="confirmed_booking" {{ ($rental_host_show_phone ?? 'confirmed_booking') === 'confirmed_booking' ? 'selected' : '' }}>فقط پس از تایید رزرو</option>
+                                <option value="none" {{ ($rental_host_show_phone ?? '') === 'none' ? 'selected' : '' }}>عدم نمایش</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- ۲. بخش موقعیت جغرافیایی و دسترسی (نقشه و آدرس) --}}
+                <div class="p-4.5 rounded-2xl bg-gray-50/70 dark:bg-gray-900/40 border border-gray-200/70 dark:border-gray-700/60 space-y-4">
+                    <div class="flex items-center gap-2 pb-2 border-b border-gray-200/50 dark:border-gray-700/50">
+                        <span class="w-2 h-2 rounded-full bg-rose-500"></span>
+                        <h3 class="text-xs font-black text-gray-900 dark:text-white">۲. موقعیت جغرافیایی، آدرس متنی و نقشه</h3>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {{-- نمایش متن آدرس --}}
+                        <div class="p-3.5 rounded-xl border border-gray-200/60 dark:border-gray-700/60 bg-white dark:bg-gray-800/90 space-y-2">
+                            <label class="block text-xs font-bold text-gray-800 dark:text-gray-200">نمایش متن آدرس اقامتگاه</label>
+                            <select name="rental_show_address" class="{{ $inputClass }} font-bold text-xs">
+                                <option value="all" {{ ($rental_show_address ?? 'all') === 'all' ? 'selected' : '' }}>نمایش عمومی آدرس برای همه</option>
+                                <option value="confirmed_booking" {{ ($rental_show_address ?? '') === 'confirmed_booking' ? 'selected' : '' }}>نمایش آدرس دقیق فقط پس از رزرو تأیید شده</option>
+                                <option value="none" {{ ($rental_show_address ?? '') === 'none' ? 'selected' : '' }}>عدم نمایش آدرس متنی</option>
+                            </select>
+                            <span class="text-[10px] text-slate-500 dark:text-slate-400 block">در صورت انتخاب «پس از رزرو تأیید شده»، برای سایرین پیام راهنما نمایش می‌یابد.</span>
+                        </div>
+
+                        {{-- نمایش کلی نقشه --}}
+                        <div class="p-3.5 rounded-xl border border-gray-200/60 dark:border-gray-700/60 bg-white dark:bg-gray-800/90 space-y-2">
+                            <label class="block text-xs font-bold text-gray-800 dark:text-gray-200">نمایش بخش نقشه تعاملی</label>
+                            <select name="rental_show_map" class="{{ $inputClass }} font-bold text-xs">
+                                <option value="all" {{ ($rental_show_map ?? 'all') === 'all' ? 'selected' : '' }}>نمایش نقشه برای همه بازدیدکنندگان</option>
+                                <option value="confirmed_booking" {{ ($rental_show_map ?? '') === 'confirmed_booking' ? 'selected' : '' }}>نمایش نقشه فقط پس از رزرو تأیید شده</option>
+                                <option value="none" {{ ($rental_show_map ?? '') === 'none' ? 'selected' : '' }}>عدم نمایش بخش نقشه</option>
+                            </select>
+                            <span class="text-[10px] text-slate-500 dark:text-slate-400 block">کنترل فعال یا غیرفعال بودن نمایش کامپوننت نقشه در صفحه اقامتگاه.</span>
+                        </div>
+                    </div>
+
+                    {{-- نوع نمایش در نقشه و تعیین شعاع دایره امن --}}
+                    <div class="p-4 rounded-xl border border-indigo-100 dark:border-indigo-900/40 bg-indigo-50/40 dark:bg-indigo-950/20 space-y-3">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-bold text-indigo-950 dark:text-indigo-200 mb-1.5">
+                                    نوع نمایش موقعیت روی نقشه:
+                                </label>
+                                <select name="rental_map_display_type" class="{{ $inputClass }} font-bold text-xs">
+                                    <option value="circle_then_exact" {{ ($rental_map_display_type ?? 'circle_then_exact') === 'circle_then_exact' ? 'selected' : '' }}>محدوده دایره قبل از رزرو ➔ نقطه دقیق بعد از تایید رزرو (پیش‌نهادی)</option>
+                                    <option value="circle" {{ ($rental_map_display_type ?? '') === 'circle' ? 'selected' : '' }}>همیشه محدوده دایره تقریبی (حفظ کامل حریم خصوصی)</option>
+                                    <option value="exact" {{ ($rental_map_display_type ?? '') === 'exact' ? 'selected' : '' }}>همیشه نقطه دقیق با پین / مارکر</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-bold text-indigo-950 dark:text-indigo-200 mb-1.5">
+                                    شعاع دایره محدوده اقامتگاه (بر حسب متر):
+                                </label>
+                                <div class="relative">
+                                    <input type="number" 
+                                           name="rental_map_circle_radius" 
+                                           value="{{ $rental_map_circle_radius ?? 300 }}" 
+                                           min="50" 
+                                           max="5000" 
+                                           step="50" 
+                                           class="{{ $inputClass }} text-center font-sans font-bold" 
+                                           placeholder="300">
+                                    <span class="absolute inset-y-0 left-3 flex items-center pointer-events-none text-xs text-slate-400 font-sans">متر</span>
+                                </div>
+                            </div>
+                        </div>
+                        <p class="text-[11px] text-slate-600 dark:text-slate-300 font-sans leading-relaxed">
+                            💡 در حالت <strong>«محدوده دایره قبل از رزرو ➔ نقطه دقیق بعد از تایید رزرو»</strong>، برای عموم کاربران یک دایره بنفش ملایم با شعاع تعیین‌شده رسم می‌شود و پس از آنکه رزرو مسافر تأیید شد (یا برای مدیران پلتفرم)، مارکر و پین دقیق آدرس اقامتگاه به نمایش درمی‌آید.
+                        </p>
+                    </div>
+                </div>
+
+                {{-- ۳. دکمه تماس مستقیم در کارت رزرو --}}
+                <div class="p-4.5 rounded-2xl bg-gray-50/70 dark:bg-gray-900/40 border border-gray-200/70 dark:border-gray-700/60 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <div>
+                        <div class="flex items-center gap-2 mb-1">
+                            <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                            <h3 class="text-xs font-black text-gray-900 dark:text-white">۳. دکمه «تماس مستقیم با میزبان»</h3>
+                        </div>
+                        <p class="text-[11px] text-slate-500 dark:text-slate-400">
+                            کنترل نمایش دکمه تماس تلفنی موجود در سایدبار رزرو (زیر دکمه «ثبت درخواست رزرو اقامتگاه»)
+                        </p>
+                    </div>
+
+                    <div class="w-full sm:w-64 shrink-0">
+                        <select name="rental_show_direct_call_btn" class="{{ $inputClass }} font-bold text-xs">
+                            <option value="all" {{ ($rental_show_direct_call_btn ?? 'all') === 'all' ? 'selected' : '' }}>نمایش عمومی برای همه</option>
+                            <option value="confirmed_booking" {{ ($rental_show_direct_call_btn ?? '') === 'confirmed_booking' ? 'selected' : '' }}>فقط پس از رزرو تأیید شده</option>
+                            <option value="none" {{ ($rental_show_direct_call_btn ?? '') === 'none' ? 'selected' : '' }}>عدم نمایش (غیرفعال)</option>
+                        </select>
                     </div>
                 </div>
 
@@ -878,6 +1266,15 @@
         return {
             activeTab: config.activeTab || 'general',
             rentalEnabled: config.rentalEnabled,
+            rentalVideoEnabled: config.rentalVideoEnabled ?? true,
+            rentalBuildingEnabled: config.rentalBuildingEnabled ?? true,
+            rentalPropertyTypes: config.rentalPropertyTypes && config.rentalPropertyTypes.length > 0 ? config.rentalPropertyTypes : [
+                { key: 'villa', label: 'ویلا', is_active: true },
+                { key: 'apartment', label: 'آپارتمان و سوئیت', is_active: true },
+                { key: 'cottage', label: 'کلبه و اقامتگاه چوبی', is_active: true },
+                { key: 'ecolodge', label: 'بوم‌گردی و سنتی', is_active: true },
+                { key: 'resort', label: 'مجتمع اقامتی و هتل‌آپارتمان', is_active: true }
+            ],
             multiHostEnabled: config.multiHostEnabled,
             mapService: config.mapService,
             officeLat: config.officeLat,
@@ -895,6 +1292,22 @@
                 {
                     title: 'تطابق حساب',
                     text: 'نام صاحب حساب باید با اطلاعات هویتی و کد ملی همخوانی کامل داشته باشد.'
+                }
+            ],
+            hostTipsEnabled: config.hostTipsEnabled ?? true,
+            hostTipsTitle: config.hostTipsTitle || 'نکات کلیدی میزبانی موفق',
+            hostTips: config.hostTips && config.hostTips.length > 0 ? config.hostTips : [
+                {
+                    title: 'بروزرسانی تقویم',
+                    text: 'روزهایی که اقامتگاه خارج از پلتفرم پر شده است را از بخش «مدیریت تقویم» مسدود نمایید تا از تداخل رزرو جلوگیری شود.'
+                },
+                {
+                    title: 'نرخ‌گذاری فصلی و پیک',
+                    text: 'تعیین نرخ دقیق آخر هفته و ایام پیک باعث افزایش رتبه نمایش اقامتگاه شما در نتایج جستجو می‌شود.'
+                },
+                {
+                    title: 'ویرایش مدارک هویتی',
+                    text: 'در صورت تغییر اطلاعات احراز هویت پس از تأیید، وضعیت مدارک مجدداً جهت بررسی امنیتی به حالت «در انتظار بررسی» تغییر می‌یابد.'
                 }
             ],
             mapInstance: null,
@@ -969,6 +1382,65 @@
                         title: 'تطابق حساب',
                         text: 'نام صاحب حساب باید با اطلاعات هویتی و کد ملی همخوانی کامل داشته باشد.'
                     }
+                ];
+            },
+
+            addHostTip() {
+                this.hostTips.push({
+                    title: '',
+                    text: ''
+                });
+            },
+
+            removeHostTip(idx) {
+                if (this.hostTips.length > 1) {
+                    this.hostTips.splice(idx, 1);
+                } else {
+                    this.hostTips = [{ title: '', text: '' }];
+                }
+            },
+
+            resetDefaultHostTips() {
+                this.hostTipsEnabled = true;
+                this.hostTipsTitle = 'نکات کلیدی میزبانی موفق';
+                this.hostTips = [
+                    {
+                        title: 'بروزرسانی تقویم',
+                        text: 'روزهایی که اقامتگاه خارج از پلتفرم پر شده است را از بخش «مدیریت تقویم» مسدود نمایید تا از تداخل رزرو جلوگیری شود.'
+                    },
+                    {
+                        title: 'نرخ‌گذاری فصلی و پیک',
+                        text: 'تعیین نرخ دقیق آخر هفته و ایام پیک باعث افزایش رتبه نمایش اقامتگاه شما در نتایج جستجو می‌شود.'
+                    },
+                    {
+                        title: 'ویرایش مدارک هویتی',
+                        text: 'در صورت تغییر اطلاعات احراز هویت پس از تأیید، وضعیت مدارک مجدداً جهت بررسی امنیتی به حالت «در انتظار بررسی» تغییر می‌یابد.'
+                    }
+                ];
+            },
+
+            addRentalType() {
+                const uniqueKey = 'type_' + Date.now().toString().slice(-4);
+                this.rentalPropertyTypes.push({
+                    key: uniqueKey,
+                    label: '',
+                    is_active: true
+                });
+            },
+
+            removeRentalType(idx) {
+                if (this.rentalPropertyTypes.length > 1) {
+                    this.rentalPropertyTypes.splice(idx, 1);
+                }
+            },
+
+            resetDefaultRentalTypes() {
+                this.rentalPropertyTypes = [
+                    { key: 'villa', label: 'ویلا', is_active: true },
+                    { key: 'apartment', label: 'آپارتمان و سوئیت', is_active: true },
+                    { key: 'cottage', label: 'کلبه و اقامتگاه چوبی', is_active: true },
+                    { key: 'ecolodge', label: 'بوم‌گردی و سنتی', is_active: true },
+                    { key: 'resort', label: 'مجتمع اقامتی و هتل‌آپارتمان', is_active: true }
                 ];
             },
 

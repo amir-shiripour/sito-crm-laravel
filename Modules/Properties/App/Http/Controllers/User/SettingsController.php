@@ -5,6 +5,7 @@ namespace Modules\Properties\App\Http\Controllers\User;
 use Illuminate\Routing\Controller;
 use Illuminate\Http\Request;
 use Modules\Properties\Entities\PropertySetting;
+use Modules\Properties\Entities\Property;
 use Illuminate\Support\Facades\Storage;
 use Spatie\Permission\Models\Role;
 
@@ -83,11 +84,15 @@ class SettingsController extends Controller
 
         // Rental Mode & Multi-Host Settings
         $rental_mode_enabled = PropertySetting::get('rental_mode_enabled', 0);
+        $rental_video_enabled = PropertySetting::get('rental_video_enabled', 1);
+        $rental_building_enabled = PropertySetting::get('rental_building_enabled', 1);
         $rental_multi_host_enabled = PropertySetting::get('rental_multi_host_enabled', 0);
         $rental_host_auto_approve = PropertySetting::get('rental_host_auto_approve', 0);
         $rental_property_auto_approve = PropertySetting::get('rental_property_auto_approve', 0);
         $rental_pending_host_can_create = PropertySetting::get('rental_pending_host_can_create', 0);
+        $rental_redirect_host_to_dashboard = PropertySetting::get('rental_redirect_host_to_dashboard', 1);
         $rental_default_commission = PropertySetting::get('rental_default_commission', 10);
+        $rental_property_types = Property::getRentalPropertyTypes();
 
         // Settlement Rules Settings
         $rental_settlement_rules_title = PropertySetting::get('rental_settlement_rules_title', 'قوانین و رویه تسویه حساب درآمد:');
@@ -106,6 +111,42 @@ class SettingsController extends Controller
                 [
                     'title' => 'تطابق حساب',
                     'text' => 'نام صاحب حساب باید با اطلاعات هویتی و کد ملی همخوانی کامل داشته باشد.',
+                ],
+            ];
+        }
+
+        // Rental Display & Host Privacy Settings (تنظیمات نمایش جزئیات اقامتگاه، نقشه و تماس)
+        $rental_show_host_box = PropertySetting::get('rental_show_host_box', 'all');
+        $rental_host_show_avatar = PropertySetting::get('rental_host_show_avatar', 1);
+        $rental_host_show_badge = PropertySetting::get('rental_host_show_badge', 1);
+        $rental_host_show_about = PropertySetting::get('rental_host_show_about', 1);
+        $rental_host_show_phone = PropertySetting::get('rental_host_show_phone', 'confirmed_booking');
+
+        $rental_show_address = PropertySetting::get('rental_show_address', 'all');
+        $rental_show_map = PropertySetting::get('rental_show_map', 'all');
+        $rental_map_display_type = PropertySetting::get('rental_map_display_type', 'circle_then_exact');
+        $rental_map_circle_radius = PropertySetting::get('rental_map_circle_radius', 300);
+
+        $rental_show_direct_call_btn = PropertySetting::get('rental_show_direct_call_btn', 'all');
+
+        // Host Tips Settings (نکات کلیدی میزبانی موفق)
+        $rental_host_tips_enabled = PropertySetting::get('rental_host_tips_enabled', 1);
+        $rental_host_tips_title = PropertySetting::get('rental_host_tips_title', 'نکات کلیدی میزبانی موفق');
+        $rawHostTips = PropertySetting::get('rental_host_tips');
+        $rental_host_tips = $rawHostTips ? json_decode($rawHostTips, true) : null;
+        if (empty($rental_host_tips) || !is_array($rental_host_tips)) {
+            $rental_host_tips = [
+                [
+                    'title' => 'بروزرسانی تقویم',
+                    'text' => 'روزهایی که اقامتگاه خارج از پلتفرم پر شده است را از بخش «مدیریت تقویم» مسدود نمایید تا از تداخل رزرو جلوگیری شود.',
+                ],
+                [
+                    'title' => 'نرخ‌گذاری فصلی و پیک',
+                    'text' => 'تعیین نرخ دقیق آخر هفته و ایام پیک باعث افزایش رتبه نمایش اقامتگاه شما در نتایج جستجو می‌شود.',
+                ],
+                [
+                    'title' => 'ویرایش مدارک هویتی',
+                    'text' => 'در صورت تغییر اطلاعات احراز هویت پس از تأیید، وضعیت مدارک مجدداً جهت بررسی امنیتی به حالت «در انتظار بررسی» تغییر می‌یابد.',
                 ],
             ];
         }
@@ -161,13 +202,30 @@ class SettingsController extends Controller
             'map_service',
             'map_ir_api_key',
             'rental_mode_enabled',
+            'rental_video_enabled',
+            'rental_building_enabled',
             'rental_multi_host_enabled',
             'rental_host_auto_approve',
             'rental_property_auto_approve',
             'rental_pending_host_can_create',
+            'rental_redirect_host_to_dashboard',
             'rental_default_commission',
             'rental_settlement_rules_title',
-            'rental_settlement_rules'
+            'rental_settlement_rules',
+            'rental_host_tips_enabled',
+            'rental_host_tips_title',
+            'rental_host_tips',
+            'rental_property_types',
+            'rental_show_host_box',
+            'rental_host_show_avatar',
+            'rental_host_show_badge',
+            'rental_host_show_about',
+            'rental_host_show_phone',
+            'rental_show_address',
+            'rental_show_map',
+            'rental_map_display_type',
+            'rental_map_circle_radius',
+            'rental_show_direct_call_btn'
         ));
     }
 
@@ -206,13 +264,30 @@ class SettingsController extends Controller
             'map_service' => 'required|in:leaflet,map_ir',
             'map_ir_api_key' => 'nullable|string',
             'rental_mode_enabled' => 'nullable|boolean',
+            'rental_video_enabled' => 'nullable|boolean',
+            'rental_building_enabled' => 'nullable|boolean',
             'rental_multi_host_enabled' => 'nullable|boolean',
             'rental_host_auto_approve' => 'nullable|boolean',
             'rental_property_auto_approve' => 'nullable|boolean',
             'rental_pending_host_can_create' => 'nullable|boolean',
+            'rental_redirect_host_to_dashboard' => 'nullable|boolean',
             'rental_default_commission' => 'nullable|numeric|min:0|max:100',
             'rental_settlement_rules_title' => 'nullable|string|max:255',
             'rental_settlement_rules' => 'nullable|array',
+            'rental_host_tips_enabled' => 'nullable|boolean',
+            'rental_host_tips_title' => 'nullable|string|max:255',
+            'rental_host_tips' => 'nullable|array',
+            'rental_property_types' => 'nullable|array',
+            'rental_show_host_box' => 'nullable|in:all,confirmed_booking,none',
+            'rental_host_show_avatar' => 'nullable|boolean',
+            'rental_host_show_badge' => 'nullable|boolean',
+            'rental_host_show_about' => 'nullable|boolean',
+            'rental_host_show_phone' => 'nullable|in:all,confirmed_booking,none',
+            'rental_show_address' => 'nullable|in:all,confirmed_booking,none',
+            'rental_show_map' => 'nullable|in:all,confirmed_booking,none',
+            'rental_map_display_type' => 'nullable|in:circle,exact,circle_then_exact',
+            'rental_map_circle_radius' => 'nullable|integer|min:50|max:5000',
+            'rental_show_direct_call_btn' => 'nullable|in:all,confirmed_booking,none',
         ]);
 
         $allowedFileTypes = str_replace(' ', '', $request->allowed_file_types);
@@ -265,10 +340,13 @@ class SettingsController extends Controller
 
         // Save Rental & Multi-Host Settings
         PropertySetting::set('rental_mode_enabled', $request->has('rental_mode_enabled') ? 1 : 0);
+        PropertySetting::set('rental_video_enabled', $request->has('rental_video_enabled') ? 1 : 0);
+        PropertySetting::set('rental_building_enabled', $request->has('rental_building_enabled') ? 1 : 0);
         PropertySetting::set('rental_multi_host_enabled', $request->has('rental_multi_host_enabled') ? 1 : 0);
         PropertySetting::set('rental_host_auto_approve', $request->has('rental_host_auto_approve') ? 1 : 0);
         PropertySetting::set('rental_property_auto_approve', $request->has('rental_property_auto_approve') ? 1 : 0);
         PropertySetting::set('rental_pending_host_can_create', $request->has('rental_pending_host_can_create') ? 1 : 0);
+        PropertySetting::set('rental_redirect_host_to_dashboard', $request->has('rental_redirect_host_to_dashboard') ? 1 : 0);
         PropertySetting::set('rental_default_commission', $request->input('rental_default_commission', 10));
 
         // Save Settlement Rules Settings
@@ -287,6 +365,59 @@ class SettingsController extends Controller
             }
             PropertySetting::set('rental_settlement_rules', json_encode($cleanRules, JSON_UNESCAPED_UNICODE));
         }
+
+        // Save Host Tips Settings
+        PropertySetting::set('rental_host_tips_enabled', $request->has('rental_host_tips_enabled') ? 1 : 0);
+        if ($request->has('rental_host_tips_title')) {
+            PropertySetting::set('rental_host_tips_title', $request->input('rental_host_tips_title', 'نکات کلیدی میزبانی موفق'));
+        }
+        if ($request->has('rental_host_tips') && is_array($request->rental_host_tips)) {
+            $cleanTips = [];
+            foreach ($request->rental_host_tips as $t) {
+                if (!empty($t['text']) || !empty($t['title'])) {
+                    $cleanTips[] = [
+                        'title' => trim($t['title'] ?? ''),
+                        'text' => trim($t['text'] ?? ''),
+                    ];
+                }
+            }
+            PropertySetting::set('rental_host_tips', json_encode($cleanTips, JSON_UNESCAPED_UNICODE));
+        }
+
+        // Save Rental Property Types Settings
+        if ($request->has('rental_property_types') && is_array($request->rental_property_types)) {
+            $cleanRentalTypes = [];
+            foreach ($request->rental_property_types as $key => $item) {
+                $typeKey = trim($item['key'] ?? $key);
+                $typeLabel = trim($item['label'] ?? '');
+                $isActive = !empty($item['is_active']);
+
+                if (!empty($typeKey) && !empty($typeLabel)) {
+                    $cleanRentalTypes[$typeKey] = [
+                        'key' => $typeKey,
+                        'label' => $typeLabel,
+                        'is_active' => $isActive,
+                    ];
+                }
+            }
+            if (!empty($cleanRentalTypes)) {
+                PropertySetting::set('rental_property_types', json_encode($cleanRentalTypes, JSON_UNESCAPED_UNICODE));
+            }
+        }
+
+        // Save Rental Display & Privacy Settings
+        PropertySetting::set('rental_show_host_box', $request->input('rental_show_host_box', 'all'));
+        PropertySetting::set('rental_host_show_avatar', $request->has('rental_host_show_avatar') ? 1 : 0);
+        PropertySetting::set('rental_host_show_badge', $request->has('rental_host_show_badge') ? 1 : 0);
+        PropertySetting::set('rental_host_show_about', $request->has('rental_host_show_about') ? 1 : 0);
+        PropertySetting::set('rental_host_show_phone', $request->input('rental_host_show_phone', 'confirmed_booking'));
+
+        PropertySetting::set('rental_show_address', $request->input('rental_show_address', 'all'));
+        PropertySetting::set('rental_show_map', $request->input('rental_show_map', 'all'));
+        PropertySetting::set('rental_map_display_type', $request->input('rental_map_display_type', 'circle_then_exact'));
+        PropertySetting::set('rental_map_circle_radius', (int) $request->input('rental_map_circle_radius', 300));
+
+        PropertySetting::set('rental_show_direct_call_btn', $request->input('rental_show_direct_call_btn', 'all'));
 
         return back()->with('success', 'تنظیمات با موفقیت ذخیره شد.');
     }
