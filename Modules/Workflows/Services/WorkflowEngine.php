@@ -1125,13 +1125,8 @@ class WorkflowEngine
                                 ]);
                             }
 
-                            // Advance Order's renewal_date to the NEXT billing cycle
-                            if ($nextRenewalDate) {
-                                $order->update(['renewal_date' => $nextRenewalDate]);
-                                Log::info("[Workflows] Updated Order ID {$order->id} next renewal_date to {$nextRenewalDate}");
-                            }
-
-                            Log::info("[Workflows] Created Invoice ID {$invoice->id} for Order ID {$order->id} with total {$invoiceTotal}");
+                            // Save invoice creation log (renewal_date is advanced only upon payment)
+                            Log::info("[Workflows] Created Invoice ID {$invoice->id} for Order ID {$order->id} with total {$invoiceTotal} (next renewal date saved in invoice meta: {$nextRenewalDate})");
                             
                             // Check and auto-merge concurrent invoices if enabled
                             $finalInvoiceId = $invoice->id;

@@ -61,6 +61,11 @@
             تنظیمات نقشه
         </button>
 
+        <button @click="tab = 'vision'" :class="tab === 'vision' ? 'bg-indigo-50 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400 font-bold' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800 dark:text-gray-400 font-medium'" class="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm transition-all whitespace-nowrap">
+            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+            وب‌سرویس ویژن (Vision ERP)
+        </button>
+
     </div>
 
     {{-- محتوای تب‌ها --}}
@@ -749,11 +754,16 @@
 
                     <div>
                         <label class="{{ $labelClass }}">کلید دسترسی API (API Key)</label>
-                        <input type="text" wire:model.defer="map_api_key" class="{{ $inputClass }} dir-ltr text-left font-mono" placeholder="مثال: web.1234567890abcdef...">
+                        <input type="text" wire:model.defer="map_api_key" class="{{ $inputClass }} dir-ltr text-left font-sans" placeholder="مثال: web.1234567890abcdef...">
                         @error('map_api_key') <span class="text-xs text-red-500 mt-1 block">{{ $message }}</span> @enderror
                     </div>
                 </div>
             </div>
+        </div>
+
+        {{-- 9. تب وب‌سرویس ویژن (Vision ERP) --}}
+        <div x-show="tab === 'vision'" x-cloak>
+            @livewire('market::vendor.vision-erp-settings', ['isAdminMode' => true])
         </div>
 
     </div>

@@ -2620,7 +2620,9 @@ class InvoiceController extends Controller
                         $updateData['status_id'] = $activeStatus->id;
                     }
 
-                    $nextRenewalDate = $invoiceMeta['next_renewal_date'] ?? $invoice->due_date;
+                    $nextRenewalDate = $invoiceMeta['next_renewal_date'] 
+                        ?? (method_exists($sourceOrder, 'calculateNextRenewalDate') ? $sourceOrder->calculateNextRenewalDate() : $invoice->due_date);
+
                     if ($nextRenewalDate) {
                         $currentRenewal = $sourceOrder->renewal_date ? Carbon::parse($sourceOrder->renewal_date) : null;
                         $candidateRenewal = Carbon::parse($nextRenewalDate);
@@ -2677,15 +2679,35 @@ class InvoiceController extends Controller
             }
             $mergedOrderIds = array_values(array_unique(array_filter($mergedOrderIds)));
 
-            // If the merged invoice is paid: activate all source orders
+            // If the merged invoice is paid: activate all source orders and advance renewal_date if this is a renewal invoice
             if ($invoice->isPaid() && !empty($mergedOrderIds)) {
                 $activeStatus = Status::where('type', 'order')->where('name', 'فعال')->first()
                     ?? Status::where('type', 'order')->where('name', 'LIKE', '%فعال%')->first();
 
-                if ($activeStatus) {
-                    Order::whereIn('id', $mergedOrderIds)->where('status_id', '!=', $activeStatus->id)->update([
-                        'status_id' => $activeStatus->id,
-                    ]);
+                foreach ($mergedOrderIds as $mOrdId) {
+                    $mOrder = Order::find($mOrdId);
+                    if (!$mOrder) continue;
+
+                    $mUpdateData = [];
+                    if ($activeStatus && $mOrder->status_id != $activeStatus->id) {
+                        $mUpdateData['status_id'] = $activeStatus->id;
+                    }
+
+                    // If order has billing cycle, calculate next renewal date
+                    if ($mOrder->billing_cycle && method_exists($mOrder, 'calculateNextRenewalDate')) {
+                        $calcNext = $mOrder->calculateNextRenewalDate();
+                        if ($calcNext) {
+                            $currRenewal = $mOrder->renewal_date ? Carbon::parse($mOrder->renewal_date) : null;
+                            $candRenewal = Carbon::parse($calcNext);
+                            if (!$currRenewal || $currRenewal->lt($candRenewal)) {
+                                $mUpdateData['renewal_date'] = $candRenewal->format('Y-m-d');
+                            }
+                        }
+                    }
+
+                    if (!empty($mUpdateData)) {
+                        $mOrder->update($mUpdateData);
+                    }
                 }
             }
 

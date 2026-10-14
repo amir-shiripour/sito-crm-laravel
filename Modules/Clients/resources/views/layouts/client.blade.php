@@ -48,7 +48,7 @@
                             <a href="{{ route('client.dashboard') }}" class="px-3 py-1.5 rounded-xl transition {{ request()->routeIs('client.dashboard') ? 'bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 font-black' : 'hover:bg-gray-100 dark:hover:bg-gray-800' }}">
                                 داشبورد
                             </a>
-                            @if(class_exists('\Modules\Properties\Entities\PropertySetting') && (bool)\Modules\Properties\Entities\PropertySetting::get('rental_system_enabled', 0))
+                            @if(class_exists('\Modules\Properties\Entities\PropertySetting') && ((bool)\Modules\Properties\Entities\PropertySetting::get('rental_mode_enabled', 0) || (bool)\Modules\Properties\Entities\PropertySetting::get('rental_system_enabled', 0)))
                                 <a href="{{ route('client.rental-bookings.index') }}" class="px-3 py-1.5 rounded-xl transition {{ request()->routeIs('client.rental-bookings.*') ? 'bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 font-black' : 'hover:bg-gray-100 dark:hover:bg-gray-800' }}">
                                     رزروهای اقامتگاه
                                 </a>

@@ -3,7 +3,7 @@
 <html lang="fa" dir="rtl">
 <head>
     <meta charset="utf-8">
-    <title>ووچر رسمی اقامتگاه - {{ $booking->booking_code }}</title>
+    <title>تأییدیه رسمی رزرو اقامتگاه - {{ $booking->booking_code }}</title>
     <style>
         body {
             font-family: 'IRANYekanX', 'Tahoma', sans-serif;
@@ -104,7 +104,7 @@
         <div class="header">
             <div>
                 <div class="brand-title">{{ config('app.name', 'سامانه رزرواسیون اقامتگاه') }}</div>
-                <div style="font-size: 11px; color: #64748b; margin-top: 4px;">برگه رسمی تأییدیه و ووچر دیجیتال رزرو اقامتگاه</div>
+                <div style="font-size: 11px; color: #64748b; margin-top: 4px;">برگه رسمی تأییدیه و سند نهایی رزرو اقامتگاه</div>
             </div>
             <div style="text-align: left;">
                 <div style="font-weight: 900; font-size: 14px;">کد رزرو: {{ $booking->booking_code }}</div>
@@ -183,12 +183,12 @@
         @endif
 
         <div class="footer">
-            ارائه کارت شناسایی معتبر در زمان تحویل اقامتگاه الزامی است. جهت هماهنگی ساعت دقیق ورود با میزبان تماس حاصل فرمایید.
+            ارائه مدارک شناسایی معتبر در زمان تحویل اقامتگاه الزامی است. جهت هماهنگی ساعت دقیق تحویل کلید با میزبان تماس حاصل فرمایید.
         </div>
 
         <div class="no-print" style="margin-top: 20px; text-align: center;">
-            <button onclick="window.print()" style="padding: 10px 24px; background: #4f46e5; color: #fff; border: none; border-radius: 8px; font-weight: 700; cursor: pointer;">
-                چاپ ووچر
+            <button onclick="window.print()" style="padding: 10px 24px; background: #4f46e5; color: #fff; border: none; border-radius: 8px; font-weight: 700; cursor: pointer; font-family: inherit;">
+                چاپ برگه تأییدیه رزرو
             </button>
         </div>
     </div>

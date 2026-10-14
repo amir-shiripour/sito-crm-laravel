@@ -26,6 +26,7 @@ class Client extends Authenticatable
         'email',
         'phone',
         'national_code',
+        'vision_code',
         'case_number',
         'notes',
         'status_id',

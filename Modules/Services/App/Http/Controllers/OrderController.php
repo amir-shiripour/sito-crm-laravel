@@ -367,6 +367,7 @@ class OrderController extends Controller
                     'source_invoice_id' => $order->invoice_id,
                     'source_order_id' => $order->id,
                     'billing_period' => $order->billing_cycle,
+                    'next_renewal_date' => $nextRenewalDate,
                     'skip_auto_renewal_invoice' => true,
                 ],
             ]);
@@ -387,13 +388,9 @@ class OrderController extends Controller
                 'meta' => [
                     'billing_period' => $order->billing_cycle,
                     'is_renewal_item' => true,
+                    'source_order_id' => $order->id,
                 ],
             ]);
-
-            // Advance Order's renewal_date to the NEXT billing cycle
-            if ($nextRenewalDate) {
-                $order->update(['renewal_date' => $nextRenewalDate]);
-            }
 
             ActivityLog::log(
                 'صدور دستی فاکتور تمدید',
@@ -427,8 +424,38 @@ class OrderController extends Controller
         });
 
         $order->refresh();
-        $nextJalaliStr = $order->renewal_date ? Jalalian::fromCarbon(Carbon::parse($order->renewal_date))->format('Y/m/d') : '—';
 
-        return back()->with('success', "فاکتور تمدید دستی با شماره {$renewalInvoice->invoice_number} با موفقیت صادر شد و تاریخ سررسید تمدید بعدی سفارش به {$nextJalaliStr} منتقل گردید.");
+        return back()->with('success', "فاکتور تمدید دستی با شماره {$renewalInvoice->invoice_number} با موفقیت صادر شد. پس از تسویه یا تایید پرداخت، تاریخ سررسید سفارش به دوره بعدی منتقل خواهد شد.");
+    }
+
+    public function manualAdvanceRenewalDate(Request $request, Order $order)
+    {
+        $this->authorize('update', $order);
+
+        if (!$order->billing_cycle) {
+            return back()->with('error', 'این سفارش یک سرویس دوره‌ای نیست یا دوره تمدید برای آن مشخص نشده است.');
+        }
+
+        $nextRenewalDate = method_exists($order, 'calculateNextRenewalDate')
+            ? $order->calculateNextRenewalDate()
+            : null;
+
+        if (!$nextRenewalDate) {
+            return back()->with('error', 'امکان محاسبه تاریخ تمدید بعدی برای این سفارش وجود ندارد.');
+        }
+
+        $oldRenewalDate = $order->renewal_date;
+        $order->update(['renewal_date' => $nextRenewalDate]);
+
+        ActivityLog::log(
+            'تمدید مستقیم سررسید سفارش',
+            $order,
+            "تاریخ سررسید تمدید سفارش {$order->order_number} مستقیماً از تاریخ {$oldRenewalDate} به {$nextRenewalDate} منتقل گردید."
+        );
+
+        $nextJalaliStr = Jalalian::fromCarbon(Carbon::parse($nextRenewalDate))->format('Y/m/d');
+
+        return back()->with('success', "تاریخ سررسید سفارش با موفقیت به صورت مستقیم یک دوره به جلو ({$nextJalaliStr}) منتقل شد.");
     }
 }
+

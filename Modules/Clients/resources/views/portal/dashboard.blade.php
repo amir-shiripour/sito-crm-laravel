@@ -35,6 +35,21 @@
             </div>
         @endif
 
+        @if(($showRentalFeatures ?? false) && isset($recentRentalBookings) && $recentRentalBookings->whereIn('status', [\Modules\Properties\Entities\PropertyRentalBooking::STATUS_AWAITING_PAYMENT, \Modules\Properties\Entities\PropertyRentalBooking::STATUS_PENDING_HOST])->count() > 0)
+            <div class="rounded-xl bg-amber-50 dark:bg-amber-950/30 p-4 border border-amber-200 dark:border-amber-800 shadow-sm flex items-start gap-3">
+                <div class="p-1 rounded-lg bg-amber-100 dark:bg-amber-900/50 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5">
+                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clip-rule="evenodd"/></svg>
+                </div>
+                <div class="flex-1">
+                    <h3 class="text-sm font-bold text-amber-900 dark:text-amber-300">شما رزرو اقامتگاه در انتظار تسویه و پرداخت دارید</h3>
+                    <p class="text-sm text-amber-800/90 dark:text-amber-400 mt-1">جهت قطعی شدن رزرو اقامتگاه و صدور تأییدیه رسمی، لطفاً نسبت به پرداخت آنلاین اقدام فرمایید.</p>
+                </div>
+                <a href="{{ route('client.rental-bookings.index', ['status' => 'awaiting_payment']) }}" class="shrink-0 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white text-sm font-bold rounded-lg transition-colors shadow-sm">
+                    مشاهده رزروها
+                </a>
+            </div>
+        @endif
+
         {{-- بخش هیرو و خوش‌آمدگویی --}}
         <div class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-600 to-violet-700 p-8 sm:p-10 shadow-xl shadow-indigo-600/20 text-white">
 
@@ -515,6 +530,74 @@
                                             @endphp
                                             <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium {{ $ds['class'] }}">
                                                 {{ $ds['label'] }}
+                                            </span>
+                                        </td>
+                                        <td class="px-6 py-4 text-left">
+                                            <svg class="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
+                                        </td>
+                                    </tr>
+                                @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            @endif
+
+            {{-- بخش آخرین رزروهای اقامتگاه من --}}
+            @if(($showRentalFeatures ?? false) && isset($recentRentalBookings) && $recentRentalBookings->isNotEmpty())
+                <div class="lg:col-span-2">
+                    <div class="flex items-center justify-between mb-4">
+                        <h2 class="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                            <span class="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
+                            آخرین رزروهای اقامتگاهی شما
+                        </h2>
+                        <a href="{{ route('client.rental-bookings.index') }}" class="text-xs text-indigo-600 dark:text-indigo-400 hover:underline font-bold">مشاهده همه</a>
+                    </div>
+                    <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden">
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-sm text-right">
+                                <thead class="text-xs text-gray-500 bg-gray-50/50 dark:bg-gray-900/50 dark:text-gray-400 border-b border-gray-100 dark:border-gray-700">
+                                <tr>
+                                    <th class="px-6 py-4 font-medium">اقامتگاه</th>
+                                    <th class="px-6 py-4 font-medium">کد رزرو</th>
+                                    <th class="px-6 py-4 font-medium">بازه اقامت</th>
+                                    <th class="px-6 py-4 font-medium">مبلغ کل</th>
+                                    <th class="px-6 py-4 font-medium">وضعیت</th>
+                                    <th class="px-6 py-4 font-medium"></th>
+                                </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
+                                @foreach($recentRentalBookings as $booking)
+                                    @php
+                                        $badge = $booking->status_badge ?: ['label' => $booking->status_label ?? 'نامشخص', 'class' => 'bg-gray-100 text-gray-700'];
+                                        $propCover = $booking->property?->primary_image_url ?? $booking->property?->primaryImage?->image_url ?? asset('assets/images/placeholder.jpg');
+                                    @endphp
+                                    <tr class="hover:bg-gray-50/50 dark:hover:bg-gray-700/50 transition-colors cursor-pointer" onclick="window.location.href='{{ route('client.rental-bookings.show', $booking->id) }}'">
+                                        <td class="px-6 py-4 text-gray-900 dark:text-white font-medium">
+                                            <div class="flex items-center gap-3">
+                                                <img src="{{ $propCover }}" alt="" class="w-10 h-10 rounded-xl object-cover shrink-0 border border-gray-100 dark:border-gray-700">
+                                                <div class="flex flex-col">
+                                                    <span class="font-bold text-gray-900 dark:text-white line-clamp-1 max-w-[220px]">{{ $booking->property?->title ?? 'اقامتگاه' }}</span>
+                                                    <span class="text-xs text-gray-400 font-normal mt-0.5">{{ $booking->nights_count }} شب • {{ $booking->guests_count }} نفر</span>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td class="px-6 py-4 text-indigo-600 dark:text-indigo-400 font-black text-xs">
+                                            {{ $booking->booking_code }}
+                                        </td>
+                                        <td class="px-6 py-4 text-gray-700 dark:text-gray-300 text-xs font-bold">
+                                            <span>{{ \Morilog\Jalali\CalendarUtils::convertNumbers($booking->check_in) }}</span>
+                                            <span class="text-gray-400 mx-1">تا</span>
+                                            <span>{{ \Morilog\Jalali\CalendarUtils::convertNumbers($booking->check_out) }}</span>
+                                        </td>
+                                        <td class="px-6 py-4 text-gray-900 dark:text-white text-xs font-black">
+                                            {{ \Morilog\Jalali\CalendarUtils::convertNumbers(number_format($booking->total_price)) }}
+                                            <span class="text-[11px] font-normal text-gray-400">{{ $booking->currency === 'IRR' ? 'ریال' : 'تومان' }}</span>
+                                        </td>
+                                        <td class="px-6 py-4">
+                                            <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium {{ $badge['class'] ?? 'bg-gray-100 text-gray-700' }}">
+                                                {{ $badge['label'] ?? 'نامشخص' }}
                                             </span>
                                         </td>
                                         <td class="px-6 py-4 text-left">

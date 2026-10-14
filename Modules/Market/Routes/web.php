@@ -72,6 +72,7 @@ Route::group(['prefix' => 'user', 'as' => 'user.', 'middleware' => ['web', 'auth
                 Route::resource('products', VendorProductController::class);
                 Route::view('warehouses', 'market::user.warehouses.index')->name('warehouses.index');
                 Route::view('warehouse-stock', 'market::admin.warehouse.stock')->name('warehouse-stock.index');
+                Route::view('vision', 'market::user.vision.index')->name('vision.index');
             });
 
         // Admin Section

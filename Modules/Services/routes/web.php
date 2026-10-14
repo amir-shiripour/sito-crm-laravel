@@ -80,6 +80,7 @@ Route::middleware(['auth', 'verified'])
         ->name('services.orders.')
         ->group(function () {
             Route::post('/{order}/create-renewal-invoice', [OrderController::class, 'createRenewalInvoice'])->name('createRenewalInvoice');
+            Route::post('/{order}/advance-renewal-date', [OrderController::class, 'manualAdvanceRenewalDate'])->name('advanceRenewalDate');
             Route::resource('/', OrderController::class)->parameters(['' => 'order'])->only(['index', 'show', 'update']);
         });
 

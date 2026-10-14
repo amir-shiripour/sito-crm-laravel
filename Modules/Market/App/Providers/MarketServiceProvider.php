@@ -109,6 +109,7 @@ class MarketServiceProvider extends ServiceProvider
         Livewire::component('market::web.product-reviews', ProductReviews::class);
         Livewire::component('market::user.order-form', OrderForm::class);
         Livewire::component('market::client.interactions-manager', InteractionsManager::class);
+        Livewire::component('market::vendor.vision-erp-settings', \Modules\Market\App\Livewire\Vendor\VisionErpSettings::class);
 
         // 💡 ثبت کامپوننت بلید فاکتور مرتبط و فیش واریز
         Blade::component('market::components.related-invoice', 'market-related-invoice');
@@ -116,6 +117,7 @@ class MarketServiceProvider extends ServiceProvider
 
         // 💡 ثبت Observer
         Vendor::observe(VendorObserver::class);
+        \Modules\Market\App\Models\Order::observe(\Modules\Market\App\Observers\OrderObserver::class);
     }
 
     /**

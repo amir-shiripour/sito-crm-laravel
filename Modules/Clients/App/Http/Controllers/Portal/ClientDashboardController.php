@@ -15,11 +15,11 @@ class ClientDashboardController extends Controller
     {
         $client = auth('client')->user();
 
-        // 1. بررسی اصولی فعال بودن ماژول‌ها
         $isBookingActive  = $this->isModuleActive('Booking', 'appointments');
         $isMarketActive   = $this->isModuleActive('Market', 'market_orders');
         $isServicesActive = $this->isModuleActive('Services', 'service_invoices');
-        $isRentalActive   = $this->isModuleActive('Properties', 'property_rental_bookings') && (bool) \Modules\Properties\Entities\PropertySetting::get('rental_system_enabled', 0);
+        $isRentalActive   = $this->isModuleActive('Properties', 'property_rental_bookings') && 
+            (bool) (\Modules\Properties\Entities\PropertySetting::get('rental_mode_enabled', 0) ?: \Modules\Properties\Entities\PropertySetting::get('rental_system_enabled', 0));
 
         // 2. دریافت تنظیمات واحد پول نوبت‌دهی برای نمایش صحیح مبالغ
         $bookingCurrencyUnit  = 'IRR';
