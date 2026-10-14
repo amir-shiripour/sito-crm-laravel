@@ -28,6 +28,7 @@
     $workflowsModule     = $workflowsModule ?? \App\Models\Module::where('slug', 'workflows')->first();
     $servicesModule      = \App\Models\Module::where('slug', 'services')->first();
     $walletModule        = $walletModule ?? \App\Models\Module::where('slug', 'wallet')->first();
+    $propertiesModule    = $propertiesModule ?? \App\Models\Module::where('slug', 'properties')->first();
 
     $isDirectAdminActive = \Modules\Services\App\Http\Models\Order::isDirectAdminActive();
     $isDomainManagerActive = \Modules\Services\App\Http\Models\Order::isDomainManagerActive();
@@ -35,6 +36,12 @@
     $showServicesTab     = $servicesModule && $servicesModule->installed && $servicesModule->active;
     $showWalletTab       = ($walletModule && $walletModule->installed && $walletModule->active)
                         || (\Nwidart\Modules\Facades\Module::has('Wallet') && \Nwidart\Modules\Facades\Module::isEnabled('Wallet'));
+    $showRentalTab       = (isset($isPropertiesActive) && $isPropertiesActive)
+                        || ($propertiesModule && $propertiesModule->installed && $propertiesModule->active)
+                        || (\Nwidart\Modules\Facades\Module::has('Properties') && \Nwidart\Modules\Facades\Module::isEnabled('Properties'));
+
+    $clientRentalBookings = $clientRentalBookings ?? collect([]);
+    $clientRentalStats   = $clientRentalStats ?? ['total_count' => 0, 'active_count' => 0, 'completed_count' => 0, 'total_spent' => 0];
 
     $currency      = $currency ?? (class_exists(\Modules\Settings\Entities\Setting::class) ? (\Modules\Settings\Entities\Setting::where('key', 'currency')->value('value') ?? 'toman') : 'toman');
     $currencyLabel = $currency === 'rial' ? 'ریال' : 'تومان';
@@ -122,7 +129,7 @@
             else if (urlParams.has('hosting_page') || urlParams.has('directadmin_page')) defaultTab = 'directadmin';
             else if (urlParams.has('transactions_page')) defaultTab = 'transactions';
 
-            const validTabs = ['general','appointments','laboratory','orders','invoices','domains','directadmin','transactions','wallet'];
+            const validTabs = ['general','appointments','laboratory','orders','invoices','rental_bookings','domains','directadmin','transactions','wallet'];
             if (this.showWorkflowTab) validTabs.push('workflows');
             if (validTabs.includes(hash)) {
                 this.activeTab = hash;
@@ -350,6 +357,23 @@
                     {{ $faNum($clientInvoiceStats['count'] ?? ($clientInvoices instanceof \Illuminate\Pagination\AbstractPaginator ? $clientInvoices->total() : $clientInvoices->count())) }}
                     </span>
                 </button>
+                @endif
+
+                @if($showRentalTab)
+                    {{-- Tab: Rental Bookings (رزروهای اقامتگاهی) --}}
+                    <button @click="setTab('rental_bookings')"
+                            :class="activeTab === 'rental_bookings' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/25' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/50'"
+                            class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 active:scale-95">
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+                        </svg>
+                        رزروهای اقامتگاهی
+                        <span
+                            :class="activeTab === 'rental_bookings' ? 'bg-white/20 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300'"
+                            class="inline-flex items-center justify-center min-w-5.5 h-5 px-1.5 rounded-full text-[10px] font-black">
+                            {{ $faNum($clientRentalStats['total_count'] ?? $clientRentalBookings->count()) }}
+                        </span>
+                    </button>
                 @endif
 
                 @if(isset($accountingModule) && $accountingModule && $accountingModule->installed && $accountingModule->active)
@@ -2636,6 +2660,159 @@
                             <p class="text-sm text-gray-500 dark:text-gray-400">برای این مشتری هنوز هیچ تراکنشی در سیستم حسابداری ثبت نشده است.</p>
                         </div>
                     @endif
+                </div>
+            @endif
+
+            @if($showRentalTab)
+                {{-- ================= Rental Bookings Tab (Modules/Properties) ================= --}}
+                <div x-show="activeTab === 'rental_bookings'" x-cloak
+                     x-transition:enter="transition ease-out duration-200"
+                     x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" class="p-6 sm:p-8">
+
+                    {{-- آمار و خلاصه وضعیت رزروها --}}
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                        <div class="bg-indigo-50/60 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/40 rounded-2xl p-5 flex items-center justify-between">
+                            <div>
+                                <span class="text-xs font-bold text-gray-500 dark:text-gray-400 block mb-1">کل رزروهای اقامتگاهی</span>
+                                <span class="text-2xl font-black text-indigo-700 dark:text-indigo-400">{{ $faNum($clientRentalStats['total_count'] ?? 0) }}</span>
+                            </div>
+                            <div class="w-12 h-12 rounded-xl bg-indigo-600/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+                                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
+                            </div>
+                        </div>
+
+                        <div class="bg-amber-50/60 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/40 rounded-2xl p-5 flex items-center justify-between">
+                            <div>
+                                <span class="text-xs font-bold text-gray-500 dark:text-gray-400 block mb-1">رزروهای فعال و جاری</span>
+                                <span class="text-2xl font-black text-amber-700 dark:text-amber-400">{{ $faNum($clientRentalStats['active_count'] ?? 0) }}</span>
+                            </div>
+                            <div class="w-12 h-12 rounded-xl bg-amber-600/10 text-amber-600 dark:text-amber-400 flex items-center justify-center">
+                                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            </div>
+                        </div>
+
+                        <div class="bg-emerald-50/60 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/40 rounded-2xl p-5 flex items-center justify-between">
+                            <div>
+                                <span class="text-xs font-bold text-gray-500 dark:text-gray-400 block mb-1">اقامت‌های تکمیل‌شده</span>
+                                <span class="text-2xl font-black text-emerald-700 dark:text-emerald-400">{{ $faNum($clientRentalStats['completed_count'] ?? 0) }}</span>
+                            </div>
+                            <div class="w-12 h-12 rounded-xl bg-emerald-600/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+                                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            </div>
+                        </div>
+
+                        <div class="bg-blue-50/60 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/40 rounded-2xl p-5 flex items-center justify-between">
+                            <div>
+                                <span class="text-xs font-bold text-gray-500 dark:text-gray-400 block mb-1">مجموع پرداخت‌های قطعی</span>
+                                <span class="text-lg font-black text-blue-700 dark:text-blue-400">
+                                    {{ $faNum(number_format($clientRentalStats['total_spent'] ?? 0)) }}
+                                    <span class="text-xs font-normal text-gray-500">{{ $currencyLabel }}</span>
+                                </span>
+                            </div>
+                            <div class="w-12 h-12 rounded-xl bg-blue-600/10 text-blue-600 dark:text-blue-400 flex items-center justify-center">
+                                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- جدول رزروها --}}
+                    @if(isset($clientRentalBookings) && $clientRentalBookings->isNotEmpty())
+                        <div class="border border-gray-200 dark:border-gray-700 rounded-2xl overflow-hidden bg-white dark:bg-gray-800 shadow-sm">
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-right text-xs">
+                                    <thead class="bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 font-bold">
+                                        <tr>
+                                            <th class="px-5 py-4">کد رزرو</th>
+                                            <th class="px-5 py-4">اقامتگاه</th>
+                                            <th class="px-5 py-4">میزبان</th>
+                                            <th class="px-5 py-4 text-center">تاریخ ورود / خروج</th>
+                                            <th class="px-5 py-4 text-center">تعداد نفرات</th>
+                                            <th class="px-5 py-4 text-center">مبلغ کل</th>
+                                            <th class="px-5 py-4 text-center">وضعیت رزرو</th>
+                                            <th class="px-5 py-4 text-center">وضعیت مالی</th>
+                                            <th class="px-5 py-4 text-left">عملیات</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-gray-100 dark:divide-gray-700/60 font-sans">
+                                        @foreach($clientRentalBookings as $rental)
+                                            <tr class="hover:bg-gray-50/70 dark:hover:bg-gray-700/30 transition-colors">
+                                                <td class="px-5 py-4 font-black text-indigo-600 dark:text-indigo-400">
+                                                    {{ $rental->booking_code }}
+                                                </td>
+                                                <td class="px-5 py-4">
+                                                    <div class="flex items-center gap-3">
+                                                        @if($rental->property?->featured_image)
+                                                            <img src="{{ Storage::disk('public')->url($rental->property->featured_image) }}" alt="" class="w-10 h-10 rounded-lg object-cover border border-gray-200 dark:border-gray-700 shrink-0">
+                                                        @else
+                                                            <div class="w-10 h-10 rounded-lg bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-gray-400 shrink-0">
+                                                                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5"/></svg>
+                                                            </div>
+                                                        @endif
+                                                        <div>
+                                                            <span class="font-bold text-gray-900 dark:text-white block">{{ $rental->property?->title ?? 'اقامتگاه نامشخص' }}</span>
+                                                            <span class="text-[11px] text-gray-400">{{ $rental->property?->city }} {{ $rental->property?->neighborhood ? ' - ' . $rental->property->neighborhood : '' }}</span>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td class="px-5 py-4 text-gray-600 dark:text-gray-300">
+                                                    {{ $rental->host?->display_name ?? 'مدیریت' }}
+                                                    @if($rental->host?->phone)
+                                                        <span class="block text-[11px] text-gray-400">{{ $faNum($rental->host->phone) }}</span>
+                                                    @endif
+                                                </td>
+                                                <td class="px-5 py-4 text-center">
+                                                    <div class="font-bold text-gray-900 dark:text-white">{{ $faNum($rental->check_in) }} تا {{ $faNum($rental->check_out) }}</div>
+                                                    <span class="text-[11px] text-gray-400 block">{{ $faNum($rental->nights_count) }} شب اقامت</span>
+                                                </td>
+                                                <td class="px-5 py-4 text-center font-bold text-gray-700 dark:text-gray-300">
+                                                    {{ $faNum($rental->guests_count) }} نفر
+                                                </td>
+                                                <td class="px-5 py-4 text-center">
+                                                    <span class="font-black text-gray-900 dark:text-white block">{{ $faNum(number_format($rental->total_price)) }}</span>
+                                                    <span class="text-[10px] text-gray-400">{{ $rental->currency === 'IRR' ? 'ریال' : 'تومان' }}</span>
+                                                </td>
+                                                <td class="px-5 py-4 text-center">
+                                                    @php $sBadge = $rental->status_badge; @endphp
+                                                    <span class="inline-flex px-2.5 py-1 rounded-full text-[11px] font-bold {{ $sBadge['class'] ?? 'bg-gray-100 text-gray-700' }}">
+                                                        {{ $sBadge['label'] ?? $rental->status }}
+                                                    </span>
+                                                </td>
+                                                <td class="px-5 py-4 text-center">
+                                                    @php $pBadge = $rental->payment_status_badge; @endphp
+                                                    <span class="inline-flex px-2.5 py-1 rounded-full text-[11px] font-bold {{ $pBadge['class'] ?? 'bg-gray-100 text-gray-700' }}">
+                                                        {{ $pBadge['label'] ?? $rental->payment_status }}
+                                                    </span>
+                                                </td>
+                                                <td class="px-5 py-4 text-left">
+                                                    <div class="flex items-center justify-end gap-1.5">
+                                                        <a href="{{ route('client.rental-bookings.print', $rental->id) }}" target="_blank"
+                                                           class="p-2 rounded-xl text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition-colors"
+                                                           title="چاپ سند رزرو اقامتگاه">
+                                                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+                                                        </a>
+                                                        <a href="{{ route('client.rental-bookings.show', $rental->id) }}" target="_blank"
+                                                           class="p-2 rounded-xl text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition-colors"
+                                                           title="مشاهده در پورتال مهمان">
+                                                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                                                        </a>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    @else
+                        <div class="flex flex-col items-center justify-center py-20 text-center">
+                            <span class="flex items-center justify-center w-16 h-16 rounded-2xl bg-indigo-50 dark:bg-indigo-900/30 text-indigo-500 mb-4">
+                                <svg class="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+                            </span>
+                            <h3 class="text-base font-bold text-gray-900 dark:text-white mb-1">هیچ رزرو اقامتگاهی یافت نشد</h3>
+                            <p class="text-sm text-gray-500 dark:text-gray-400">تاکنون رزروی برای این کلاینت ثبت نشده است.</p>
+                        </div>
+                    @endif
+
                 </div>
             @endif
 

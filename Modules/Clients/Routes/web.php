@@ -138,6 +138,10 @@ Route::prefix('clients')
         Route::match(['get', 'post'], 'invoices/{invoice}/verify/{gateway?}', [ClientInvoiceController::class, 'verifyOnlinePayment'])
             ->name('invoices.verify');
 
+        // روت‌های کالبک عمومی درگاه پرداخت آنلاین رزرو اقامتگاه (شاپرک - قابل دسترس با GET و POST)
+        Route::match(['get', 'post'], 'rental-bookings/{booking}/verify/{gateway?}', [\Modules\Clients\App\Http\Controllers\Portal\ClientRentalBookingController::class, 'verifyOnlinePayment'])
+            ->name('rental-bookings.verify');
+
         // کلاینت‌های لاگین کرده
         Route::middleware('auth:client')->group(function () {
             Route::get('dashboard', [ClientDashboardController::class, 'index'])

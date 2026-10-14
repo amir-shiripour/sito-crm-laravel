@@ -362,6 +362,28 @@ class ProcessWorkflowsCommand extends Command
         }
 
         foreach ($orders as $order) {
+            // Check if there is already an open (unpaid / pending) renewal invoice for this order
+            $hasPendingRenewalInvoice = false;
+            if (class_exists(\Modules\Services\App\Http\Models\Invoice::class)) {
+                $hasPendingRenewalInvoice = \Modules\Services\App\Http\Models\Invoice::where(function ($q) use ($order) {
+                    $q->where('meta->source_order_id', $order->id)
+                      ->orWhereJsonContains('meta->merged_order_ids', $order->id)
+                      ->orWhereHas('items', function ($iq) use ($order) {
+                          $iq->where('meta->source_order_id', $order->id);
+                      });
+                })
+                ->where('paid_amount', '<', \Illuminate\Support\Facades\DB::raw('total'))
+                ->whereHas('status', function ($sq) {
+                    $sq->where('name', '!=', 'لغو شده')->where('name', '!=', 'ادغام شده');
+                })
+                ->exists();
+            }
+
+            if ($hasPendingRenewalInvoice) {
+                Log::info("[Workflows] Skipping order renewal reminder for Order #{$order->id}: An unpaid renewal invoice already exists.");
+                continue;
+            }
+
             $exists = $workflow->instances()
                 ->where('related_type', 'ORDER')
                 ->where('related_id', $order->id)

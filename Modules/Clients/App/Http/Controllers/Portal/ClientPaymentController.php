@@ -101,6 +101,59 @@ class ClientPaymentController extends Controller
             $allPayments = $allPayments->merge($serviceInvoices);
         }
 
+        // 4. Fetch Vacation Rental Bookings (رزروهای اقامتگاهی مشتری)
+        if (class_exists(\Modules\Properties\Entities\PropertyRentalBooking::class) && Schema::hasTable('property_rental_bookings')) {
+            $currency = \Modules\Properties\Entities\PropertySetting::get('rental_currency', 'IRT');
+            $currLabel = in_array(strtolower($currency), ['irr', 'rial', 'ریال']) ? 'ریال' : 'تومان';
+
+            $rentalPayments = \Modules\Properties\Entities\PropertyRentalBooking::where('client_id', $client->id)
+                ->with(['property'])
+                ->get()
+                ->map(function($booking) use ($currency, $currLabel) {
+                    $statusMap = [
+                        'paid'                  => 'PAID',
+                        'confirmed'             => 'PAID',
+                        'checked_in'            => 'PAID',
+                        'completed'             => 'PAID',
+                        'awaiting_payment'      => 'PENDING',
+                        'pending_host'          => 'PENDING',
+                        'cancelled_by_guest'    => 'CANCELED',
+                        'cancelled_by_host'     => 'CANCELED',
+                        'cancelled_by_admin'    => 'CANCELED',
+                        'rejected'              => 'CANCELED',
+                        'expired'               => 'CANCELED',
+                    ];
+
+                    $bookingStatus = strtolower((string)$booking->status);
+                    $paymentStatus = strtolower((string)$booking->payment_status);
+
+                    $normalizedStatus = 'PENDING';
+                    if ($paymentStatus === 'paid' || in_array($bookingStatus, ['confirmed', 'checked_in', 'completed'])) {
+                        $normalizedStatus = 'PAID';
+                    } elseif (str_starts_with($bookingStatus, 'cancel') || in_array($bookingStatus, ['rejected', 'expired'])) {
+                        $normalizedStatus = 'CANCELED';
+                    }
+
+                    return (object)[
+                        'id'             => $booking->id,
+                        'ref_id'         => $booking->booking_code,
+                        'type'           => 'rental',
+                        'type_label'     => 'رزرو اقامتگاه',
+                        'title'          => 'رزرو ' . ($booking->property?->title ?? 'اقامتگاه') . ' (' . $booking->booking_code . ')',
+                        'amount'         => (float) $booking->total_price,
+                        'status'         => $normalizedStatus,
+                        'date'           => $booking->created_at,
+                        'payment_record' => (object)[
+                            'currency'       => $currency,
+                            'currency_label' => $currLabel,
+                        ],
+                        'booking_record' => $booking,
+                    ];
+                });
+
+            $allPayments = $allPayments->merge($rentalPayments);
+        }
+
         // Total counts for filter tabs
         $totalCount = $allPayments->count();
         $paidCount = $allPayments->filter(fn($p) => strtoupper($p->status) === 'PAID')->count();
@@ -317,6 +370,93 @@ class ClientPaymentController extends Controller
                 ->findOrFail($id);
 
             return view('clients::portal.payments.show_market', compact('order'));
+        }
+
+        if ($type === 'rental') {
+            if (!class_exists(\Modules\Properties\Entities\PropertyRentalBooking::class) || !Schema::hasTable('property_rental_bookings')) {
+                abort(404);
+            }
+
+            $booking = \Modules\Properties\Entities\PropertyRentalBooking::where('client_id', $client->id)
+                ->with(['property.rentalConfig', 'host'])
+                ->findOrFail($id);
+
+            $settingsMap = Schema::hasTable('settings')
+                ? \Modules\Settings\Entities\Setting::query()->pluck('value', 'key')->toArray()
+                : [];
+
+            $activeRaw = $settingsMap['active_payment_methods'] ?? '[]';
+            $activeMethods = is_string($activeRaw) ? json_decode($activeRaw, true) : (array) $activeRaw;
+            if (empty($activeMethods) || !is_array($activeMethods)) {
+                $activeMethods = ['online', 'transfer'];
+            }
+
+            $onlineGateways = [];
+            if (($settingsMap['zarinpal_status'] ?? '') === 'active') {
+                $onlineGateways[] = ['id' => 'zarinpal', 'label' => 'درگاه پرداخت زرین‌پال'];
+            }
+            if (($settingsMap['zibal_status'] ?? '') === 'active') {
+                $onlineGateways[] = ['id' => 'zibal', 'label' => 'درگاه پرداخت زیبال'];
+            }
+            if (($settingsMap['behpardakht_status'] ?? '') === 'active') {
+                $onlineGateways[] = ['id' => 'behpardakht', 'label' => 'درگاه بهپرداخت ملت'];
+            }
+            if (($settingsMap['sep_status'] ?? '') === 'active') {
+                $onlineGateways[] = ['id' => 'sep', 'label' => 'درگاه سامان کیش (سپ)'];
+            }
+            if (empty($onlineGateways)) {
+                $defaultGw = $settingsMap['default_payment_gateway'] ?? 'zarinpal';
+                $onlineGateways[] = ['id' => $defaultGw, 'label' => 'درگاه پرداخت آنلاین (' . $defaultGw . ')'];
+            }
+
+            $rawAccounts = is_string($settingsMap['bank_transfer_accounts'] ?? null)
+                ? (json_decode($settingsMap['bank_transfer_accounts'], true) ?: [])
+                : (is_array($settingsMap['bank_transfer_accounts'] ?? null) ? $settingsMap['bank_transfer_accounts'] : []);
+
+            $activeBankAccounts = array_filter($rawAccounts, function($acc) {
+                if (!isset($acc['is_active'])) return true;
+                return filter_var($acc['is_active'], FILTER_VALIDATE_BOOLEAN);
+            });
+
+            $bankAccounts = array_values(array_map(function($acc, $index) {
+                return [
+                    'id'             => $acc['id'] ?? ($acc['bank_name'] ?? ('acc_' . $index)),
+                    'bank_name'      => $acc['bank_name'] ?? 'بانک',
+                    'owner_name'     => $acc['owner_name'] ?? ($acc['owner'] ?? ''),
+                    'card_number'    => !empty($acc['card_number']) ? preg_replace('/[^0-9]/', '', $acc['card_number']) : '',
+                    'account_number' => $acc['account_number'] ?? '',
+                    'iban'           => $acc['iban'] ?? '',
+                ];
+            }, $activeBankAccounts, array_keys($activeBankAccounts)));
+
+            $availablePaymentMethods = [];
+            if (in_array('online', $activeMethods) && !empty($onlineGateways)) {
+                $availablePaymentMethods['online'] = 'پرداخت آنلاین بانکی (شتاب)';
+            }
+            if (in_array('transfer', $activeMethods) && ($settingsMap['bank_transfer_status'] ?? '') === 'active' && !empty($bankAccounts)) {
+                $availablePaymentMethods['transfer'] = 'کارت به کارت / انتقال بانکی';
+            }
+
+            $paymentSubItems = [
+                'online' => $onlineGateways,
+                'transfer' => array_values(array_map(fn($a) => [
+                    'id' => $a['id'],
+                    'label' => ($a['bank_name'] ?: 'بانک') . ($a['owner_name'] ? ' - ' . $a['owner_name'] : '') . ($a['card_number'] ? ' (' . $a['card_number'] . ')' : '')
+                ], $bankAccounts)),
+            ];
+
+            $currency = \Modules\Properties\Entities\PropertySetting::get('rental_currency', 'IRT');
+            $currencyLabel = in_array(strtolower($currency), ['irr', 'rial', 'ریال']) ? 'ریال' : 'تومان';
+
+            return view('clients::portal.payments.show_rental', compact(
+                'booking',
+                'currency',
+                'currencyLabel',
+                'availablePaymentMethods',
+                'paymentSubItems',
+                'onlineGateways',
+                'bankAccounts'
+            ));
         }
 
         if ($type === 'invoice_payment') {

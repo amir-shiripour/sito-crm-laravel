@@ -466,6 +466,55 @@ class ClientController extends Controller
             }
         }
 
+        // ── Properties Rental Bookings check ────────────────────────
+        $propertiesModule = Module::where('slug', 'properties')->first();
+        $isPropertiesActive = ($propertiesModule && $propertiesModule->installed && $propertiesModule->active)
+            || (\Nwidart\Modules\Facades\Module::has('Properties') && \Nwidart\Modules\Facades\Module::isEnabled('Properties'));
+
+        $clientRentalBookings = collect([]);
+        $clientRentalStats = [
+            'total_count' => 0,
+            'active_count' => 0,
+            'completed_count' => 0,
+            'total_spent' => 0,
+        ];
+
+        if ($isPropertiesActive && class_exists(\Modules\Properties\Entities\PropertyRentalBooking::class) && \Schema::hasTable('property_rental_bookings')) {
+            try {
+                $rentalQuery = \Modules\Properties\Entities\PropertyRentalBooking::query()
+                    ->where(function ($q) use ($client) {
+                        $q->where('client_id', $client->id);
+                        if (!empty($client->phone)) {
+                            $cleanPhone = preg_replace('/[^0-9]/', '', $client->phone);
+                            $q->orWhere('guest_phone', $client->phone);
+                            if (strlen($cleanPhone) >= 10) {
+                                $q->orWhere('guest_phone', 'LIKE', '%' . substr($cleanPhone, -10));
+                            }
+                        }
+                    })
+                    ->with(['property', 'host']);
+
+                $clientRentalStats = [
+                    'total_count' => (clone $rentalQuery)->count(),
+                    'active_count' => (clone $rentalQuery)->whereIn('status', [
+                        \Modules\Properties\Entities\PropertyRentalBooking::STATUS_CONFIRMED,
+                        \Modules\Properties\Entities\PropertyRentalBooking::STATUS_HOST_CONFIRMED,
+                        \Modules\Properties\Entities\PropertyRentalBooking::STATUS_CHECKED_IN,
+                        \Modules\Properties\Entities\PropertyRentalBooking::STATUS_AWAITING_PAYMENT,
+                        \Modules\Properties\Entities\PropertyRentalBooking::STATUS_PENDING_HOST,
+                    ])->count(),
+                    'completed_count' => (clone $rentalQuery)->where('status', \Modules\Properties\Entities\PropertyRentalBooking::STATUS_COMPLETED)->count(),
+                    'total_spent' => (int) (clone $rentalQuery)->where('payment_status', \Modules\Properties\Entities\PropertyRentalBooking::PAYMENT_PAID)->sum('total_price'),
+                ];
+
+                $clientRentalBookings = (clone $rentalQuery)
+                    ->orderByDesc('created_at')
+                    ->get();
+            } catch (Exception $e) {
+                $clientRentalBookings = collect([]);
+            }
+        }
+
         $currency = class_exists(Setting::class)
             ? (Setting::where('key', 'currency')->value('value') ?? 'toman')
             : 'toman';
@@ -477,6 +526,7 @@ class ClientController extends Controller
             'isBookingQueueEnabled', 'clientWaitlists',
             'clientAppointments', 'clientLabOrders',
             'walletModule', 'clientWallet', 'clientWalletTransactions', 'clientWalletTransactionsCount',
+            'propertiesModule', 'isPropertiesActive', 'clientRentalBookings', 'clientRentalStats',
             'currency'
         ));
     }

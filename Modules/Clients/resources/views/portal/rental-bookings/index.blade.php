@@ -20,7 +20,7 @@
                     </a>
                     رزروهای اقامتگاهی من
                 </h1>
-                <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">مشاهده و پیگیری درخواست‌ها، ووچر سفر، وضعیت تأیید میزبان و پرداخت</p>
+                <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">مشاهده و پیگیری درخواست‌ها، سند رزرو اقامتگاه، وضعیت تأیید میزبان و پرداخت</p>
             </div>
             <div>
                 <a href="{{ route('properties.index') }}" class="inline-flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition shadow-md shadow-indigo-600/20">
@@ -104,6 +104,12 @@
                                 <div class="flex items-center gap-2">
                                     <span class="text-xs font-bold text-gray-400">کد رزرو:</span>
                                     <span class="text-xs font-black text-indigo-600 dark:text-indigo-400">{{ $booking->booking_code }}</span>
+                                    @if($booking->property && $booking->property->rentalConfig && $booking->property->rentalConfig->instant_booking)
+                                        <span class="px-2 py-0.5 rounded-md bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 text-[10px] font-black flex items-center gap-0.5">
+                                            <svg class="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clip-rule="evenodd"/></svg>
+                                            <span>رزرو آنی</span>
+                                        </span>
+                                    @endif
                                 </div>
                                 <h3 class="text-sm font-black text-gray-900 dark:text-white line-clamp-1">
                                     <a href="{{ $showUrl }}" class="hover:text-indigo-600 dark:hover:text-indigo-400 transition">{{ $booking->property?->title ?? 'اقامتگاه حذف شده' }}</a>
@@ -148,7 +154,7 @@
                                     {{ $badge['label'] ?? 'نامشخص' }}
                                 </span>
                                 <a href="{{ $showUrl }}" class="text-xs font-black text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1">
-                                    <span>مشاهده و ووچر</span>
+                                    <span>مشاهده جزئیات و سند</span>
                                     <svg class="w-3.5 h-3.5 rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
                                 </a>
                             </div>

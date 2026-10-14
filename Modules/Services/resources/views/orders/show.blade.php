@@ -810,9 +810,8 @@
                         </div>
                         <div class="p-6 sm:p-7 space-y-6">
                             <p class="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-300 leading-relaxed">
-                                با کلیک بر روی دکمه زیر، بلافاصله یک فاکتور تمدید مجزا با تاریخ سررسید فعلی صادر می‌شود
-                                و تاریخ سررسید تمدید این سفارش به صورت خودکار به دوره بعدی منتقل می‌گردد تا از صدور مجدد
-                                فاکتور توسط کرون‌جاب خودکار جلوگیری شود.
+                                با کلیک بر روی دکمه زیر، بلافاصله یک فاکتور تمدید مجزا در وضعیت «در انتظار پرداخت» صادر می‌شود
+                                و تاریخ سررسید تمدید سفارش پس از تسویه فاکتور به دوره بعدی منتقل خواهد شد.
                             </p>
 
                             <div
@@ -841,18 +840,33 @@
                                 </div>
                             </div>
 
-                            <form action="{{ route('services.orders.createRenewalInvoice', $order) }}" method="POST"
-                                  onsubmit="return confirm('آیا از صدور دستی فاکتور تمدید برای این سفارش با مبلغ {{ number_format($calculatedRenewalPrice) }} {{ $currencyLabel }} اطمینان دارید؟\nبا این اقدام، سررسید تمدید بعدی سفارش یک دوره به جلو منتقل می‌شود.');">
-                                @csrf
-                                <button type="submit"
-                                        class="w-full py-3.5 px-6 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white font-black text-sm shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 transition-all active:scale-[0.98] flex items-center justify-center gap-2.5">
-                                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                                         stroke-width="2.2">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
-                                    </svg>
-                                    صدور فوری فاکتور تمدید
-                                </button>
-                            </form>
+                            <div class="flex flex-col sm:flex-row gap-3">
+                                <form action="{{ route('services.orders.createRenewalInvoice', $order) }}" method="POST" class="flex-1"
+                                      onsubmit="return confirm('آیا از صدور دستی فاکتور تمدید برای این سفارش با مبلغ {{ number_format($calculatedRenewalPrice) }} {{ $currencyLabel }} اطمینان دارید؟\n(تاریخ سررسید سفارش پس از پرداخت فاکتور تمدید خواهد شد)');">
+                                    @csrf
+                                    <button type="submit"
+                                            class="w-full py-3.5 px-6 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white font-black text-sm shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 transition-all active:scale-[0.98] flex items-center justify-center gap-2.5">
+                                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                             stroke-width="2.2">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+                                        </svg>
+                                        صدور فوری فاکتور تمدید
+                                    </button>
+                                </form>
+
+                                <form action="{{ route('services.orders.advanceRenewalDate', $order) }}" method="POST"
+                                      onsubmit="return confirm('آیا از تمدید مستقیم و بدون فاکتور تاریخ سررسید این سفارش به اندازه یک دوره اطمینان دارید؟\nاین اقدام بلافاصله تاریخ تمدید سفارش را به دوره بعدی منتقل می‌کند.');">
+                                    @csrf
+                                    <button type="submit"
+                                            title="تمدید مستقیم تاریخ سررسید سفارش بدون ایجاد فاکتور مالی"
+                                            class="w-full sm:w-auto py-3.5 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs border border-slate-200 dark:border-slate-700 transition-all active:scale-[0.98] flex items-center justify-center gap-2">
+                                        <svg class="w-4 h-4 text-slate-500 dark:text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                                        </svg>
+                                        تمدید مستقیم سررسید
+                                    </button>
+                                </form>
+                            </div>
                         </div>
                     </div>
                 @endif

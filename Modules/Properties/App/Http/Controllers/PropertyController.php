@@ -583,7 +583,20 @@ class PropertyController extends Controller
     {
         $property = $this->resolveProperty($slug);
 
-        $isClientAuth = auth('client')->check();
+        // مهمان باید ابتدا وارد حساب کاربری پرتال کلاینت شود
+        if (!auth('client')->check()) {
+            $returnUrl = route('properties.show', $property->slug ?: $property->code);
+            session()->put('url.intended', $returnUrl);
+
+            return response()->json([
+                'success'       => false,
+                'require_login' => true,
+                'message'       => 'برای ثبت رزرو اقامتگاه، لطفاً ابتدا وارد حساب کاربری خود شوید.',
+                'redirect_url'  => route('client.login'),
+            ], 401);
+        }
+
+        $client = auth('client')->user();
 
         // انطباق کلیدهای ارسالی فرم با قواعد اعتبارسنجی
         if ($request->has('check_in') && !$request->has('check_in_date')) {
@@ -604,54 +617,13 @@ class PropertyController extends Controller
             'guest_national_code' => 'nullable|string|max:20',
         ];
 
-        if (!$isClientAuth) {
-            $rules['guest_full_name'] = 'required|string|max:190';
-            $rules['guest_phone']     = 'required|string|max:25';
-        }
-
         $request->validate($rules, [
             'check_in_date.required'   => 'لطفاً تاریخ ورود را انتخاب کنید.',
             'check_out_date.required'  => 'لطفاً تاریخ خروج را انتخاب کنید.',
             'guests_count.required'    => 'لطفاً تعداد مهمانان را مشخص کنید.',
-            'guest_full_name.required' => 'لطفاً نام و نام خانوادگی مهمان را وارد کنید.',
-            'guest_phone.required'     => 'لطفاً شماره موبایل مهمان را وارد کنید.',
         ]);
 
         try {
-            // ۱. تعیین کلاینت (مهمان در پورتال کلاینت)
-            $client = auth('client')->user();
-
-            if (!$client) {
-                $rawPhone = $request->guest_phone;
-                $phone = class_exists(\Modules\Clients\App\Http\Controllers\Portal\ClientAuthController::class)
-                    ? \Modules\Clients\App\Http\Controllers\Portal\ClientAuthController::normalizePhoneNumber($rawPhone)
-                    : preg_replace('/[^0-9]/', '', $rawPhone);
-
-                if (empty($phone) || strlen($phone) < 10) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'شماره موبایل وارد شده معتبر نمی‌باشد (مثال: 09123456789).'
-                    ], 422);
-                }
-
-                $client = Client::where('phone', $phone)->first();
-                if (!$client) {
-                    $client = Client::create([
-                        'full_name'     => trim($request->guest_full_name) ?: 'مهمان اقامتگاه',
-                        'phone'         => $phone,
-                        'national_code' => $request->guest_national_code,
-                        'username'      => $phone,
-                        'password'      => bcrypt(Str::random(16)),
-                    ]);
-                } else {
-                    if ($request->filled('guest_full_name') && (empty($client->full_name) || $client->full_name === 'مهمان اقامتگاه')) {
-                        $client->update(['full_name' => trim($request->guest_full_name)]);
-                    }
-                }
-
-                // ورود خودکار کلاینت برای اتصال بی‌وقفه به پورتال
-                auth('client')->login($client);
-            }
 
             // ۲. ثبت رزرو توسط سرویس مرکزی
             $bookingService = app(RentalBookingService::class);

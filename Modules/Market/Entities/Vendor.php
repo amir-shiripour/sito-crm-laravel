@@ -62,4 +62,9 @@ class Vendor extends Model
     {
         return $this->hasMany(VendorDocument::class, 'vendor_id');
     }
+
+    public function visionSetting()
+    {
+        return $this->hasOne(VendorVisionSetting::class, 'vendor_id');
+    }
 }

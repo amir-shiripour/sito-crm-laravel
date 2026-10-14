@@ -45,6 +45,7 @@ class Installer extends BaseModuleInstaller
         'market_shipping_rules',
         'market_product_reviews',
         'market_product_questions',
+        'market_vendor_vision_settings',
     ];
 
     protected function trackerPath(): string
