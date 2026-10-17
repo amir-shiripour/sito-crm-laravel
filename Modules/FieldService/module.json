@@ -1,0 +1,18 @@
+{
+    "name": "FieldService",
+    "alias": "fieldservice",
+    "description": "سامانه هوشمند مدیریت خدمات فنی در محل، اعزام تکنسین و قراردادهای B2B نصاب‌باشی",
+    "keywords": [
+        "fieldservice",
+        "nasabbashi",
+        "technician",
+        "dispatch",
+        "escrow"
+    ],
+    "priority": 140,
+    "providers": [
+        "Modules\\FieldService\\App\\Providers\\FieldServiceServiceProvider",
+        "Modules\\FieldService\\App\\Providers\\RouteServiceProvider"
+    ],
+    "files": []
+}

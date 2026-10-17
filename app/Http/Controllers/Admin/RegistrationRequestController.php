@@ -55,6 +55,14 @@ class RegistrationRequestController extends Controller
             }
         }
 
+        // اگر نقش کاربر تکنسین نصاب‌باشی است، پرونده تکنسین را متصل یا ایجاد کن
+        if ($registrationRequest->role && in_array($registrationRequest->role->name, ['technician', 'field_service_technician'], true)) {
+            if (class_exists(\Modules\FieldService\App\Services\TechnicianLifecycleService::class)) {
+                $customFields = $registrationRequest->custom_fields ?? [];
+                \Modules\FieldService\App\Services\TechnicianLifecycleService::createOrUpdateTechnicianForUser($user, $customFields);
+            }
+        }
+
         $registrationRequest->update([
             'status' => 'approved',
             'reviewed_by' => Auth::id(),

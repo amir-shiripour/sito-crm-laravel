@@ -4,7 +4,8 @@
              initialRole: '{{ $selectedRole ? $selectedRole->name : ($roles->first()->name ?? '') }}',
              csrfToken: '{{ csrf_token() }}',
              sendOtpUrl: '{{ route('register.send-otp') }}',
-             verifyOtpUrl: '{{ route('register.verify-otp') }}'
+             verifyOtpUrl: '{{ route('register.verify-otp') }}',
+             provincesData: {{ Illuminate\Support\Js::from(\App\Helpers\ProvinceCity::getAll()) }}
          })">
 
         {{-- لوگو و عنوان --}}
@@ -286,6 +287,38 @@
                                                                 </svg>
                                                             </button>
                                                         </div>
+                                                    @elseif($field->field_type === 'select')
+                                                        @if($field->field_name === 'province')
+                                                            <select id="custom_province" name="custom_fields[province]"
+                                                                    class="block w-full rounded-xl border-gray-200 bg-gray-50 py-3 px-4 text-sm text-gray-900 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 transition-all dark:border-gray-700 dark:bg-gray-800 dark:text-white font-sans cursor-pointer"
+                                                                    x-model="selectedProvince"
+                                                                    @change="onProvinceChange()"
+                                                                    {{ $field->is_required ? 'required' : '' }}>
+                                                                <template x-for="(cities, prov) in provincesData" :key="prov">
+                                                                    <option :value="prov" x-text="prov" :selected="prov === selectedProvince"></option>
+                                                                </template>
+                                                            </select>
+                                                        @elseif($field->field_name === 'city')
+                                                            <select id="custom_city" name="custom_fields[city]"
+                                                                    class="block w-full rounded-xl border-gray-200 bg-gray-50 py-3 px-4 text-sm text-gray-900 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 transition-all dark:border-gray-700 dark:bg-gray-800 dark:text-white font-sans cursor-pointer"
+                                                                    x-model="selectedCity"
+                                                                    {{ $field->is_required ? 'required' : '' }}>
+                                                                <template x-for="c in currentCities" :key="c">
+                                                                    <option :value="c" x-text="c" :selected="c === selectedCity"></option>
+                                                                </template>
+                                                            </select>
+                                                        @else
+                                                            <select id="custom_{{ $field->field_name }}" name="custom_fields[{{ $field->field_name }}]"
+                                                                    class="block w-full rounded-xl border-gray-200 bg-gray-50 py-3 px-4 text-sm text-gray-900 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 transition-all dark:border-gray-700 dark:bg-gray-800 dark:text-white font-sans cursor-pointer"
+                                                                    {{ $field->is_required ? 'required' : '' }}>
+                                                                <option value="">انتخاب نمایید...</option>
+                                                                @if(is_array($field->rules) && isset($field->rules['options']))
+                                                                    @foreach($field->rules['options'] as $optKey => $optVal)
+                                                                        <option value="{{ $optKey }}" {{ old('custom_fields.'.$field->field_name) == $optKey ? 'selected' : '' }}>{{ $optVal }}</option>
+                                                                    @endforeach
+                                                                @endif
+                                                            </select>
+                                                        @endif
                                                     @else
                                                         <input id="custom_{{ $field->field_name }}" type="{{ $field->field_type }}" name="custom_fields[{{ $field->field_name }}]" value="{{ old('custom_fields.'.$field->field_name) }}" {{ $field->is_required ? 'required' : '' }}
                                                         class="block w-full rounded-xl border-gray-200 bg-gray-50 py-3 px-4 text-sm text-gray-900 placeholder-gray-400 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 transition-all dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:focus:bg-gray-800 font-sans {{ in_array($field->field_type, ['email', 'number']) ? 'dir-ltr' : '' }}" />
@@ -445,9 +478,31 @@
                 otpCooldown: 0,
                 cooldownTimer: null,
                 otpAlert: { type: '', message: '' },
+                provincesData: config.provincesData || {},
+                selectedProvince: '{{ old('custom_fields.province', 'مازندران') }}',
+                selectedCity: '{{ old('custom_fields.city', 'بابل') }}',
+
+                get currentCities() {
+                    return (this.provincesData && this.provincesData[this.selectedProvince]) ? this.provincesData[this.selectedProvince] : [];
+                },
+
+                onProvinceChange() {
+                    if (this.currentCities.length > 0) {
+                        if (!this.currentCities.includes(this.selectedCity)) {
+                            this.selectedCity = this.currentCities[0];
+                        }
+                    } else {
+                        this.selectedCity = '';
+                    }
+                },
 
                 init() {
-                    // Start reactive state
+                    if (!this.selectedProvince) {
+                        this.selectedProvince = 'مازندران';
+                    }
+                    if (!this.selectedCity && this.currentCities.length > 0) {
+                        this.selectedCity = this.currentCities[0];
+                    }
                 },
 
                 showAlert(message, type = 'error') {

@@ -61,7 +61,7 @@
                         <tr class="group hover:bg-gray-50/50 dark:hover:bg-gray-700/10 transition-colors duration-150">
 
                             {{-- آیدی --}}
-                            <td class="px-6 py-6 text-gray-400 dark:text-gray-500 font-mono text-sm font-semibold text-center align-top pt-8">
+                            <td class="px-6 py-6 text-gray-400 dark:text-gray-500 font-sans text-sm font-semibold text-center align-top pt-8">
                                 {{ $request->id }}
                             </td>
 
