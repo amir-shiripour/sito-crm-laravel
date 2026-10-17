@@ -13,4 +13,5 @@ return [
     'property_import' => 'ایمپورت املاک',
     'host_dashboard' => 'پروفایل میزبانی',
     'manage_hosts' => 'مدیریت میزبانان',
+    'manage_bookings' => 'مدیریت رزروها',
 ];

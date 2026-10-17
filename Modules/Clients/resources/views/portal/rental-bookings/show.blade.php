@@ -10,10 +10,9 @@
         \Modules\Properties\Entities\PropertyRentalBooking::STATUS_CHECKED_IN,
         \Modules\Properties\Entities\PropertyRentalBooking::STATUS_COMPLETED
     ]);
-    $canPay = in_array($booking->status, [
-        \Modules\Properties\Entities\PropertyRentalBooking::STATUS_AWAITING_PAYMENT,
-        \Modules\Properties\Entities\PropertyRentalBooking::STATUS_PENDING_HOST
-    ]) && $booking->payment_status !== 'paid';
+    $canPay = ($booking->status === \Modules\Properties\Entities\PropertyRentalBooking::STATUS_AWAITING_PAYMENT)
+        && $booking->payment_status !== 'paid';
+    $isPendingHost = ($booking->status === \Modules\Properties\Entities\PropertyRentalBooking::STATUS_PENDING_HOST);
 
     $canCancel = in_array($booking->status, [
         \Modules\Properties\Entities\PropertyRentalBooking::STATUS_PENDING_HOST,
@@ -156,54 +155,69 @@
          class="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700 font-sans">
 
         {{-- نوار ابزار بالا --}}
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div class="flex items-center gap-3">
+        <div class="flex flex-col xl:flex-row xl:items-center justify-between gap-4 pb-2">
+            <div class="flex items-center gap-3 sm:gap-4">
                 <a href="{{ route('client.rental-bookings.index') }}"
-                   class="p-2 -m-2 rounded-xl text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:text-gray-300 dark:hover:bg-gray-800 transition-colors"
+                   class="w-10 h-10 rounded-2xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/60 text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white flex items-center justify-center transition-all shadow-xs shrink-0"
                    title="بازگشت به لیست رزروها">
-                    <svg class="w-6 h-6 rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
                     </svg>
                 </a>
-                <div>
-                    <h1 class="text-xl sm:text-2xl font-black text-gray-900 dark:text-white flex items-center gap-2">
-                        <span>سند و جزئیات رزرو</span>
-                        <span class="text-indigo-600 dark:text-indigo-400 font-black">{{ $booking->booking_code }}</span>
-                    </h1>
-                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                        ثبت شده در تاریخ {{ CalendarUtils::convertNumbers(jdate($booking->created_at)->format('Y/m/d ساعت H:i')) }}
+                <div class="min-w-0">
+                    <div class="flex flex-wrap items-center gap-2 sm:gap-3">
+                        <h1 class="text-xl sm:text-2xl font-black text-gray-900 dark:text-white whitespace-nowrap">
+                            سند و جزئیات رزرو
+                        </h1>
+                        <span class="inline-flex items-center px-3 py-1 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200/80 dark:border-indigo-800/60 text-indigo-700 dark:text-indigo-300 text-xs sm:text-sm font-black font-sans dir-ltr tracking-wider whitespace-nowrap shadow-xs">
+                            {{ $booking->booking_code }}
+                        </span>
+                    </div>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 flex flex-wrap items-center gap-2">
+                        <span>ثبت شده در تاریخ {{ CalendarUtils::convertNumbers(jdate($booking->created_at)->format('Y/m/d ساعت H:i')) }}</span>
+                        @if($booking->property)
+                            <span class="hidden sm:inline text-gray-300 dark:text-gray-600">•</span>
+                            <span class="text-gray-600 dark:text-gray-300 font-medium">{{ $booking->property->title }}</span>
+                        @endif
                     </p>
                 </div>
             </div>
 
-            <div class="flex flex-wrap items-center gap-3">
-                <a href="{{ route('client.payments.show', ['type' => 'rental', 'id' => $booking->id]) }}"
-                   class="inline-flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl transition text-xs font-bold shadow-xs">
-                    <svg class="w-4 h-4 text-indigo-600 dark:text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                    <span>مشاهده صورت‌حساب مالی</span>
-                </a>
+            <div class="flex flex-wrap items-center gap-2.5 sm:gap-3 shrink-0">
+                @if(!$isPendingHost)
+                    <a href="{{ route('client.payments.show', ['type' => 'rental', 'id' => $booking->id]) }}"
+                       class="inline-flex items-center justify-center gap-2 px-3.5 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl transition text-xs font-bold shadow-xs whitespace-nowrap">
+                        <svg class="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                        <span>صورت‌حساب مالی</span>
+                    </a>
+                @endif
 
                 <a href="{{ route('client.rental-bookings.print', $booking->id) }}" target="_blank"
-                   class="inline-flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl transition text-xs font-bold shadow-xs">
-                    <svg class="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
-                    <span>چاپ تأییدیه رسمی رزرو</span>
+                   class="inline-flex items-center justify-center gap-2 px-3.5 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl transition text-xs font-bold shadow-xs whitespace-nowrap">
+                    <svg class="w-4 h-4 text-gray-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+                    <span>چاپ تأییدیه</span>
                 </a>
 
                 @if($canPay)
                     <button type="button" 
                             @click="showPayModal = true"
-                            class="inline-flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl transition text-xs font-black shadow-md shadow-emerald-600/20 active:scale-95">
-                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
+                            class="inline-flex items-center justify-center gap-2 px-4 sm:px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl transition text-xs font-black shadow-sm shadow-emerald-600/20 active:scale-95 whitespace-nowrap">
+                        <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
                         <span>پرداخت صورت‌حساب ({{ CalendarUtils::convertNumbers(number_format($booking->total_price)) }} {{ $currencyLabel }})</span>
                     </button>
+                @elseif($isPendingHost)
+                    <div class="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 text-xs font-bold whitespace-nowrap">
+                        <svg class="w-4 h-4 animate-spin text-amber-500 shrink-0" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg>
+                        <span>در انتظار بررسی و تأیید میزبان</span>
+                    </div>
                 @endif
 
                 @if($canCancel)
                     <button type="button" 
                             @click="showCancelModal = true"
-                            class="inline-flex items-center gap-2 px-4 py-2.5 bg-red-50 hover:bg-red-100 dark:bg-red-950/40 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 rounded-xl transition text-xs font-bold">
-                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-                        <span>انصراف و لغو رزرو</span>
+                            class="inline-flex items-center justify-center gap-2 px-3.5 py-2.5 bg-red-50 hover:bg-red-100 dark:bg-red-950/40 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 rounded-xl transition text-xs font-bold whitespace-nowrap">
+                        <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                        <span>لغو رزرو</span>
                     </button>
                 @endif
             </div>
@@ -277,33 +291,108 @@
             </div>
         @endif
 
-        {{-- بنر وضعیت رزرو --}}
+        {{-- بنر هوشمند وضعیت رزرو --}}
+        @php
+            $isRejected = ($booking->status === \Modules\Properties\Entities\PropertyRentalBooking::STATUS_REJECTED);
+            $isAnyCancelled = str_starts_with($booking->status, 'cancelled');
+            $isExpired = ($booking->status === \Modules\Properties\Entities\PropertyRentalBooking::STATUS_EXPIRED);
+
+            $bannerTitle = match($booking->status) {
+                \Modules\Properties\Entities\PropertyRentalBooking::STATUS_PENDING_HOST       => 'درخواست رزرو در انتظار بررسی میزبان',
+                \Modules\Properties\Entities\PropertyRentalBooking::STATUS_AWAITING_PAYMENT   => 'درخواست تأیید شد (در انتظار پرداخت)',
+                \Modules\Properties\Entities\PropertyRentalBooking::STATUS_CONFIRMED          => 'رزرو قطعی و تأیید نهایی',
+                \Modules\Properties\Entities\PropertyRentalBooking::STATUS_CHECKED_IN         => 'پذیرش شده (مهمان مستقر در اقامتگاه)',
+                \Modules\Properties\Entities\PropertyRentalBooking::STATUS_COMPLETED          => 'اقامت با موفقیت به پایان رسید',
+                \Modules\Properties\Entities\PropertyRentalBooking::STATUS_REJECTED           => 'درخواست رزرو توسط میزبان رد شد',
+                \Modules\Properties\Entities\PropertyRentalBooking::STATUS_CANCELLED_BY_GUEST => 'رزرو توسط مهمان لغو گردید',
+                \Modules\Properties\Entities\PropertyRentalBooking::STATUS_CANCELLED_BY_HOST  => 'رزرو توسط میزبان لغو گردید',
+                \Modules\Properties\Entities\PropertyRentalBooking::STATUS_CANCELLED_BY_ADMIN => 'رزرو توسط پشتیبانی سامانه لغو گردید',
+                \Modules\Properties\Entities\PropertyRentalBooking::STATUS_EXPIRED            => 'مهلت پرداخت منقضی شد',
+                default                                                                       => ($badge['label'] ?? 'وضعیت رزرو'),
+            };
+
+            $bannerDesc = match(true) {
+                $booking->status === \Modules\Properties\Entities\PropertyRentalBooking::STATUS_PENDING_HOST
+                    => 'درخواست رزرو شما به میزبان ارسال شده است. به محض اعلام موافقت میزبان، پیامک اطلاع‌رسانی ارسال شده و صورت‌حساب جهت پرداخت فعال خواهد شد.',
+
+                $booking->status === \Modules\Properties\Entities\PropertyRentalBooking::STATUS_AWAITING_PAYMENT
+                    => 'درخواست رزرو شما توسط میزبان تأیید گردید. لطفاً جهت قطعی شدن رزرو، در مهلت مقرر نسبت به پرداخت آنلاین اقدام فرمایید.',
+
+                $isConfirmed
+                    => 'رزرو شما قطعی است. می‌توانید در تاریخ مقرر با هماهنگی میزبان در محل اقامتگاه حاضر شوید و کلید را تحویل بگیرید.',
+
+                $booking->status === \Modules\Properties\Entities\PropertyRentalBooking::STATUS_CHECKED_IN
+                    => 'پذیرش و ورود شما در اقامتگاه ثبت شده است. اقامت خوشی را برای شما آرزومندیم.',
+
+                $booking->status === \Modules\Properties\Entities\PropertyRentalBooking::STATUS_COMPLETED
+                    => 'اقامت در این اقامتگاه به پایان رسید و واحد تحویل میزبان گردید. با سپاس از انتخاب شما.',
+
+                $isRejected
+                    => 'علت رد درخواست: ' . ($booking->cancellation_reason ?: 'عدم امکان پذیرش در تاریخ‌های درخواستی توسط میزبان') . ' • هیچ مبلغی از حساب شما کسر نشده است.',
+
+                $isAnyCancelled
+                    => 'علت لغو: ' . ($booking->cancellation_reason ?: 'ثبت لغو بدون ذکر علت') . ($booking->payment_status === 'paid' ? ' • وجه پرداختی طبق مقررات کنسلی مسترد خواهد شد.' : ' • بدون کسر هیچ‌گونه وجه.'),
+
+                $isExpired
+                    => 'مهلت قانونی پرداخت به پایان رسید و رزرو به صورت خودکار لغو گردید. در صورت تمایل می‌توانید مجدداً اقدام فرمایید.',
+
+                default
+                    => 'پیگیری وضعیت رزرو اقامتگاه از طریق این سند و پشتیبانی امکان‌پذیر است.',
+            };
+
+            $financialText = match(true) {
+                $booking->payment_status === 'paid' => 'تسویه کامل',
+                $booking->payment_status === 'refunded' => 'مسترد شده به حساب',
+                $isRejected => 'بدون کسر وجه (رد شده)',
+                $booking->status === \Modules\Properties\Entities\PropertyRentalBooking::STATUS_PENDING_HOST => 'پیش‌فاکتور (در انتظار بررسی)',
+                $isAnyCancelled => ($booking->payment_status === 'paid' ? 'در فرآیند استرداد' : 'بدون کسر وجه'),
+                $isExpired => 'منقضی شده (بدون کسر وجه)',
+                $booking->status === \Modules\Properties\Entities\PropertyRentalBooking::STATUS_AWAITING_PAYMENT => 'در انتظار پرداخت',
+                default => ($payBadge['label'] ?? 'نامشخص'),
+            };
+        @endphp
+
         <div class="rounded-3xl p-6 {{ $badge['class'] ?? '' }} border flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-            <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-2xl bg-white/40 dark:bg-black/20 flex items-center justify-center font-bold">
-                    <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            <div class="flex items-start sm:items-center gap-3.5">
+                <div class="w-11 h-11 rounded-2xl bg-white/60 dark:bg-black/30 border border-black/5 dark:border-white/10 flex items-center justify-center font-bold shrink-0 shadow-2xs">
+                    @if($isConfirmed || $booking->status === \Modules\Properties\Entities\PropertyRentalBooking::STATUS_COMPLETED)
+                        <svg class="w-6 h-6 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
+                        </svg>
+                    @elseif($isRejected || $isAnyCancelled)
+                        <svg class="w-6 h-6 text-rose-600 dark:text-rose-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    @elseif($isExpired)
+                        <svg class="w-6 h-6 text-amber-600 dark:text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                        </svg>
+                    @elseif($booking->status === \Modules\Properties\Entities\PropertyRentalBooking::STATUS_PENDING_HOST)
+                        <svg class="w-6 h-6 text-amber-600 dark:text-amber-400 animate-spin" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                        </svg>
+                    @elseif($booking->status === \Modules\Properties\Entities\PropertyRentalBooking::STATUS_AWAITING_PAYMENT)
+                        <svg class="w-6 h-6 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/>
+                        </svg>
+                    @else
+                        <svg class="w-6 h-6 text-indigo-600 dark:text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                    @endif
                 </div>
                 <div>
-                    <h3 class="text-sm sm:text-base font-black">وضعیت رزرو: {{ $badge['label'] ?? '' }}</h3>
-                    <p class="text-xs opacity-90 mt-0.5">
-                        @if($booking->status === \Modules\Properties\Entities\PropertyRentalBooking::STATUS_PENDING_HOST)
-                            درخواست شما به میزبان ارسال شده و در انتظار بررسی و تأیید نهایی می‌باشد.
-                        @elseif($booking->status === \Modules\Properties\Entities\PropertyRentalBooking::STATUS_AWAITING_PAYMENT)
-                            درخواست شما تأیید گردید؛ جهت قطعی شدن رزرو و صدور تأییدیه رسمی، لطفاً نسبت به پرداخت آنلاین اقدام فرمایید.
-                        @elseif($isConfirmed)
-                            رزرو شما قطعی است. می‌توانید در تاریخ مقرر با هماهنگی میزبان در محل اقامتگاه حاضر شوید.
-                        @elseif(str_starts_with($booking->status, 'cancelled'))
-                            این رزرو لغو شده است. علت لغو: {{ $booking->cancellation_reason ?: 'عدم ارائه علت' }}
-                        @else
-                            وضعیت کنونی رزرو: {{ $badge['label'] ?? '' }}
-                        @endif
+                    <h3 class="text-sm sm:text-base font-black">{{ $bannerTitle }}</h3>
+                    <p class="text-xs opacity-90 mt-1 leading-relaxed font-bold">
+                        {{ $bannerDesc }}
                     </p>
                 </div>
             </div>
 
-            <div class="flex items-center gap-2 self-end md:self-auto">
-                <span class="px-3 py-1 rounded-xl bg-white/50 dark:bg-black/30 text-xs font-black">
-                    وضعیت مالی: {{ $payBadge['label'] ?? '' }}
+            <div class="flex items-center gap-2 self-end md:self-auto shrink-0">
+                <span class="px-3.5 py-1.5 rounded-xl bg-white/60 dark:bg-black/30 border border-black/5 dark:border-white/10 text-xs font-black shadow-2xs">
+                    وضعیت مالی: {{ $financialText }}
                 </span>
             </div>
         </div>
@@ -528,13 +617,25 @@
                                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
                                 <span>پرداخت آنلاین و تسویه</span>
                             </button>
+                        @elseif($isPendingHost)
+                            <div class="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200/80 dark:border-amber-800/60 text-amber-800 dark:text-amber-200 text-xs font-bold leading-relaxed space-y-1.5 text-center">
+                                <div class="flex items-center justify-center gap-1.5 text-amber-700 dark:text-amber-300 font-black">
+                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                    <span>در انتظار بررسی و اعلام موافقت میزبان</span>
+                                </div>
+                                <p class="text-[11px] opacity-90 font-medium">
+                                    در این مرحله نیازی به پرداخت وجه نیست. به محض تأیید میزبان، پیامک اطلاع‌رسانی ارسال شده و صورت‌حساب جهت پرداخت فعال خواهد شد.
+                                </p>
+                            </div>
                         @endif
 
-                        <a href="{{ route('client.payments.show', ['type' => 'rental', 'id' => $booking->id]) }}"
-                           class="w-full py-3 px-4 bg-gray-50 dark:bg-gray-700/60 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-600 rounded-2xl text-xs font-bold transition flex items-center justify-center gap-2">
-                            <svg class="w-4 h-4 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                            <span>مشاهده صورت‌حساب مالی در لیست پرداخت‌ها</span>
-                        </a>
+                        @if(!$isPendingHost)
+                            <a href="{{ route('client.payments.show', ['type' => 'rental', 'id' => $booking->id]) }}"
+                               class="w-full py-3 px-4 bg-gray-50 dark:bg-gray-700/60 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-600 rounded-2xl text-xs font-bold transition flex items-center justify-center gap-2">
+                                <svg class="w-4 h-4 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                                <span>مشاهده صورت‌حساب مالی در لیست پرداخت‌ها</span>
+                            </a>
+                        @endif
                     </div>
                 </div>
 

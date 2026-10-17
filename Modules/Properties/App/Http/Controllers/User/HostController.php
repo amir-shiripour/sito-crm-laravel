@@ -701,6 +701,9 @@ class HostController extends Controller
         $user = auth()->user();
         $host = PropertyHost::where('user_id', $user->id)->first();
         if (!$host) {
+            if ($user->hasRole(['super-admin', 'admin']) || $user->can('properties.manage') || $user->can('properties.bookings.view') || $user->can('properties.bookings.manage')) {
+                return redirect()->route('user.properties.bookings.index');
+            }
             return redirect()->route('user.properties.hosts.register');
         }
 

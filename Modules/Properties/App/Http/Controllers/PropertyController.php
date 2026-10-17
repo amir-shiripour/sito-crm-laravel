@@ -579,24 +579,102 @@ class PropertyController extends Controller
         }
     }
 
-    public function book(Request $request, $slug)
+    public function checkout(Request $request, $slug)
     {
         $property = $this->resolveProperty($slug);
 
-        // مهمان باید ابتدا وارد حساب کاربری پرتال کلاینت شود
-        if (!auth('client')->check()) {
-            $returnUrl = route('properties.show', $property->slug ?: $property->code);
-            session()->put('url.intended', $returnUrl);
+        if ($property->listing_type !== 'daily_rental') {
+            return redirect()->route('properties.show', $property->slug ?: $property->code);
+        }
 
-            return response()->json([
-                'success'       => false,
-                'require_login' => true,
-                'message'       => 'برای ثبت رزرو اقامتگاه، لطفاً ابتدا وارد حساب کاربری خود شوید.',
-                'redirect_url'  => route('client.login'),
-            ], 401);
+        $property->loadMissing(['host.user', 'rentalConfig', 'category']);
+
+        $checkIn = $request->input('check_in') ?: $request->input('check_in_date');
+        $checkOut = $request->input('check_out') ?: $request->input('check_out_date');
+        $guests = (int) ($request->input('guests') ?: $request->input('guests_count', $property->rentalConfig->base_guests ?? 1));
+
+        // اگر در کوئری نبود، بررسی سشن پیش‌نویس
+        if (!$checkIn || !$checkOut) {
+            $draft = session('rental_booking_draft');
+            if ($draft && isset($draft['property_id']) && $draft['property_id'] == $property->id) {
+                $checkIn = $draft['check_in'] ?? null;
+                $checkOut = $draft['check_out'] ?? null;
+                $guests = (int) ($draft['guests'] ?? $guests);
+            }
+        }
+
+        // اگر هنوز تاریخ‌ها موجود نیستند، بازگشت به صفحه اقامتگاه جهت انتخاب در تقویم
+        if (!$checkIn || !$checkOut) {
+            return redirect()->route('properties.show', $property->slug ?: $property->code)
+                ->with('error', 'لطفاً ابتدا تاریخ ورود و خروج مورد نظر خود را در تقویم انتخاب نمایید.');
+        }
+
+        // اگر کاربر لاگین نیست، اطلاعات پیش‌نویس در سشن ذخیره شده و به لاگین هدایت می‌شود
+        if (!auth('client')->check()) {
+            session([
+                'rental_booking_draft' => [
+                    'property_id' => $property->id,
+                    'slug'        => $property->slug ?: $property->code,
+                    'check_in'    => $checkIn,
+                    'check_out'   => $checkOut,
+                    'guests'      => $guests,
+                ]
+            ]);
+
+            $checkoutUrl = route('properties.checkout', [
+                'slug'      => $property->slug ?: $property->code,
+                'check_in'  => $checkIn,
+                'check_out' => $checkOut,
+                'guests'    => $guests,
+            ]);
+
+            session()->put('url.intended', $checkoutUrl);
+
+            return redirect()->route('client.login')->with('info', 'برای مشاهده پیش‌فاکتور و نهایی‌سازی رزرو، لطفاً وارد حساب کاربری خود شوید یا با شماره همراه ثبت‌نام کنید.');
         }
 
         $client = auth('client')->user();
+
+        // محاسبه پیش‌فاکتور شفاف
+        $bookingService = app(RentalBookingService::class);
+        try {
+            $quote = $bookingService->calculateQuote(
+                $property,
+                $checkIn,
+                $checkOut,
+                $guests
+            );
+        } catch (\Throwable $e) {
+            return redirect()->route('properties.show', $property->slug ?: $property->code)
+                ->with('error', $e->getMessage());
+        }
+
+        $currency = PropertySetting::get('currency', 'toman');
+        $currencyLabel = match ($currency) {
+            'rial' => 'ریال',
+            'million_toman' => 'میلیون تومان',
+            'billion_toman' => 'میلیارد تومان',
+            default => 'تومان',
+        };
+
+        $config = $property->rentalConfig;
+
+        return view('properties::rental.checkout', compact(
+            'property',
+            'config',
+            'quote',
+            'client',
+            'currency',
+            'currencyLabel',
+            'checkIn',
+            'checkOut',
+            'guests'
+        ));
+    }
+
+    public function book(Request $request, $slug)
+    {
+        $property = $this->resolveProperty($slug);
 
         // انطباق کلیدهای ارسالی فرم با قواعد اعتبارسنجی
         if ($request->has('check_in') && !$request->has('check_in_date')) {
@@ -609,12 +687,38 @@ class PropertyController extends Controller
             $request->merge(['notes' => $request->guest_notes]);
         }
 
+        // مهمان باید ابتدا وارد حساب کاربری پرتال کلاینت شود
+        if (!auth('client')->check()) {
+            $returnUrl = route('properties.checkout', [
+                'slug'      => $property->slug ?: $property->code,
+                'check_in'  => $request->input('check_in_date'),
+                'check_out' => $request->input('check_out_date'),
+                'guests'    => $request->input('guests_count', 1),
+            ]);
+            session()->put('url.intended', $returnUrl);
+
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json([
+                    'success'       => false,
+                    'require_login' => true,
+                    'message'       => 'برای ثبت رزرو اقامتگاه، لطفاً ابتدا وارد حساب کاربری خود شوید.',
+                    'redirect_url'  => route('client.login'),
+                ], 401);
+            }
+
+            return redirect()->route('client.login');
+        }
+
+        $client = auth('client')->user();
+
         $rules = [
             'check_in_date'       => 'required|string',
             'check_out_date'      => 'required|string',
             'guests_count'        => 'required|integer|min:1',
-            'notes'               => 'nullable|string|max:1000',
+            'guest_full_name'     => 'nullable|string|max:190',
+            'guest_phone'         => 'nullable|string|max:30',
             'guest_national_code' => 'nullable|string|max:20',
+            'notes'               => 'nullable|string|max:1000',
         ];
 
         $request->validate($rules, [
@@ -624,37 +728,49 @@ class PropertyController extends Controller
         ]);
 
         try {
-
-            // ۲. ثبت رزرو توسط سرویس مرکزی
+            // ثبت رزرو توسط سرویس مرکزی
             $bookingService = app(RentalBookingService::class);
             $booking = $bookingService->createBooking($property, $client, $request->all());
+
+            // پاک‌سازی پیش‌نویس از سشن
+            session()->forget('rental_booking_draft');
 
             $isAwaitingPayment = $booking->status === PropertyRentalBooking::STATUS_AWAITING_PAYMENT;
             $msg = $isAwaitingPayment
                 ? 'رزرو آنی شما با موفقیت ثبت شد. در حال هدایت به درگاه پرداخت...'
                 : 'درخواست رزرو شما با موفقیت ثبت شد و جهت تأیید برای میزبان ارسال گردید.';
 
-            return response()->json([
-                'success'      => true,
-                'message'      => $msg,
-                'booking_id'   => $booking->id,
-                'booking_code' => $booking->booking_code,
-                'status'       => $booking->status,
-                'redirect_url' => route('client.rental-bookings.show', $booking->id),
-            ]);
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json([
+                    'success'      => true,
+                    'message'      => $msg,
+                    'booking_id'   => $booking->id,
+                    'booking_code' => $booking->booking_code,
+                    'status'       => $booking->status,
+                    'redirect_url' => route('client.rental-bookings.show', $booking->id),
+                ]);
+            }
+
+            return redirect()->route('client.rental-bookings.show', $booking->id)->with('success', $msg);
 
         } catch (ValidationException $e) {
-            return response()->json([
-                'success' => false,
-                'message' => collect($e->errors())->flatten()->first(),
-                'errors'  => $e->errors(),
-            ], 422);
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => collect($e->errors())->flatten()->first(),
+                    'errors'  => $e->errors(),
+                ], 422);
+            }
+            return back()->withErrors($e->errors())->withInput();
         } catch (\Throwable $e) {
             Log::error('Booking creation error: ' . $e->getMessage());
-            return response()->json([
-                'success' => false,
-                'message' => 'خطا در ثبت رزرو: ' . $e->getMessage(),
-            ], 500);
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'خطا در ثبت رزرو: ' . $e->getMessage(),
+                ], 500);
+            }
+            return back()->with('error', 'خطا در ثبت رزرو: ' . $e->getMessage())->withInput();
         }
     }
 }

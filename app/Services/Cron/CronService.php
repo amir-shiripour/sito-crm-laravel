@@ -199,7 +199,7 @@ class CronService
                 'description' => 'بررسی پیامک‌های دارای تاریخ ارسال آتی و مخابره آن‌ها به وب‌سرویس پیامک',
                 'expression' => 'everyMinute',
                 'prevent_overlap' => true,
-                'is_active' => false,
+                'is_active' => true,
                 'is_system' => true,
             ],
             [

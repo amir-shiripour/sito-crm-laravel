@@ -365,11 +365,12 @@
                                 </thead>
                                 <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
                                 @foreach($recentPayments as $payment)
-                                    @continue(in_array($payment->status, ['CANCELED', 'CANCELLED'], true))
                                     @php
-                                        $paymentTargetUrl = ($payment->type === 'rental') 
-                                            ? route('client.rental-bookings.show', $payment->id) 
-                                            : route('client.payments.show', ['type' => $payment->type, 'id' => $payment->id]);
+                                        $statusKey = strtoupper(trim((string)$payment->status));
+                                    @endphp
+                                    @continue(in_array($statusKey, ['CANCELED', 'CANCELLED', 'REJECTED', 'EXPIRED'], true))
+                                    @php
+                                        $paymentTargetUrl = route('client.payments.show', ['type' => $payment->type, 'id' => $payment->id]);
                                     @endphp
                                     <tr class="hover:bg-gray-50/50 dark:hover:bg-gray-700/50 transition-colors cursor-pointer" onclick="window.location.href='{{ $paymentTargetUrl }}'">
                                         <td class="px-6 py-4 text-gray-900 dark:text-white font-medium">
@@ -385,29 +386,29 @@
                                         </td>
                                         <td class="px-6 py-4">
                                             @php
-                                                $payStatusColor = match($payment->status) {
-                                                    'PAID' => 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
-                                                    'PENDING' => 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
-                                                    'FAILED' => 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
+                                                $payStatusColor = match($statusKey) {
+                                                    'PAID', 'SUCCESS', 'COMPLETED' => 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
+                                                    'PENDING', 'UNPAID', 'AWAITING_PAYMENT', 'WAITING' => 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
+                                                    'FAILED', 'FAIL' => 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
                                                     'REFUNDED' => 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400',
-                                                    'CANCELED' => 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300',
-                                                    'CANCELLED' => 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300',
-                                                    default => 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
+                                                    'CANCELED', 'CANCELLED', 'REJECTED', 'EXPIRED' => 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300',
+                                                    default => 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
                                                 };
 
-                                                $payStatusLabel = match($payment->status) {
-                                                    'PAID' => 'پرداخت شده',
-                                                    'PENDING' => 'در انتظار پرداخت',
-                                                    'FAILED' => 'ناموفق',
+                                                $payStatusLabel = match($statusKey) {
+                                                    'PAID', 'SUCCESS', 'COMPLETED' => 'پرداخت شده',
+                                                    'PENDING', 'UNPAID', 'AWAITING_PAYMENT', 'WAITING' => 'در انتظار پرداخت',
+                                                    'FAILED', 'FAIL' => 'ناموفق',
                                                     'REFUNDED' => 'استرداد شده',
-                                                    'CANCELED' => 'لغو شده',
-                                                    'CANCELLED' => 'لغو شده',
-                                                    default => $payment->status
+                                                    'CANCELED', 'CANCELLED' => 'لغو شده',
+                                                    'REJECTED' => 'رد شده',
+                                                    'EXPIRED' => 'منقضی شده',
+                                                    default => ($statusKey === 'UNPAID' ? 'در انتظار پرداخت' : $payment->status)
                                                 };
                                             @endphp
                                             <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium {{ $payStatusColor }}">
-                                            {{ $payStatusLabel }}
-                                        </span>
+                                                {{ $payStatusLabel }}
+                                            </span>
                                         </td>
                                         <td class="px-6 py-4 text-left">
                                             <svg class="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>

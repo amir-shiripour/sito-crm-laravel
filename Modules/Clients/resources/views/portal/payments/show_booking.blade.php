@@ -5,25 +5,28 @@
 @php
     $title = 'جزئیات صورت‌حساب نوبت #' . $payment->id;
 
-    $payStatusColor = match($payment->status) {
-        'PAID' => 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
-        'PENDING' => 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
-        'FAILED' => 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
+    $statusKey = strtoupper(trim((string)$payment->status));
+    $payStatusColor = match($statusKey) {
+        'PAID', 'SUCCESS', 'COMPLETED' => 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
+        'PENDING', 'UNPAID', 'AWAITING_PAYMENT', 'WAITING' => 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
+        'FAILED', 'FAIL' => 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
         'REFUNDED' => 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400',
-        'CANCELED' => 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300',
-        'CANCELLED' => 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300',
-        default => 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
+        'CANCELED', 'CANCELLED', 'REJECTED', 'EXPIRED' => 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300',
+        default => 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
     };
 
-    $payStatusLabel = match($payment->status) {
-        'PAID' => 'پرداخت شده',
-        'PENDING' => 'در انتظار پرداخت',
-        'FAILED' => 'ناموفق',
+    $payStatusLabel = match($statusKey) {
+        'PAID', 'SUCCESS', 'COMPLETED' => 'پرداخت شده',
+        'PENDING', 'UNPAID', 'AWAITING_PAYMENT', 'WAITING' => 'در انتظار پرداخت',
+        'FAILED', 'FAIL' => 'ناموفق',
         'REFUNDED' => 'استرداد شده',
-        'CANCELED' => 'لغو شده',
-        'CANCELLED' => 'لغو شده',
-        default => $payment->status
+        'CANCELED', 'CANCELLED' => 'لغو شده',
+        'REJECTED' => 'رد شده',
+        'EXPIRED' => 'منقضی شده',
+        default => ($statusKey === 'UNPAID' ? 'در انتظار پرداخت' : $payment->status)
     };
+
+    $isPendingPay = in_array($statusKey, ['PENDING', 'UNPAID', 'AWAITING_PAYMENT', 'WAITING']);
 
     // fallback for paid_at if it's null but status is PAID
     $paidDate = $payment->paid_at ?? ($payment->status === 'PAID' ? $payment->updated_at : null);
@@ -70,7 +73,7 @@
             </a>
             @endif
 
-            @if($payment->status === 'PENDING')
+            @if($isPendingPay)
             <button type="button" 
                     @click="openModal({{ $payment->id }}, '{{ number_format($displayAmount) }}')"
                     class="inline-flex items-center gap-2 px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl transition-all text-sm font-bold shadow-md shadow-emerald-600/20 active:scale-95">

@@ -452,9 +452,11 @@ class ClientAuthController extends Controller
         Auth::guard('client')->login($client);
         $request->session()->regenerate();
 
+        $intendedUrl = session()->pull('url.intended', route('client.dashboard'));
+
         return response()->json([
             'success' => true,
-            'redirect' => route('client.dashboard'),
+            'redirect' => $intendedUrl,
         ]);
     }
 
@@ -632,7 +634,7 @@ class ClientAuthController extends Controller
         Auth::guard('client')->login($client);
         $request->session()->regenerate();
 
-        return redirect()->route('client.dashboard');
+        return redirect()->intended(route('client.dashboard'));
     }
 
     public function checkUsername(Request $request)

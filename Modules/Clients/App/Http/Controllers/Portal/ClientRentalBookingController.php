@@ -231,7 +231,14 @@ class ClientRentalBookingController extends Controller
             return response()->json(['success' => false, 'message' => 'دسترسی غیرمجاز'], 403);
         }
 
-        if (!in_array($booking->status, [PropertyRentalBooking::STATUS_AWAITING_PAYMENT, PropertyRentalBooking::STATUS_PENDING_HOST])) {
+        if ($booking->status === PropertyRentalBooking::STATUS_PENDING_HOST) {
+            return response()->json([
+                'success' => false, 
+                'message' => 'درخواست رزرو شما در انتظار بررسی و تأیید میزبان است. پس از تأیید میزبان، صورت‌حساب صادر شده و امکان پرداخت فعال می‌گردد.'
+            ], 422);
+        }
+
+        if ($booking->status !== PropertyRentalBooking::STATUS_AWAITING_PAYMENT) {
             return response()->json(['success' => false, 'message' => 'این رزرو در وضعیت قابل پرداخت نمی‌باشد.'], 422);
         }
 

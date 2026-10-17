@@ -6,16 +6,15 @@
     $badge = $booking->status_badge;
     $payBadge = $booking->payment_status_badge;
     $propCover = $booking->property?->primary_image_url ?? $booking->property?->primaryImage?->image_url ?? asset('assets/images/placeholder.jpg');
-    $canConfirm = in_array($booking->status, [
-        \Modules\Properties\Entities\PropertyRentalBooking::STATUS_PENDING_HOST,
-        \Modules\Properties\Entities\PropertyRentalBooking::STATUS_AWAITING_PAYMENT
-    ]);
+    $canConfirm = ($booking->status === \Modules\Properties\Entities\PropertyRentalBooking::STATUS_AWAITING_PAYMENT);
 @endphp
 
 @section('content')
 <div class="space-y-6 pb-12 font-sans" x-data="{
         showConfirmModal: false,
         showCancelModal: false,
+        showRejectModal: false,
+        rejectReason: '',
         cancelReason: '',
         paymentMethod: 'bank_transfer',
         transactionId: '',
@@ -42,18 +41,75 @@
             </div>
         </div>
 
-        <div class="flex items-center gap-3">
-            @if($canConfirm)
-                <button type="button" @click="showConfirmModal = true" class="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs transition shadow-md shadow-emerald-600/20 flex items-center gap-2">
-                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                    <span>تأیید دستی و قطعی‌سازی رزرو</span>
+        <div class="flex items-center gap-2 flex-wrap">
+            @php
+                $canOperate = $canManageAll || ($host && $booking->host_id === $host->id);
+            @endphp
+
+            {{-- مرحله قبل از تأیید: فقط تأیید و لغو (رد) درخواست رزرو --}}
+            @if($canOperate && $booking->status === \Modules\Properties\Entities\PropertyRentalBooking::STATUS_PENDING_HOST)
+                <form method="POST" action="{{ route('user.properties.bookings.approve', $booking->id) }}">
+                    @csrf
+                    <button type="submit"
+                            onclick="return confirm('آیا درخواست رزرو {{ $booking->booking_code }} را تأیید می‌فرمایید؟')"
+                            class="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs transition shadow-md shadow-emerald-600/20 flex items-center gap-2 active:scale-95">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                        <span>تأیید درخواست رزرو</span>
+                    </button>
+                </form>
+
+                <button type="button" @click="showRejectModal = true" class="px-4 py-2.5 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 dark:bg-red-950/40 dark:hover:bg-red-900/50 dark:text-red-400 text-xs font-bold transition flex items-center gap-2 border border-red-200 dark:border-red-800 active:scale-95">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                    <span>رد و لغو درخواست</span>
                 </button>
             @endif
 
-            @if(!in_array($booking->status, [\Modules\Properties\Entities\PropertyRentalBooking::STATUS_COMPLETED, \Modules\Properties\Entities\PropertyRentalBooking::STATUS_CANCELLED_BY_ADMIN]))
-                <button type="button" @click="showCancelModal = true" class="px-4 py-2.5 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 dark:bg-red-950/40 dark:hover:bg-red-900/50 dark:text-red-400 text-xs font-bold transition flex items-center gap-2 border border-red-200 dark:border-red-800">
+            {{-- مرحله بعد از تأیید و قطعی شدن: ثبت ورود مهمان --}}
+            @if($canOperate && $booking->status === \Modules\Properties\Entities\PropertyRentalBooking::STATUS_CONFIRMED)
+                <form method="POST" action="{{ route('user.properties.bookings.check-in', $booking->id) }}">
+                    @csrf
+                    <button type="submit"
+                            onclick="return confirm('آیا ورود مهمان برای رزرو {{ $booking->booking_code }} انجام شده است؟')"
+                            class="px-4 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-black text-xs transition shadow-md shadow-purple-600/20 flex items-center gap-2 active:scale-95">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"/></svg>
+                        <span>ثبت ورود مهمان</span>
+                    </button>
+                </form>
+            @endif
+
+            {{-- مرحله بعد از استقرار: تکمیل اقامت و تحویل --}}
+            @if($canOperate && $booking->status === \Modules\Properties\Entities\PropertyRentalBooking::STATUS_CHECKED_IN)
+                <form method="POST" action="{{ route('user.properties.bookings.complete', $booking->id) }}">
+                    @csrf
+                    <button type="submit"
+                            onclick="return confirm('آیا اقامت مهمان برای رزرو {{ $booking->booking_code }} پایان یافته و واحد تحویل گرفته شد؟')"
+                            class="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs transition shadow-md shadow-indigo-600/20 flex items-center gap-2 active:scale-95">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        <span>تکمیل اقامت و تحویل</span>
+                    </button>
+                </form>
+            @endif
+
+            {{-- گزینه‌های بعد از تأیید: تأیید دستی پرداخت (مخصوص مدیر پلتفرم در وضعیت awaiting_payment) --}}
+            @if($canManageAll && $canConfirm)
+                <button type="button" @click="showConfirmModal = true" class="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs transition shadow-md shadow-emerald-600/20 flex items-center gap-2 active:scale-95">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                    <span>تأیید دستی و تسویه</span>
+                </button>
+            @endif
+
+            {{-- گزینه‌های بعد از تأیید: لغو رزرو (برای وضعیت‌های پس از بررسی اولیه) --}}
+            @if($canOperate && !in_array($booking->status, [
+                \Modules\Properties\Entities\PropertyRentalBooking::STATUS_PENDING_HOST,
+                \Modules\Properties\Entities\PropertyRentalBooking::STATUS_COMPLETED,
+                \Modules\Properties\Entities\PropertyRentalBooking::STATUS_CANCELLED_BY_ADMIN,
+                \Modules\Properties\Entities\PropertyRentalBooking::STATUS_CANCELLED_BY_HOST,
+                \Modules\Properties\Entities\PropertyRentalBooking::STATUS_CANCELLED_BY_GUEST,
+                \Modules\Properties\Entities\PropertyRentalBooking::STATUS_REJECTED
+            ]))
+                <button type="button" @click="showCancelModal = true" class="px-4 py-2.5 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 dark:bg-red-950/40 dark:hover:bg-red-900/50 dark:text-red-400 text-xs font-bold transition flex items-center gap-2 border border-red-200 dark:border-red-800 active:scale-95">
                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-                    <span>لغو رزرو توسط مدیریت</span>
+                    <span>لغو رزرو</span>
                 </button>
             @endif
         </div>
@@ -257,7 +313,7 @@
         </div>
     </div>
 
-    {{-- مدال لغو رزرو توسط مدیریت --}}
+    {{-- مدال لغو رزرو --}}
     <div x-cloak x-show="showCancelModal" class="fixed inset-0 z-50 overflow-y-auto" role="dialog" aria-modal="true">
         <div class="fixed inset-0 bg-black/60 backdrop-blur-sm" @click="showCancelModal = false"></div>
         <div class="flex min-h-screen items-center justify-center p-4 text-center sm:p-0">
@@ -265,7 +321,7 @@
                 <form action="{{ route('user.properties.bookings.cancel', $booking->id) }}" method="POST" class="space-y-4">
                     @csrf
                     <div class="flex items-center justify-between border-b border-gray-100 dark:border-gray-800 pb-3">
-                        <h3 class="text-sm font-black text-red-600 dark:text-red-400">لغو رزرو توسط مدیریت</h3>
+                        <h3 class="text-sm font-black text-red-600 dark:text-red-400">لغو رزرو</h3>
                         <button type="button" @click="showCancelModal = false" class="text-gray-400 hover:text-gray-600">
                             <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                         </button>
@@ -273,7 +329,7 @@
 
                     <div>
                         <label class="block text-gray-700 dark:text-gray-300 mb-1 text-xs font-bold">دلیل لغو:</label>
-                        <textarea name="cancellation_reason" x-model="cancelReason" required rows="3" placeholder="علت لغو توسط مدیر..." class="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-2.5 text-xs font-bold text-gray-900 dark:text-white font-sans resize-none"></textarea>
+                        <textarea name="cancellation_reason" x-model="cancelReason" required rows="3" placeholder="علت لغو رزرو..." class="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-2.5 text-xs font-bold text-gray-900 dark:text-white font-sans resize-none"></textarea>
                     </div>
 
                     <div class="flex items-center gap-3 pt-2">
@@ -282,6 +338,41 @@
                         </button>
                         <button type="submit" class="w-2/3 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-black text-xs shadow-md shadow-red-600/30">
                             تأیید لغو رزرو
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    {{-- مدال رد درخواست رزرو --}}
+    <div x-cloak x-show="showRejectModal" class="fixed inset-0 z-50 overflow-y-auto" role="dialog" aria-modal="true">
+        <div class="fixed inset-0 bg-black/60 backdrop-blur-sm" @click="showRejectModal = false"></div>
+        <div class="flex min-h-screen items-center justify-center p-4 text-center sm:p-0">
+            <div class="relative transform overflow-hidden rounded-3xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 text-right shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-md p-6 space-y-4">
+                <form action="{{ route('user.properties.bookings.reject', $booking->id) }}" method="POST" class="space-y-4">
+                    @csrf
+                    <div class="flex items-center justify-between border-b border-gray-100 dark:border-gray-800 pb-3">
+                        <h3 class="text-sm font-black text-red-600 dark:text-red-400">رد درخواست رزرو</h3>
+                        <button type="button" @click="showRejectModal = false" class="text-gray-400 hover:text-gray-600">
+                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+                    </div>
+
+                    <p class="text-xs text-gray-600 dark:text-gray-300 font-bold leading-relaxed">
+                        لطفاً علت رد درخواست رزرو را جهت اطلاع مسافر درج فرمایید:
+                    </p>
+
+                    <div>
+                        <textarea name="rejection_reason" x-model="rejectReason" required rows="3" placeholder="علت رد درخواست..." class="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-2.5 text-xs font-bold text-gray-900 dark:text-white font-sans resize-none"></textarea>
+                    </div>
+
+                    <div class="flex items-center gap-3 pt-2">
+                        <button type="button" @click="showRejectModal = false" class="w-1/3 py-2.5 rounded-xl border border-gray-200 text-gray-600 font-bold text-xs">
+                            انصراف
+                        </button>
+                        <button type="submit" class="w-2/3 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-black text-xs shadow-md shadow-red-600/30">
+                            تأیید و رد درخواست
                         </button>
                     </div>
                 </form>

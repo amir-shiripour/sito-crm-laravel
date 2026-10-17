@@ -23,6 +23,7 @@ Route::middleware(['web'])->group(function() {
         Route::get('/map', [PublicPropertyController::class, 'map'])->name('map');
         Route::post('/ai-search', [PublicPropertyController::class, 'aiSearch'])->name('ai.search.public');
         Route::get('/{slug}', [PublicPropertyController::class, 'show'])->name('show');
+        Route::get('/{slug}/checkout', [PublicPropertyController::class, 'checkout'])->name('checkout');
         Route::post('/{slug}/quote', [PublicPropertyController::class, 'calculateQuote'])->name('quote');
         Route::post('/{slug}/book', [PublicPropertyController::class, 'book'])->name('book');
     });
@@ -112,6 +113,10 @@ Route::middleware(['web', 'auth'])
                 Route::prefix('bookings')->name('bookings.')->group(function () {
                     Route::get('/', [\Modules\Properties\App\Http\Controllers\User\BookingController::class, 'index'])->name('index');
                     Route::get('/{booking}', [\Modules\Properties\App\Http\Controllers\User\BookingController::class, 'show'])->name('show');
+                    Route::post('/{booking}/approve', [\Modules\Properties\App\Http\Controllers\User\BookingController::class, 'approve'])->name('approve');
+                    Route::post('/{booking}/reject', [\Modules\Properties\App\Http\Controllers\User\BookingController::class, 'reject'])->name('reject');
+                    Route::post('/{booking}/check-in', [\Modules\Properties\App\Http\Controllers\User\BookingController::class, 'checkIn'])->name('check-in');
+                    Route::post('/{booking}/complete', [\Modules\Properties\App\Http\Controllers\User\BookingController::class, 'complete'])->name('complete');
                     Route::post('/{booking}/confirm', [\Modules\Properties\App\Http\Controllers\User\BookingController::class, 'confirm'])->name('confirm');
                     Route::post('/{booking}/cancel', [\Modules\Properties\App\Http\Controllers\User\BookingController::class, 'cancel'])->name('cancel');
                 });

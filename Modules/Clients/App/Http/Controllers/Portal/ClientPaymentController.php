@@ -21,6 +21,15 @@ class ClientPaymentController extends Controller
             $bookingPayments = \Modules\Booking\Entities\BookingPayment::whereHas('appointment', function($q) use ($client) {
                 $q->where('client_id', $client->id);
             })->with('appointment.service')->get()->map(function($payment) {
+                $rawStatus = strtoupper(trim((string)$payment->status));
+                $normalizedStatus = match($rawStatus) {
+                    'PAID', 'SUCCESS', 'COMPLETED' => 'PAID',
+                    'CANCELED', 'CANCELLED', 'REJECTED' => 'CANCELED',
+                    'FAILED', 'FAIL' => 'FAILED',
+                    'REFUNDED' => 'REFUNDED',
+                    default => 'PENDING',
+                };
+
                 return (object)[
                     'id' => $payment->id,
                     'ref_id' => $payment->id,
@@ -28,7 +37,7 @@ class ClientPaymentController extends Controller
                     'type_label' => 'نوبت‌دهی (رزرو)',
                     'title' => 'پرداخت برای رزرو ' . optional(optional($payment->appointment)->service)->name,
                     'amount' => $payment->amount,
-                    'status' => $payment->status,
+                    'status' => $normalizedStatus,
                     'date' => $payment->created_at,
                     'payment_record' => $payment
                 ];
@@ -40,14 +49,20 @@ class ClientPaymentController extends Controller
         if (class_exists(MarketOrder::class) && Schema::hasTable('market_orders')) {
             $marketOrders = MarketOrder::where('client_id', $client->id)->get()->map(function($order) {
                 $statusMap = [
-                    'pending' => 'PENDING',
-                    'paid' => 'PAID',
-                    'failed' => 'FAILED',
-                    'refunded' => 'REFUNDED',
-                    'canceled' => 'CANCELED',
-                    'unpaid'   => 'PENDING',
+                    'pending'          => 'PENDING',
+                    'paid'             => 'PAID',
+                    'failed'           => 'FAILED',
+                    'refunded'         => 'REFUNDED',
+                    'canceled'         => 'CANCELED',
+                    'cancelled'        => 'CANCELED',
+                    'unpaid'           => 'PENDING',
+                    'awaiting_payment' => 'PENDING',
                 ];
-                $normalizedStatus = $statusMap[strtolower($order->payment_status)] ?? strtoupper($order->payment_status);
+                $normalizedStatus = $statusMap[strtolower(trim((string)$order->payment_status))] ?? (
+                    in_array(strtoupper(trim((string)$order->payment_status)), ['PAID', 'FAILED', 'REFUNDED', 'CANCELED', 'CANCELLED'])
+                        ? strtoupper(trim((string)$order->payment_status))
+                        : 'PENDING'
+                );
 
                 return (object)[
                     'id' => $order->id,
@@ -107,6 +122,7 @@ class ClientPaymentController extends Controller
             $currLabel = in_array(strtolower($currency), ['irr', 'rial', 'ریال']) ? 'ریال' : 'تومان';
 
             $rentalPayments = \Modules\Properties\Entities\PropertyRentalBooking::where('client_id', $client->id)
+                ->where('status', '!=', \Modules\Properties\Entities\PropertyRentalBooking::STATUS_PENDING_HOST)
                 ->with(['property'])
                 ->get()
                 ->map(function($booking) use ($currency, $currLabel) {
@@ -116,7 +132,6 @@ class ClientPaymentController extends Controller
                         'checked_in'            => 'PAID',
                         'completed'             => 'PAID',
                         'awaiting_payment'      => 'PENDING',
-                        'pending_host'          => 'PENDING',
                         'cancelled_by_guest'    => 'CANCELED',
                         'cancelled_by_host'     => 'CANCELED',
                         'cancelled_by_admin'    => 'CANCELED',

@@ -277,6 +277,8 @@ class Installer extends BaseModuleInstaller
             'properties.hosts.manage',
             'properties.rental.manage',
             'properties.rental.calendar',
+            'properties.bookings.view',
+            'properties.bookings.manage',
         ];
 
         $trackerPath = $this->permissionsTrackerPath();
@@ -320,6 +322,8 @@ class Installer extends BaseModuleInstaller
                 'properties.hosts.manage' => 'مدیریت و تایید میزبانان اقامتگاه',
                 'properties.rental.manage' => 'مدیریت مشخصات اقامتگاه روزانه',
                 'properties.rental.calendar' => 'مدیریت تقویم اقامتگاه روزانه',
+                'properties.bookings.view' => 'مشاهده رزرواسیون اقامتگاه‌ها',
+                'properties.bookings.manage' => 'مدیریت و کنترل رزرواسیون اقامتگاه‌ها',
                 default => $name,
             };
 
@@ -365,6 +369,7 @@ class Installer extends BaseModuleInstaller
             'properties.delete',
             'properties.rental.manage',
             'properties.rental.calendar',
+            'properties.bookings.view',
         ];
         $hostRole->syncPermissions(array_intersect($hostPermissions, $definedPermissions));
 

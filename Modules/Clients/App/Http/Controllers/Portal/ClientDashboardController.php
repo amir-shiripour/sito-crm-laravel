@@ -136,6 +136,15 @@ class ClientDashboardController extends Controller
             $payments = \Modules\Booking\Entities\BookingPayment::whereHas('appointment', function($q) use ($client) {
                 $q->where('client_id', $client->id);
             })->with('appointment.service')->get()->map(function($payment) use ($currencyUnit) {
+                $rawStatus = strtoupper(trim((string)$payment->status));
+                $normalizedStatus = match($rawStatus) {
+                    'PAID', 'SUCCESS', 'COMPLETED' => 'PAID',
+                    'CANCELED', 'CANCELLED', 'REJECTED' => 'CANCELED',
+                    'FAILED', 'FAIL' => 'FAILED',
+                    'REFUNDED' => 'REFUNDED',
+                    default => 'PENDING',
+                };
+
                 $displayAmount = ($currencyUnit === 'IRT') ? ($payment->amount / 10) : $payment->amount;
                 $currLabel = ($currencyUnit === 'IRT') ? 'تومان' : 'ریال';
 
@@ -150,9 +159,9 @@ class ClientDashboardController extends Controller
                     'amount_display' => $displayAmount,
                     'amount_in_rials'=> $amountInRials,
                     'currency_label' => $currLabel,
-                    'status'         => $payment->status,
+                    'status'         => $normalizedStatus,
                     'date'           => $payment->created_at,
-                    'is_pending'     => $payment->status === 'PENDING',
+                    'is_pending'     => $normalizedStatus === 'PENDING',
                 ];
             });
         }
@@ -354,6 +363,7 @@ class ClientDashboardController extends Controller
                 ->get();
 
             $bookings = \Modules\Properties\Entities\PropertyRentalBooking::where('client_id', $client->id)
+                ->where('status', '!=', \Modules\Properties\Entities\PropertyRentalBooking::STATUS_PENDING_HOST)
                 ->latest()
                 ->take(15)
                 ->get();
@@ -362,12 +372,21 @@ class ClientDashboardController extends Controller
             $currLabel = $currency === 'IRR' ? 'ریال' : 'تومان';
 
             $payments = $bookings->map(function ($booking) use ($currency, $currLabel) {
+                $bookingStatus = strtolower(trim((string)$booking->status));
+                $paymentStatus = strtolower(trim((string)$booking->payment_status));
+
+                $normalizedStatus = 'PENDING';
+                if ($paymentStatus === 'paid' || in_array($bookingStatus, ['confirmed', 'checked_in', 'completed'])) {
+                    $normalizedStatus = 'PAID';
+                } elseif (str_starts_with($bookingStatus, 'cancel') || in_array($bookingStatus, ['rejected', 'expired'])) {
+                    $normalizedStatus = 'CANCELED';
+                } else {
+                    $normalizedStatus = 'PENDING';
+                }
+
                 $rawAmount = (float) $booking->total_price;
                 $amountInRials = in_array(strtolower($currency), ['toman', 'irt', 'تومان']) ? ($rawAmount * 10) : $rawAmount;
-                $isPending = in_array($booking->status, [
-                    \Modules\Properties\Entities\PropertyRentalBooking::STATUS_PENDING_HOST,
-                    \Modules\Properties\Entities\PropertyRentalBooking::STATUS_AWAITING_PAYMENT,
-                ]);
+                $isPending = ($normalizedStatus === 'PENDING');
 
                 return (object)[
                     'id'             => $booking->id,
@@ -377,11 +396,11 @@ class ClientDashboardController extends Controller
                     'amount_display' => $rawAmount,
                     'amount_in_rials'=> $amountInRials,
                     'currency_label' => $currLabel,
-                    'status'         => strtoupper($booking->payment_status),
+                    'status'         => $normalizedStatus,
                     'date'           => $booking->created_at,
                     'is_pending'     => $isPending,
                     'booking_code'   => $booking->booking_code,
-                    'url'            => route('client.rental-bookings.show', $booking->id),
+                    'url'            => route('client.payments.show', ['type' => 'rental', 'id' => $booking->id]),
                 ];
             });
         }
