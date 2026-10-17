@@ -2701,11 +2701,24 @@
                         } else {
                             e.target.value = this.formatPriceInput(n);
                         }
-                        this.extraDiscountValue = n;
-                    },
                     toggleExtraDiscountType() {
-                        this.extraDiscountValue = 0;
+                        const currentVal = parseFloat(this.extraDiscountValue) || 0;
+                        if (currentVal > 0) {
+                            let base = this.totals ? (this.totals.subtotalWithTax - (this.totals.itemsDiscount || 0)) : 0;
+                            if (base > 0) {
+                                if (this.extraDiscountType === 'amount') {
+                                    this.extraDiscountType = 'percent';
+                                    this.extraDiscountValue = Math.min(100, Math.max(0, Math.round((currentVal / base) * 100)));
+                                } else {
+                                    this.extraDiscountType = 'amount';
+                                    this.extraDiscountValue = Math.min(base, Math.round(base * (currentVal / 100)));
+                                }
+                                if (typeof this.calculateTotals === 'function') this.calculateTotals();
+                                return;
+                            }
+                        }
                         this.extraDiscountType = this.extraDiscountType === 'amount' ? 'percent' : 'amount';
+                        if (typeof this.calculateTotals === 'function') this.calculateTotals();
                     },
                     init() {
                         this.setDefaultDates();
@@ -2783,6 +2796,10 @@
                     removePackage(groupId) {
                         const pkgItems = this.items.filter(i => i._packageGroupId === groupId);
                         const pkgTitle = pkgItems.length > 0 ? pkgItems[0]._packageTitle : null;
+                        const pkgDiscount = pkgItems.reduce((acc, it) => acc + (parseFloat(it._packageDiscount) || 0), 0);
+                        if (pkgDiscount > 0) {
+                            this.extraDiscountValue = Math.max(0, (parseFloat(this.extraDiscountValue) || 0) - pkgDiscount);
+                        }
                         this.items = this.items.filter(i => i._packageGroupId !== groupId);
                         delete this.collapsedPackages[groupId];
                         if (pkgTitle && this.notesText) {
@@ -2794,6 +2811,9 @@
                                     this.notesText = this.notesText.replace(regex, '').trim();
                                 }
                             }
+                        }
+                        if (typeof this.calculateTotals === 'function') {
+                            this.calculateTotals();
                         }
                     },
                     appendServiceNote(serviceName, description) {
@@ -3032,6 +3052,10 @@
                         }
 
                         if (pkgDiscAmount > 0) {
+                            const addedItems = this.items.filter(i => i._packageGroupId === groupId);
+                            if (addedItems.length > 0) {
+                                addedItems[0]._packageDiscount = pkgDiscAmount;
+                            }
                             this.extraDiscountType = 'amount';
                             this.extraDiscountValue = (parseFloat(this.extraDiscountValue) || 0) + pkgDiscAmount;
                         }
@@ -3746,9 +3770,10 @@
                         if (isNaN(q)) q = 0;
                         if (isNaN(p)) p = 0;
                         if (isNaN(d)) d = 0;
-                        if (d > p) {
-                            d = p;
-                            it.discount = p;
+                        let maxRowDiscount = p * (q > 0 ? q : 1);
+                        if (d > maxRowDiscount) {
+                            d = maxRowDiscount;
+                            it.discount = maxRowDiscount;
                         }
                         let rB = p * q;
                         let rT = 0;
@@ -3801,9 +3826,10 @@
                             let q = parseFloat(it.quantity) || 0;
                             let p = parseFloat(it.unit_price) || 0;
                             let d = parseFloat(it.discount) || 0;
-                            if (d > p) {
-                                d = p;
-                                it.discount = p;
+                            let maxRowDiscount = p * (q > 0 ? q : 1);
+                            if (d > maxRowDiscount) {
+                                d = maxRowDiscount;
+                                it.discount = maxRowDiscount;
                             }
                             let rB = p * q;
                             bS += rB;

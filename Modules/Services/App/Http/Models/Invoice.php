@@ -354,4 +354,22 @@ class Invoice extends Model
         $curr = strtolower($this->currency ?? Setting::where('key', 'currency')->value('value') ?? 'rial');
         return in_array($curr, ['rial', 'irr', 'ریال']) ? 'ریال' : 'تومان';
     }
+
+    public function getExtraDiscountTypeAttribute(): string
+    {
+        if (array_key_exists('extra_discount_type', $this->attributes)) {
+            return $this->attributes['extra_discount_type'] ?? 'amount';
+        }
+        $meta = is_array($this->meta) ? $this->meta : (json_decode($this->meta ?? '', true) ?? []);
+        return $meta['extra_discount_type'] ?? 'amount';
+    }
+
+    public function getExtraDiscountValueAttribute(): float|int
+    {
+        if (array_key_exists('extra_discount_value', $this->attributes)) {
+            return (float)($this->attributes['extra_discount_value'] ?? 0);
+        }
+        $meta = is_array($this->meta) ? $this->meta : (json_decode($this->meta ?? '', true) ?? []);
+        return isset($meta['extra_discount_value']) ? (float)$meta['extra_discount_value'] : 0;
+    }
 }

@@ -85,8 +85,13 @@ class InvoiceMergeService
 
         $allMergedOrderIds = [];
         $mergedOrderIdsByInvoice = [];
+        $allMergedExtraDiscount = 0;
         foreach ($invoices as $inv) {
             $invMeta = is_array($inv->meta) ? $inv->meta : (json_decode($inv->meta, true) ?? []);
+            $sourceExtraDisc = (float)($invMeta['extra_discount_value'] ?? 0);
+            if ($sourceExtraDisc > 0) {
+                $allMergedExtraDiscount += $sourceExtraDisc;
+            }
             $invOrderIds = Order::where('invoice_id', $inv->id)->pluck('id')->all();
             if (!empty($invMeta['source_order_id'])) {
                 $invOrderIds[] = (int)$invMeta['source_order_id'];
@@ -144,6 +149,7 @@ class InvoiceMergeService
         }
         $allMergedOrderIds = array_values(array_unique(array_filter($allMergedOrderIds)));
 
+        $totalDiscount += $allMergedExtraDiscount;
         $grandTotal = max(0, $subtotal + $totalTax - $totalDiscount);
 
         // Apply rounding settings if configured
@@ -184,7 +190,7 @@ class InvoiceMergeService
             $clientName, $clientPhone, $clientEmail, $issueDate, $dueDate,
             $subtotal, $totalDiscount, $totalTax, $roundedGrandTotal, $currency,
             $actorId, $preparedItems, $invoices, $invoiceIds, $roundingMeta,
-            $allMergedOrderIds, $mergedOrderIdsByInvoice
+            $allMergedOrderIds, $mergedOrderIdsByInvoice, $allMergedExtraDiscount
         ) {
             $meta = [
                 'is_merged_invoice' => true,
@@ -192,6 +198,10 @@ class InvoiceMergeService
                 'merged_order_ids' => $allMergedOrderIds,
                 'auto_merged' => true,
             ];
+            if ($allMergedExtraDiscount > 0) {
+                $meta['extra_discount_type'] = 'amount';
+                $meta['extra_discount_value'] = $allMergedExtraDiscount;
+            }
             if ($roundingMeta) {
                 $meta['rounding'] = $roundingMeta;
             }
