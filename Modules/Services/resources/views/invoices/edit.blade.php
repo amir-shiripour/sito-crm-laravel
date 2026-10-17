@@ -2701,6 +2701,8 @@
                         } else {
                             e.target.value = this.formatPriceInput(n);
                         }
+                        this.extraDiscountValue = n;
+                    },
                     toggleExtraDiscountType() {
                         const currentVal = parseFloat(this.extraDiscountValue) || 0;
                         if (currentVal > 0) {
