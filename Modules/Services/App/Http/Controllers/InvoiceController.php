@@ -785,6 +785,13 @@ class InvoiceController extends Controller
             $existingMeta['client_selected_fields'] = $cleanedSelectedFields;
         }
 
+        if (isset($data['extra_discount_type'])) {
+            $existingMeta['extra_discount_type'] = in_array($data['extra_discount_type'], ['amount', 'percent'], true) ? $data['extra_discount_type'] : 'amount';
+        }
+        if (isset($data['extra_discount_value'])) {
+            $existingMeta['extra_discount_value'] = (float)($data['extra_discount_value'] ?? 0);
+        }
+
         $packageTitles = collect($preparedItems)->pluck('meta._packageTitle')->filter()->unique()->values()->all();
         if (!empty($packageTitles)) {
             $existingMeta['packages'] = $packageTitles;
@@ -2395,6 +2402,13 @@ class InvoiceController extends Controller
                 }
             }
             $existingMeta['client_selected_fields'] = $cleanedSelectedFields;
+        }
+
+        if (isset($data['extra_discount_type'])) {
+            $existingMeta['extra_discount_type'] = in_array($data['extra_discount_type'], ['amount', 'percent'], true) ? $data['extra_discount_type'] : 'amount';
+        }
+        if (isset($data['extra_discount_value'])) {
+            $existingMeta['extra_discount_value'] = (float)($data['extra_discount_value'] ?? 0);
         }
 
         return [
