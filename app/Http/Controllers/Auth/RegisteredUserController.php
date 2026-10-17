@@ -265,6 +265,23 @@ class RegisteredUserController extends Controller
                     ->with('success', 'به جمع میزبانان ما خوش آمدید! حساب کاربری شما با موفقیت ایجاد شد.');
             }
 
+            // ایجاد خودکار رکورد تکنسین در صورت نقش تکنسین نصاب‌باشی
+            if (in_array($role->name, ['technician', 'field_service_technician'], true)) {
+                if (class_exists(\Modules\FieldService\App\Services\TechnicianLifecycleService::class)) {
+                    \Modules\FieldService\App\Services\TechnicianLifecycleService::createOrUpdateTechnicianForUser($user, $processedCustomFields);
+                }
+
+                Auth::login($user);
+
+                if (\Illuminate\Support\Facades\Route::has('user.fieldservice.technician.index')) {
+                    return redirect()->route('user.fieldservice.technician.index')
+                        ->with('success', 'به جمع متخصصین و تکنسین‌های نصاب‌باشی خوش آمدید! پرونده شما با موفقیت فعال شد.');
+                }
+
+                return redirect('/dashboard')
+                    ->with('success', 'به جمع متخصصین و تکنسین‌های نصاب‌باشی خوش آمدید! حساب کاربری شما با موفقیت ایجاد شد.');
+            }
+
             Auth::login($user);
             return redirect('/dashboard')->with('success', 'ثبت‌نام شما با موفقیت انجام شد.');
         } else {
