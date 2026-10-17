@@ -134,6 +134,16 @@
 
                 init() {
                     this.updateCurrentTime();
+                    this.$nextTick(() => {
+                        if (typeof window !== 'undefined' && window.jalaliDatepicker && typeof window.jalaliDatepicker.startWatch === 'function') {
+                            window.jalaliDatepicker.startWatch({
+                                selector: '[data-jdp-with-time]',
+                                time: true,
+                                hasSecond: false,
+                                minDate: 'attr',
+                            });
+                        }
+                    });
                 },
 
                 updateCurrentTime() {
@@ -704,11 +714,26 @@
                     </div>
 
                     <div x-show="smsType === 'scheduled'" x-transition class="relative">
-                        <label class="{{ $labelClass }}">تاریخ و ساعت اجرا</label>
-                        <input type="datetime-local" name="scheduled_at" value="{{ old('scheduled_at') }}" class="{{ $inputClass }} dir-ltr text-left [color-scheme:light] dark:[color-scheme:dark]">
-                        <div class="absolute top-8 right-3 pointer-events-none text-gray-400 dark:text-gray-500">
-                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                        <label class="{{ $labelClass }}">تاریخ و ساعت اجرا (شمسی)</label>
+                        <div class="relative">
+                            <input type="text"
+                                   name="scheduled_at"
+                                   id="scheduled_at"
+                                   data-jdp-with-time
+                                   autocomplete="off"
+                                   placeholder="۱۴۰۵/۰۷/۲۴ ۱۵:۳۰"
+                                   value="{{ old('scheduled_at') }}"
+                                   class="{{ $inputClass }} dir-ltr text-center font-sans">
+                            <div class="absolute inset-y-0 right-0 pr-3.5 flex items-center pointer-events-none text-gray-400 dark:text-gray-500">
+                                <svg class="w-5 h-5 text-indigo-500/70 dark:text-indigo-400/80" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                </svg>
+                            </div>
                         </div>
+                        <p class="text-[11px] text-gray-500 dark:text-gray-400 mt-1.5 flex items-center gap-1 font-sans">
+                            <svg class="w-3.5 h-3.5 text-indigo-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                            انتخاب زمان ارسال از طریق تقویم جلالی پنل (پردازش خودکار توسط کرون‌جاب سیستم)
+                        </p>
                     </div>
                 </div>
             </section>

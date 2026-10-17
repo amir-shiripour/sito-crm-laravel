@@ -28,6 +28,7 @@ class PropertyRentalBooking extends Model
     public const STATUS_CANCELLED_BY_HOST    = 'cancelled_by_host';
     public const STATUS_CANCELLED_BY_ADMIN   = 'cancelled_by_admin';
     public const STATUS_EXPIRED              = 'expired';
+    public const STATUS_HOST_CONFIRMED      = 'awaiting_payment';
 
     // وضعیت‌های پرداخت
     public const PAYMENT_UNPAID          = 'unpaid';

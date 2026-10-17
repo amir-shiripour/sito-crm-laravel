@@ -37,28 +37,63 @@ class ProcessScheduledSms extends Command
             return 0;
         }
 
-        foreach ($messages as $message) {
+        // تفکیک پیام‌های پترنی و متنی برای ارسال بهینه
+        $patternMessages = $messages->filter(fn($m) => !empty($m->template_key));
+        $textMessages    = $messages->filter(fn($m) => empty($m->template_key));
+
+        // ۱) ارسال پیام‌های پترنی (به صورت تکی)
+        foreach ($patternMessages as $message) {
             $driverName = $message->driver ?: $smsManager->getDefaultDriver();
             $driver     = $smsManager->driver($driverName);
 
             try {
-                if ($message->template_key) {
-                    // پیامک پترنی
-                    $driver->sendPattern($message, $message->params ?? []);
-                } else {
-                    // پیامک متنی ساده
-                    $driver->sendText($message);
-                }
-
-                $this->info("پیام {$message->id} ارسال شد.");
+                $driver->sendPattern($message, $message->params ?? []);
+                $this->info("پیام پترن {$message->id} با موفقیت ارسال شد.");
             } catch (\Throwable $e) {
-                $message->markAsFailed(
-                    $driverName,
-                    $e->getMessage(),
-                    ['exception' => get_class($e)]
-                );
+                $message->markAsFailed($driverName, $e->getMessage(), ['exception' => get_class($e)]);
+                $this->error("خطا در ارسال پیام پترن {$message->id}: " . $e->getMessage());
+            }
+        }
 
-                $this->error("ارسال پیام {$message->id} با خطا مواجه شد: " . $e->getMessage());
+        // ۲) ارسال پیام‌های متنی ساده به تفکیک درایور
+        $byDriver = $textMessages->groupBy(fn($m) => $m->driver ?: $smsManager->getDefaultDriver());
+
+        foreach ($byDriver as $driverName => $group) {
+            $driver = $smsManager->driver($driverName);
+
+            if ($group->count() === 1) {
+                $msg = $group->first();
+                try {
+                    $driver->sendText($msg);
+                    $this->info("پیام متنی {$msg->id} ارسال شد.");
+                } catch (\Throwable $e) {
+                    $msg->markAsFailed($driverName, $e->getMessage(), ['exception' => get_class($e)]);
+                    $this->error("خطا در ارسال پیام {$msg->id}: " . $e->getMessage());
+                }
+                continue;
+            }
+
+            // ارسال گروهی پیام‌های همزمان
+            $models = $group->all();
+            $phones = $group->pluck('to')->all();
+            $bodies = $group->pluck('message')->all();
+            $uniqueBodies = array_unique($bodies);
+
+            try {
+                if (count($uniqueBodies) === 1) {
+                    // متن یکسان برای تمام گیرندگان -> ارسال گروهی
+                    $smsManager->sendBulkText($models, $uniqueBodies[0], $phones, $driverName);
+                    $this->info("تعداد {$group->count()} پیام متنی هم‌متن به صورت گروهی ارسال شد.");
+                } else {
+                    // متن متفاوت برای هر گیرنده -> ارسال متناظر
+                    $smsManager->sendPeerToPeer($models, $phones, $bodies, $driverName);
+                    $this->info("تعداد {$group->count()} پیام متنی متناظر به صورت گروهی ارسال شد.");
+                }
+            } catch (\Throwable $e) {
+                foreach ($models as $m) {
+                    $m->markAsFailed($driverName, $e->getMessage(), ['exception' => get_class($e)]);
+                }
+                $this->error("خطا در ارسال گروهی پیام‌های زمان‌بندی شده: " . $e->getMessage());
             }
         }
 

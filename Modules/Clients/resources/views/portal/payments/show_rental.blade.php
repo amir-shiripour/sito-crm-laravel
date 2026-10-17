@@ -8,22 +8,22 @@
     $title = 'جزئیات صورت‌حساب رزرو اقامتگاه #' . $booking->booking_code;
 
     $isPaid = $booking->payment_status === \Modules\Properties\Entities\PropertyRentalBooking::PAYMENT_PAID;
-    $isPending = in_array($booking->status, [
-        \Modules\Properties\Entities\PropertyRentalBooking::STATUS_AWAITING_PAYMENT,
-        \Modules\Properties\Entities\PropertyRentalBooking::STATUS_PENDING_HOST,
-    ]) && !$isPaid;
+    $isPendingHost = $booking->status === \Modules\Properties\Entities\PropertyRentalBooking::STATUS_PENDING_HOST;
+    $isAwaitingPayment = $booking->status === \Modules\Properties\Entities\PropertyRentalBooking::STATUS_AWAITING_PAYMENT && !$isPaid;
     $isCancelled = str_contains($booking->status, 'cancel') || in_array($booking->status, ['rejected', 'expired']);
 
     $payStatusColor = match(true) {
         $isPaid => 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
-        $isPending => 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
+        $isAwaitingPayment => 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
+        $isPendingHost => 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
         $isCancelled => 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
         default => 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
     };
 
     $payStatusLabel = match(true) {
         $isPaid => 'تسویه کامل و پرداخت شده',
-        $isPending => 'در انتظار پرداخت',
+        $isAwaitingPayment => 'در انتظار پرداخت',
+        $isPendingHost => 'در انتظار بررسی و تأیید میزبان',
         $isCancelled => 'لغو شده',
         default => ($booking->payment_status_label ?? 'نامشخص')
     };
@@ -51,7 +51,7 @@
 
     $displayAmount = (float) $booking->total_price;
     $coverImage = $booking->property?->primary_image_url ?? $booking->property?->primaryImage?->image_url ?? asset('assets/images/placeholder.jpg');
-    $canPay = $isPending && !$isCancelled;
+    $canPay = $isAwaitingPayment && !$isCancelled;
 @endphp
 
 @section('content')
@@ -64,7 +64,7 @@
                 <a href="{{ route('client.payments.index') }}" class="p-2 -m-2 rounded-xl text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:text-gray-300 dark:hover:bg-gray-800 transition-colors" title="بازگشت به لیست پرداخت‌ها">
                     <svg class="w-6 h-6 rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
                 </a>
-                <span>صورت‌حساب مالی اقامتگاه</span>
+                <span>{{ $isPendingHost ? 'پیش‌فاکتور رزرو اقامتگاه' : 'صورت‌حساب مالی اقامتگاه' }}</span>
             </h1>
             <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
                 کد رزرو مربوطه: <span class="font-black text-indigo-600 dark:text-indigo-400">{{ $booking->booking_code }}</span>
@@ -89,6 +89,11 @@
                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" /></svg>
                     <span>تکمیل و تسویه صورت‌حساب</span>
                 </button>
+            @elseif($isPendingHost)
+                <div class="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 dark:bg-blue-950/40 border border-blue-200/80 dark:border-blue-800/40 text-blue-700 dark:text-blue-300 rounded-xl text-xs font-bold">
+                    <svg class="w-4 h-4 text-blue-600 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                    <span>در انتظار تأیید میزبان</span>
+                </div>
             @endif
         </div>
     </div>
@@ -104,6 +109,20 @@
         <div class="p-4 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-300 text-xs font-bold flex items-center gap-3">
             <svg class="w-5 h-5 text-rose-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
             <span>{{ session('error') }}</span>
+        </div>
+    @endif
+
+    @if($isPendingHost)
+        <div class="p-5 rounded-2xl bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/40 dark:to-orange-950/30 border border-amber-200/80 dark:border-amber-800/60 text-amber-900 dark:text-amber-200 text-xs font-bold flex items-start gap-3 shadow-xs">
+            <svg class="w-6 h-6 text-amber-600 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <div class="space-y-1">
+                <div class="text-sm font-black text-amber-950 dark:text-amber-100">درخواست رزرو شما در انتظار بررسی و تأیید میزبان است</div>
+                <p class="leading-relaxed text-amber-800 dark:text-amber-300">
+                    صورت‌حساب نهایی و درگاه پرداخت آنلاین پس از تأیید اقامتگاه توسط میزبان صادر و فعال خواهد شد. به محض تأیید میزبان، پیامک اطلاع‌رسانی برای شما ارسال شده و مهلت پرداخت آغاز می‌گردد.
+                </p>
+            </div>
         </div>
     @endif
 
@@ -227,7 +246,7 @@
             </div>
 
             <div class="flex justify-between w-full sm:w-1/2 text-sm font-black text-indigo-700 dark:text-indigo-400 bg-indigo-50/70 dark:bg-indigo-950/40 p-4 rounded-2xl border border-indigo-100 dark:border-indigo-900/50">
-                <span>{{ $isPaid ? 'مبلغ تسویه شده:' : 'مبلغ قابل پرداخت:' }}</span>
+                <span>{{ $isPaid ? 'مبلغ تسویه شده:' : ($isPendingHost ? 'مبلغ برآوردی پس از تأیید میزبان:' : 'مبلغ قابل پرداخت:') }}</span>
                 <span>{{ CalendarUtils::convertNumbers(number_format($displayAmount)) }} {{ $currencyLabel }}</span>
             </div>
         </div>

@@ -498,7 +498,6 @@ class ClientController extends Controller
                     'total_count' => (clone $rentalQuery)->count(),
                     'active_count' => (clone $rentalQuery)->whereIn('status', [
                         \Modules\Properties\Entities\PropertyRentalBooking::STATUS_CONFIRMED,
-                        \Modules\Properties\Entities\PropertyRentalBooking::STATUS_HOST_CONFIRMED,
                         \Modules\Properties\Entities\PropertyRentalBooking::STATUS_CHECKED_IN,
                         \Modules\Properties\Entities\PropertyRentalBooking::STATUS_AWAITING_PAYMENT,
                         \Modules\Properties\Entities\PropertyRentalBooking::STATUS_PENDING_HOST,

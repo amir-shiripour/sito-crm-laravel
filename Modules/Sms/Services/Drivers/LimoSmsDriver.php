@@ -109,6 +109,194 @@ class LimoSmsDriver implements DriverInterface
     }
 
     /**
+     * ارسال گروهی پیامک متنی با متن مشترک برای چند شماره (یک ریکوئست به /api/sendsms)
+     *
+     * @param  SmsMessage[]  $messages
+     * @param  string        $commonBody
+     * @param  string[]      $mobileNumbers
+     */
+    public function sendBulkText(array $messages, string $commonBody, array $mobileNumbers): void
+    {
+        if (empty($messages) || empty($mobileNumbers)) {
+            return;
+        }
+
+        if (empty($this->apiKey)) {
+            $error = 'LimoSms api_key is not configured.';
+            Log::error('[LimoSms] sendBulkText: ' . $error);
+            foreach ($messages as $msg) {
+                $msg->markAsFailed('limosms', $error);
+            }
+            return;
+        }
+
+        $senderNumber = $this->sender ?: (env('LIMOSMS_SENDER') ?: env('SMS_SENDER'));
+        if (empty($senderNumber)) {
+            $error = 'LimoSms SenderNumber is missing. Please configure LIMOSMS_SENDER or SMS_SENDER.';
+            Log::error('[LimoSms] sendBulkText: ' . $error);
+            foreach ($messages as $msg) {
+                $msg->markAsFailed('limosms', $error);
+            }
+            return;
+        }
+
+        $url = $this->baseUrl . '/sendsms';
+
+        $payload = [
+            'Message'            => $commonBody,
+            'SenderNumber'       => $senderNumber,
+            'MobileNumber'       => array_values($mobileNumbers),
+            'SendToBlocksNumber' => true,
+        ];
+
+        try {
+            Log::info('[LimoSms] sendBulkText request', [
+                'url'    => $url,
+                'count'  => count($mobileNumbers),
+                'sender' => $senderNumber,
+            ]);
+
+            $response = Http::withHeaders([
+                'ApiKey'       => $this->apiKey,
+                'Content-Type' => 'application/json',
+            ])
+                ->timeout(45)
+                ->post($url, $payload);
+
+            $body = $response->json();
+
+            Log::info('[LimoSms] sendBulkText response', [
+                'status' => $response->status(),
+                'body'   => $body,
+            ]);
+
+            if (! $response->successful()) {
+                $err = 'HTTP ' . $response->status();
+                foreach ($messages as $msg) {
+                    $msg->markAsFailed('limosms', $err, ['response' => $body]);
+                }
+                return;
+            }
+
+            $isSuccess = $body['Success'] ?? $body['success'] ?? true;
+            if ($isSuccess === false) {
+                $err = $body['Message'] ?? $body['message'] ?? 'LimoSms rejected bulk request';
+                foreach ($messages as $msg) {
+                    $msg->markAsFailed('limosms', $err, ['response' => $body]);
+                }
+                return;
+            }
+
+            foreach ($messages as $msg) {
+                $msg->markAsSent('limosms', $body ?? []);
+            }
+
+        } catch (\Throwable $e) {
+            Log::error('[LimoSms] sendBulkText exception: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            foreach ($messages as $msg) {
+                $msg->markAsFailed('limosms', $e->getMessage());
+            }
+        }
+    }
+
+    /**
+     * ارسال متناظر گروهی - هر شماره، یک متن مشخص (یک ریکوئست به /api/sendpeertopeersms)
+     *
+     * @param  SmsMessage[]  $messages
+     * @param  string[]      $mobileNumbers
+     * @param  string[]      $bodies
+     */
+    public function sendPeerToPeer(array $messages, array $mobileNumbers, array $bodies): void
+    {
+        if (empty($messages) || empty($mobileNumbers) || empty($bodies)) {
+            return;
+        }
+
+        if (empty($this->apiKey)) {
+            $error = 'LimoSms api_key is not configured.';
+            Log::error('[LimoSms] sendPeerToPeer: ' . $error);
+            foreach ($messages as $msg) {
+                $msg->markAsFailed('limosms', $error);
+            }
+            return;
+        }
+
+        $senderNumber = $this->sender ?: (env('LIMOSMS_SENDER') ?: env('SMS_SENDER'));
+        if (empty($senderNumber)) {
+            $error = 'LimoSms SenderNumber is missing. Please configure LIMOSMS_SENDER or SMS_SENDER.';
+            Log::error('[LimoSms] sendPeerToPeer: ' . $error);
+            foreach ($messages as $msg) {
+                $msg->markAsFailed('limosms', $error);
+            }
+            return;
+        }
+
+        $url = $this->baseUrl . '/sendpeertopeersms';
+
+        $payload = [
+            'SenderNumber'       => $senderNumber,
+            'MobileNumber'       => array_values($mobileNumbers),
+            'Message'            => array_values($bodies),
+            'SendToBlocksNumber' => true,
+        ];
+
+        try {
+            Log::info('[LimoSms] sendPeerToPeer request', [
+                'url'    => $url,
+                'count'  => count($mobileNumbers),
+                'sender' => $senderNumber,
+            ]);
+
+            $response = Http::withHeaders([
+                'ApiKey'       => $this->apiKey,
+                'Content-Type' => 'application/json',
+            ])
+                ->timeout(45)
+                ->post($url, $payload);
+
+            $body = $response->json();
+
+            Log::info('[LimoSms] sendPeerToPeer response', [
+                'status' => $response->status(),
+                'body'   => $body,
+            ]);
+
+            if (! $response->successful()) {
+                $err = 'HTTP ' . $response->status();
+                foreach ($messages as $msg) {
+                    $msg->markAsFailed('limosms', $err, ['response' => $body]);
+                }
+                return;
+            }
+
+            $isSuccess = $body['Success'] ?? $body['success'] ?? true;
+            if ($isSuccess === false) {
+                $err = $body['Message'] ?? $body['message'] ?? 'LimoSms rejected peer-to-peer request';
+                foreach ($messages as $msg) {
+                    $msg->markAsFailed('limosms', $err, ['response' => $body]);
+                }
+                return;
+            }
+
+            foreach ($messages as $msg) {
+                $msg->markAsSent('limosms', $body ?? []);
+            }
+
+        } catch (\Throwable $e) {
+            Log::error('[LimoSms] sendPeerToPeer exception: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            foreach ($messages as $msg) {
+                $msg->markAsFailed('limosms', $e->getMessage());
+            }
+        }
+    }
+
+    /**
      * ارسال پیامک پترنی از طریق LimoSms (endpoint: /api/sendpatternmessage)
      *
      * $message->template_key به عنوان OtpId استفاده می‌شود

@@ -48,6 +48,29 @@ class NullDriver implements DriverInterface
         $message->markAsSent('null', ['debug' => true]);
     }
 
+    public function sendBulkText(array $messages, string $commonBody, array $mobileNumbers): void
+    {
+        Log::info('[SMS-NULL] sendBulkText', [
+            'count'      => count($mobileNumbers),
+            'commonBody' => $commonBody,
+        ]);
+
+        foreach ($messages as $msg) {
+            $msg->markAsSent('null', ['debug' => true, 'bulk' => true]);
+        }
+    }
+
+    public function sendPeerToPeer(array $messages, array $mobileNumbers, array $bodies): void
+    {
+        Log::info('[SMS-NULL] sendPeerToPeer', [
+            'count' => count($mobileNumbers),
+        ]);
+
+        foreach ($messages as $msg) {
+            $msg->markAsSent('null', ['debug' => true, 'peer_to_peer' => true]);
+        }
+    }
+
     public function fetchBalance(): ?array
     {
         return [

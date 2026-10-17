@@ -176,6 +176,58 @@ class SmsManager implements SmsSender
     }
 
     /**
+     * ارسال گروهی پیامک با متن مشترک
+     *
+     * @param  SmsMessage[]  $messages
+     * @param  string        $commonBody
+     * @param  string[]      $mobileNumbers
+     * @param  string|null   $driverName
+     */
+    public function sendBulkText(array $messages, string $commonBody, array $mobileNumbers, ?string $driverName = null): void
+    {
+        if (empty($messages) || empty($mobileNumbers)) {
+            return;
+        }
+
+        $driverName = $driverName ?: $this->getActiveDriverName();
+        $driver     = $this->driver($driverName);
+
+        if (method_exists($driver, 'sendBulkText')) {
+            $driver->sendBulkText($messages, $commonBody, $mobileNumbers);
+        } else {
+            foreach ($messages as $sms) {
+                $driver->sendText($sms);
+            }
+        }
+    }
+
+    /**
+     * ارسال متناظر گروهی (هر شماره، یک متن مشخص)
+     *
+     * @param  SmsMessage[]  $messages
+     * @param  string[]      $mobileNumbers
+     * @param  string[]      $bodies
+     * @param  string|null   $driverName
+     */
+    public function sendPeerToPeer(array $messages, array $mobileNumbers, array $bodies, ?string $driverName = null): void
+    {
+        if (empty($messages) || empty($mobileNumbers) || empty($bodies)) {
+            return;
+        }
+
+        $driverName = $driverName ?: $this->getActiveDriverName();
+        $driver     = $this->driver($driverName);
+
+        if (method_exists($driver, 'sendPeerToPeer')) {
+            $driver->sendPeerToPeer($messages, $mobileNumbers, $bodies);
+        } else {
+            foreach ($messages as $sms) {
+                $driver->sendText($sms);
+            }
+        }
+    }
+
+    /**
      * ارسال پیامک پترنی
      */
     public function sendPattern(string $to, string $patternKey, array $params = [], array $options = []): SmsMessage

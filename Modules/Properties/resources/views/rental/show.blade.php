@@ -995,10 +995,10 @@
                                 class="w-full py-3.5 px-4 rounded-xl {{ ($config && $config->instant_booking) ? 'bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 shadow-amber-500/30 hover:shadow-amber-500/50' : 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-600/30 hover:shadow-indigo-600/50' }} text-white font-black text-sm transition-all shadow-lg flex items-center justify-center gap-2 disabled:opacity-50">
                             @if($config && $config->instant_booking)
                                 <svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clip-rule="evenodd"/></svg>
-                                <span>رزرو آنی و پرداخت آنلاین</span>
+                                <span>بررسی و رزرو آنی ⚡</span>
                             @else
-                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-                                <span>ثبت درخواست رزرو اقامتگاه</span>
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
+                                <span>ادامه فرایند رزرو (پیش‌فاکتور)</span>
                             @endif
                         </button>
 
@@ -1058,143 +1058,8 @@
             <button type="button" 
                     @click="openBookingModal()"
                     class="px-5 py-2.5 rounded-xl {{ ($config && $config->instant_booking) ? 'bg-amber-500 hover:bg-amber-600 shadow-amber-500/30' : 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-600/30' }} text-white font-black text-xs shadow-md">
-                {{ ($config && $config->instant_booking) ? 'رزرو آنی ⚡' : 'بررسی و ثبت رزرو' }}
+                {{ ($config && $config->instant_booking) ? 'رزرو آنی ⚡' : 'ادامه فرایند رزرو' }}
             </button>
-        </div>
-
-        {{-- مودال اختصاصی ثبت درخواست رزرو اقامتگاه --}}
-        <div x-cloak 
-             x-show="showBookingModal" 
-             class="fixed inset-0 z-50 overflow-y-auto" 
-             role="dialog" 
-             aria-modal="true">
-            <div class="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity" 
-                 x-show="showBookingModal"
-                 x-transition:enter="ease-out duration-300"
-                 x-transition:enter-start="opacity-0"
-                 x-transition:enter-end="opacity-100"
-                 x-transition:leave="ease-in duration-200"
-                 x-transition:leave-start="opacity-100"
-                 x-transition:leave-end="opacity-0"
-                 @click="closeBookingModal()"></div>
-
-            <div class="flex min-h-screen items-center justify-center p-4 text-center sm:p-0">
-                <div x-show="showBookingModal"
-                     x-transition:enter="ease-out duration-300"
-                     x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
-                     x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100"
-                     x-transition:leave="ease-in duration-200"
-                     x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
-                     x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
-                     class="relative transform overflow-hidden rounded-3xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 text-right shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-lg p-6 sm:p-7 space-y-6">
-
-                    {{-- هدر مودال --}}
-                    <div class="flex items-center justify-between border-b border-gray-100 dark:border-gray-800 pb-4">
-                        <div class="flex items-center gap-3">
-                            <div class="w-10 h-10 rounded-2xl {{ ($config && $config->instant_booking) ? 'bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400' : 'bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400' }} flex items-center justify-center font-bold">
-                                @if($config && $config->instant_booking)
-                                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clip-rule="evenodd"/></svg>
-                                @else
-                                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-                                @endif
-                            </div>
-                            <div>
-                                <h3 class="text-sm sm:text-base font-black text-gray-900 dark:text-white flex items-center gap-1.5">
-                                    <span>{{ ($config && $config->instant_booking) ? 'ثبت رزرو آنی اقامتگاه' : 'ثبت درخواست رزرو اقامتگاه' }}</span>
-                                    @if($config && $config->instant_booking)
-                                        <span class="px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/60 text-amber-700 dark:text-amber-300 text-[10px] font-black">رزرو قطعی آنی</span>
-                                    @endif
-                                </h3>
-                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5 line-clamp-1">{{ $property->title }}</p>
-                            </div>
-                        </div>
-
-                        <button type="button" @click="closeBookingModal()" class="w-8 h-8 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 flex items-center justify-center transition">
-                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-                        </button>
-                    </div>
-
-                    @if($config && $config->instant_booking)
-                        <div class="p-3 rounded-2xl bg-amber-50/80 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-800/40 text-amber-900 dark:text-amber-200 text-xs font-bold flex items-center gap-2">
-                            <svg class="w-4 h-4 text-amber-500 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
-                            <span>این اقامتگاه نیاز به تأیید میزبان ندارد؛ با فشردن دکمه زیر بلافاصله به درگاه پرداخت و صدور سند رزرو هدایت می‌شوید.</span>
-                        </div>
-                    @endif
-
-                    {{-- کارت خلاصه اطلاعات اقامت --}}
-                    <div class="p-4 rounded-2xl bg-gray-50 dark:bg-gray-800/50 border border-gray-200/70 dark:border-gray-700/70 space-y-2.5 text-xs font-bold font-sans">
-                        <div class="flex items-center justify-between text-gray-600 dark:text-gray-300">
-                            <span>بازه اقامت:</span>
-                            <span class="text-gray-900 dark:text-white font-black" x-text="checkIn + ' تا ' + checkOut + ' (' + nightsCount + ' شب)'"></span>
-                        </div>
-                        <div class="flex items-center justify-between text-gray-600 dark:text-gray-300">
-                            <span>تعداد مهمانان:</span>
-                            <span class="text-gray-900 dark:text-white font-black" x-text="guests + ' نفر'"></span>
-                        </div>
-                        <div class="flex items-center justify-between pt-2 border-t border-gray-200/50 dark:border-gray-700/50 text-indigo-600 dark:text-indigo-400 font-black">
-                            <span>مبلغ برآورد کل:</span>
-                            <span class="text-sm" x-text="formatNumber(grandTotal) + ' ' + currencyLabel"></span>
-                        </div>
-                    </div>
-
-                    {{-- پیام خطای رزرو --}}
-                    <div x-show="bookingErrorMessage" x-text="bookingErrorMessage" class="p-3 rounded-xl bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800 text-xs font-bold leading-relaxed"></div>
-
-                    {{-- فرم مشخصات مهمان --}}
-                    <div class="space-y-4 text-xs font-bold">
-                        <template x-if="!isClientLoggedIn">
-                            <div class="space-y-3">
-                                <div>
-                                    <label class="block text-gray-700 dark:text-gray-300 mb-1">نام و نام خانوادگی مهمان اصلی <span class="text-red-500">*</span></label>
-                                    <input type="text" x-model="guestFullName" placeholder="مثال: علی احمدی" class="w-full rounded-xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800 px-3.5 py-2.5 text-xs font-bold text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500/20 font-sans">
-                                </div>
-                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                    <div>
-                                        <label class="block text-gray-700 dark:text-gray-300 mb-1">شماره موبایل (جهت دریافت تأییدیه رزرو و پیگیری) <span class="text-red-500">*</span></label>
-                                        <input type="text" x-model="guestPhone" placeholder="۰۹۱۲۳۴۵۶۷۸۹" dir="ltr" class="w-full rounded-xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800 px-3.5 py-2.5 text-xs font-bold text-right text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500/20 font-sans">
-                                    </div>
-                                    <div>
-                                        <label class="block text-gray-700 dark:text-gray-300 mb-1">کد ملی (اختیاری)</label>
-                                        <input type="text" x-model="guestNationalCode" placeholder="۱۰ رقم کد ملی" dir="ltr" class="w-full rounded-xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800 px-3.5 py-2.5 text-xs font-bold text-right text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500/20 font-sans">
-                                    </div>
-                                </div>
-                            </div>
-                        </template>
-
-                        <template x-if="isClientLoggedIn">
-                            <div class="p-3 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200/60 dark:border-emerald-800/40 text-emerald-800 dark:text-emerald-300 text-xs font-bold flex items-center justify-between font-sans">
-                                <span>رزرو با حساب کاربری: <span x-text="guestFullName || 'مشتری'"></span></span>
-                                <span class="text-[11px] opacity-80" x-text="guestPhone"></span>
-                            </div>
-                        </template>
-
-                        <div>
-                            <label class="block text-gray-700 dark:text-gray-300 mb-1">توضیحات یا درخواست خاص از میزبان (اختیاری):</label>
-                            <textarea x-model="bookingNotes" rows="2" placeholder="اگر درخواست خاصی درباره ساعت ورود یا همراهان دارید بنویسید..." class="w-full rounded-xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800 px-3.5 py-2 text-xs font-bold text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500/20 resize-none font-sans"></textarea>
-                        </div>
-                    </div>
-
-                    {{-- دکمه‌های اقدام --}}
-                    <div class="pt-3 border-t border-gray-100 dark:border-gray-800 flex items-center gap-3">
-                        <button type="button" 
-                                @click="closeBookingModal()" 
-                                class="w-1/3 py-3 px-4 rounded-xl border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 font-bold text-xs transition">
-                            انصراف
-                        </button>
-                        <button type="button" 
-                                @click="submitBookingOrder()" 
-                                :disabled="bookingLoading"
-                                class="w-2/3 py-3 px-4 rounded-xl {{ ($config && $config->instant_booking) ? 'bg-amber-500 hover:bg-amber-600 shadow-amber-500/30' : 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-600/30' }} text-white font-black text-xs transition shadow-lg flex items-center justify-center gap-2 disabled:opacity-50">
-                            <span x-show="!bookingLoading">{{ ($config && $config->instant_booking) ? 'تأیید و پرداخت آنلاین ⚡' : 'تأیید و ارسال درخواست رزرو' }}</span>
-                            <span x-show="bookingLoading" class="flex items-center gap-2">
-                                <svg class="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg>
-                                <span>در حال ثبت...</span>
-                            </span>
-                        </button>
-                    </div>
-
-                </div>
-            </div>
         </div>
 
     </div>
@@ -1446,7 +1311,6 @@
                 },
 
                 openBookingModal() {
-                    this.bookingErrorMessage = '';
                     let cIn = this.normalizeDate(this.checkIn);
                     let cOut = this.normalizeDate(this.checkOut);
                     if (!cIn || !cOut) {
@@ -1462,87 +1326,13 @@
                         return;
                     }
 
-                    if (!this.isClientLoggedIn) {
-                        // ذخیره بازه انتخابی در session یا هدایت مستقیم به لاگین
-                        window.location.href = '{{ route("client.login") }}';
-                        return;
-                    }
+                    // هدایت مستقیم و مطمئن به سبد خرید و پیش‌فاکتور نهایی
+                    let checkoutUrl = '{{ route("properties.checkout", $property->slug ?: $property->code) }}'
+                        + '?check_in=' + encodeURIComponent(cIn)
+                        + '&check_out=' + encodeURIComponent(cOut)
+                        + '&guests=' + encodeURIComponent(this.guests);
 
-                    this.showBookingModal = true;
-                },
-
-                closeBookingModal() {
-                    this.showBookingModal = false;
-                    this.bookingErrorMessage = '';
-                },
-
-                async submitBookingOrder() {
-                    this.bookingErrorMessage = '';
-
-                    let cIn = this.normalizeDate(this.checkIn);
-                    let cOut = this.normalizeDate(this.checkOut);
-                    if (!cIn || !cOut) {
-                        this.bookingErrorMessage = 'لطفاً تاریخ ورود و خروج را مشخص نمایید.';
-                        return;
-                    }
-
-                    if (!this.isClientLoggedIn) {
-                        window.location.href = '{{ route("client.login") }}';
-                        return;
-                    }
-
-                    this.bookingLoading = true;
-
-                    try {
-                        let tokenEl = document.querySelector('meta[name="csrf-token"]');
-                        let csrfToken = tokenEl ? tokenEl.getAttribute('content') : '{{ csrf_token() }}';
-
-                        let payload = {
-                            check_in: cIn,
-                            check_out: cOut,
-                            guests_count: this.guests,
-                            guest_full_name: this.guestFullName,
-                            guest_phone: this.guestPhone,
-                            guest_national_code: this.guestNationalCode,
-                            guest_notes: this.bookingNotes
-                        };
-
-                        let response = await fetch(this.bookUrl, {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'Accept': 'application/json',
-                                'X-CSRF-TOKEN': csrfToken
-                            },
-                            body: JSON.stringify(payload)
-                        });
-
-                        let data = await response.json();
-
-                        if (response.status === 401 || data.require_login) {
-                            if (data.redirect_url) {
-                                window.location.href = data.redirect_url;
-                                return;
-                            }
-                        }
-
-                        if (!response.ok || !data.success) {
-                            this.bookingErrorMessage = data.message || 'خطا در ثبت درخواست رزرو. لطفاً مجدداً تلاش کنید.';
-                            this.bookingLoading = false;
-                            return;
-                        }
-
-                        // موفقیت‌آمیز: هدایت به صفحه جزئیات سند رزرو در پنل مشتریان
-                        if (data.redirect_url) {
-                            window.location.href = data.redirect_url;
-                        } else {
-                            window.location.reload();
-                        }
-                    } catch (err) {
-                        console.error('Booking submission error:', err);
-                        this.bookingErrorMessage = 'خطای غیرمنتظره در برقراری ارتباط با سرور. لطفاً مجدداً تلاش نمایید.';
-                        this.bookingLoading = false;
-                    }
+                    window.location.href = checkoutUrl;
                 },
 
                 submitBookingInquiry() {
