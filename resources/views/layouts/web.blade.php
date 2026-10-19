@@ -45,6 +45,10 @@
     'properties' => [
     'glow' => 'bg-blue-500/20 dark:bg-blue-500/10',
     'gradient_bg' => 'radial-gradient(circle at 50% 0%, rgba(59, 130, 246, 0.12) 0%, transparent 50%), radial-gradient(circle at 100% 0%, rgba(14, 165, 233, 0.08) 0%, transparent 50%)',
+    ],
+    'fieldservice' => [
+    'glow' => 'bg-indigo-500/20 dark:bg-indigo-500/10',
+    'gradient_bg' => 'radial-gradient(circle at 50% 0%, rgba(79, 70, 229, 0.12) 0%, transparent 50%), radial-gradient(circle at 100% 0%, rgba(6, 182, 212, 0.08) 0%, transparent 50%)',
     ]
     ];
     $activeStyle = $themeStyles[$appTheme] ?? $themeStyles['default'];

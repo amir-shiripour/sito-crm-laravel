@@ -29,6 +29,7 @@
     $servicesModule      = \App\Models\Module::where('slug', 'services')->first();
     $walletModule        = $walletModule ?? \App\Models\Module::where('slug', 'wallet')->first();
     $propertiesModule    = $propertiesModule ?? \App\Models\Module::where('slug', 'properties')->first();
+    $fieldServiceModule  = \App\Models\Module::where('slug', 'fieldservice')->first();
 
     $isDirectAdminActive = \Modules\Services\App\Http\Models\Order::isDirectAdminActive();
     $isDomainManagerActive = \Modules\Services\App\Http\Models\Order::isDomainManagerActive();
@@ -39,6 +40,15 @@
     $showRentalTab       = (isset($isPropertiesActive) && $isPropertiesActive)
                         || ($propertiesModule && $propertiesModule->installed && $propertiesModule->active)
                         || (\Nwidart\Modules\Facades\Module::has('Properties') && \Nwidart\Modules\Facades\Module::isEnabled('Properties'));
+    $showFieldServiceTab = ($fieldServiceModule && $fieldServiceModule->installed && $fieldServiceModule->active)
+                        || (\Nwidart\Modules\Facades\Module::has('FieldService') && \Nwidart\Modules\Facades\Module::isEnabled('FieldService'));
+
+    $clientBuildings = collect();
+    $clientVendorPartner = null;
+    if ($showFieldServiceTab && class_exists(\Modules\FieldService\App\Models\Building::class)) {
+        $clientBuildings = \Modules\FieldService\App\Models\Building::with(['equipments', 'slaContracts'])->where('client_id', $client->id)->get();
+        $clientVendorPartner = \Modules\FieldService\App\Models\VendorPartner::with('orders')->where('client_id', $client->id)->first();
+    }
 
     $clientRentalBookings = $clientRentalBookings ?? collect([]);
     $clientRentalStats   = $clientRentalStats ?? ['total_count' => 0, 'active_count' => 0, 'completed_count' => 0, 'total_spent' => 0];
@@ -130,7 +140,9 @@
             else if (urlParams.has('transactions_page')) defaultTab = 'transactions';
 
             const validTabs = ['general','appointments','laboratory','orders','invoices','rental_bookings','domains','directadmin','transactions','wallet'];
+            if ({{ !empty($isClientScheduleEnabled) ? 'true' : 'false' }}) validTabs.push('schedule');
             if (this.showWorkflowTab) validTabs.push('workflows');
+            if ({{ $showFieldServiceTab ? 'true' : 'false' }}) validTabs.push('fieldservice');
             if (validTabs.includes(hash)) {
                 this.activeTab = hash;
             } else if (defaultTab !== 'general') {
@@ -294,6 +306,24 @@
                         </span>
                     </button>
 
+                    @if(!empty($isClientScheduleEnabled))
+                    {{-- Tab: Weekly Schedule (برنامه زمانی هفتگی) --}}
+                    <button @click="setTab('schedule')"
+                            :class="activeTab === 'schedule' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/25' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/50'"
+                            class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 active:scale-95">
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                  d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                        برنامه زمانی هفتگی
+                        @if(isset($clientWeeklySchedule) && $clientWeeklySchedule)
+                            <span class="w-2 h-2 rounded-full bg-emerald-400 dark:bg-emerald-400" title="برنامه هفتگی تنظیم شده است"></span>
+                        @else
+                            <span class="w-1.5 h-1.5 rounded-full bg-gray-300 dark:bg-gray-600" title="تنظیم نشده"></span>
+                        @endif
+                    </button>
+                    @endif
+
                     {{-- Tab: Laboratory Orders (سفارشات لابراتوار) --}}
                     @if(\Modules\Booking\Entities\BookingSetting::isLaboratoryEnabled() && auth()->user()?->can('booking.laboratory.access'))
                     <button @click="setTab('laboratory')"
@@ -438,6 +468,24 @@
                               class="inline-flex items-center justify-center min-w-5.5 h-5 px-1.5 rounded-full text-[10px] font-black">
                             {{ isset($clientWalletTransactionsCount) ? $faNum($clientWalletTransactionsCount) : '۰' }}
                         </span>
+                    </button>
+                @endif
+
+                @if($showFieldServiceTab)
+                    {{-- Tab: Field Service & B2B Passport --}}
+                    <button @click="setTab('fieldservice')"
+                            :class="activeTab === 'fieldservice' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/25' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/50'"
+                            class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 active:scale-95">
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                        </svg>
+                        خدمات فنی و ساختمان
+                        @if($clientBuildings->count() > 0 || $clientVendorPartner)
+                            <span :class="activeTab === 'fieldservice' ? 'bg-white/20 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300'"
+                                  class="inline-flex items-center justify-center min-w-5.5 h-5 px-1.5 rounded-full text-[10px] font-black">
+                                {{ $faNum($clientBuildings->count() + ($clientVendorPartner ? 1 : 0)) }}
+                            </span>
+                        @endif
                     </button>
                 @endif
             </div>
@@ -1143,6 +1191,18 @@
                     @include('booking::partials.client-laboratory-tab', [
                         'client' => $client,
                         'clientLabOrders' => $clientLabOrders ?? collect([]),
+                        'faNum' => $faNum
+                    ])
+                </div>
+                @endif
+
+                @if(!empty($isClientScheduleEnabled))
+                {{-- ================= Weekly Schedule Tab (برنامه زمانی هفتگی) ================= --}}
+                <div x-show="activeTab === 'schedule'" x-cloak x-transition:enter="transition ease-out duration-200"
+                     x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" class="p-6 sm:p-8">
+                    @include('booking::partials.client-schedule-tab', [
+                        'client' => $client,
+                        'clientWeeklySchedule' => $clientWeeklySchedule ?? null,
                         'faNum' => $faNum
                     ])
                 </div>
@@ -2826,6 +2886,19 @@
                         'wallet' => $clientWallet ?? null,
                         'transactions' => $clientWalletTransactions ?? collect([]),
                         'currencyLabel' => $walletCurrencyLabel ?? 'تومان'
+                    ])
+                </div>
+            @endif
+
+            @if($showFieldServiceTab)
+                {{-- ================= Field Service B2B Tab ================= --}}
+                <div x-show="activeTab === 'fieldservice'" x-cloak
+                     x-transition:enter="transition ease-out duration-200"
+                     x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100">
+                    @include('fieldservice::partials.client-fieldservice-tab', [
+                        'client' => $client,
+                        'clientBuildings' => $clientBuildings,
+                        'clientVendorPartner' => $clientVendorPartner,
                     ])
                 </div>
             @endif

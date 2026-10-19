@@ -44,6 +44,20 @@ class LiveTracking extends Component
         }
     }
 
+    public function cancelOrder()
+    {
+        $order = ServiceOrder::find($this->orderId);
+        if ($order && in_array($order->status->value, ['pending', 'searching', 'dispatched'])) {
+            $order->status = \Modules\FieldService\App\Enums\OrderStatus::CANCELLED;
+            $order->save();
+
+            $this->dispatch('notify', [
+                'type' => 'info',
+                'text' => 'درخواست اعزام تکنسین لغو شد.',
+            ]);
+        }
+    }
+
     public function render()
     {
         $order = ServiceOrder::with(['client', 'technician', 'category', 'invoice.items'])

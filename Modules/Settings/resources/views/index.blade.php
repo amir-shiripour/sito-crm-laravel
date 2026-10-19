@@ -16,7 +16,7 @@
 
     // رنگ‌های پیش‌فرض هر قالب
     $themeDefaults = [
-        'default' => 'indigo', 'market' => 'orange', 'booking' => 'teal', 'properties' => 'blue'
+        'default' => 'indigo', 'market' => 'orange', 'booking' => 'teal', 'properties' => 'blue', 'fieldservice' => 'indigo'
     ];
 
     // پالت رنگ‌های قابل انتخاب (Tailwind Colors)
@@ -261,7 +261,8 @@
                                 <div>
                                     <label for="app_theme" class="{{ $labelClass }}">قالب اصلی سایت (Theme)</label>
                                     <div class="select-wrapper relative">
-                                        <select class="{{ $selectClass }} !pl-10" id="app_theme" name="app_theme">
+                                        <select class="{{ $selectClass }} !pl-10" id="app_theme" name="app_theme"
+                                                onchange="document.querySelectorAll('.theme-color-panel').forEach(p => p.classList.add('hidden')); const p = document.getElementById('panel-color-' + this.value); if(p) { p.classList.remove('hidden'); p.classList.add('block', 'animate-in', 'fade-in'); }">
                                             <option
                                                 value="default" {{ ($settings['app_theme'] ?? 'default') == 'default' ? 'selected' : '' }}>
                                                 پیش‌فرض (شرکتی/خدماتی)
@@ -277,6 +278,10 @@
                                             <option
                                                 value="properties" {{ ($settings['app_theme'] ?? '') == 'properties' ? 'selected' : '' }}>
                                                 املاک (Properties)
+                                            </option>
+                                            <option
+                                                value="fieldservice" {{ ($settings['app_theme'] ?? '') == 'fieldservice' ? 'selected' : '' }}>
+                                                خدمات میدانی و اعزام تکنسین (نصاب‌باشی)
                                             </option>
                                         </select>
                                         <div
@@ -514,7 +519,7 @@
                                                     </span>
                                                 </div>
                                                 <p class="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
-                                                    با فعال‌سازی این گزینه، متاتگ‌های <code class="px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 font-mono text-[11px]">noindex, nofollow</code> و هدر امنیتی <code class="px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 font-mono text-[11px]">X-Robots-Tag</code> در تمامی صفحات پنل مدیریت، پنل کاربری و فرم‌های ورود اعمال می‌شود تا اطلاعات محرمانه در گوگل ایندکس نشود.
+                                                    با فعال‌سازی این گزینه، متاتگ‌های <code class="px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 font-sans text-[11px]" dir="ltr">noindex, nofollow</code> و هدر امنیتی <code class="px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 font-sans text-[11px]" dir="ltr">X-Robots-Tag</code> در تمامی صفحات پنل مدیریت، پنل کاربری و فرم‌های ورود اعمال می‌شود تا اطلاعات محرمانه در گوگل ایندکس نشود.
                                                 </p>
                                             </div>
                                             <div class="shrink-0 pt-0.5">
@@ -566,7 +571,7 @@
                                     </svg>
                                     <p class="text-xs text-gray-600 dark:text-gray-300 leading-relaxed">
                                         <span class="font-bold text-gray-800 dark:text-gray-100">نکته فنی سئو:</span>
-                                        دستورات عدم ایندکس با استفاده از استاندارد رسمی روبات‌ها (<code class="font-mono text-[11px] text-indigo-600 dark:text-indigo-300">meta robots: noindex, nofollow, noarchive, nosnippet</code>) و هدر شبکه <code class="font-mono text-[11px] text-indigo-600 dark:text-indigo-300">X-Robots-Tag</code> در لایوت‌ها و لایه سرور اعمال می‌شوند تا اطمینان حاصل شود که موتورهای جستجو صفحات مشخص‌شده را ایندکس نمی‌کنند.
+                                        دستورات عدم ایندکس با استفاده از استاندارد رسمی روبات‌ها (<code class="font-sans text-[11px] text-indigo-600 dark:text-indigo-300" dir="ltr">meta robots: noindex, nofollow, noarchive, nosnippet</code>) و هدر شبکه <code class="font-sans text-[11px] text-indigo-600 dark:text-indigo-300" dir="ltr">X-Robots-Tag</code> در لایوت‌ها و لایه سرور اعمال می‌شوند تا اطمینان حاصل شود که موتورهای جستجو صفحات مشخص‌شده را ایندکس نمی‌کنند.
                                     </p>
                                 </div>
                             </div>

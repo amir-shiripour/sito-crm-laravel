@@ -128,6 +128,38 @@
             </div>
         </div>
 
+        {{-- Section 3: Frontend & Landing Page Settings --}}
+        <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl border border-gray-200/70 dark:border-gray-700/60 shadow-sm space-y-4">
+            <div class="flex items-center gap-2 border-b border-gray-100 dark:border-gray-700/60 pb-3">
+                <span class="text-xl">🖥️</span>
+                <h2 class="text-sm font-black text-gray-900 dark:text-white font-sans">تنظیمات فرانت و لندینگ پیج نصاب‌باشی</h2>
+            </div>
+
+            <p class="text-xs text-gray-500 dark:text-gray-400 leading-relaxed font-sans">
+                هنگامی که در «تنظیمات کلی سیستم» قالب اصلی بر روی «نصاب‌باشی» تنظیم شود، موارد زیر در بالای سایت و بخش لندینگ پیج عمومی اعمال خواهند شد.
+            </p>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div class="sm:col-span-2">
+                    <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1 font-sans">متن نوار اطلاع‌رسانی بالای هدر (Announcement Bar)</label>
+                    <input type="text" wire:model="landing_announcement_text" placeholder="مثال: پوشش سراسری اعزام تکنسین در کلیه شهرستان‌های مازندران" class="w-full h-9 px-3 rounded-xl bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-xs text-gray-800 dark:text-gray-200 font-sans">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1 font-sans">شماره تماس فوری پشتیبانی و مشاوره ۲۴ ساعته</label>
+                    <input type="text" wire:model="landing_support_phone" placeholder="۰۱۱-۳۲۲۲۴۴۵۵" class="w-full h-9 px-3 rounded-xl bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-xs text-gray-800 dark:text-gray-200 font-sans" dir="ltr">
+                </div>
+
+                <div class="flex items-center gap-3 pt-5">
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" wire:model="landing_show_tech_count" class="sr-only peer">
+                        <div class="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:right-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600"></div>
+                        <span class="mr-3 text-xs font-bold text-gray-700 dark:text-gray-300 font-sans">نمایش زنده تعداد تکنسین‌های آنلاین در رادار لندینگ</span>
+                    </label>
+                </div>
+            </div>
+        </div>
+
         {{-- Submit button --}}
         <div class="flex justify-end">
             <button type="submit" class="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs sm:text-sm rounded-xl shadow-md shadow-indigo-600/20 transition">

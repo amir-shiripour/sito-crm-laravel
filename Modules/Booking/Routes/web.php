@@ -188,6 +188,9 @@ Route::prefix('user')->name('user.')->middleware(['web', 'auth'])->group(functio
         Route::get('appointments/wizard/clients', [UserAppointmentController::class, 'wizardClients'])
             ->name('appointments.wizard.clients');
 
+        Route::get('appointments/wizard/client-schedule', [UserAppointmentController::class, 'wizardClientSchedule'])
+            ->name('appointments.wizard.client-schedule');
+
         Route::get('appointments/wizard/waitlist', [UserAppointmentController::class, 'wizardWaitlist'])
             ->name('appointments.wizard.waitlist');
 

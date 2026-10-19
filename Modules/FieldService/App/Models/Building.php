@@ -62,4 +62,22 @@ class Building extends Model
     {
         return $this->slaContracts()->where('status', 'active')->latest()->first();
     }
+
+    public function getBuildingTypeLabelAttribute(): string
+    {
+        return match ($this->building_type) {
+            'residential'    => 'مجتمع مسکونی',
+            'commercial'     => 'مجتمع تجاری / پاساژ',
+            'administrative' => 'اداری / سازمانی',
+            'industrial'     => 'کارخانه / کارگاه صنعتی',
+            'hospital'       => 'بیمارستان / درمانی',
+            'complex'        => 'برج / شهرک ساختمانی',
+            default          => 'ساختمان',
+        };
+    }
+
+    public function getCriticalEquipmentsCountAttribute(): int
+    {
+        return $this->equipments()->where('health_status', 'critical')->count();
+    }
 }

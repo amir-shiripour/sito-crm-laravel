@@ -87,7 +87,8 @@ class ThemeComposer
             'default' => 'indigo',
             'market' => 'orange',
             'booking' => 'teal',
-            'properties' => 'blue'
+            'properties' => 'blue',
+            'fieldservice' => 'indigo'
         ];
 
         // 💡 دریافت مقادیر رنگی سفارشی که مدیر از پنل تنظیم کرده است (حالا به صورت آرایه برای هر قالب جداست)

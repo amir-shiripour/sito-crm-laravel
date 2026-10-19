@@ -55,6 +55,7 @@ class BookingSetting extends Model
             'appointment_statuses',
             'queue_enabled',
             'queue_max_size',
+            'client_schedule_enabled',
             'monitoring_quick_status_enabled',
             'monitoring_refresh_interval_seconds',
             'laboratory_enabled',
@@ -68,6 +69,7 @@ class BookingSetting extends Model
             'global_online_booking_enabled' => 'boolean',
             'queue_enabled' => 'boolean',
             'queue_max_size' => 'integer',
+            'client_schedule_enabled' => 'boolean',
             'monitoring_quick_status_enabled' => 'boolean',
             'monitoring_refresh_interval_seconds' => 'integer',
             'laboratory_enabled' => 'boolean',
@@ -568,6 +570,7 @@ class BookingSetting extends Model
             'show_provider_info' => true,
             'monitoring_quick_status_enabled' => false,
             'monitoring_refresh_interval_seconds' => 15,
+            'client_schedule_enabled' => true,
             'appointment_statuses' => static::defaultAppointmentStatuses(),
         ]);
     }
@@ -587,6 +590,12 @@ class BookingSetting extends Model
     {
         $setting = static::current();
         return (bool) ($setting->queue_enabled ?? false);
+    }
+
+    public static function isClientScheduleEnabled(): bool
+    {
+        $setting = static::current();
+        return (bool) ($setting->client_schedule_enabled ?? true);
     }
 
     public static function getValue(string $key, $default = null)

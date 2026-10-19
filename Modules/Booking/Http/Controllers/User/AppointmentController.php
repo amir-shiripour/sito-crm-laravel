@@ -1686,6 +1686,102 @@ class AppointmentController extends Controller
         return response()->json(['data' => $clients]);
     }
 
+    public function wizardClientSchedule(Request $request)
+    {
+        $this->ensureAppointmentCreateAccess($request, BookingSetting::current());
+
+        $clientId = (int) $request->query('client_id');
+        if (!$clientId) {
+            return response()->json(['success' => false, 'message' => 'شناسه مشتری نامعتبر است.'], 400);
+        }
+
+        $isFeatureEnabled = BookingSetting::isClientScheduleEnabled();
+        if (!$isFeatureEnabled || !class_exists(\Modules\Booking\Entities\BookingClientSchedule::class)) {
+            return response()->json([
+                'success' => true,
+                'enabled' => false,
+                'has_schedule' => false,
+                'data' => null
+            ]);
+        }
+
+        $user = $request->user();
+        $client = Client::query()->visibleForUser($user)->find($clientId);
+        if (!$client) {
+            return response()->json(['success' => false, 'message' => 'مشتری یافت نشد.'], 404);
+        }
+
+        $schedule = \Modules\Booking\Entities\BookingClientSchedule::where('client_id', $client->id)->first();
+        $defaultWeek = \Modules\Booking\Entities\BookingClientSchedule::getDefaultWeekSchedule();
+
+        if ($schedule) {
+            $weeklySchedule = $schedule->weekly_schedule ?? $defaultWeek;
+            $inAbsence = $schedule->isInTemporaryAbsence();
+            $absenceStart = $schedule->temp_absence_start ? $schedule->temp_absence_start->toDateString() : null;
+            $absenceEnd = $schedule->temp_absence_end ? $schedule->temp_absence_end->toDateString() : null;
+            $absenceStartJalali = $schedule->temp_absence_start ? \Morilog\Jalali\Jalalian::fromDateTime($schedule->temp_absence_start)->format('Y/m/d') : null;
+            $absenceEndJalali = $schedule->temp_absence_end ? \Morilog\Jalali\Jalalian::fromDateTime($schedule->temp_absence_end)->format('Y/m/d') : null;
+
+            return response()->json([
+                'success' => true,
+                'enabled' => true,
+                'has_schedule' => true,
+                'has_custom_schedule' => true,
+                'data' => [
+                    'has_schedule' => true,
+                    'has_custom_schedule' => true,
+                    'client_id' => $client->id,
+                    'client_name' => $client->full_name,
+                    'summary_text' => $schedule->summary_text,
+                    'temp_absence_active' => (bool) $schedule->temp_absence_active,
+                    'in_temporary_absence' => $inAbsence,
+                    'temporary_absence' => [
+                        'active' => (bool) $schedule->temp_absence_active,
+                        'start' => $absenceStart,
+                        'end' => $absenceEnd,
+                        'start_jalali' => $absenceStartJalali,
+                        'end_jalali' => $absenceEndJalali,
+                        'reason' => $schedule->temp_absence_reason,
+                    ],
+                    'general_preferences' => [
+                        'preferred_shift' => $schedule->preferred_shift,
+                        'preferred_shift_label' => \Modules\Booking\Entities\BookingClientSchedule::SHIFTS[$schedule->preferred_shift] ?? null,
+                        'preferred_days' => (array) ($schedule->preferred_days ?? []),
+                        'max_appointments_per_week' => $schedule->max_appointments_per_week,
+                        'general_notes' => $schedule->general_notes,
+                    ],
+                    'weekly_schedule' => $weeklySchedule,
+                ]
+            ]);
+        }
+
+        // Fallback to default week availability (Saturday-Thursday free, Friday busy)
+        return response()->json([
+            'success' => true,
+            'enabled' => true,
+            'has_schedule' => true,
+            'has_custom_schedule' => false,
+            'data' => [
+                'has_schedule' => true,
+                'has_custom_schedule' => false,
+                'client_id' => $client->id,
+                'client_name' => $client->full_name,
+                'summary_text' => 'پیش‌فرض: شنبه تا پنجشنبه آزاد کامل (جمعه تعطیل)',
+                'temp_absence_active' => false,
+                'in_temporary_absence' => false,
+                'temporary_absence' => null,
+                'general_preferences' => [
+                    'preferred_shift' => 'any',
+                    'preferred_shift_label' => 'هر زمانی / منعطف',
+                    'preferred_days' => [],
+                    'max_appointments_per_week' => null,
+                    'general_notes' => null,
+                ],
+                'weekly_schedule' => $defaultWeek,
+            ]
+        ]);
+    }
+
     public function wizardWaitlist(Request $request)
     {
         $this->ensureAppointmentCreateAccess($request, BookingSetting::current());

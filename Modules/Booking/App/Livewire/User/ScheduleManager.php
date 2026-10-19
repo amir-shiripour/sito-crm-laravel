@@ -11,6 +11,7 @@ use Modules\Booking\Entities\Appointment;
 use Modules\Booking\Entities\BookingService;
 use Modules\Booking\Entities\BookingSetting;
 use Modules\Booking\Entities\BookingServiceProvider;
+use Modules\Booking\Entities\BookingClientSchedule;
 use Modules\Booking\Services\BookingEngine;
 use Modules\Booking\Services\AppointmentService;
 use Modules\Clients\Entities\Client;
@@ -42,6 +43,7 @@ class ScheduleManager extends Component
     public string $modalStatus = Appointment::STATUS_CONFIRMED;
     public string $modalNotes = '';
     public string $modalError = '';
+    public bool $modalClientScheduleExpanded = false;
 
     // Dynamic Service Form State for Quick Booking Modal
     public ?array $modalFormSchema = null;
@@ -604,6 +606,7 @@ class ScheduleManager extends Component
         $this->modalWaitlistId = null;
         $this->modalClientTab = 'search';
         $this->modalClientSearch = '';
+        $this->modalClientScheduleExpanded = false;
         $this->modalStartTime = $startTimeStr;
         $this->modalStatus = $this->resolveDefaultModalStatus($this->modalServiceId);
         $this->loadModalServiceForm($this->modalServiceId);
@@ -666,7 +669,249 @@ class ScheduleManager extends Component
         $this->modalClientId = null;
         $this->modalWaitlistId = null;
         $this->modalClientTab = 'search';
+        $this->modalClientScheduleExpanded = false;
         $this->loadModalServiceForm($this->modalServiceId);
+    }
+
+    public function toggleModalClientScheduleExpanded(): void
+    {
+        $this->modalClientScheduleExpanded = !$this->modalClientScheduleExpanded;
+    }
+
+    public function getIsClientScheduleEnabledProperty(): bool
+    {
+        return class_exists(BookingClientSchedule::class)
+            && BookingSetting::isClientScheduleEnabled();
+    }
+
+    public function getModalClientScheduleProperty(): ?array
+    {
+        if (!$this->isClientScheduleEnabled || !$this->modalClientId) {
+            return null;
+        }
+
+        $schedule = BookingClientSchedule::where('client_id', $this->modalClientId)->first();
+        $defaultWeek = BookingClientSchedule::getDefaultWeekSchedule();
+
+        $localDate = $this->getGregorianCarbon() ?? now();
+        // 0=Saturday (شنبه), 1=Sunday (یکشنبه), ..., 6=Friday (جمعه)
+        $dayIndex = ($localDate->dayOfWeek + 1) % 7;
+
+        $hasCustomSchedule = false;
+        $weeklySchedule = $defaultWeek;
+        $preferredDays = [];
+        $preferredShift = 'any';
+        $tempAbsenceActive = false;
+        $tempAbsenceStart = null;
+        $tempAbsenceEnd = null;
+        $tempAbsenceStartJalali = null;
+        $tempAbsenceEndJalali = null;
+        $tempAbsenceReason = null;
+        $generalNotes = null;
+
+        if ($schedule) {
+            $hasCustomSchedule = true;
+            $weeklySchedule = $schedule->weekly_schedule ?? $defaultWeek;
+            $preferredDays = $schedule->preferred_days ?? [];
+            $preferredShift = $schedule->preferred_shift ?? 'any';
+            $tempAbsenceActive = (bool) $schedule->temp_absence_active;
+            $tempAbsenceStart = $schedule->temp_absence_start ? $schedule->temp_absence_start->format('Y-m-d') : null;
+            $tempAbsenceEnd = $schedule->temp_absence_end ? $schedule->temp_absence_end->format('Y-m-d') : null;
+            $tempAbsenceStartJalali = $schedule->temp_absence_start ? Jalalian::fromCarbon(Carbon::parse($schedule->temp_absence_start))->format('Y/m/d') : null;
+            $tempAbsenceEndJalali = $schedule->temp_absence_end ? Jalalian::fromCarbon(Carbon::parse($schedule->temp_absence_end))->format('Y/m/d') : null;
+            $tempAbsenceReason = $schedule->temp_absence_reason;
+            $generalNotes = $schedule->general_notes;
+        }
+
+        // Check if client is absent on this specific date
+        $isAbsentOnSelectedDate = false;
+        if ($tempAbsenceActive && ($tempAbsenceStart || $tempAbsenceEnd)) {
+            $currentDateStr = $localDate->format('Y-m-d');
+            if ($tempAbsenceStart && $tempAbsenceEnd) {
+                $isAbsentOnSelectedDate = ($currentDateStr >= $tempAbsenceStart && $currentDateStr <= $tempAbsenceEnd);
+            } elseif ($tempAbsenceStart) {
+                $isAbsentOnSelectedDate = ($currentDateStr >= $tempAbsenceStart);
+            } elseif ($tempAbsenceEnd) {
+                $isAbsentOnSelectedDate = ($currentDateStr <= $tempAbsenceEnd);
+            }
+        }
+
+        $daySchedule = $weeklySchedule[$dayIndex] ?? [
+            'day_name' => BookingClientSchedule::DAYS[$dayIndex]['name'] ?? 'روز',
+            'status' => 'all_day_free',
+            'slots' => [],
+            'note' => ''
+        ];
+
+        $isPreferredDay = in_array($dayIndex, $preferredDays);
+
+        return [
+            'has_custom_schedule' => $hasCustomSchedule,
+            'summary_text' => $schedule ? $schedule->summary_text : 'شنبه تا پنجشنبه آزاد کامل (جمعه تعطیل)',
+            'weekly_schedule' => $weeklySchedule,
+            'preferred_days' => $preferredDays,
+            'preferred_shift' => $preferredShift,
+            'temp_absence_active' => $tempAbsenceActive,
+            'temp_absence_start' => $tempAbsenceStart,
+            'temp_absence_end' => $tempAbsenceEnd,
+            'temp_absence_start_jalali' => $tempAbsenceStartJalali,
+            'temp_absence_end_jalali' => $tempAbsenceEndJalali,
+            'temp_absence_reason' => $tempAbsenceReason,
+            'is_absent_on_selected_date' => $isAbsentOnSelectedDate,
+            'day_index' => $dayIndex,
+            'day_schedule' => $daySchedule,
+            'is_preferred_day' => $isPreferredDay,
+            'general_notes' => $generalNotes,
+        ];
+    }
+
+    public function isSlotPreferredForModalClient(string $timeStr): bool
+    {
+        $sched = $this->modalClientSchedule;
+        if (!$sched || $sched['is_absent_on_selected_date']) {
+            return false;
+        }
+
+        $daySched = $sched['day_schedule'] ?? null;
+        if (!$daySched || empty($daySched['slots'])) {
+            if (in_array($daySched['status'] ?? '', ['all_day_free', 'free']) && $sched['is_preferred_day']) {
+                return true;
+            }
+            return false;
+        }
+
+        foreach ($daySched['slots'] as $s) {
+            $start = $s['start'] ?? '';
+            $end = $s['end'] ?? '';
+            $type = $s['type'] ?? 'available';
+            if ($timeStr >= $start && $timeStr <= $end && $type === 'preferred') {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public function isSlotOutsideModalClientAvailability(string $timeStr): bool
+    {
+        $sched = $this->modalClientSchedule;
+        if (!$sched) {
+            return false;
+        }
+
+        if ($sched['is_absent_on_selected_date']) {
+            return true;
+        }
+
+        $daySched = $sched['day_schedule'] ?? null;
+        if (!$daySched) {
+            return false;
+        }
+
+        $status = $daySched['status'] ?? 'all_day_free';
+        if (in_array($status, ['all_day_busy', 'busy'])) {
+            return true;
+        }
+
+        if (in_array($status, ['custom', 'specific_hours'])) {
+            $slots = $daySched['slots'] ?? [];
+            if (empty($slots)) {
+                return true;
+            }
+
+            $matchedAnySlot = false;
+            foreach ($slots as $s) {
+                $start = $s['start'] ?? '';
+                $end = $s['end'] ?? '';
+                $type = $s['type'] ?? 'available';
+
+                if ($timeStr >= $start && $timeStr <= $end) {
+                    $matchedAnySlot = true;
+                    if ($type === 'busy') {
+                        return true;
+                    }
+                }
+            }
+
+            if (!$matchedAnySlot) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public function getModalTimeConflictStatusProperty(): ?array
+    {
+        $sched = $this->modalClientSchedule;
+        if (!$sched || empty($this->modalStartTime)) {
+            return null;
+        }
+
+        if ($sched['is_absent_on_selected_date']) {
+            return [
+                'type' => 'danger',
+                'message' => 'هشدار: مراجع در این تاریخ در دوره مرخصی/عدم حضور موقت ثبت شده است.',
+            ];
+        }
+
+        $daySched = $sched['day_schedule'] ?? null;
+        if (!$daySched) {
+            return null;
+        }
+
+        $status = $daySched['status'] ?? 'all_day_free';
+        if (in_array($status, ['all_day_busy', 'busy'])) {
+            return [
+                'type' => 'danger',
+                'message' => 'طبق برنامه هفتگی، مراجع در این روز امکان حضور ندارد.',
+            ];
+        }
+
+        if (in_array($status, ['custom', 'specific_hours'])) {
+            $slots = $daySched['slots'] ?? [];
+            if (!empty($slots)) {
+                $start = $this->modalStartTime;
+                $matchedFree = false;
+                $matchedBusy = false;
+
+                foreach ($slots as $s) {
+                    $sStart = $s['start'] ?? '';
+                    $sEnd = $s['end'] ?? '';
+                    $sType = $s['type'] ?? 'available';
+
+                    if ($start >= $sStart && $start <= $sEnd) {
+                        if ($sType === 'busy') {
+                            $matchedBusy = true;
+                        } else {
+                            $matchedFree = true;
+                        }
+                    }
+                }
+
+                if ($matchedBusy) {
+                    return [
+                        'type' => 'danger',
+                        'message' => 'ساعت انتخابی در بازه عدم امکان/مشغله مراجع قرار دارد.',
+                    ];
+                }
+
+                if (!$matchedFree) {
+                    return [
+                        'type' => 'warning',
+                        'message' => 'ساعت انتخابی خارج از ساعات در دسترس ثبت‌شده برای مراجع است.',
+                    ];
+                }
+            }
+        }
+
+        return null;
+    }
+
+    public function applyClientSuggestedSlot(string $start, string $end): void
+    {
+        $this->modalStartTime = $start;
+        $this->modalEndTime = $end;
     }
 
     public function setModalClientTab(string $tab): void
@@ -1174,6 +1419,7 @@ class ScheduleManager extends Component
         $this->modalWaitlistId = null;
         $this->modalClientId = null;
         $this->modalClientTab = 'search';
+        $this->modalClientScheduleExpanded = false;
         $this->modalFormSchema = null;
         $this->modalFormType = null;
         $this->modalFormName = null;

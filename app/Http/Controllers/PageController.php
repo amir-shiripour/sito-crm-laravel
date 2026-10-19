@@ -145,6 +145,27 @@ class PageController extends Controller
             }
         }
 
+        // [Architecture Note]: واکشی دیتای واقعی برای تم نصاب‌باشی (FieldService)
+        if ($appThemeLower === 'fieldservice') {
+            if (class_exists(\Modules\FieldService\App\Models\Category::class) && \Illuminate\Support\Facades\Schema::hasTable('field_service_categories')) {
+                $data['fsCategories'] = \Modules\FieldService\App\Models\Category::where('is_active', true)->get();
+                $data['activeTechCount'] = \Modules\FieldService\App\Models\Technician::where('is_online', true)->count();
+                $data['baseTravelFee'] = (float) config('fieldservice.default_travel_fee', 60000);
+                $data['defaultWarrantyDays'] = (int) config('fieldservice.default_warranty_days', 90);
+                $data['completedOrdersCount'] = \Modules\FieldService\App\Models\ServiceOrder::where('status', \Modules\FieldService\App\Enums\OrderStatus::COMPLETED)->count();
+                $data['landingAnnouncement'] = \Modules\FieldService\App\Models\FieldServiceSetting::get('landing_announcement_text', 'پوشش سراسری اعزام تکنسین در کلیه شهرستان‌های مازندران');
+                $data['supportPhone'] = \Modules\FieldService\App\Models\FieldServiceSetting::get('landing_support_phone', '۰۱۱-۳۲۲۲۴۴۵۵');
+            } else {
+                $data['fsCategories'] = collect();
+                $data['activeTechCount'] = 0;
+                $data['baseTravelFee'] = 60000;
+                $data['defaultWarrantyDays'] = 90;
+                $data['completedOrdersCount'] = 0;
+                $data['landingAnnouncement'] = 'پوشش سراسری اعزام تکنسین در کلیه شهرستان‌های مازندران';
+                $data['supportPhone'] = '۰۱۱-۳۲۲۲۴۴۵۵';
+            }
+        }
+
         if ($siteDisplayType === 'theme') {
             if ($appThemeLower === 'booking') {
                 return redirect()->route('booking.public.index');
@@ -155,6 +176,8 @@ class PageController extends Controller
                     return redirect()->route('market.public.index');
                 }
                 return $this->redirectToDashboard();
+            } elseif ($appThemeLower === 'fieldservice') {
+                return redirect()->route('fieldservice.customer');
             } else {
                 // شرکتی و سایر مواردی که هنوز تعریف نشده‌اند
                 return $this->redirectToDashboard();

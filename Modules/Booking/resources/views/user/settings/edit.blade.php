@@ -600,6 +600,58 @@
                         </div>
                     </div>
 
+                    {{-- کارت: برنامه زمانی هفتگی بیمار (Client Weekly Schedule) --}}
+                    <div class="{{ $cardClass }}" x-data="{ clientScheduleEnabled: {{ old('client_schedule_enabled', $settings->client_schedule_enabled ?? true) ? 'true' : 'false' }} }">
+                        <div class="{{ $headerClass }}">
+                            <div class="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+                                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                </svg>
+                            </div>
+                            <div>
+                                <h2 class="text-base font-bold text-gray-900 dark:text-white">برنامه زمانی هفتگی مراجعین</h2>
+                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">پیکربندی مدیریت ساعات حضور و اوقات آزاد بیماران</p>
+                            </div>
+                        </div>
+                        <div class="p-6 space-y-5">
+                            <div>
+                                <label class="flex items-center justify-between cursor-pointer select-none">
+                                    <div>
+                                        <span class="text-sm font-bold text-gray-900 dark:text-white block">فعال‌سازی برنامه زمانی در پرونده مراجعین</span>
+                                        <span class="text-xs text-gray-500 dark:text-gray-400 block mt-0.5">امکان تنظیم اوقات آزاد و ثبت غیبت یا مرخصی در پرونده بیمار</span>
+                                    </div>
+                                    <input type="hidden" name="client_schedule_enabled" value="0">
+                                    <div class="relative inline-flex items-center shrink-0 mr-3">
+                                        <input type="checkbox"
+                                               name="client_schedule_enabled"
+                                               value="1"
+                                               x-model="clientScheduleEnabled"
+                                               @checked(old('client_schedule_enabled', $settings->client_schedule_enabled ?? true))
+                                               class="sr-only peer">
+                                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-indigo-600"></div>
+                                    </div>
+                                </label>
+                                <p class="text-[11px] text-gray-400 dark:text-gray-500 mt-2 leading-relaxed">
+                                    با فعال بودن این قابلیت، تب «برنامه زمانی هفتگی» در جزئیات پرونده هر مراجعه‌کننده فعال شده و پرسنل پذیرش می‌توانند ساعات آزاد، برنامه‌های شغلی یا عدم حضور بیمار را مشاهده و مدیریت نمایند.
+                                </p>
+                            </div>
+
+                            <div x-show="clientScheduleEnabled" x-collapse>
+                                <div class="pt-4 border-t border-gray-100 dark:border-gray-700">
+                                    <div class="p-3.5 rounded-xl bg-indigo-50/60 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/40 text-xs text-indigo-900 dark:text-indigo-200 flex items-start gap-2.5">
+                                        <svg class="w-5 h-5 text-indigo-600 dark:text-indigo-400 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                        <div class="leading-relaxed">
+                                            <span class="font-bold block mb-0.5">وضعیت پیش‌فرض مراجعین:</span>
+                                            روزهای شنبه تا پنج‌شنبه به عنوان زمان آزاد کامل و روز جمعه به عنوان تعطیل در نظر گرفته می‌شود، مگر اینکه برای بیمار برنامه اختصاصی یا بازه عدم حضور موقت ثبت شود.
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     {{-- کارت: تنظیمات مانیتورینگ زنده (Clinic Live Monitoring) --}}
                     <div class="{{ $cardClass }}" x-data="{ quickStatusEnabled: {{ old('monitoring_quick_status_enabled', $settings->monitoring_quick_status_enabled ?? false) ? 'true' : 'false' }} }">
                         <div class="{{ $headerClass }}">

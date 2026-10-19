@@ -29,6 +29,8 @@
         [x-cloak] { display: none !important; }
     </style>
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    @stack('styles')
+    @stack('head')
 
     @if(function_exists('is_panel_indexing_blocked') && is_panel_indexing_blocked())
     <meta name="robots" content="noindex, nofollow, noarchive, nosnippet">
@@ -210,8 +212,8 @@
                     </button>
                 </div>
 
-                {{-- By setting sidebarCollapsed to false, we ensure the mobile menu is always expanded --}}
-                <div x-data="{ sidebarCollapsed: false }" class="flex flex-col h-full">
+                {{-- Mobile menu container inherits dashboardLayout --}}
+                <div class="flex flex-col h-full">
                     @include('user.partials.sidebar')
                 </div>
             </div>
@@ -266,7 +268,7 @@
     function dashboardLayout() {
         return {
             mobileOpen: false,
-            sidebarCollapsed: localStorage.getItem('sidebarCollapsed') === 'true',
+            sidebarCollapsed: window.innerWidth >= 1024 ? (localStorage.getItem('sidebarCollapsed') === 'true') : false,
             sidebarFilter: '',
             openedMenuKey: null,
             activeClosedKeys: {},
@@ -275,8 +277,14 @@
             themeIcon: 'system',
 
             init() {
+                window.dashboardInstance = this;
                 this.applyTheme();
                 this.$watch('theme', () => this.applyTheme());
+                this.$watch('mobileOpen', (isOpen) => {
+                    if (isOpen && window.innerWidth < 1024) {
+                        this.sidebarCollapsed = false;
+                    }
+                });
                 window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
                     if (this.theme === 'system') this.applyTheme();
                 });
@@ -289,11 +297,13 @@
 
             toggleSidebar() {
                 this.sidebarCollapsed = !this.sidebarCollapsed;
-                localStorage.setItem('sidebarCollapsed', this.sidebarCollapsed);
+                if (window.innerWidth >= 1024) {
+                    localStorage.setItem('sidebarCollapsed', this.sidebarCollapsed);
+                }
             },
 
             isMenuOpen(key, isGroupActive = false) {
-                if (this.sidebarCollapsed) return false;
+                if (this.sidebarCollapsed && window.innerWidth >= 1024) return false;
                 if (this.sidebarFilter && this.sidebarFilter.trim().length > 0) return true;
                 if (this.closedAll) return false;
                 if (isGroupActive) {
@@ -302,7 +312,7 @@
                 return this.openedMenuKey === key;
             },
             toggleMenu(key, isGroupActive = false) {
-                if (this.sidebarCollapsed) return;
+                if (this.sidebarCollapsed && window.innerWidth >= 1024) return;
                 this.closedAll = false;
                 if (isGroupActive) {
                     this.activeClosedKeys[key] = !this.activeClosedKeys[key];
@@ -349,6 +359,53 @@
                 this.applyTheme();
             },
         }
+    }
+
+    // Global bridge & fallback definitions to prevent any ReferenceErrors
+    window.dashboardLayout = dashboardLayout;
+    window.isMenuOpen = function(key, isGroupActive = false) {
+        if (window.dashboardInstance && typeof window.dashboardInstance.isMenuOpen === 'function') {
+            return window.dashboardInstance.isMenuOpen(key, isGroupActive);
+        }
+        return false;
+    };
+    window.toggleMenu = function(key, isGroupActive = false) {
+        if (window.dashboardInstance && typeof window.dashboardInstance.toggleMenu === 'function') {
+            return window.dashboardInstance.toggleMenu(key, isGroupActive);
+        }
+    };
+    window.closeAllMenus = function() {
+        if (window.dashboardInstance && typeof window.dashboardInstance.closeAllMenus === 'function') {
+            return window.dashboardInstance.closeAllMenus();
+        }
+    };
+    if (!('sidebarFilter' in window)) {
+        Object.defineProperty(window, 'sidebarFilter', {
+            get() { return window.dashboardInstance ? (window.dashboardInstance.sidebarFilter || '') : ''; },
+            set(v) { if (window.dashboardInstance) window.dashboardInstance.sidebarFilter = v; },
+            configurable: true
+        });
+    }
+    if (!('sidebarCollapsed' in window)) {
+        Object.defineProperty(window, 'sidebarCollapsed', {
+            get() { return window.dashboardInstance ? !!window.dashboardInstance.sidebarCollapsed : false; },
+            set(v) { if (window.dashboardInstance) window.dashboardInstance.sidebarCollapsed = v; },
+            configurable: true
+        });
+    }
+    if (!('twoStepActive' in window)) {
+        Object.defineProperty(window, 'twoStepActive', {
+            get() { return window.dashboardInstance ? !!window.dashboardInstance.twoStepActive : false; },
+            set(v) { if (window.dashboardInstance) window.dashboardInstance.twoStepActive = v; },
+            configurable: true
+        });
+    }
+    if (!('activeDrilldown' in window)) {
+        Object.defineProperty(window, 'activeDrilldown', {
+            get() { return window.dashboardInstance ? window.dashboardInstance.activeDrilldown : null; },
+            set(v) { if (window.dashboardInstance) window.dashboardInstance.activeDrilldown = v; },
+            configurable: true
+        });
     }
 </script>
 @livewireScripts

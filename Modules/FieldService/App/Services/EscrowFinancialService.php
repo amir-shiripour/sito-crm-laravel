@@ -21,6 +21,49 @@ class EscrowFinancialService
     }
 
     /**
+     * Generate or update a digital invoice for a service order.
+     */
+    public function generateInvoice(ServiceOrder $order, array $items = [], float $travelFee = 60000, float $discount = 0): ServiceInvoice
+    {
+        return DB::transaction(function () use ($order, $items, $travelFee, $discount) {
+            $invoice = ServiceInvoice::firstOrNew(['order_id' => $order->id]);
+            if (! $invoice->exists) {
+                $invoice->invoice_number = ServiceInvoice::generateInvoiceNumber();
+                $invoice->payment_status = PaymentStatus::PENDING;
+            }
+
+            $invoice->travel_fee = $travelFee;
+            $invoice->discount_amount = $discount;
+            $invoice->platform_commission_percent = (float) config('fieldservice.platform_commission_percent', 15.0);
+            $invoice->save();
+
+            if (!empty($items)) {
+                // Remove existing items if regenerating
+                $invoice->items()->delete();
+
+                foreach ($items as $itemData) {
+                    $qty = $itemData['quantity'] ?? 1;
+                    $unitPrice = $itemData['unit_price'] ?? 0;
+                    $invoice->items()->create([
+                        'item_type'          => $itemData['type'] ?? 'labor',
+                        'title'              => $itemData['title'] ?? 'شرح خدمات / قطعه',
+                        'unit_price'         => $unitPrice,
+                        'quantity'           => $qty,
+                        'total_price'        => $unitPrice * $qty,
+                        'warranty_months'    => $itemData['warranty_months'] ?? 3,
+                        'part_serial_number' => $itemData['part_serial_number'] ?? null,
+                    ]);
+                }
+            }
+
+            $invoice->load('items');
+            $invoice->recalculate();
+
+            return $invoice;
+        });
+    }
+
+    /**
      * Mark invoice as paid into Escrow (حساب امانی).
      */
     public function lockInEscrow(ServiceInvoice $invoice, string $method = 'online', ?string $trackingNumber = null): bool

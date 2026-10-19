@@ -115,6 +115,44 @@
         </div>
     </div>
 
+    {{-- Patient Weekly Availability Quick-Glance Card --}}
+    @if((isset($isClientScheduleEnabled) && $isClientScheduleEnabled) || (!isset($isClientScheduleEnabled) && \Modules\Booking\Entities\BookingSetting::isClientScheduleEnabled()))
+    @php
+        $clientSchedule = $client->weeklySchedule;
+    @endphp
+    <div class="p-4 rounded-2xl bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-200/70 dark:border-indigo-900/40 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-2xs">
+        <div class="flex items-center gap-3">
+            <span class="p-2.5 rounded-xl bg-indigo-600 text-white dark:bg-indigo-500/20 dark:text-indigo-300 border border-indigo-500/30 shrink-0">
+                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+            </span>
+            <div>
+                <div class="flex items-center gap-2">
+                    <span class="text-xs font-bold text-slate-800 dark:text-slate-100">وضعیت دسترسی و برنامه هفتگی بیمار:</span>
+                    @if($clientSchedule && $clientSchedule->isInTemporaryAbsence())
+                        <span class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300">
+                            عدم حضور موقت
+                        </span>
+                    @endif
+                </div>
+                <p class="text-xs text-slate-600 dark:text-slate-300 mt-0.5 font-medium">
+                    {{ $clientSchedule ? $clientSchedule->summary_text : 'پیش‌فرض: شنبه تا پنجشنبه آزاد کامل (جمعه تعطیل) — بدون محدودیت اختصاصی' }}
+                </p>
+            </div>
+        </div>
+
+        <button type="button"
+                @click="setTab('schedule')"
+                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-indigo-700 dark:text-indigo-300 bg-white dark:bg-indigo-900/40 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 border border-indigo-200 dark:border-indigo-700/60 transition-all cursor-pointer shrink-0 self-end sm:self-center active:scale-95">
+            <span>مدیریت و مشاهده برنامه کامل</span>
+            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+            </svg>
+        </button>
+    </div>
+    @endif
+
     {{-- Stats Cards (KPIs) --}}
     <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
         {{-- Total --}}

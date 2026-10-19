@@ -211,4 +211,14 @@ class Client extends Authenticatable
     {
         return $this->hasMany(\Modules\Properties\Entities\PropertyRentalBooking::class, 'client_id');
     }
+
+    public function weeklySchedule()
+    {
+        $class = '\Modules\Booking\Entities\BookingClientSchedule';
+        if (class_exists($class) && \Illuminate\Support\Facades\Schema::hasTable('booking_client_schedules')) {
+            return $this->hasOne($class, 'client_id');
+        }
+        return $this->hasOne(Client::class, 'id', 'id')->whereRaw('1 = 0');
+    }
 }
+

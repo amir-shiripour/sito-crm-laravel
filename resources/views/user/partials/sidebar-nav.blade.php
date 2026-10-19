@@ -129,13 +129,13 @@
     },
     shouldShowGroup(key) {
         if (!this.twoStepActive) return true;
-        if (sidebarFilter && sidebarFilter.trim().length > 0) return true;
+        if (this.sidebarFilter && this.sidebarFilter.trim().length > 0) return true;
         if (!this.activeDrilldown) return true;
         return this.activeDrilldown === key;
     },
     isStep1() {
         if (!this.twoStepActive) return true;
-        if (sidebarFilter && sidebarFilter.trim().length > 0) return true;
+        if (this.sidebarFilter && this.sidebarFilter.trim().length > 0) return true;
         return !this.activeDrilldown;
     }
 }"
@@ -305,23 +305,27 @@ class="space-y-1.5">
                         flyoutTop: 0,
                         subItems: {{ $itemsJson }},
                         matches() {
-                            if (!sidebarFilter) return true;
-                            const q = sidebarFilter.toLowerCase();
+                            const filter = (this.sidebarFilter || window.sidebarFilter || '');
+                            if (!filter) return true;
+                            const q = filter.toLowerCase();
                             if ('{{ addslashes($groupTitle) }}'.toLowerCase().includes(q)) return true;
                             return this.subItems.some(title => title && title.toLowerCase().includes(q));
                         },
                         isOpen() {
-                            return isMenuOpen('{{ $block['module'] }}', {{ $isGroupActive ? 'true' : 'false' }});
+                            return typeof this.isMenuOpen === 'function' ? this.isMenuOpen('{{ $block['module'] }}', {{ $isGroupActive ? 'true' : 'false' }}) : window.isMenuOpen('{{ $block['module'] }}', {{ $isGroupActive ? 'true' : 'false' }});
                         },
                         isSubmenuOpen() {
-                            if (!twoStepActive) {
+                            const twoStep = (this.twoStepActive !== undefined ? this.twoStepActive : window.twoStepActive);
+                            if (!twoStep) {
                                 return this.isOpen();
                             }
-                            if (sidebarFilter && sidebarFilter.trim().length > 0) return true;
-                            return activeDrilldown === '{{ $block['module'] }}';
+                            const filter = (this.sidebarFilter || window.sidebarFilter || '');
+                            if (filter && filter.trim().length > 0) return true;
+                            const drilldown = (this.activeDrilldown !== undefined ? this.activeDrilldown : window.activeDrilldown);
+                            return drilldown === '{{ $block['module'] }}';
                         },
                         openFlyout(el) {
-                            if (!sidebarCollapsed) return;
+                            if (!this.sidebarCollapsed && !window.sidebarCollapsed) return;
                             const rect = el.getBoundingClientRect();
                             const windowHeight = window.innerHeight;
                             const flyoutHeight = Math.min(420, (this.subItems.length * 44) + 60);
@@ -488,23 +492,27 @@ class="space-y-1.5">
                         flyoutTop: 0,
                         subItems: {{ $settingsJson }},
                         matches() {
-                            if (!sidebarFilter) return true;
-                            const q = sidebarFilter.toLowerCase();
+                            const filter = (this.sidebarFilter || window.sidebarFilter || '');
+                            if (!filter) return true;
+                            const q = filter.toLowerCase();
                             if ('{{ addslashes($settingsTitle) }}'.toLowerCase().includes(q)) return true;
                             return this.subItems.some(title => title && title.toLowerCase().includes(q));
                         },
                         isOpen() {
-                            return isMenuOpen('settings', {{ $isSettingsActive ? 'true' : 'false' }});
+                            return typeof this.isMenuOpen === 'function' ? this.isMenuOpen('settings', {{ $isSettingsActive ? 'true' : 'false' }}) : window.isMenuOpen('settings', {{ $isSettingsActive ? 'true' : 'false' }});
                         },
                         isSubmenuOpen() {
-                            if (!twoStepActive) {
+                            const twoStep = (this.twoStepActive !== undefined ? this.twoStepActive : window.twoStepActive);
+                            if (!twoStep) {
                                 return this.isOpen();
                             }
-                            if (sidebarFilter && sidebarFilter.trim().length > 0) return true;
-                            return activeDrilldown === 'settings';
+                            const filter = (this.sidebarFilter || window.sidebarFilter || '');
+                            if (filter && filter.trim().length > 0) return true;
+                            const drilldown = (this.activeDrilldown !== undefined ? this.activeDrilldown : window.activeDrilldown);
+                            return drilldown === 'settings';
                         },
                         openFlyout(el) {
-                            if (!sidebarCollapsed) return;
+                            if (!this.sidebarCollapsed && !window.sidebarCollapsed) return;
                             const rect = el.getBoundingClientRect();
                             const windowHeight = window.innerHeight;
                             const flyoutHeight = 360;
@@ -611,8 +619,9 @@ class="space-y-1.5">
                             <div x-data="{
                                     catTitles: {{ $catTitlesJson }},
                                     hasCatMatches() {
-                                        if (!sidebarFilter) return true;
-                                        const q = sidebarFilter.toLowerCase();
+                                        const filter = (this.sidebarFilter || window.sidebarFilter || '');
+                                        if (!filter) return true;
+                                        const q = filter.toLowerCase();
                                         if ('{{ addslashes($categoryTitle) }}'.toLowerCase().includes(q)) return true;
                                         if ('{{ addslashes($settingsTitle) }}'.toLowerCase().includes(q)) return true;
                                         return this.catTitles.some(t => t && t.toLowerCase().includes(q));
@@ -804,23 +813,27 @@ class="space-y-1.5">
                     flyoutTop: 0,
                     subItems: {{ $clientsItemsJson }},
                     matches() {
-                        if (!sidebarFilter) return true;
-                        const q = sidebarFilter.toLowerCase();
+                        const filter = (this.sidebarFilter || window.sidebarFilter || '');
+                        if (!filter) return true;
+                        const q = filter.toLowerCase();
                         if ('{{ addslashes($clientsTitle) }}'.toLowerCase().includes(q)) return true;
                         return this.subItems.some(title => title && title.toLowerCase().includes(q));
                     },
                     isOpen() {
-                        return isMenuOpen('clients', {{ $isClientsActive ? 'true' : 'false' }});
+                        return typeof this.isMenuOpen === 'function' ? this.isMenuOpen('clients', {{ $isClientsActive ? 'true' : 'false' }}) : window.isMenuOpen('clients', {{ $isClientsActive ? 'true' : 'false' }});
                     },
                     isSubmenuOpen() {
-                        if (!twoStepActive) {
+                        const twoStep = (this.twoStepActive !== undefined ? this.twoStepActive : window.twoStepActive);
+                        if (!twoStep) {
                             return this.isOpen();
                         }
-                        if (sidebarFilter && sidebarFilter.trim().length > 0) return true;
-                        return activeDrilldown === 'clients';
+                        const filter = (this.sidebarFilter || window.sidebarFilter || '');
+                        if (filter && filter.trim().length > 0) return true;
+                        const drilldown = (this.activeDrilldown !== undefined ? this.activeDrilldown : window.activeDrilldown);
+                        return drilldown === 'clients';
                     },
                     openFlyout(el) {
-                        if (!sidebarCollapsed) return;
+                        if (!this.sidebarCollapsed && !window.sidebarCollapsed) return;
                         const rect = el.getBoundingClientRect();
                         const windowHeight = window.innerHeight;
                         const flyoutHeight = Math.min(420, (this.subItems.length * 44) + 60);
@@ -1065,23 +1078,27 @@ class="space-y-1.5">
                     flyoutTop: 0,
                     subItems: {{ $itemsJson }},
                     matches() {
-                        if (!sidebarFilter) return true;
-                        const q = sidebarFilter.toLowerCase();
+                        const filter = (this.sidebarFilter || window.sidebarFilter || '');
+                        if (!filter) return true;
+                        const q = filter.toLowerCase();
                         if ('{{ addslashes($groupTitle) }}'.toLowerCase().includes(q)) return true;
                         return this.subItems.some(title => title && title.toLowerCase().includes(q));
                     },
                     isOpen() {
-                        return isMenuOpen('{{ $groupModule }}', {{ $isGroupActive ? 'true' : 'false' }});
+                        return typeof this.isMenuOpen === 'function' ? this.isMenuOpen('{{ $groupModule }}', {{ $isGroupActive ? 'true' : 'false' }}) : window.isMenuOpen('{{ $groupModule }}', {{ $isGroupActive ? 'true' : 'false' }});
                     },
                     isSubmenuOpen() {
-                        if (!twoStepActive) {
+                        const twoStep = (this.twoStepActive !== undefined ? this.twoStepActive : window.twoStepActive);
+                        if (!twoStep) {
                             return this.isOpen();
                         }
-                        if (sidebarFilter && sidebarFilter.trim().length > 0) return true;
-                        return activeDrilldown === '{{ $groupModule }}';
+                        const filter = (this.sidebarFilter || window.sidebarFilter || '');
+                        if (filter && filter.trim().length > 0) return true;
+                        const drilldown = (this.activeDrilldown !== undefined ? this.activeDrilldown : window.activeDrilldown);
+                        return drilldown === '{{ $groupModule }}';
                     },
                     openFlyout(el) {
-                        if (!sidebarCollapsed) return;
+                        if (!this.sidebarCollapsed && !window.sidebarCollapsed) return;
                         const rect = el.getBoundingClientRect();
                         const windowHeight = window.innerHeight;
                         const flyoutHeight = Math.min(420, (this.subItems.length * 44) + 60);
@@ -1251,23 +1268,27 @@ class="space-y-1.5">
                     flyoutTop: 0,
                     subItems: {{ $settingsJson }},
                     matches() {
-                        if (!sidebarFilter) return true;
-                        const q = sidebarFilter.toLowerCase();
+                        const filter = (this.sidebarFilter || window.sidebarFilter || '');
+                        if (!filter) return true;
+                        const q = filter.toLowerCase();
                         if ('{{ addslashes($settingsTitle) }}'.toLowerCase().includes(q)) return true;
                         return this.subItems.some(title => title && title.toLowerCase().includes(q));
                     },
                     isOpen() {
-                        return isMenuOpen('settings', {{ $isSettingsActive ? 'true' : 'false' }});
+                        return typeof this.isMenuOpen === 'function' ? this.isMenuOpen('settings', {{ $isSettingsActive ? 'true' : 'false' }}) : window.isMenuOpen('settings', {{ $isSettingsActive ? 'true' : 'false' }});
                     },
                     isSubmenuOpen() {
-                        if (!twoStepActive) {
+                        const twoStep = (this.twoStepActive !== undefined ? this.twoStepActive : window.twoStepActive);
+                        if (!twoStep) {
                             return this.isOpen();
                         }
-                        if (sidebarFilter && sidebarFilter.trim().length > 0) return true;
-                        return activeDrilldown === 'settings';
+                        const filter = (this.sidebarFilter || window.sidebarFilter || '');
+                        if (filter && filter.trim().length > 0) return true;
+                        const drilldown = (this.activeDrilldown !== undefined ? this.activeDrilldown : window.activeDrilldown);
+                        return drilldown === 'settings';
                     },
                     openFlyout(el) {
-                        if (!sidebarCollapsed) return;
+                        if (!this.sidebarCollapsed && !window.sidebarCollapsed) return;
                         const rect = el.getBoundingClientRect();
                         const windowHeight = window.innerHeight;
                         const flyoutHeight = 360;
@@ -1374,8 +1395,9 @@ class="space-y-1.5">
                         <div x-data="{
                                 catTitles: {{ $catTitlesJson }},
                                 hasCatMatches() {
-                                    if (!sidebarFilter) return true;
-                                    const q = sidebarFilter.toLowerCase();
+                                    const filter = (this.sidebarFilter || window.sidebarFilter || '');
+                                    if (!filter) return true;
+                                    const q = filter.toLowerCase();
                                     if ('{{ addslashes($categoryTitle) }}'.toLowerCase().includes(q)) return true;
                                     if ('{{ addslashes($settingsTitle) }}'.toLowerCase().includes(q)) return true;
                                     return this.catTitles.some(t => t && t.toLowerCase().includes(q));
