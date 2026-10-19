@@ -22,7 +22,11 @@ class DashboardController extends Controller
         $user = auth()->user();
 
         // هدایت خودکار به میزکار میزبانی: صرفاً در صورت فعال بودن در تنظیمات املاک و زمانی که کاربر تنها نقش میزبان دارد (کاربران چندنقشی محدود نمی‌شوند)
-        $redirectHostToDashboard = class_exists(\Modules\Properties\Entities\PropertySetting::class)
+        $isPropertiesActive = class_exists(\Nwidart\Modules\Facades\Module::class)
+            && \Nwidart\Modules\Facades\Module::isEnabled('Properties')
+            && \Illuminate\Support\Facades\Schema::hasTable('property_settings');
+
+        $redirectHostToDashboard = $isPropertiesActive
             ? (bool) \Modules\Properties\Entities\PropertySetting::get('rental_redirect_host_to_dashboard', 1)
             : false;
 

@@ -205,6 +205,7 @@ class SettingsController extends Controller
             'show_provider_info' => ['nullable'],
             'queue_enabled' => ['nullable'],
             'queue_max_size' => ['nullable', 'integer', 'min:1', 'max:100000'],
+            'client_schedule_enabled' => ['nullable'],
             'monitoring_quick_status_enabled' => ['nullable'],
             'monitoring_refresh_interval_seconds' => ['nullable', 'integer', 'min:5', 'max:3600'],
             'laboratory_enabled' => ['nullable'],
@@ -214,6 +215,7 @@ class SettingsController extends Controller
         $generalData['global_online_booking_enabled'] = (bool) $generalData['global_online_booking_enabled'];
         $generalData['queue_enabled'] = $request->boolean('queue_enabled');
         $generalData['queue_max_size'] = $request->filled('queue_max_size') ? (int) $request->input('queue_max_size') : null;
+        $generalData['client_schedule_enabled'] = $request->boolean('client_schedule_enabled');
         $generalData['allow_role_service_creation'] = (bool) $generalData['allow_role_service_creation'];
         $generalData['allow_appointment_entry_exit_times'] = (bool) $generalData['allow_appointment_entry_exit_times'];
         $generalData['allow_manual_time_override'] = (bool) $generalData['allow_manual_time_override'];

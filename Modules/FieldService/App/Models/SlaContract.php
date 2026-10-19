@@ -38,4 +38,24 @@ class SlaContract extends Model
     {
         return $this->belongsTo(Building::class, 'building_id');
     }
+
+    public function getTierLabelAttribute(): string
+    {
+        return match ($this->tier) {
+            'gold_sla' => 'قرارداد طلایی (پاسخ اضطراری ۲ ساعته)',
+            'silver'   => 'قرارداد نقره‌ای (پاسخ اضطراری ۴ ساعته)',
+            'bronze'   => 'قرارداد برنزی (پاسخ اضطراری ۱۲ ساعته)',
+            default    => 'قرارداد استاندارد',
+        };
+    }
+
+    public function getTierBadgeClassAttribute(): string
+    {
+        return match ($this->tier) {
+            'gold_sla' => 'bg-amber-100 text-amber-900 dark:bg-amber-500/20 dark:text-amber-300 border border-amber-300 dark:border-amber-500/40',
+            'silver'   => 'bg-slate-100 text-slate-800 dark:bg-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-600',
+            'bronze'   => 'bg-orange-100 text-orange-900 dark:bg-orange-500/20 dark:text-orange-300 border border-orange-300 dark:border-orange-500/40',
+            default    => 'bg-indigo-100 text-indigo-900 dark:bg-indigo-500/20 dark:text-indigo-300 border border-indigo-300 dark:border-indigo-500/40',
+        };
+    }
 }

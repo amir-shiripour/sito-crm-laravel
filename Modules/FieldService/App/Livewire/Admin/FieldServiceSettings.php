@@ -19,9 +19,14 @@ class FieldServiceSettings extends Component
 
     // Financial & Operations
     public float $default_commission_percent = 15.0;
-    public float $base_travel_fee = 600000;
+    public float $base_travel_fee = 60000;
     public int $dispatch_timeout_seconds = 45;
     public int $default_warranty_days = 90;
+
+    // Frontend & Landing Settings
+    public string $landing_announcement_text = 'پوشش سراسری اعزام تکنسین در کلیه شهرستان‌های مازندران';
+    public string $landing_support_phone = '۰۱۱-۳۲۲۲۴۴۵۵';
+    public bool $landing_show_tech_count = true;
 
     public function mount()
     {
@@ -35,9 +40,13 @@ class FieldServiceSettings extends Component
         $this->map_default_zoom           = (int) FieldServiceSetting::get('map_default_zoom', 13);
 
         $this->default_commission_percent = (float) FieldServiceSetting::get('default_commission_percent', 15.0);
-        $this->base_travel_fee            = (float) FieldServiceSetting::get('base_travel_fee', 600000);
+        $this->base_travel_fee            = (float) FieldServiceSetting::get('base_travel_fee', 60000);
         $this->dispatch_timeout_seconds   = (int) FieldServiceSetting::get('dispatch_timeout_seconds', 45);
         $this->default_warranty_days      = (int) FieldServiceSetting::get('default_warranty_days', 90);
+
+        $this->landing_announcement_text  = FieldServiceSetting::get('landing_announcement_text', 'پوشش سراسری اعزام تکنسین در کلیه شهرستان‌های مازندران');
+        $this->landing_support_phone      = FieldServiceSetting::get('landing_support_phone', '۰۱۱-۳۲۲۲۴۴۵۵');
+        $this->landing_show_tech_count    = (bool) FieldServiceSetting::get('landing_show_tech_count', true);
     }
 
     public function saveSettings()
@@ -55,6 +64,10 @@ class FieldServiceSettings extends Component
         FieldServiceSetting::set('base_travel_fee', $this->base_travel_fee, 'financial');
         FieldServiceSetting::set('dispatch_timeout_seconds', $this->dispatch_timeout_seconds, 'dispatch');
         FieldServiceSetting::set('default_warranty_days', $this->default_warranty_days, 'financial');
+
+        FieldServiceSetting::set('landing_announcement_text', $this->landing_announcement_text, 'frontend');
+        FieldServiceSetting::set('landing_support_phone', $this->landing_support_phone, 'frontend');
+        FieldServiceSetting::set('landing_show_tech_count', $this->landing_show_tech_count, 'frontend');
 
         $this->dispatch('notify', [
             'type' => 'success',

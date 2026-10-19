@@ -1523,6 +1523,155 @@
                                             تغییر {{ $clientLabel }}
                                         </button>
                                     </div>
+
+                                    {{-- Client Availability & Absence Notice (اگر ویژگی فعال باشد) --}}
+                                    @php
+                                        $clientSched = $this->modalClientSchedule;
+                                    @endphp
+                                    @if ($this->isClientScheduleEnabled && !empty($clientSched))
+                                        <div class="space-y-2.5 pt-1">
+                                            {{-- Absence Warning Banner (اگر مراجع در این تاریخ در دوره مرخصی/عدم حضور باشد) --}}
+                                            @if ($clientSched['is_absent_on_selected_date'])
+                                                <div class="px-4 py-2.5 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 flex items-center justify-between gap-3 text-sm">
+                                                    <div class="flex items-center gap-2 min-w-0">
+                                                        <svg class="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                                                        </svg>
+                                                        <span class="font-bold text-rose-900 dark:text-rose-200 shrink-0">عدم حضور موقت مراجع:</span>
+                                                        <span class="text-rose-700 dark:text-rose-300 font-medium truncate">
+                                                            از {{ $clientSched['temp_absence_start_jalali'] ?? $clientSched['temp_absence_start'] }} تا {{ $clientSched['temp_absence_end_jalali'] ?? $clientSched['temp_absence_end'] }}
+                                                            @if(!empty($clientSched['temp_absence_reason']))
+                                                                ({{ $clientSched['temp_absence_reason'] }})
+                                                            @endif
+                                                        </span>
+                                                    </div>
+                                                    <span class="text-xs text-rose-500 dark:text-rose-400 shrink-0 hidden sm:inline">توصیه به انتخاب روز دیگر</span>
+                                                </div>
+                                            @endif
+
+                                            {{-- Compact Day Availability Bar --}}
+                                            @php
+                                                $dayStatus = $clientSched['day_schedule']['status'] ?? 'all_day_free';
+                                                $daySlots = $clientSched['day_schedule']['slots'] ?? [];
+                                            @endphp
+                                            <div class="px-4 py-3 bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 rounded-2xl flex items-center justify-between gap-3 flex-wrap text-sm shadow-2xs">
+                                                <div class="flex items-center gap-2.5 flex-wrap min-w-0">
+                                                    <span class="font-bold text-slate-800 dark:text-slate-100">
+                                                        {{ $clientSched['day_schedule']['day_name'] ?? 'روز' }} ({{ $selectedDateJalali }})
+                                                    </span>
+                                                    <span class="text-slate-300 dark:text-slate-600">|</span>
+
+                                                    {{-- Status Badge --}}
+                                                    @if (in_array($dayStatus, ['all_day_free', 'free']))
+                                                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 text-xs font-medium">
+                                                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                                            <span>تمام‌وقت آزاد</span>
+                                                        </span>
+                                                    @elseif (in_array($dayStatus, ['all_day_busy', 'busy']))
+                                                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800 text-xs font-medium">
+                                                            <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+                                                            <span>عدم امکان پذیرش</span>
+                                                        </span>
+                                                    @elseif (in_array($dayStatus, ['custom', 'specific_hours']))
+                                                        <div class="flex items-center gap-2 flex-wrap">
+                                                            <span class="text-slate-500 dark:text-slate-400 text-xs font-semibold">ساعات آزاد:</span>
+                                                            @foreach ($daySlots as $s)
+                                                                @php
+                                                                    $sType = $s['type'] ?? 'available';
+                                                                @endphp
+                                                                <span class="px-2.5 py-1 rounded-lg border text-xs font-medium
+                                                                    {{ $sType === 'preferred' ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800' :
+                                                                       ($sType === 'busy' ? 'bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-800' :
+                                                                       ($sType === 'conditional' ? 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800' :
+                                                                        'bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-600')) }}">
+                                                                    <span>{{ $s['start'] ?? '' }} تا {{ $s['end'] ?? '' }}</span>
+                                                                    @if ($sType === 'preferred') <span class="text-[11px] text-emerald-600 dark:text-emerald-400 font-normal mr-1">(ترجیحی)</span> @endif
+                                                                    @if ($sType === 'busy') <span class="text-[11px] text-rose-500 font-normal mr-1">(مشغول)</span> @endif
+                                                                </span>
+                                                            @endforeach
+                                                        </div>
+                                                    @endif
+
+                                                    @if ($clientSched['is_preferred_day'])
+                                                        <span class="px-2.5 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 text-xs font-medium">
+                                                            روز ترجیحی مراجع
+                                                        </span>
+                                                    @endif
+                                                </div>
+
+                                                <div class="flex items-center gap-3">
+                                                    @if (!empty($clientSched['preferred_shift']) && $clientSched['preferred_shift'] !== 'any')
+                                                        <span class="text-xs text-slate-500 dark:text-slate-400">
+                                                            شیفت: <strong class="text-slate-700 dark:text-slate-200 font-bold">
+                                                                {{ $clientSched['preferred_shift'] === 'morning' ? 'صبح' : ($clientSched['preferred_shift'] === 'evening' ? 'عصر' : ($clientSched['preferred_shift'] === 'night' ? 'شب' : 'شناور')) }}
+                                                            </strong>
+                                                        </span>
+                                                    @endif
+
+                                                    {{-- Button to expand 7-day mini schedule table --}}
+                                                    <button type="button" wire:click="toggleModalClientScheduleExpanded"
+                                                            class="text-xs text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 font-bold px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 transition-colors flex items-center gap-1 cursor-pointer">
+                                                        <span>{{ $modalClientScheduleExpanded ? 'بستن برنامه' : 'برنامه هفتگی' }}</span>
+                                                        <svg class="w-3.5 h-3.5 transition-transform duration-200 {{ $modalClientScheduleExpanded ? 'rotate-180' : '' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                                                        </svg>
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            {{-- Expanded 7-day mini schedule --}}
+                                            @if ($modalClientScheduleExpanded)
+                                                <div class="p-3.5 bg-slate-50/80 dark:bg-slate-900/60 rounded-2xl border border-slate-200 dark:border-slate-700/80 space-y-3 animate-in fade-in duration-200">
+                                                    <div class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-2">
+                                                        @foreach (($clientSched['weekly_schedule'] ?? []) as $wIdx => $wDay)
+                                                            @php
+                                                                $wStatus = $wDay['status'] ?? 'all_day_free';
+                                                                $isPrefDay = in_array($wIdx, $clientSched['preferred_days'] ?? []);
+                                                                $isCurrDay = ($wIdx === ($clientSched['day_index'] ?? null));
+                                                            @endphp
+                                                            <div class="p-2.5 rounded-xl border text-center transition-all
+                                                                {{ $isCurrDay ? 'ring-2 ring-indigo-500 border-indigo-500 shadow-xs' : '' }}
+                                                                {{ in_array($wStatus, ['all_day_free', 'free']) ? 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700' :
+                                                                   (in_array($wStatus, ['all_day_busy', 'busy']) ? 'bg-slate-100/60 dark:bg-slate-800/40 border-slate-200 dark:border-slate-700/50 opacity-70' :
+                                                                    'bg-amber-50/50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800/50') }}">
+                                                                <div class="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center justify-center gap-1">
+                                                                    <span>{{ $wDay['day_name'] ?? '' }}</span>
+                                                                    @if ($isPrefDay)
+                                                                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500" title="روز ترجیحی مراجع"></span>
+                                                                    @endif
+                                                                </div>
+                                                                <div class="mt-1 text-xs font-medium
+                                                                    {{ in_array($wStatus, ['all_day_free', 'free']) ? 'text-emerald-700 dark:text-emerald-400' :
+                                                                       (in_array($wStatus, ['all_day_busy', 'busy']) ? 'text-slate-500 dark:text-slate-400' :
+                                                                        'text-amber-700 dark:text-amber-400') }}">
+                                                                    @if (in_array($wStatus, ['all_day_free', 'free']))
+                                                                        <span>آزاد</span>
+                                                                    @elseif (in_array($wStatus, ['all_day_busy', 'busy']))
+                                                                        <span>عدم امکان</span>
+                                                                    @else
+                                                                        <div class="space-y-0.5">
+                                                                            @foreach (($wDay['slots'] ?? []) as $sl)
+                                                                                <div class="text-[11px] text-slate-600 dark:text-slate-300 font-medium">
+                                                                                    {{ $sl['start'] ?? '' }} تا {{ $sl['end'] ?? '' }}
+                                                                                </div>
+                                                                            @endforeach
+                                                                        </div>
+                                                                    @endif
+                                                                </div>
+                                                            </div>
+                                                        @endforeach
+                                                    </div>
+
+                                                    @if (!empty($clientSched['general_notes']))
+                                                        <div class="text-xs text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-800 rounded-xl p-2.5 border border-slate-200 dark:border-slate-700 flex items-start gap-1.5">
+                                                            <span class="font-bold text-slate-700 dark:text-slate-200 shrink-0">یادداشت کلی:</span>
+                                                            <span>{{ $clientSched['general_notes'] }}</span>
+                                                        </div>
+                                                    @endif
+                                                </div>
+                                            @endif
+                                        </div>
+                                    @endif
                                 @else
                                     {{-- 2 or 3-Way Mode Switcher --}}
                                     <div class="grid {{ $isQueueEnabled ? 'grid-cols-3' : 'grid-cols-2' }} gap-1.5 p-1.5 bg-gray-100 dark:bg-gray-900/80 rounded-2xl border border-gray-200 dark:border-gray-700/80 text-xs font-bold">
@@ -1753,6 +1902,39 @@
                                         </div>
                                     </div>
 
+                                    {{-- Quick-fill client suggested slots --}}
+                                    @if (!empty($clientSched) && in_array($clientSched['day_schedule']['status'] ?? '', ['custom', 'specific_hours']) && !empty($clientSched['day_schedule']['slots']))
+                                        <div class="mt-2 flex items-center gap-2 flex-wrap text-xs">
+                                            <span class="text-slate-500 dark:text-slate-400 text-xs font-semibold">ساعات پیشنهادی مراجع:</span>
+                                            @foreach ($clientSched['day_schedule']['slots'] as $sSlot)
+                                                @if (($sSlot['type'] ?? 'available') !== 'busy')
+                                                    <button type="button"
+                                                            wire:click="applyClientSuggestedSlot('{{ $sSlot['start'] }}', '{{ $sSlot['end'] }}')"
+                                                            class="px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors cursor-pointer bg-slate-100 hover:bg-indigo-50 dark:bg-slate-800 dark:hover:bg-indigo-950/40 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:border-indigo-300 dark:hover:border-indigo-700"
+                                                            title="درج خودکار ساعت {{ $sSlot['start'] }} تا {{ $sSlot['end'] }}">
+                                                        <span>{{ $sSlot['start'] }} تا {{ $sSlot['end'] }}</span>
+                                                        @if (($sSlot['type'] ?? '') === 'preferred')
+                                                            <span class="text-[11px] text-emerald-600 dark:text-emerald-400 font-normal mr-1">(ترجیحی)</span>
+                                                        @endif
+                                                    </button>
+                                                @endif
+                                            @endforeach
+                                        </div>
+                                    @endif
+
+                                    {{-- Time Conflict Warning --}}
+                                    @if ($this->isClientScheduleEnabled && !empty($clientSched))
+                                        @php
+                                            $timeConflict = $this->modalTimeConflictStatus;
+                                        @endphp
+                                        @if ($timeConflict)
+                                            <div class="mt-2 text-xs font-semibold {{ $timeConflict['type'] === 'danger' ? 'text-rose-600 dark:text-rose-400' : 'text-amber-600 dark:text-amber-400' }} flex items-center gap-1.5">
+                                                <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                                                <span>{{ $timeConflict['message'] }}</span>
+                                            </div>
+                                        @endif
+                                    @endif
+
                                     {{-- Quick Available Free Slot Chips (Minimal, clean, and horizontal-scrollable) --}}
                                     @php
                                         $freeSlots = $this->availableModalSlots;
@@ -1772,10 +1954,23 @@
                                             </div>
                                             <div class="flex items-center gap-1.5 overflow-x-auto pb-1 custom-scrollbar text-xs">
                                                 @foreach (array_slice($freeSlots, 0, 12) as $fSlot)
+                                                    @php
+                                                        $isSlotPref = $this->isClientScheduleEnabled && !empty($clientSched) && $this->isSlotPreferredForModalClient($fSlot);
+                                                        $isSlotOutside = $this->isClientScheduleEnabled && !empty($clientSched) && $this->isSlotOutsideModalClientAvailability($fSlot);
+                                                    @endphp
                                                     <button type="button"
                                                             wire:click="setModalTimeSlot('{{ $fSlot }}')"
-                                                            class="px-2.5 py-1 rounded-lg text-xs font-black transition-all cursor-pointer shrink-0 border {{ $modalStartTime === $fSlot ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs' : 'bg-gray-100 hover:bg-gray-200 dark:bg-gray-700/70 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-600' }}">
-                                                        {{ $fSlot }}
+                                                            class="px-2.5 py-1 rounded-lg text-xs font-black transition-all cursor-pointer shrink-0 border
+                                                            {{ $modalStartTime === $fSlot ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs' :
+                                                               ($isSlotPref ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700 hover:border-emerald-400' :
+                                                               ($isSlotOutside ? 'bg-amber-50/50 dark:bg-amber-950/20 text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-800/60 opacity-80' :
+                                                                'bg-gray-100 hover:bg-gray-200 dark:bg-gray-700/70 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-600')) }}">
+                                                        <span>{{ $fSlot }}</span>
+                                                        @if ($isSlotPref)
+                                                            <span class="text-[10px] text-emerald-600 dark:text-emerald-400 font-normal mr-0.5">• ترجیحی</span>
+                                                        @elseif ($isSlotOutside)
+                                                            <span class="text-[10px] text-amber-600 dark:text-amber-400 font-normal mr-0.5">• خارج از برنامه</span>
+                                                        @endif
                                                     </button>
                                                 @endforeach
                                             </div>

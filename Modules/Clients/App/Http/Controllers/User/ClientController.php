@@ -410,6 +410,18 @@ class ClientController extends Controller
                 $clientAppointments = collect([]);
             }
         }
+
+        // ── Booking Client Weekly Schedule check ───────────────────
+        $isClientScheduleEnabled = $this->isBookingClientScheduleEnabled();
+        $clientWeeklySchedule = null;
+        if ($isClientScheduleEnabled) {
+            try {
+                $clientWeeklySchedule = \Modules\Booking\Entities\BookingClientSchedule::where('client_id', $client->id)->first();
+            } catch (Exception $e) {
+                $clientWeeklySchedule = null;
+            }
+        }
+
         // ── Wallet Module check ─────────────────────────────────────
         $walletModule = Module::where('slug', 'wallet')->first();
         $isWalletActive = ($walletModule && $walletModule->installed && $walletModule->active)
@@ -523,7 +535,7 @@ class ClientController extends Controller
             'bookingModule', 'workflowsModule', 'availableWorkflows',
             'accountingModule', 'accountingDocuments', 'clientAccountingStats',
             'isBookingQueueEnabled', 'clientWaitlists',
-            'clientAppointments', 'clientLabOrders',
+            'clientAppointments', 'clientLabOrders', 'isClientScheduleEnabled', 'clientWeeklySchedule',
             'walletModule', 'clientWallet', 'clientWalletTransactions', 'clientWalletTransactionsCount',
             'propertiesModule', 'isPropertiesActive', 'clientRentalBookings', 'clientRentalStats',
             'currency'
@@ -734,6 +746,24 @@ class ClientController extends Controller
         }
 
         return false;
+    }
+
+    protected function isBookingClientScheduleEnabled(): bool
+    {
+        $bookingModule = Module::where('slug', 'booking')->first();
+        if (!$bookingModule || !$bookingModule->installed || !$bookingModule->active) {
+            return false;
+        }
+
+        if (!class_exists(\Modules\Booking\Entities\BookingClientSchedule::class) || !class_exists(BookingSetting::class)) {
+            return false;
+        }
+
+        if (!BookingSetting::isClientScheduleEnabled()) {
+            return false;
+        }
+
+        return \Schema::hasTable('booking_client_schedules');
     }
 
     public function storeCaseNote(Request $request, Client $client)

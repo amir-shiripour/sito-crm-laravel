@@ -1118,6 +1118,107 @@
                     </div>
                 </template>
 
+                {{-- Client Weekly Schedule & Availability Notice (Step 4) --}}
+                <template x-if="clientSchedule && (clientSchedule.has_custom_schedule || (clientSchedule.temp_absence_active && clientSchedule.temporary_absence))">
+                    <div class="space-y-2.5">
+                        <!-- Absence notice -->
+                        <template x-if="clientSchedule.temp_absence_active && clientSchedule.temporary_absence">
+                            <div class="px-4 py-2.5 bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/60 rounded-xl flex items-center justify-between gap-3 text-sm">
+                                <div class="flex items-center gap-2">
+                                    <svg class="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                                    </svg>
+                                    <span class="font-bold text-rose-900 dark:text-rose-200">عدم حضور موقت:</span>
+                                    <span class="text-rose-700 dark:text-rose-300 font-medium"
+                                          x-text="'از ' + (clientSchedule.temporary_absence.start_jalali || clientSchedule.temporary_absence.start_date) + ' تا ' + (clientSchedule.temporary_absence.end_jalali || clientSchedule.temporary_absence.end_date)"></span>
+                                    <template x-if="clientSchedule.temporary_absence.reason">
+                                        <span class="text-rose-600 dark:text-rose-400" x-text="'(' + clientSchedule.temporary_absence.reason + ')'"></span>
+                                    </template>
+                                </div>
+                                <span class="text-xs text-rose-500 dark:text-rose-400 hidden sm:inline">مشخص‌شده با نشانگر در تقویم</span>
+                            </div>
+                        </template>
+
+                        <!-- Availability Summary Card (Collapsible) -->
+                        <template x-if="clientSchedule.has_custom_schedule">
+                            <div class="bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-700/80 rounded-xl p-3.5 transition-all">
+                                <div class="flex items-center justify-between gap-3">
+                                    <div class="flex items-center gap-2.5 min-w-0">
+                                        <svg class="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                                        </svg>
+                                        <div class="min-w-0">
+                                            <div class="flex items-center gap-2 flex-wrap">
+                                                <span class="font-bold text-slate-800 dark:text-slate-100 text-sm">ترجیحات زمانی مراجع</span>
+                                                <template x-if="clientSchedule.general_preferences?.preferred_shift && clientSchedule.general_preferences?.preferred_shift !== 'any'">
+                                                    <span class="text-xs text-slate-500 dark:text-slate-400"
+                                                          x-text="'(شیفت ترجیحی: ' + (clientSchedule.general_preferences.preferred_shift === 'morning' ? 'صبح' : (clientSchedule.general_preferences.preferred_shift === 'evening' ? 'عصر' : (clientSchedule.general_preferences.preferred_shift === 'night' ? 'شب' : 'شناور'))) + ')'"></span>
+                                                </template>
+                                            </div>
+                                            <div class="text-xs text-slate-600 dark:text-slate-400 mt-0.5 line-clamp-1" x-text="clientSchedule.summary_text"></div>
+                                        </div>
+                                    </div>
+                                    <button type="button" @click="clientScheduleExpanded = !clientScheduleExpanded"
+                                            class="text-xs text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 font-medium px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 transition-colors shrink-0 flex items-center gap-1.5">
+                                        <span x-text="clientScheduleExpanded ? 'بستن' : 'برنامه هفتگی'"></span>
+                                        <svg class="w-3.5 h-3.5 transition-transform duration-200" :class="clientScheduleExpanded ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                                        </svg>
+                                    </button>
+                                </div>
+
+                                <!-- Expanded 7-day Mini Table -->
+                                <div x-show="clientScheduleExpanded" x-collapse class="mt-3 pt-3 border-t border-slate-200 dark:border-slate-700/80 space-y-2.5">
+                                    <div class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-2">
+                                        <template x-for="(day, idx) in (clientSchedule.weekly_schedule || [])" :key="idx">
+                                            <div class="p-2.5 rounded-lg border text-center transition-all"
+                                                 :class="{
+                                                     'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700': ['all_day_free', 'free'].includes(day.status),
+                                                     'bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-300 dark:border-emerald-800/60': (clientSchedule.general_preferences?.preferred_days || []).includes(idx) && !['all_day_busy', 'busy'].includes(day.status),
+                                                     'bg-slate-100/60 dark:bg-slate-800/40 border-slate-200 dark:border-slate-700/50 opacity-70': ['all_day_busy', 'busy'].includes(day.status),
+                                                     'bg-amber-50/50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800/50': ['custom', 'specific_hours'].includes(day.status)
+                                                 }">
+                                                <div class="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center justify-center gap-1">
+                                                    <span x-text="day.day_name"></span>
+                                                    <template x-if="(clientSchedule.general_preferences?.preferred_days || []).includes(idx)">
+                                                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500" title="روز ترجیحی مراجع"></span>
+                                                    </template>
+                                                </div>
+                                                <div class="mt-1 text-xs"
+                                                     :class="{
+                                                         'text-emerald-700 dark:text-emerald-400 font-medium': ['all_day_free', 'free'].includes(day.status),
+                                                         'text-slate-500 dark:text-slate-400': ['all_day_busy', 'busy'].includes(day.status),
+                                                         'text-amber-700 dark:text-amber-400 font-medium': ['custom', 'specific_hours'].includes(day.status)
+                                                     }">
+                                                    <template x-if="['all_day_free', 'free'].includes(day.status)">
+                                                        <span>آزاد</span>
+                                                    </template>
+                                                    <template x-if="['all_day_busy', 'busy'].includes(day.status)">
+                                                        <span>عدم امکان</span>
+                                                    </template>
+                                                    <template x-if="['custom', 'specific_hours'].includes(day.status)">
+                                                        <div class="space-y-0.5">
+                                                            <template x-for="(slot, sIdx) in (day.slots || [])" :key="sIdx">
+                                                                <div class="text-[11px] text-slate-600 dark:text-slate-300 font-medium" x-text="slot.start + ' تا ' + slot.end"></div>
+                                                            </template>
+                                                        </div>
+                                                    </template>
+                                                </div>
+                                            </div>
+                                        </template>
+                                    </div>
+                                    <template x-if="clientSchedule.general_preferences?.general_notes">
+                                        <div class="text-xs text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-800 rounded-lg p-2.5 border border-slate-200 dark:border-slate-700 flex items-start gap-1.5">
+                                            <span class="font-bold text-slate-700 dark:text-slate-200 shrink-0">یادداشت:</span>
+                                            <span x-text="clientSchedule.general_preferences.general_notes"></span>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </template>
+
                 <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 shadow-sm">
                     <div class="flex items-center justify-between mb-4">
                         <div class="flex items-center gap-3">
@@ -1182,9 +1283,19 @@
                                         <div class="text-[10px] mt-1"
                                              x-show="!cell.day.is_closed && !cell.day.has_available_slots">پر</div>
                                         <template x-if="isPreferredDay(cell.day.local_date)">
-                                            <span class="absolute top-1 left-1 flex h-2 w-2">
+                                            <span class="absolute top-1 left-1 flex h-2 w-2" title="روز ترجیحی مراجع در صف">
                                                 <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-                                                <span class="relative inline-flex rounded-full h-2 w-2 bg-amber-500" title="روز ترجیحی مراجع در صف"></span>
+                                                <span class="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+                                            </span>
+                                        </template>
+                                        <template x-if="!isPreferredDay(cell.day.local_date) && isClientPreferredDay(cell.day.local_date)">
+                                            <span class="absolute top-1 left-1 flex h-2 w-2" title="روز ترجیحی مراجع طبق برنامه">
+                                                <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                                            </span>
+                                        </template>
+                                        <template x-if="isClientAbsentOnDate(cell.day.local_date)">
+                                            <span class="absolute top-1 right-1 flex h-2 w-2" title="عدم حضور مراجع در این تاریخ">
+                                                <span class="relative inline-flex rounded-full h-2 w-2 bg-rose-500 ring-2 ring-white dark:ring-gray-800"></span>
                                             </span>
                                         </template>
                                     </button>
@@ -1296,6 +1407,81 @@
                     </div>
                 </template>
 
+                {{-- Client Day Availability Notice (Step 5) --}}
+                <template x-if="clientSchedule && dateLocal">
+                    <div class="space-y-2">
+                        <!-- Absence Alert (only if client is absent on this date) -->
+                        <template x-if="isClientAbsentOnDate(dateLocal)">
+                            <div class="px-4 py-2.5 rounded-xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/60 flex items-center justify-between gap-3 text-sm">
+                                <div class="flex items-center gap-2 min-w-0">
+                                    <svg class="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                                    </svg>
+                                    <span class="font-bold text-rose-900 dark:text-rose-200 shrink-0">عدم حضور مراجع:</span>
+                                    <span class="text-rose-700 dark:text-rose-300 font-medium truncate" x-text="'از ' + (clientSchedule.temporary_absence?.start_jalali || clientSchedule.temporary_absence?.start_date) + ' تا ' + (clientSchedule.temporary_absence?.end_jalali || clientSchedule.temporary_absence?.end_date)"></span>
+                                    <template x-if="clientSchedule.temporary_absence?.reason">
+                                        <span class="text-rose-600 dark:text-rose-400 shrink-0" x-text="'(' + clientSchedule.temporary_absence.reason + ')'"></span>
+                                    </template>
+                                </div>
+                                <span class="text-xs text-rose-500 dark:text-rose-400 shrink-0 hidden sm:inline">توصیه به انتخاب روز دیگر</span>
+                            </div>
+                        </template>
+
+                        <!-- Compact Day Availability Bar -->
+                        <div class="px-4 py-3 bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 rounded-xl flex items-center justify-between gap-3 flex-wrap text-sm">
+                            <div class="flex items-center gap-2.5 flex-wrap min-w-0">
+                                <span class="font-bold text-slate-800 dark:text-slate-100" x-text="getClientDaySchedule(dateLocal)?.day_name + ' (' + toPersianDate(dateLocal) + ')'"></span>
+                                <span class="text-slate-300 dark:text-slate-600">|</span>
+
+                                <!-- Status Badge -->
+                                <template x-if="['all_day_free', 'free'].includes(getClientDaySchedule(dateLocal)?.status)">
+                                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 text-xs font-medium">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                        <span>تمام‌وقت آزاد</span>
+                                    </span>
+                                </template>
+                                <template x-if="['all_day_busy', 'busy'].includes(getClientDaySchedule(dateLocal)?.status)">
+                                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800 text-xs font-medium">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+                                        <span>عدم امکان پذیرش</span>
+                                    </span>
+                                </template>
+                                <template x-if="['custom', 'specific_hours'].includes(getClientDaySchedule(dateLocal)?.status)">
+                                    <div class="flex items-center gap-2 flex-wrap">
+                                        <span class="text-slate-500 dark:text-slate-400 text-xs">ساعات آزاد:</span>
+                                        <template x-for="(s, sI) in (getClientDaySchedule(dateLocal)?.slots || [])" :key="sI">
+                                            <span class="px-2.5 py-1 rounded-md border text-xs font-medium"
+                                                  :class="{
+                                                      'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800': s.type === 'preferred',
+                                                      'bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-600': s.type === 'available' || !s.type,
+                                                      'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800': s.type === 'conditional',
+                                                      'bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-800': s.type === 'busy'
+                                                  }">
+                                                <span x-text="s.start + ' تا ' + s.end"></span>
+                                                <template x-if="s.type === 'preferred'"><span class="text-[11px] text-emerald-600 dark:text-emerald-400 font-normal mr-1">(ترجیحی)</span></template>
+                                                <template x-if="s.type === 'busy'"><span class="text-[11px] text-rose-500 font-normal mr-1">(مشغول)</span></template>
+                                            </span>
+                                        </template>
+                                    </div>
+                                </template>
+
+                                <template x-if="isClientPreferredDay(dateLocal)">
+                                    <span class="px-2.5 py-1 rounded-md bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 text-xs font-medium">روز ترجیحی مراجع</span>
+                                </template>
+                            </div>
+
+                            <div class="flex items-center gap-3 text-slate-500 dark:text-slate-400 text-xs">
+                                <template x-if="clientSchedule.general_preferences?.preferred_shift && clientSchedule.general_preferences?.preferred_shift !== 'any'">
+                                    <span>شیفت ترجیحی: <strong class="text-slate-700 dark:text-slate-200 font-bold" x-text="clientSchedule.general_preferences.preferred_shift === 'morning' ? 'صبح' : (clientSchedule.general_preferences.preferred_shift === 'evening' ? 'عصر' : (clientSchedule.general_preferences.preferred_shift === 'night' ? 'شب' : 'شناور'))"></strong></span>
+                                </template>
+                                <template x-if="getClientDaySchedule(dateLocal)?.note">
+                                    <span class="text-slate-600 dark:text-slate-300" x-text="'یادداشت: ' + getClientDaySchedule(dateLocal).note"></span>
+                                </template>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+
                 <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 shadow-sm">
                     <template x-if="slotsLoading && !isCustomScheduleEnabled()">
                         <div class="flex items-center justify-center py-8">
@@ -1330,7 +1516,11 @@
                                         ? 'border-indigo-600 bg-gradient-to-br from-indigo-50 to-indigo-100 dark:from-indigo-900/40 dark:to-indigo-950/40 text-indigo-900 dark:text-indigo-100 shadow-md ring-2 ring-indigo-200 dark:ring-indigo-800'
                                         : (isSlotDisabled(slot)
                                             ? 'border-gray-200 dark:border-gray-800 text-gray-400 dark:text-gray-500 bg-gray-100 dark:bg-gray-800/40 cursor-not-allowed opacity-60'
-                                            : 'border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:border-indigo-300 dark:hover:border-indigo-600 hover:shadow-md')"
+                                            : (isSlotPreferredForClient(slot)
+                                                ? 'border-emerald-300 dark:border-emerald-700 text-emerald-950 dark:text-emerald-100 bg-emerald-50/40 dark:bg-emerald-950/20 hover:border-emerald-500 hover:shadow-md'
+                                                : (isSlotOutsideClientAvailability(slot)
+                                                    ? 'border-amber-200 dark:border-amber-800/80 text-amber-950 dark:text-amber-200 bg-amber-50/30 dark:bg-amber-950/10 hover:border-amber-400 hover:shadow-md'
+                                                    : 'border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:border-indigo-300 dark:hover:border-indigo-600 hover:shadow-md')))"
                                     @click="selectSlot(slot)">
                                 <div class="font-bold text-sm mb-1" x-text="formatTime(slot.start_at_view)"></div>
                                 <div class="text-[10px]" :class="isSlotDisabled(slot) ? 'text-red-500 font-semibold dark:text-red-400' : 'text-gray-500 dark:text-gray-400'">
@@ -1344,6 +1534,23 @@
                                         <span>ظرفیت: <span class="font-semibold" x-text="slotCapacityDisplay(slot)"></span></span>
                                     </template>
                                 </div>
+
+                                <!-- Client schedule preference indicator badge -->
+                                <template x-if="!isSlotDisabled(slot) && isSlotPreferredForClient(slot)">
+                                    <div class="mt-1">
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-emerald-100/80 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300">
+                                            ترجیح مراجع
+                                        </span>
+                                    </div>
+                                </template>
+                                <template x-if="!isSlotDisabled(slot) && !isSlotPreferredForClient(slot) && isSlotOutsideClientAvailability(slot)">
+                                    <div class="mt-1">
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-amber-100/80 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300">
+                                            خارج از برنامه
+                                        </span>
+                                    </div>
+                                </template>
+
                                 <div class="absolute top-2 left-2" x-show="selectedSlotKey === slot.start_at_utc">
                                     <svg class="w-4 h-4 text-indigo-600 dark:text-indigo-400" fill="none"
                                          stroke="currentColor" viewBox="0 0 24 24">
@@ -1385,6 +1592,33 @@
                                    x-model="manualEndTime" @input="clearSlotSelection()">
                         </div>
                     </div>
+
+                    <!-- Manual Mode Quick-Fill Suggestions from Client Free Hours -->
+                    <template x-if="clientSchedule && dateLocal && ['custom', 'specific_hours'].includes(getClientDaySchedule(dateLocal)?.status)">
+                        <div class="flex items-center gap-2.5 flex-wrap pt-1 text-sm">
+                            <span class="text-slate-500 dark:text-slate-400 text-xs">ساعات پیشنهادی مراجع:</span>
+                            <template x-for="(s, sI) in (getClientDaySchedule(dateLocal)?.slots || [])" :key="sI">
+                                <template x-if="s.type !== 'busy'">
+                                    <button type="button" @click="applyManualSlotTime(s.start, s.end)"
+                                            class="px-3 py-1 rounded-lg text-xs font-medium border transition-colors cursor-pointer bg-slate-100 hover:bg-indigo-50 dark:bg-slate-800 dark:hover:bg-indigo-950/40 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:border-indigo-300 dark:hover:border-indigo-700"
+                                            :title="'درج خودکار ساعت ' + s.start + ' تا ' + s.end">
+                                        <span x-text="s.start + ' تا ' + s.end"></span>
+                                        <template x-if="s.type === 'preferred'">
+                                            <span class="text-[11px] text-emerald-600 dark:text-emerald-400 font-normal mr-1">(ترجیحی)</span>
+                                        </template>
+                                    </button>
+                                </template>
+                            </template>
+                        </div>
+                    </template>
+
+                    <!-- Conflict alert if manual time conflicts with client availability -->
+                    <template x-if="getManualTimeStatus() && getManualTimeStatus()?.type === 'danger'">
+                        <div class="text-sm text-rose-600 dark:text-rose-400 flex items-center gap-1.5 font-medium pt-1">
+                            <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                            <span x-text="getManualTimeStatus()?.message"></span>
+                        </div>
+                    </template>
                 </div>
             </div>
 
@@ -1879,6 +2113,10 @@
                 clientSearchFocused: false,
                 isSubmitting: false,
                 clientToothPlans: {},
+                clientSchedule: null,
+                clientScheduleLoading: false,
+                clientScheduleEnabled: @json(\Modules\Booking\Entities\BookingSetting::isClientScheduleEnabled()),
+                clientScheduleExpanded: false,
 
                 // Modal State
                 showHistoryModal: false,
@@ -2041,9 +2279,13 @@
                     });
 
                     this.$watch('manualStartTime', () => this.calculateEndTime());
-                    this.$watch('clientId', () => this.fetchClientPlans());
+                    this.$watch('clientId', () => {
+                        this.fetchClientPlans();
+                        this.fetchClientSchedule();
+                    });
                     if (this.clientId) {
                         this.fetchClientPlans();
+                        this.fetchClientSchedule();
                     }
                 },
 
@@ -2635,6 +2877,8 @@
                 dayBtnClass(d) {
                     const isSelected = this.dateLocal && this.dateLocal === d.local_date;
                     const isPref = this.isPreferredDay(d.local_date);
+                    const isAbsent = this.clientScheduleEnabled && this.isClientAbsentOnDate(d.local_date);
+                    const isClientPref = this.clientScheduleEnabled && this.isClientPreferredDay(d.local_date);
 
                     if (!d.is_closed && !d.has_available_slots)
                         return 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-200 dark:border-amber-800';
@@ -2646,6 +2890,8 @@
                         return 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-200 dark:border-amber-800';
                     if (isPref)
                         return 'bg-amber-50/60 dark:bg-amber-950/20 text-gray-800 dark:text-gray-100 border-amber-400 dark:border-amber-500 ring-2 ring-amber-300/40 hover:bg-amber-50 dark:hover:bg-amber-900/30';
+                    if (isAbsent)
+                        return 'border-rose-300 dark:border-rose-700/80 bg-rose-50/20 dark:bg-rose-950/10 text-gray-700 dark:text-gray-200 hover:bg-rose-50/50 dark:hover:bg-rose-950/20';
                     return 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800/70';
                 },
 
@@ -3143,6 +3389,190 @@
                         console.error('Failed to fetch client plans:', e);
                         this.clientToothPlans = {};
                     }
+                },
+
+                // ---------------- client weekly schedule & availability ----------------
+                async fetchClientSchedule() {
+                    if (!this.clientScheduleEnabled || !this.clientId) {
+                        this.clientSchedule = null;
+                        return;
+                    }
+                    this.clientScheduleLoading = true;
+                    try {
+                        const res = await fetch(`{{ route('user.booking.appointments.wizard.client-schedule') }}?client_id=${this.clientId}`, {
+                            headers: { 'Accept': 'application/json' }
+                        });
+                        const json = await res.json();
+                        if (json.success && json.data) {
+                            this.clientSchedule = {
+                                ...json.data,
+                                has_schedule: true,
+                                has_custom_schedule: Boolean(json.has_custom_schedule ?? json.data?.has_custom_schedule ?? false)
+                            };
+                        } else {
+                            this.clientSchedule = null;
+                        }
+                    } catch(e) {
+                        console.error('Failed to fetch client schedule:', e);
+                        this.clientSchedule = null;
+                    } finally {
+                        this.clientScheduleLoading = false;
+                    }
+                },
+
+                getDayIndexFromLocalDate(localDate) {
+                    if (!localDate) return -1;
+                    try {
+                        const dd = new Date(localDate + 'T00:00:00');
+                        const jsDay = dd.getDay(); // 0 is Sun, 6 is Sat
+                        // 0: Sat, 1: Sun, 2: Mon, 3: Tue, 4: Wed, 5: Thu, 6: Fri
+                        const mapping = { 6: 0, 0: 1, 1: 2, 2: 3, 3: 4, 4: 5, 5: 6 };
+                        return mapping[jsDay] ?? -1;
+                    } catch(e) {
+                        return -1;
+                    }
+                },
+
+                getClientDaySchedule(localDate) {
+                    if (!this.clientSchedule || !this.clientSchedule.weekly_schedule) return null;
+                    const idx = this.getDayIndexFromLocalDate(localDate);
+                    if (idx < 0) return null;
+                    return this.clientSchedule.weekly_schedule[idx] ?? null;
+                },
+
+                isClientAbsentOnDate(localDate) {
+                    if (!this.clientSchedule || !this.clientSchedule.temporary_absence || !this.clientSchedule.temporary_absence.active) return false;
+                    const abs = this.clientSchedule.temporary_absence;
+                    if (!localDate) return false;
+                    if (abs.start && abs.end) {
+                        return localDate >= abs.start && localDate <= abs.end;
+                    }
+                    if (abs.start && !abs.end) {
+                        return localDate >= abs.start;
+                    }
+                    if (!abs.start && abs.end) {
+                        return localDate <= abs.end;
+                    }
+                    return false;
+                },
+
+                isClientPreferredDay(localDate) {
+                    if (!this.clientSchedule || !this.clientSchedule.general_preferences) return false;
+                    const prefDays = this.clientSchedule.general_preferences.preferred_days || [];
+                    const idx = this.getDayIndexFromLocalDate(localDate);
+                    return prefDays.includes(idx);
+                },
+
+                toPersianDate(localDate) {
+                    if (!localDate) return '';
+                    try {
+                        const dd = new Date(localDate + 'T00:00:00');
+                        return dd.toLocaleDateString('fa-IR-u-ca-persian', {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric'
+                        });
+                    } catch(e) {
+                        return localDate;
+                    }
+                },
+
+                extractSlotTime(slot) {
+                    if (!slot) return null;
+                    let t = slot.start_at_view || slot.start_time_local || '';
+                    if (t.includes('T')) {
+                        t = t.split('T')[1];
+                    }
+                    const match = t.match(/(\d{2}:\d{2})/);
+                    return match ? match[1] : null;
+                },
+
+                isSlotPreferredForClient(slot) {
+                    if (!slot || !this.dateLocal || !this.clientSchedule) return false;
+                    const daySched = this.getClientDaySchedule(this.dateLocal);
+                    if (!daySched || daySched.status !== 'custom' || !Array.isArray(daySched.slots)) return false;
+
+                    const slotTime = this.extractSlotTime(slot);
+                    if (!slotTime) return false;
+
+                    return daySched.slots.some(cs => {
+                        return cs.type === 'preferred' && slotTime >= cs.start && slotTime <= cs.end;
+                    });
+                },
+
+                isSlotOutsideClientAvailability(slot) {
+                    if (!slot || !this.dateLocal || !this.clientSchedule) return false;
+                    if (this.isClientAbsentOnDate(this.dateLocal)) return true;
+
+                    const daySched = this.getClientDaySchedule(this.dateLocal);
+                    if (!daySched) return false;
+
+                    if (daySched.status === 'all_day_busy') return true;
+                    if (daySched.status === 'all_day_free') return false;
+
+                    if (daySched.status === 'custom' && Array.isArray(daySched.slots) && daySched.slots.length > 0) {
+                        const slotTime = this.extractSlotTime(slot);
+                        if (!slotTime) return false;
+
+                        const isBusy = daySched.slots.some(cs => cs.type === 'busy' && slotTime >= cs.start && slotTime <= cs.end);
+                        if (isBusy) return true;
+
+                        const isAvailable = daySched.slots.some(cs => cs.type !== 'busy' && slotTime >= cs.start && slotTime <= cs.end);
+                        return !isAvailable;
+                    }
+                    return false;
+                },
+
+                applyManualSlotTime(start, end) {
+                    if (start) this.manualStartTime = start;
+                    if (end) this.manualEndTime = end;
+                    if (start && end) {
+                        try {
+                            const [sh, sm] = start.split(':').map(Number);
+                            const [eh, em] = end.split(':').map(Number);
+                            const diff = (eh * 60 + em) - (sh * 60 + sm);
+                            if (diff > 0) {
+                                this.manualDuration = diff;
+                            }
+                        } catch(e) {}
+                    }
+                    this.clearSlotSelection();
+                },
+
+                getManualTimeStatus() {
+                    if (!this.dateLocal || !this.clientSchedule) return null;
+                    if (this.isClientAbsentOnDate(this.dateLocal)) {
+                        return { type: 'danger', message: 'هشدار: مراجع در این تاریخ در بازه مرخصی/عدم حضور قرار دارد.' };
+                    }
+                    const daySched = this.getClientDaySchedule(this.dateLocal);
+                    if (!daySched) return null;
+                    if (['all_day_busy', 'busy'].includes(daySched.status)) {
+                        return { type: 'danger', message: 'هشدار: مراجع در این روز غیرقابل نوبت‌دهی (مشغول) اعلام شده است.' };
+                    }
+                    if (!this.manualStartTime) return null;
+
+                    if (['custom', 'specific_hours'].includes(daySched.status) && Array.isArray(daySched.slots) && daySched.slots.length > 0) {
+                        const mTime = this.manualStartTime.trim();
+                        const isBusy = daySched.slots.some(cs => cs.type === 'busy' && mTime >= cs.start && mTime <= cs.end);
+                        if (isBusy) {
+                            return { type: 'danger', message: 'هشدار: ساعت انتخابی با بازه عدم امکان (مشغول) مراجع همپوشانی دارد!' };
+                        }
+                        const isPreferred = daySched.slots.some(cs => cs.type === 'preferred' && mTime >= cs.start && mTime <= cs.end);
+                        if (isPreferred) {
+                            return { type: 'success', message: 'عالی: ساعت وارد شده در بازه ایده‌آل و ترجیحی مراجع قرار دارد.' };
+                        }
+                        const isAvailable = daySched.slots.some(cs => cs.type !== 'busy' && mTime >= cs.start && mTime <= cs.end);
+                        if (isAvailable) {
+                            return { type: 'info', message: 'مناسب: ساعت وارد شده در بازه آزاد مراجع است.' };
+                        }
+                        return { type: 'warning', message: 'توجه: ساعت وارد شده خارج از بازه‌های آزاد اعلام‌شده مراجع است.' };
+                    }
+
+                    if (['all_day_free', 'free'].includes(daySched.status)) {
+                        return { type: 'info', message: 'مراجع در این روز تمام وقت آزاد است.' };
+                    }
+
+                    return null;
                 },
             }
         }

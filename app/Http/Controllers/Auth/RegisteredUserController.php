@@ -252,9 +252,13 @@ class RegisteredUserController extends Controller
 
                 Auth::login($user);
 
-                $redirectHostToDashboard = class_exists(\Modules\Properties\Entities\PropertySetting::class)
+                $isPropertiesActive = class_exists(\Nwidart\Modules\Facades\Module::class)
+                    && \Nwidart\Modules\Facades\Module::isEnabled('Properties')
+                    && \Illuminate\Support\Facades\Schema::hasTable('property_settings');
+
+                $redirectHostToDashboard = $isPropertiesActive
                     ? (bool) \Modules\Properties\Entities\PropertySetting::get('rental_redirect_host_to_dashboard', 1)
-                    : true;
+                    : false;
 
                 if ($redirectHostToDashboard && \Illuminate\Support\Facades\Route::has('user.properties.hosts.dashboard')) {
                     return redirect()->route('user.properties.hosts.dashboard')

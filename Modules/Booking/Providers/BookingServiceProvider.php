@@ -66,6 +66,7 @@ class BookingServiceProvider extends ServiceProvider
         \Livewire\Livewire::component('modules.booking.app.livewire.user.clinic-live-monitoring', \Modules\Booking\App\Livewire\User\ClinicLiveMonitoring::class);
         \Livewire\Livewire::component('booking.user.laboratory-manager', \Modules\Booking\App\Livewire\User\LaboratoryManager::class);
         \Livewire\Livewire::component('booking.user.laboratory-daily-board', \Modules\Booking\App\Livewire\User\LaboratoryDailyBoard::class);
+        \Livewire\Livewire::component('booking.user.client-weekly-schedule', \Modules\Booking\App\Livewire\User\ClientWeeklySchedule::class);
 
         if (class_exists(\Modules\Booking\App\Models\TreatmentPlan::class)) {
             \Modules\Booking\App\Models\TreatmentPlan::observe(\Modules\Booking\App\Observers\TreatmentPlanObserver::class);
