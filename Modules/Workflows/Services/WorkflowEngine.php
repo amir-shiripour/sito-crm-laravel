@@ -532,7 +532,11 @@ class WorkflowEngine
             Log::info("[Workflows] Instance {$instance->id} transitioned to node ID {$targetNode->id} ({$targetNode->name})");
 
             event(new NodeReached($instance, $targetNode, $context));
-            event(new \Modules\Workflows\Events\PatientStageAdvanced($instance, $context));
+            try {
+                event(new \Modules\Workflows\Events\PatientStageAdvanced($instance, $context));
+            } catch (\Throwable $e) {
+                Log::warning("[Workflows] Failed to broadcast PatientStageAdvanced event: " . $e->getMessage());
+            }
 
             if ($targetNode->type === WorkflowNode::TYPE_END) {
                 $this->completeWorkflow($instance, $context);
@@ -555,7 +559,11 @@ class WorkflowEngine
         Log::info("[Workflows] Workflow instance {$instance->id} reached END node. Status set to COMPLETED.");
 
         event(new WorkflowCompleted($instance, $context));
-        event(new \Modules\Workflows\Events\PatientStageAdvanced($instance, $context));
+        try {
+            event(new \Modules\Workflows\Events\PatientStageAdvanced($instance, $context));
+        } catch (\Throwable $e) {
+            Log::warning("[Workflows] Failed to broadcast PatientStageAdvanced event on complete: " . $e->getMessage());
+        }
     }
 
     public function goBack(WorkflowInstance $instance): void

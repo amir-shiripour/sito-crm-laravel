@@ -91,7 +91,109 @@
             </div>
         </div>
 
-        {{-- Section 2: Tariffs, Financial & Commission --}}
+        {{-- Section 2: Coverage & Active Service Regions (محدودسازی به ایران و مدیریت مناطق تحت پوشش) --}}
+        <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl border border-gray-200/70 dark:border-gray-700/60 shadow-sm space-y-5">
+            <div class="flex items-center justify-between border-b border-gray-100 dark:border-gray-700/60 pb-3">
+                <div class="flex items-center gap-2">
+                    <span class="text-xl">📍</span>
+                    <div>
+                        <h2 class="text-sm font-black text-gray-900 dark:text-white">مناطق و شهرهای تحت پوشش (محدودسازی نقشه و پنل به ایران)</h2>
+                        <p class="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">فقط شهرها و استان‌های مشخص‌شده در نقشه، سفارشات و پنل بارگذاری می‌شوند تا از لود داده‌های زائد جلوگیری شده و سرعت به حداکثر برسد.</p>
+                    </div>
+                </div>
+                <div class="px-3 py-1 rounded-full bg-emerald-50 dark:bg-emerald-500/15 border border-emerald-200 dark:border-emerald-500/30 text-emerald-700 dark:text-emerald-300 text-[11px] font-bold flex items-center gap-1.5 shrink-0">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                    <span>نقشه قفل‌شده در مرزهای ایران</span>
+                </div>
+            </div>
+
+            {{-- 1. Covered Provinces Selection --}}
+            <div class="space-y-2">
+                <div class="flex items-center justify-between">
+                    <label class="text-xs font-black text-gray-800 dark:text-gray-200">استان‌های تحت پوشش خدمات (روی نام استان کلیک کنید):</label>
+                    <span class="text-[11px] text-indigo-600 dark:text-indigo-400 font-bold font-sans">{{ count($covered_provinces) }} استان فعال</span>
+                </div>
+                
+                <div class="flex flex-wrap gap-1.5 p-3 rounded-xl bg-gray-50/70 dark:bg-gray-750/50 border border-gray-200/60 dark:border-gray-700/60 max-h-40 overflow-y-auto custom-scrollbar">
+                    @foreach($allProvinces as $prov)
+                    @php $isCovered = in_array($prov, $covered_provinces, true); @endphp
+                    <button type="button" wire:click="toggleProvince('{{ $prov }}')"
+                            class="px-2.5 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1.5 font-sans {{ $isCovered ? 'bg-indigo-600 text-white shadow-xs' : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-650 border border-gray-200/60 dark:border-gray-600' }}">
+                        <span>{{ $prov }}</span>
+                        @if($isCovered)
+                        <span class="text-[10px]">✓</span>
+                        @endif
+                    </button>
+                    @endforeach
+                </div>
+            </div>
+
+            {{-- 2. Covered Cities Selection for Active Province Tab --}}
+            <div class="space-y-3 pt-2 border-t border-gray-100 dark:border-gray-700/60">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div>
+                        <div class="text-xs font-black text-gray-800 dark:text-gray-200">
+                            مدیریت شهرهای فعال استان: <span class="text-indigo-600 dark:text-indigo-400 font-black">{{ $active_province_tab }}</span>
+                        </div>
+                        <div class="text-[10px] text-gray-400 mt-0.5">
+                            شهرهایی که تیک می‌خورند در پورتال مشتریان، لیست سریع شهرها و رادار اعزام فعال خواهند بود.
+                        </div>
+                    </div>
+
+                    {{-- Actions & Search --}}
+                    <div class="flex items-center gap-2">
+                        <input type="text" wire:model.live.debounce.150ms="city_search" placeholder="جستجوی شهر..."
+                               class="h-8 px-2.5 rounded-lg bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-xs text-gray-800 dark:text-gray-200 font-sans w-36">
+
+                        <button type="button" wire:click="selectAllCitiesForActiveProvince" class="text-[11px] font-bold text-indigo-600 hover:underline">
+                            انتخاب همه
+                        </button>
+                        <span class="text-gray-300">|</span>
+                        <button type="button" wire:click="deselectAllCitiesForActiveProvince" class="text-[11px] font-bold text-rose-500 hover:underline">
+                            حذف همه
+                        </button>
+                    </div>
+                </div>
+
+                {{-- Province Sub-tabs if multiple provinces are covered --}}
+                @if(count($covered_provinces) > 1)
+                <div class="flex items-center gap-1 overflow-x-auto pb-1 custom-scrollbar">
+                    @foreach($covered_provinces as $prov)
+                    <button type="button" wire:click="setActiveProvinceTab('{{ $prov }}')"
+                            class="px-3 py-1 rounded-lg text-xs font-bold transition whitespace-nowrap {{ $active_province_tab === $prov ? 'bg-indigo-50 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 border border-indigo-300 dark:border-indigo-600' : 'text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700' }}">
+                        {{ $prov }}
+                    </button>
+                    @endforeach
+                </div>
+                @endif
+
+                {{-- Cities Grid --}}
+                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 p-3 rounded-xl bg-gray-50/70 dark:bg-gray-750/50 border border-gray-200/60 dark:border-gray-700/60 max-h-56 overflow-y-auto custom-scrollbar">
+                    @forelse($activeProvinceCities as $city)
+                    @php $isCityCovered = in_array($city, $covered_cities, true); @endphp
+                    <button type="button" wire:click="toggleCity('{{ $city }}')"
+                            class="p-2 rounded-xl text-xs font-bold transition flex items-center justify-between text-right font-sans {{ $isCityCovered ? 'bg-indigo-50 dark:bg-indigo-500/20 border-2 border-indigo-600 dark:border-indigo-500 text-indigo-900 dark:text-indigo-200 shadow-xs' : 'bg-white dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-650 border border-gray-200/70 dark:border-gray-600 text-gray-700 dark:text-gray-300' }}">
+                        <span class="truncate">{{ $city }}</span>
+                        @if($isCityCovered)
+                        <span class="w-2 h-2 rounded-full bg-indigo-600 dark:bg-indigo-400 shrink-0 mr-1"></span>
+                        @else
+                        <span class="text-[10px] text-gray-300 dark:text-gray-500 mr-1">+</span>
+                        @endif
+                    </button>
+                    @empty
+                    <div class="col-span-full py-4 text-center text-xs text-gray-400">
+                        شهری با این عبارت در استان {{ $active_province_tab }} یافت نشد.
+                    </div>
+                    @endforelse
+                </div>
+
+                <div class="text-[11px] text-gray-400 font-sans">
+                    مجموعاً <strong class="text-indigo-600 font-black">{{ count($covered_cities) }} شهر</strong> در سطح کشور در محدوده تحت پوشش پلتفرم فعال هستند.
+                </div>
+            </div>
+        </div>
+
+        {{-- Section 3: Tariffs, Financial & Commission --}}
         <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl border border-gray-200/70 dark:border-gray-700/60 shadow-sm space-y-4">
             <div class="flex items-center gap-2 border-b border-gray-100 dark:border-gray-700/60 pb-3">
                 <span class="text-xl">💰</span>

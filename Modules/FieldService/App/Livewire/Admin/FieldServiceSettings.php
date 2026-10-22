@@ -2,6 +2,7 @@
 
 namespace Modules\FieldService\App\Livewire\Admin;
 
+use App\Helpers\ProvinceCity;
 use Livewire\Component;
 use Modules\FieldService\App\Models\FieldServiceSetting;
 
@@ -16,6 +17,12 @@ class FieldServiceSettings extends Component
     public float $map_default_lat = 36.5444;
     public float $map_default_lng = 52.6780;
     public int $map_default_zoom = 13;
+
+    // Coverage Management (Restricted strictly to Iran and active regions)
+    public array $covered_provinces = [];
+    public array $covered_cities = [];
+    public string $active_province_tab = 'مازندران';
+    public string $city_search = '';
 
     // Financial & Operations
     public float $default_commission_percent = 15.0;
@@ -47,6 +54,64 @@ class FieldServiceSettings extends Component
         $this->landing_announcement_text  = FieldServiceSetting::get('landing_announcement_text', 'پوشش سراسری اعزام تکنسین در کلیه شهرستان‌های مازندران');
         $this->landing_support_phone      = FieldServiceSetting::get('landing_support_phone', '۰۱۱-۳۲۲۲۴۴۵۵');
         $this->landing_show_tech_count    = (bool) FieldServiceSetting::get('landing_show_tech_count', true);
+
+        // Coverage initialization
+        $this->covered_provinces = FieldServiceSetting::getCoveredProvinces();
+        $this->covered_cities    = FieldServiceSetting::getCoveredCities();
+        $this->active_province_tab = $this->covered_provinces[0] ?? 'مازندران';
+    }
+
+    public function toggleProvince(string $province): void
+    {
+        if (in_array($province, $this->covered_provinces, true)) {
+            if (count($this->covered_provinces) <= 1) {
+                $this->dispatch('notify', ['type' => 'error', 'text' => 'حداقل یک استان باید در مناطق تحت پوشش فعال باشد.']);
+                return;
+            }
+            $this->covered_provinces = array_values(array_diff($this->covered_provinces, [$province]));
+            $provCities = ProvinceCity::getCities($province);
+            $this->covered_cities = array_values(array_diff($this->covered_cities, $provCities));
+            if ($this->active_province_tab === $province) {
+                $this->active_province_tab = $this->covered_provinces[0] ?? 'مازندران';
+            }
+        } else {
+            $this->covered_provinces[] = $province;
+            $this->active_province_tab = $province;
+            $provCities = ProvinceCity::getCities($province);
+            $topCities = array_slice($provCities, 0, 4);
+            $this->covered_cities = array_values(array_unique(array_merge($this->covered_cities, $topCities)));
+        }
+    }
+
+    public function setActiveProvinceTab(string $province): void
+    {
+        $this->active_province_tab = $province;
+        $this->city_search = '';
+    }
+
+    public function toggleCity(string $city): void
+    {
+        if (in_array($city, $this->covered_cities, true)) {
+            if (count($this->covered_cities) <= 1) {
+                $this->dispatch('notify', ['type' => 'error', 'text' => 'حداقل یک شهر باید در مناطق تحت پوشش فعال باشد.']);
+                return;
+            }
+            $this->covered_cities = array_values(array_diff($this->covered_cities, [$city]));
+        } else {
+            $this->covered_cities[] = $city;
+        }
+    }
+
+    public function selectAllCitiesForActiveProvince(): void
+    {
+        $cities = ProvinceCity::getCities($this->active_province_tab);
+        $this->covered_cities = array_values(array_unique(array_merge($this->covered_cities, $cities)));
+    }
+
+    public function deselectAllCitiesForActiveProvince(): void
+    {
+        $cities = ProvinceCity::getCities($this->active_province_tab);
+        $this->covered_cities = array_values(array_diff($this->covered_cities, $cities));
     }
 
     public function saveSettings()
@@ -60,6 +125,10 @@ class FieldServiceSettings extends Component
         FieldServiceSetting::set('map_default_lng', $this->map_default_lng, 'map');
         FieldServiceSetting::set('map_default_zoom', $this->map_default_zoom, 'map');
 
+        // Save Coverage
+        FieldServiceSetting::set('covered_provinces', $this->covered_provinces, 'coverage');
+        FieldServiceSetting::set('covered_cities', $this->covered_cities, 'coverage');
+
         FieldServiceSetting::set('default_commission_percent', $this->default_commission_percent, 'financial');
         FieldServiceSetting::set('base_travel_fee', $this->base_travel_fee, 'financial');
         FieldServiceSetting::set('dispatch_timeout_seconds', $this->dispatch_timeout_seconds, 'dispatch');
@@ -71,12 +140,23 @@ class FieldServiceSettings extends Component
 
         $this->dispatch('notify', [
             'type' => 'success',
-            'text' => 'تنظیمات سامانه نصاب‌باشی با موفقیت ذخیره شد.',
+            'text' => 'تنظیمات سامانه نصاب‌باشی و مناطق تحت پوشش با موفقیت ذخیره شد.',
         ]);
     }
 
     public function render()
     {
-        return view('fieldservice::livewire.admin.settings');
+        $allProvinces = ProvinceCity::getProvinces();
+        $activeProvinceCities = ProvinceCity::getCities($this->active_province_tab);
+
+        if (!empty(trim($this->city_search))) {
+            $search = trim($this->city_search);
+            $activeProvinceCities = array_filter($activeProvinceCities, fn($c) => str_contains($c, $search));
+        }
+
+        return view('fieldservice::livewire.admin.settings', [
+            'allProvinces'         => $allProvinces,
+            'activeProvinceCities' => $activeProvinceCities,
+        ]);
     }
 }

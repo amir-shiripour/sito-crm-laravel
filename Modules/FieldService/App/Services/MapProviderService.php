@@ -12,9 +12,13 @@ class MapProviderService
     public function getMapConfig(): array
     {
         $providerKey = FieldServiceSetting::get('map_provider', config('fieldservice.map.default_provider', 'osm'));
-        $defaultLat  = (float) FieldServiceSetting::get('map_default_lat', config('fieldservice.map.default_lat', 36.5444));
-        $defaultLng  = (float) FieldServiceSetting::get('map_default_lng', config('fieldservice.map.default_lng', 52.6780));
-        $defaultZoom = (int) FieldServiceSetting::get('map_default_zoom', config('fieldservice.map.default_zoom', 13));
+        $coveredBox  = FieldServiceSetting::getCoveredBoundingBox();
+
+        // Dynamically center on the active covered area
+        $defaultLat  = (float) FieldServiceSetting::get('map_default_lat', $coveredBox['center']['lat']);
+        $defaultLng  = (float) FieldServiceSetting::get('map_default_lng', $coveredBox['center']['lng']);
+        $defaultZoom = (int) FieldServiceSetting::get('map_default_zoom', $coveredBox['zoom']);
+        $minZoom     = $coveredBox['min_zoom'];
 
         $providers = config('fieldservice.map.providers', []);
         $providerData = $providers[$providerKey] ?? $providers['osm'];
@@ -34,11 +38,19 @@ class MapProviderService
             'api_key'    => $apiKey,
             'subdomains' => $providerData['subdomains'] ?? ['a', 'b', 'c'],
             'max_zoom'   => $providerData['max_zoom'] ?? 19,
+            'min_zoom'   => $minZoom,
+            'country'    => 'IR',
             'center'     => [
                 'lat' => $defaultLat,
                 'lng' => $defaultLng,
             ],
             'zoom'       => $defaultZoom,
+            'bounds'     => [
+                'southWest' => $coveredBox['southWest'],
+                'northEast' => $coveredBox['northEast'],
+            ],
+            'covered_provinces' => FieldServiceSetting::getCoveredProvinces(),
+            'covered_cities'    => FieldServiceSetting::getCoveredCities(),
         ];
     }
 }

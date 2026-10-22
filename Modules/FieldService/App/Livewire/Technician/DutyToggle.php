@@ -12,7 +12,13 @@ class DutyToggle extends Component
 
     public function mount(?int $technicianId = null)
     {
-        $tech = $technicianId ? Technician::find($technicianId) : Technician::first();
+        $tech = null;
+        if ($technicianId) {
+            $tech = Technician::find($technicianId);
+        } elseif (auth()->check()) {
+            $tech = Technician::where('user_id', auth()->id())->first();
+        }
+
         if ($tech) {
             $this->technicianId = $tech->id;
             $this->isOnline = (bool) $tech->is_online;
@@ -21,12 +27,19 @@ class DutyToggle extends Component
 
     public function toggleOnline()
     {
+        if (!$this->technicianId) {
+            $this->dispatch('open-technician-auth');
+            return;
+        }
+
         $tech = Technician::find($this->technicianId);
         if ($tech) {
             $tech->is_online = !$tech->is_online;
             $tech->last_active_at = now();
             $tech->save();
             $this->isOnline = $tech->is_online;
+
+            $this->dispatch('technician-duty-changed', ['isOnline' => $this->isOnline]);
 
             $this->dispatch('notify', [
                 'type' => $this->isOnline ? 'success' : 'info',

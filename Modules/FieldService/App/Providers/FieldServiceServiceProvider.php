@@ -13,11 +13,13 @@ use Modules\FieldService\App\Livewire\Admin\TechniciansManager;
 use Modules\FieldService\App\Livewire\Admin\VendorsManager;
 use Modules\FieldService\App\Livewire\B2B\BuildingPassport;
 use Modules\FieldService\App\Livewire\B2B\EmergencyDispatch;
+use Modules\FieldService\App\Livewire\Customer\CustomerAuthModal;
 use Modules\FieldService\App\Livewire\Customer\LiveTracking;
 use Modules\FieldService\App\Livewire\Customer\OrderWizard;
 use Modules\FieldService\App\Livewire\Technician\DutyToggle;
 use Modules\FieldService\App\Livewire\Technician\InvoiceBuilder;
 use Modules\FieldService\App\Livewire\Technician\MissionFeed;
+use Modules\FieldService\App\Livewire\Technician\TechnicianAuthModal;
 use Modules\FieldService\App\Services\DispatchRadarService;
 use Modules\FieldService\App\Services\DynamicRadiusService;
 use Modules\FieldService\App\Services\EscrowFinancialService;
@@ -99,6 +101,8 @@ class FieldServiceServiceProvider extends ServiceProvider
         Livewire::component('fieldservice::settings', FieldServiceSettings::class);
 
         // Portals Livewire components
+        Livewire::component('fieldservice::customer-auth-modal', CustomerAuthModal::class);
+        Livewire::component('fieldservice::technician-auth-modal', TechnicianAuthModal::class);
         Livewire::component('fieldservice::order-wizard', OrderWizard::class);
         Livewire::component('fieldservice::live-tracking', LiveTracking::class);
         Livewire::component('fieldservice::technician-duty-toggle', DutyToggle::class);

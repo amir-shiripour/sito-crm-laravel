@@ -11,6 +11,7 @@ use Modules\FieldService\App\Http\Controllers\Admin\TechnicianManagementControll
 use Modules\FieldService\App\Http\Controllers\Admin\VendorsManagementController;
 use Modules\FieldService\App\Http\Controllers\B2BPortalController;
 use Modules\FieldService\App\Http\Controllers\CustomerPortalController;
+use Modules\FieldService\App\Http\Controllers\ReverseGeocodeController;
 use Modules\FieldService\App\Http\Controllers\TechnicianPortalController;
 
 /*
@@ -36,5 +37,13 @@ Route::middleware(['auth'])->prefix('user/fieldservice')->name('user.fieldservic
 Route::middleware(['web'])->prefix('fieldservice')->name('fieldservice.')->group(function () {
     Route::get('/customer', [CustomerPortalController::class, 'index'])->name('customer');
     Route::get('/technician', [TechnicianPortalController::class, 'index'])->name('technician');
+    Route::match(['get', 'post'], '/technician/logout', [TechnicianPortalController::class, 'logout'])->name('technician.logout');
     Route::get('/b2b', [B2BPortalController::class, 'index'])->name('b2b');
+    Route::get('/api/reverse-geocode', [ReverseGeocodeController::class, 'reverse'])
+        ->withoutMiddleware([
+            \Illuminate\Session\Middleware\StartSession::class,
+            \Illuminate\View\Middleware\ShareErrorsFromSession::class,
+            \App\Http\Middleware\VerifyCsrfToken::class,
+        ])
+        ->name('api.reverse_geocode');
 });
