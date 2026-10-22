@@ -2616,6 +2616,10 @@ class InvoiceController extends Controller
             }
         }
 
+        if (!$isRenewal && !empty($invoice->notes) && str_contains($invoice->notes, 'فاکتور تمدید')) {
+            $isRenewal = true;
+        }
+
         // For renewal invoices: DO NOT create a new order; update the existing source order!
         if ($isRenewal) {
             $sourceOrderId = $invoiceMeta['source_order_id'] ?? null;
@@ -2652,9 +2656,12 @@ class InvoiceController extends Controller
 
                 // Clean up any accidental duplicate orders attached to this renewal invoice
                 Order::where('invoice_id', $invoice->id)->where('id', '!=', $sourceOrder->id)->delete();
-
-                return;
+            } else {
+                Log::warning("[InvoiceController] Renewal invoice #{$invoice->id} has no valid source order. Skipping duplicate order creation.");
             }
+
+            // A renewal invoice MUST NEVER create a new order in service_orders
+            return;
         }
 
         $isMerged = $invoice->isMerged() 

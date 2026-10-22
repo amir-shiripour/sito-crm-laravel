@@ -59,4 +59,7 @@ Route::prefix('fieldservice')->group(function () {
             ] : null,
         ]);
     });
+
+    // High-performance stateless reverse geocode API
+    Route::get('/reverse-geocode', [\Modules\FieldService\App\Http\Controllers\ReverseGeocodeController::class, 'reverse']);
 });

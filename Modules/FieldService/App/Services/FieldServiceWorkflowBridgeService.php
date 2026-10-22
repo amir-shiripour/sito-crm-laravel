@@ -33,37 +33,45 @@ class FieldServiceWorkflowBridgeService
 
     public function triggerOrderCreated(ServiceOrder $order): void
     {
-        $payload = [
-            'order_id'       => $order->id,
-            'order_number'   => $order->order_number,
-            'client_id'      => $order->client_id,
-            'customer_name'  => $order->customer_name,
-            'customer_phone' => $order->customer_phone,
-            'appliance_type' => $order->appliance_type?->value,
-            'city'           => $order->city,
-            'address'        => $order->address,
-            'is_emergency'   => $order->is_emergency,
-        ];
+        try {
+            $payload = [
+                'order_id'       => $order->id,
+                'order_number'   => $order->order_number,
+                'client_id'      => $order->client_id,
+                'customer_name'  => $order->customer_name,
+                'customer_phone' => $order->customer_phone,
+                'appliance_type' => $order->appliance_type?->value,
+                'city'           => $order->city,
+                'address'        => $order->address,
+                'is_emergency'   => $order->is_emergency,
+            ];
 
-        $eventKey = $order->is_emergency 
-            ? config('fieldservice.workflow_events.emergency_dispatched', 'fieldservice.emergency.dispatched')
-            : config('fieldservice.workflow_events.order_created', 'fieldservice.order.created');
+            $eventKey = $order->is_emergency 
+                ? config('fieldservice.workflow_events.emergency_dispatched', 'fieldservice.emergency.dispatched')
+                : config('fieldservice.workflow_events.order_created', 'fieldservice.order.created');
 
-        $this->dispatchToWorkflow($eventKey, ServiceOrder::class, $order->id, $payload);
+            $this->dispatchToWorkflow($eventKey, ServiceOrder::class, $order->id, $payload);
+        } catch (\Throwable $e) {
+            Log::warning("[FieldService Workflows] triggerOrderCreated warning: " . $e->getMessage());
+        }
     }
 
     public function triggerOrderDispatched(ServiceOrder $order, Collection $eligibleTechnicians): void
     {
-        $payload = [
-            'order_id'          => $order->id,
-            'order_number'      => $order->order_number,
-            'radius_km'         => $order->search_radius_km,
+        try {
+            $payload = [
+                'order_id'          => $order->id,
+                'order_number'      => $order->order_number,
+                'radius_km'         => $order->search_radius_km,
             'technicians_count' => $eligibleTechnicians->count(),
             'technician_ids'    => $eligibleTechnicians->pluck('id')->toArray(),
         ];
 
-        $eventKey = config('fieldservice.workflow_events.order_dispatched', 'fieldservice.order.dispatched');
-        $this->dispatchToWorkflow($eventKey, ServiceOrder::class, $order->id, $payload);
+            $eventKey = config('fieldservice.workflow_events.order_dispatched', 'fieldservice.order.dispatched');
+            $this->dispatchToWorkflow($eventKey, ServiceOrder::class, $order->id, $payload);
+        } catch (\Throwable $e) {
+            Log::warning("[FieldService Workflows] triggerOrderDispatched warning: " . $e->getMessage());
+        }
     }
 
     public function triggerOrderAccepted(ServiceOrder $order, Technician $technician): void
