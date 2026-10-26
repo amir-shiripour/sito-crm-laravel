@@ -1,10 +1,9 @@
 {
     "name": "FieldService",
     "alias": "fieldservice",
-    "description": "سامانه هوشمند مدیریت خدمات فنی در محل، اعزام تکنسین و قراردادهای B2B نصاب‌باشی",
+    "description": "سامانه هوشمند مدیریت خدمات فنی در محل، اعزام تکنسین و قراردادهای B2B",
     "keywords": [
         "fieldservice",
-        "nasabbashi",
         "technician",
         "dispatch",
         "escrow"

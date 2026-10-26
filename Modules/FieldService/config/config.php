@@ -2,7 +2,7 @@
 
 return [
     'name' => 'FieldService',
-    'brand_name' => 'نصاب‌باشی',
+    'brand_name' => env('FIELD_SERVICE_BRAND_NAME', null),
 
     /*
     |--------------------------------------------------------------------------

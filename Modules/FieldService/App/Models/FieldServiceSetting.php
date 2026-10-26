@@ -47,6 +47,30 @@ class FieldServiceSetting extends Model
     }
 
     /**
+     * Get platform name dynamically from general settings (/settings#general > app_name).
+     */
+    public static function getPlatformName(): string
+    {
+        if (function_exists('get_setting')) {
+            $val = get_setting('app_name');
+            if (!empty($val)) {
+                return (string) $val;
+            }
+        }
+
+        try {
+            if (\Illuminate\Support\Facades\Schema::hasTable('settings')) {
+                $val = \Modules\Settings\Entities\Setting::where('key', 'app_name')->value('value');
+                if (!empty($val)) {
+                    return (string) $val;
+                }
+            }
+        } catch (\Throwable $e) {}
+
+        return (string) config('app.name', 'آنتی‌گرویتی');
+    }
+
+    /**
      * Get covered provinces (defaults to Mazandaran).
      */
     public static function getCoveredProvinces(): array

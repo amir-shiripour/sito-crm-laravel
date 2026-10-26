@@ -5,6 +5,7 @@ namespace Modules\FieldService\App\Providers;
 use Illuminate\Support\ServiceProvider;
 use Livewire\Livewire;
 use Modules\FieldService\App\Livewire\Admin\BuildingsManager;
+use Modules\FieldService\App\Livewire\Admin\CategoriesManager;
 use Modules\FieldService\App\Livewire\Admin\FieldServiceSettings;
 use Modules\FieldService\App\Livewire\Admin\FleetLiveMap;
 use Modules\FieldService\App\Livewire\Admin\OrdersManager;
@@ -20,6 +21,8 @@ use Modules\FieldService\App\Livewire\Technician\DutyToggle;
 use Modules\FieldService\App\Livewire\Technician\InvoiceBuilder;
 use Modules\FieldService\App\Livewire\Technician\MissionFeed;
 use Modules\FieldService\App\Livewire\Technician\TechnicianAuthModal;
+use Modules\FieldService\App\Models\ServiceOrder;
+use Modules\FieldService\App\Observers\ServiceOrderObserver;
 use Modules\FieldService\App\Services\DispatchRadarService;
 use Modules\FieldService\App\Services\DynamicRadiusService;
 use Modules\FieldService\App\Services\EscrowFinancialService;
@@ -39,6 +42,19 @@ class FieldServiceServiceProvider extends ServiceProvider
         $this->registerViews();
         $this->loadMigrationsFrom(module_path($this->moduleName, 'Database/Migrations'));
         $this->registerLivewireComponents();
+
+        // Register Eloquent Observers for Real-Time & Workflow Sync
+        ServiceOrder::observe(ServiceOrderObserver::class);
+
+        // Cascade delete linked Technician when a User is deleted in CRM
+        \App\Models\User::deleting(function ($user) {
+            \Modules\FieldService\App\Models\Technician::where('user_id', $user->id)->delete();
+        });
+
+        // Dynamically share platformName from general system settings across all FieldService views
+        \Illuminate\Support\Facades\View::composer('fieldservice::*', function ($view) {
+            $view->with('platformName', \Modules\FieldService\App\Models\FieldServiceSetting::getPlatformName());
+        });
     }
 
     public function register(): void
@@ -95,6 +111,7 @@ class FieldServiceServiceProvider extends ServiceProvider
         Livewire::component('fieldservice::fleet-live-map', FleetLiveMap::class);
         Livewire::component('fieldservice::orders-manager', OrdersManager::class);
         Livewire::component('fieldservice::technicians-manager', TechniciansManager::class);
+        Livewire::component('fieldservice::categories-manager', CategoriesManager::class);
         Livewire::component('fieldservice::buildings-manager', BuildingsManager::class);
         Livewire::component('fieldservice::vendors-manager', VendorsManager::class);
         Livewire::component('fieldservice::settlements-manager', SettlementsManager::class);

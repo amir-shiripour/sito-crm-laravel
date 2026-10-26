@@ -10,7 +10,7 @@
             </div>
         </div>
         <span class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-indigo-500/15 text-indigo-300 border border-indigo-500/25">
-            کمیسیون نصاب‌باشی: ۱۵٪
+            کمیسیون {{ $platformName ?? 'سامانه' }}: ۱۵٪
         </span>
     </div>
 
@@ -92,7 +92,7 @@
             <span class="font-bold text-white">{{ number_format($travel_fee / 10) }} تومان</span>
         </div>
         <div class="flex items-center justify-between text-indigo-300">
-            <span>سهم کمیسیون نصاب‌باشی (۱۵٪ از اجرت):</span>
+            <span>سهم کمیسیون {{ $platformName ?? 'سامانه' }} (۱۵٪ از اجرت):</span>
             <span class="font-bold">- {{ number_format($commission / 10) }} تومان</span>
         </div>
 

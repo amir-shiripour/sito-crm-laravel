@@ -124,6 +124,7 @@ class Installer extends BaseModuleInstaller
             'fieldservice.b2b.manage',
             'fieldservice.settlements.view',
             'fieldservice.settlements.manage',
+            'fieldservice.categories.manage',
             'fieldservice.settings.manage',
         ];
 
@@ -162,10 +163,10 @@ class Installer extends BaseModuleInstaller
         // 1. Spatie Role
         $techRole = Role::firstOrCreate(
             ['name' => 'technician', 'guard_name' => $guard],
-            ['display_name' => 'متخصص و تکنسین فنی (نصاب‌باشی)']
+            ['display_name' => 'متخصص و تکنسین فنی']
         );
         if (empty($techRole->display_name)) {
-            $techRole->update(['display_name' => 'متخصص و تکنسین فنی (نصاب‌باشی)']);
+            $techRole->update(['display_name' => 'متخصص و تکنسین فنی']);
         }
         if ($techRole->wasRecentlyCreated) {
             $tracker['roles'][] = $techRole->name;
@@ -313,7 +314,7 @@ class Installer extends BaseModuleInstaller
             ['name' => 'FieldService'],
             [
                 'slug'         => 'fieldservice',
-                'description'  => 'سامانه هوشمند مدیریت خدمات فنی در محل، اعزام تکنسین و قراردادهای B2B نصاب‌باشی',
+                'description'  => 'سامانه هوشمند مدیریت خدمات فنی در محل، اعزام تکنسین و قراردادهای B2B',
                 'version'      => '1.0.0',
                 'active'       => true,
                 'installed'    => true,

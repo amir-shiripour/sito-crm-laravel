@@ -38,3 +38,11 @@ Broadcast::channel('project.{projectId}', function ($user, $projectId) {
 
     return $project->userHasPermission($user->id, 'projects.view');
 });
+
+Broadcast::channel('orders.{orderId}', function ($user, $orderId) {
+    return true;
+});
+
+Broadcast::channel('fieldservice.fleet', function ($user) {
+    return true;
+});

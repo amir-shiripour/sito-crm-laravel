@@ -4,14 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>سامانه هوشمند سفیران و تکنسین‌های نصاب‌باشی | کنسول اعزام</title>
+    <title>{{ $platformName ?? 'سامانه هوشمند خدمات فنی' }} | کنسول اعزام و سفیران</title>
     
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @livewireStyles
 
-    {{-- Leaflet CSS & JS --}}
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+    {{-- Leaflet CSS & JS (Local Core Assets) --}}
+    <link rel="stylesheet" href="{{ asset('vendor/leaflet/leaflet.css') }}" />
+    <script src="{{ asset('vendor/leaflet/leaflet.js') }}"></script>
 
     <style>
         [x-cloak] { display: none !important; }
@@ -95,18 +95,28 @@
             @if($technician)
             <button type="button" @click="statsModalOpen = true"
                     class="pointer-events-auto px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-full bg-slate-900/95 backdrop-blur-md shadow-xl border border-slate-800 flex items-center gap-2 text-right transition-all active:scale-95 shrink-0 hover:border-slate-700">
-                <div class="w-8 h-8 rounded-full bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center text-sm font-black text-indigo-300 shrink-0">
-                    👷‍♂️
+                <div class="w-8 h-8 rounded-full bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400 shrink-0">
+                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="12" cy="7" r="4"></circle>
+                    </svg>
                 </div>
                 <div class="hidden sm:block min-w-0">
                     <div class="text-xs font-black text-white truncate flex items-center gap-1.5">
                         <span>{{ $technician->full_name }}</span>
+                        @if($technician->status->value === 'pending_approval')
+                        <span class="text-[9px] px-1.5 py-0.5 rounded font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                            در انتظار تایید مدارک
+                        </span>
+                        @else
                         <span class="text-[9px] px-1.5 py-0.2 rounded font-bold bg-amber-500/15 text-amber-300 border border-amber-500/25">
                             {{ $technician->tier?->label() ?: 'تکنسین برتر' }}
                         </span>
+                        @endif
                     </div>
                     <div class="text-[10px] text-amber-400 font-bold flex items-center gap-1 mt-0.5">
-                        <span>★ {{ $todayStats['rating'] }}</span>
+                        <svg class="w-3 h-3 fill-amber-400 text-amber-400 shrink-0" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                        <span>{{ $todayStats['rating'] }}</span>
                         <span class="text-slate-500">•</span>
                         <span class="text-slate-400">{{ $technician->completed_orders_count }} خدمت</span>
                     </div>
@@ -115,7 +125,10 @@
             @else
             <button type="button" @click="$dispatch('open-technician-auth')"
                     class="pointer-events-auto px-3.5 py-2 rounded-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-xl flex items-center gap-2 transition-all active:scale-95 shrink-0">
-                <span>👷‍♂️</span>
+                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="12" cy="7" r="4"></circle>
+                </svg>
                 <span>ورود به حساب تکنسین</span>
             </button>
             @endif
@@ -157,34 +170,34 @@
                          x-transition:enter-end="opacity-100 scale-100"
                          class="absolute left-0 top-full mt-2 w-52 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl p-1.5 space-y-1 z-30 font-sans">
                         <a href="{{ route('fieldservice.customer') }}"
-                           class="flex items-center gap-2 p-2 rounded-xl hover:bg-slate-800 text-xs text-slate-200 transition">
-                            <span>👤</span>
+                           class="flex items-center gap-2.5 p-2 rounded-xl hover:bg-slate-800 text-xs text-slate-200 transition">
+                            <svg class="w-4 h-4 text-indigo-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
                             <span>پرتال مشتریان</span>
                         </a>
                         <a href="{{ route('user.fieldservice.dashboard') }}"
-                           class="flex items-center gap-2 p-2 rounded-xl hover:bg-slate-800 text-xs text-slate-200 transition">
-                            <span>⚙️</span>
+                           class="flex items-center gap-2.5 p-2 rounded-xl hover:bg-slate-800 text-xs text-slate-200 transition">
+                            <svg class="w-4 h-4 text-indigo-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path><circle cx="12" cy="12" r="3"></circle></svg>
                             <span>پنل مدیریت CRM</span>
                         </a>
                         <a href="{{ route('fieldservice.b2b') }}"
-                           class="flex items-center gap-2 p-2 rounded-xl hover:bg-slate-800 text-xs text-slate-200 transition">
-                            <span>🏢</span>
+                           class="flex items-center gap-2.5 p-2 rounded-xl hover:bg-slate-800 text-xs text-slate-200 transition">
+                            <svg class="w-4 h-4 text-indigo-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="16" height="20" x="4" y="2" rx="2" ry="2"></rect><path d="M9 22v-4h6v4"></path><path d="M8 6h.01"></path><path d="M16 6h.01"></path><path d="M12 6h.01"></path><path d="M12 10h.01"></path><path d="M12 14h.01"></path><path d="M16 10h.01"></path><path d="M16 14h.01"></path><path d="M8 10h.01"></path><path d="M8 14h.01"></path></svg>
                             <span>پرتال مدیران ساختمان</span>
                         </a>
 
                         @if($technician)
                         <div class="border-t border-slate-800 my-1 pt-1">
                             <a href="{{ route('fieldservice.technician.logout') }}"
-                               class="flex items-center gap-2 p-2 rounded-xl hover:bg-rose-500/20 text-xs text-rose-300 transition font-bold">
-                                <span>🚪</span>
+                               class="flex items-center gap-2.5 p-2 rounded-xl hover:bg-rose-500/20 text-xs text-rose-300 transition font-bold">
+                                <svg class="w-4 h-4 text-rose-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" x2="9" y1="12" y2="12"></line></svg>
                                 <span>خروج از حساب تکنسین</span>
                             </a>
                         </div>
                         @else
                         <div class="border-t border-slate-800 my-1 pt-1">
                             <button type="button" @click="$dispatch('open-technician-auth'); switcherOpen = false;"
-                                    class="w-full flex items-center gap-2 p-2 rounded-xl hover:bg-indigo-600 text-xs text-indigo-300 hover:text-white transition font-bold text-right">
-                                <span>🔑</span>
+                                    class="w-full flex items-center gap-2.5 p-2 rounded-xl hover:bg-indigo-600 text-xs text-indigo-300 hover:text-white transition font-bold text-right">
+                                <svg class="w-4 h-4 text-indigo-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21 2-2 2m-1.5 1.5L10 13l-4 4-4-4 4-4 7.5-7.5"></path><path d="m15.5 7.5 3 3"></path></svg>
                                 <span>ورود / ثبت‌نام تکنسین</span>
                             </button>
                         </div>
@@ -218,7 +231,7 @@
         <div class="pointer-events-auto bg-slate-950/95 backdrop-blur-2xl rounded-t-[32px] lg:rounded-3xl border border-slate-800 shadow-2xl flex flex-col transition-all duration-300 ease-out"
              :class="{
                  'h-auto max-h-[85vh] lg:h-auto lg:max-h-[85vh]': sheetExpanded,
-                 'h-[82px] max-h-[82px] lg:h-auto lg:max-h-full': !sheetExpanded
+                 'h-[82px] max-h-[82px] lg:h-[82px] lg:max-h-[82px]': !sheetExpanded
              }"
              @touchstart="handleTouchStart($event)"
              @touchmove="handleTouchMove($event)"
@@ -231,52 +244,71 @@
                     <span class="w-12 h-1 rounded-full bg-slate-700 hover:bg-slate-600 transition-colors"></span>
                 </div>
 
-                {{-- Compact Peek Info --}}
+                {{-- Compact Peek Info (Reactive via Alpine & Livewire State Sync) --}}
                 <div class="flex items-center justify-between gap-3 pt-1">
                     <div class="flex items-center gap-2.5 min-w-0">
-                        @if($activeMission)
-                        <span class="w-3 h-3 rounded-full bg-indigo-500 animate-pulse shrink-0"></span>
-                        <div class="min-w-0">
-                            <div class="text-xs font-black text-white truncate">
-                                ماموریت فعال: {{ $activeMission->category?->name ?: $activeMission->customer_name }}
+                        {{-- 1. Active Assigned Mission Case --}}
+                        <template x-if="hasActiveMission">
+                            <div class="flex items-center gap-2.5 min-w-0">
+                                <span class="w-3 h-3 rounded-full bg-indigo-500 animate-pulse shrink-0"></span>
+                                <div class="min-w-0">
+                                    <div class="text-xs font-black text-white truncate" x-text="'ماموریت فعال: ' + activeMissionTitle"></div>
+                                    <div class="text-[10px] text-indigo-300 truncate font-bold flex items-center gap-1.5">
+                                        <span x-text="activeMissionStatus"></span>
+                                        <span x-show="activeMissionEta" class="text-emerald-400 font-bold" x-text="'• ' + activeMissionEta"></span>
+                                        <span x-show="activeMissionDist" class="text-slate-400" x-text="'(' + activeMissionDist + ' ک.م)'"></span>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="text-[10px] text-indigo-300 truncate font-bold">
-                                {{ $activeMission->status->label() }} • {{ $activeMission->city }}
+                        </template>
+
+                        {{-- 2. No Active Mission, Technician Logged In --}}
+                        <template x-if="!hasActiveMission && technician">
+                            <div class="flex items-center gap-2.5 min-w-0">
+                                <span class="w-3 h-3 rounded-full shrink-0"
+                                      :class="(technician && technician.is_online) ? 'bg-emerald-400 animate-ping' : 'bg-slate-600'"></span>
+                                <div class="min-w-0">
+                                    <div class="text-xs font-black text-white truncate"
+                                         x-text="(technician && technician.is_online) ? 'رادار سفارش‌های مازندران فعال است' : 'شما در وضعیت آفلاین هستید'"></div>
+                                    <div class="text-[10px] text-slate-400 truncate"
+                                         x-text="(technician && technician.is_online) ? (availableMissionsCount + ' سفارش در انتظار بررسی') : 'جهت دریافت کار آنلاین شوید'"></div>
+                                </div>
                             </div>
-                        </div>
-                        @elseif($technician)
-                        <span class="w-3 h-3 rounded-full {{ $technician->is_online ? 'bg-emerald-400 animate-ping' : 'bg-slate-600' }} shrink-0"></span>
-                        <div class="min-w-0">
-                            <div class="text-xs font-black text-white truncate">
-                                {{ $technician->is_online ? 'رادار سفارش‌های مازندران فعال است' : 'شما در وضعیت آفلاین هستید' }}
+                        </template>
+
+                        {{-- 3. Guest / Unauthenticated --}}
+                        <template x-if="!hasActiveMission && !technician">
+                            <div class="flex items-center gap-2.5 min-w-0">
+                                <span class="w-3 h-3 rounded-full bg-amber-400 animate-ping shrink-0"></span>
+                                <div class="min-w-0">
+                                    <div class="text-xs font-black text-white truncate">نیاز به ورود به حساب کاربری</div>
+                                    <div class="text-[10px] text-amber-300 truncate font-bold">برای دریافت سرویس وارد شوید</div>
+                                </div>
                             </div>
-                            <div class="text-[10px] text-slate-400 truncate">
-                                {{ $technician->is_online ? ($availableMissions->count() . ' سفارش در انتظار بررسی') : 'جهت دریافت کار آنلاین شوید' }}
-                            </div>
-                        </div>
-                        @else
-                        <span class="w-3 h-3 rounded-full bg-amber-400 animate-ping shrink-0"></span>
-                        <div class="min-w-0">
-                            <div class="text-xs font-black text-white truncate">
-                                نیاز به ورود به حساب کاربری
-                            </div>
-                            <div class="text-[10px] text-amber-300 truncate font-bold">
-                                برای دریافت سرویس وارد شوید
-                            </div>
-                        </div>
-                        @endif
+                        </template>
                     </div>
 
-                    <button type="button" @click.stop="toggleSheet()"
-                            class="shrink-0 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold transition flex items-center gap-1">
-                        <span x-text="sheetExpanded ? 'بستن' : 'مشاهده'"></span>
-                        <span class="text-xs" x-text="sheetExpanded ? '⌄' : '⌃'"></span>
-                    </button>
+                    <div class="flex items-center gap-2 shrink-0">
+                        <template x-if="hasActiveMission && activeMissionCustomerPhone">
+                            <a :href="'tel:' + activeMissionCustomerPhone" @click.stop
+                               class="w-9 h-9 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white flex items-center justify-center text-xs shadow-md shadow-indigo-600/30 transition active:scale-95"
+                               title="تماس با مشتری">
+                                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+                                </svg>
+                            </a>
+                        </template>
+                        <button type="button" @click.stop="toggleSheet()"
+                                class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold transition flex items-center gap-1.5 active:scale-95 border border-slate-700">
+                            <span x-text="sheetExpanded ? 'بستن' : 'مشاهده'"></span>
+                            <svg class="w-3.5 h-3.5 transition-transform duration-200" :class="sheetExpanded ? 'rotate-180' : ''" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m18 15-6-6-6 6"/></svg>
+                        </button>
+                    </div>
                 </div>
             </div>
 
             {{-- Full Content Area: Livewire Mission Feed --}}
-            <div :class="!sheetExpanded ? 'hidden lg:flex lg:flex-col lg:flex-1 lg:min-h-0' : 'flex flex-col flex-1 min-h-0'"
+            <div :class="!sheetExpanded ? 'hidden' : 'flex flex-col flex-1 min-h-0'"
                  class="transition-all duration-200">
                 <div class="p-4 sm:p-5 custom-scrollbar flex-1 overflow-y-auto max-h-[75vh]">
                     @livewire('fieldservice::mission-feed', ['technicianId' => $technician?->id])
@@ -289,7 +321,7 @@
                         <span>پوشش هوشمند مازندران (بابل، ساری، آمل، قائمشهر)</span>
                     </div>
                     <div class="text-[10px] text-slate-500">
-                        نصاب‌باشی فیلد سرویس
+                        {{ $platformName ?? 'سامانه' }} فیلد سرویس
                     </div>
                 </div>
             </div>
@@ -312,7 +344,7 @@
             <div class="flex items-center justify-between pb-3 border-b border-slate-800">
                 <div class="flex items-center gap-2">
                     <span class="w-8 h-8 rounded-xl bg-indigo-600/20 border border-indigo-500/30 text-indigo-400 flex items-center justify-center font-bold text-sm">
-                        📊
+                        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"></path><path d="m19 9-5 5-4-4-3 3"></path></svg>
                     </span>
                     <h3 class="text-sm font-black text-white">کارنامه و عملکرد امروز شما</h3>
                 </div>
@@ -331,7 +363,11 @@
                 </div>
                 <div class="p-3 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-1">
                     <div class="text-[10px] text-slate-400 font-bold">امتیاز رضایت مشتریان:</div>
-                    <div class="text-sm font-black text-amber-400">★ {{ $todayStats['rating'] }} <span class="text-[10px] text-slate-500">از ۵</span></div>
+                    <div class="text-sm font-black text-amber-400 flex items-center gap-1">
+                        <svg class="w-3.5 h-3.5 fill-amber-400 text-amber-400" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                        <span>{{ $todayStats['rating'] }}</span>
+                        <span class="text-[10px] text-slate-500">از ۵</span>
+                    </div>
                 </div>
                 <div class="p-3 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-1">
                     <div class="text-[10px] text-slate-400 font-bold">نرخ پذیرش رادار:</div>
@@ -352,8 +388,8 @@
                 </button>
 
                 <a href="{{ route('fieldservice.technician.logout') }}"
-                   class="w-full py-2.5 bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 border border-rose-500/30 font-bold text-xs rounded-2xl transition flex items-center justify-center gap-1.5">
-                    <span>🚪</span>
+                   class="w-full py-2.5 bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 border border-rose-500/30 font-bold text-xs rounded-2xl transition flex items-center justify-center gap-2">
+                    <svg class="w-4 h-4 text-rose-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" x2="9" y1="12" y2="12"></line></svg>
                     <span>خروج از حساب تکنسین</span>
                 </a>
             </div>
@@ -374,6 +410,7 @@
         let rawTechMap = null;
         let rawTechMarker = null;
         let rawCustomerMarker = null;
+        let rawRouteGlowPolyline = null;
         let rawRoutePolyline = null;
         let rawPreviewRouteLine = null;
         let rawFocusRingLayer = null;
@@ -403,6 +440,17 @@
                 todayStats: todayStats || {},
                 sheetExpanded: true,
                 statsModalOpen: false,
+
+                // Reactive Active Mission State (Updated dynamically via Livewire events)
+                hasActiveMission: !!activeMission,
+                activeMissionTitle: activeMission ? (activeMission.category?.name || activeMission.customer_name || '') : '',
+                activeMissionStatus: activeMission ? (activeMission.status?.value || activeMission.status || '') : '',
+                activeMissionCity: activeMission ? (activeMission.city || '') : '',
+                activeMissionDist: null,
+                activeMissionEta: '',
+                activeMissionCustomerPhone: '',
+                activeMissionCustomerName: '',
+                availableMissionsCount: availableMissions ? availableMissions.length : 0,
 
                 // Touch swipe coordinates for peek sheet
                 touchStartY: 0,
@@ -482,7 +530,7 @@
                         keepBuffer: 6,
                         updateWhenIdle: false,
                         updateWhenZooming: true,
-                        attribution: '&copy; نصاب‌باشی | ' + (this.config.name || 'GIS'),
+                        attribution: '&copy; ' + @json($platformName ?? 'GIS') + ' | ' + (this.config.name || 'GIS'),
                     }).addTo(rawTechMap);
 
                     rawMissionsLayer = L.layerGroup().addTo(rawTechMap);
@@ -494,27 +542,89 @@
 
                     // Render active mission or available radar missions
                     if (this.activeMission && this.activeMission.lat && this.activeMission.lng) {
-                        this.renderActiveMissionRoute(this.activeMission.lat, this.activeMission.lng, this.activeMission.customer_name);
+                        this.renderActiveMissionRoute(
+                            this.activeMission.lat,
+                            this.activeMission.lng,
+                            this.activeMission.customer_name || 'کارفرما',
+                            this.activeMission.customer_phone || ''
+                        );
                     } else if (this.availableMissions && this.availableMissions.length > 0) {
                         this.renderAvailableMissionsMarkers();
                     }
 
                     // Window Events from Livewire
                     window.addEventListener('mission-accepted', (e) => {
-                        if (e.detail?.lat && e.detail?.lng) {
+                        const d = (Array.isArray(e.detail) ? e.detail[0] : (e.detail?.[0] || e.detail)) || {};
+                        if (d.lat && d.lng) {
+                            this.hasActiveMission = true;
                             this.clearMissionFocus();
-                            this.renderActiveMissionRoute(e.detail.lat, e.detail.lng, e.detail.customer || 'مشتری');
+                            if (rawMissionsLayer) {
+                                rawMissionsLayer.clearLayers();
+                                rawMissionMarkersMap = {};
+                            }
+                            this.renderActiveMissionRoute(parseFloat(d.lat), parseFloat(d.lng), d.customer || 'مشتری', d.phone || '');
                             this.sheetExpanded = true;
                         }
                     });
 
                     window.addEventListener('mission-route-started', (e) => {
-                        if (e.detail?.lat && e.detail?.lng) {
-                            this.centerOnRoute(e.detail.lat, e.detail.lng);
+                        const d = (Array.isArray(e.detail) ? e.detail[0] : (e.detail?.[0] || e.detail)) || {};
+                        if (d.lat && d.lng) {
+                            this.centerOnRoute(parseFloat(d.lat), parseFloat(d.lng));
                         }
                     });
 
                     window.addEventListener('mission-completed', () => {
+                        this.hasActiveMission = false;
+                        this.clearActiveMissionRoute();
+                        this.clearMissionFocus();
+                        this.renderAvailableMissionsMarkers();
+                    });
+
+                    window.addEventListener('active-mission-state-changed', (e) => {
+                        const d = (Array.isArray(e.detail) ? e.detail[0] : (e.detail?.[0] || e.detail)) || {};
+                        const wasActive = this.hasActiveMission;
+                        this.hasActiveMission = !!d.hasActiveMission;
+                        this.activeMissionTitle = d.title || '';
+                        this.activeMissionStatus = d.status || '';
+                        this.activeMissionCity = d.city || '';
+                        if (d.customerPhone) this.activeMissionCustomerPhone = d.customerPhone;
+                        if (d.customerName) this.activeMissionCustomerName = d.customerName;
+                        if (d.distanceKm) this.activeMissionDist = d.distanceKm;
+                        if (d.etaText) this.activeMissionEta = d.etaText;
+                        if (typeof d.availableCount !== 'undefined') {
+                            this.availableMissionsCount = d.availableCount;
+                        }
+
+                        if (Array.isArray(d.missions)) {
+                            this.availableMissions = d.missions;
+                        }
+
+                        if (this.hasActiveMission && d.destLat && d.destLng) {
+                            if (rawMissionsLayer) {
+                                rawMissionsLayer.clearLayers();
+                                rawMissionMarkersMap = {};
+                            }
+                            this.renderActiveMissionRoute(
+                                parseFloat(d.destLat),
+                                parseFloat(d.destLng),
+                                this.activeMissionCustomerName,
+                                this.activeMissionCustomerPhone
+                            );
+                        } else if (!this.hasActiveMission) {
+                            if (wasActive) {
+                                this.clearActiveMissionRoute();
+                                this.clearMissionFocus();
+                            }
+                            this.renderAvailableMissionsMarkers();
+                        }
+                    });
+
+                    window.addEventListener('mission-cancelled-by-admin', () => {
+                        this.hasActiveMission = false;
+                        this.activeMissionTitle = '';
+                        this.activeMissionStatus = '';
+                        this.activeMissionCity = '';
                         this.clearActiveMissionRoute();
                         this.clearMissionFocus();
                         this.renderAvailableMissionsMarkers();
@@ -548,6 +658,55 @@
                         }
                         this.clearMissionFocus();
                     });
+
+                    window.addEventListener('mission-removed-from-map', (e) => {
+                        const orderId = e.detail?.orderId;
+                        if (orderId && rawMissionMarkersMap[orderId]) {
+                            rawMissionsLayer.removeLayer(rawMissionMarkersMap[orderId]);
+                            delete rawMissionMarkersMap[orderId];
+                        }
+                        this.clearMissionFocus();
+                    });
+
+                    window.addEventListener('new-mission-received-on-map', (e) => {
+                        const m = e.detail;
+                        if (!m || !m.order_id || !m.lat || !m.lng || !rawMissionsLayer) return;
+
+                        this.addOrUpdateMissionMarker({
+                            id: m.order_id,
+                            lat: m.lat,
+                            lng: m.lng,
+                            category_name: m.appliance_label || 'سفارش',
+                            order_number: m.order_number,
+                            is_emergency: m.is_emergency
+                        });
+
+                        if (navigator.vibrate) {
+                            try { navigator.vibrate([100, 50, 100]); } catch(err) {}
+                        }
+                    });
+
+                    // Direct Client-Side Echo Fleet Subscription
+                    if (window.Echo) {
+                        window.Echo.channel('fieldservice.fleet')
+                            .listen('.ServiceOrderCreated', (e) => {
+                                if (window.Livewire) {
+                                    window.Livewire.dispatch('refresh-mission-feed');
+                                }
+                            })
+                            .listen('.ServiceOrderStatusChanged', (e) => {
+                                if (window.Livewire) {
+                                    window.Livewire.dispatch('refresh-mission-feed');
+                                }
+                                if (e.status === 'accepted' || e.status === 'cancelled') {
+                                    const orderId = e.order_id;
+                                    if (orderId && rawMissionMarkersMap[orderId]) {
+                                        rawMissionsLayer.removeLayer(rawMissionMarkersMap[orderId]);
+                                        delete rawMissionMarkersMap[orderId];
+                                    }
+                                }
+                            });
+                    }
 
                     window.addEventListener('technician-duty-changed', (e) => {
                         if (typeof e.detail?.isOnline !== 'undefined' && this.technician) {
@@ -587,8 +746,11 @@
                         html: `
                             <div style="position: relative; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center;">
                                 ${isOnline ? '<div class="tech-radar-ring" style="width: 44px; height: 44px;"></div>' : ''}
-                                <div style="background: ${isOnline ? '#10b981' : '#64748b'}; width: 28px; height: 28px; border-radius: 50%; border: 3px solid white; box-shadow: 0 4px 14px rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; color: white; font-size: 14px; position: relative; z-index: 2;">
-                                    👷‍♂️
+                                <div style="background: ${isOnline ? '#4f46e5' : '#475569'}; width: 30px; height: 30px; border-radius: 50%; border: 2.5px solid white; box-shadow: 0 4px 14px rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; color: white; position: relative; z-index: 2;">
+                                    <svg style="width: 16px; height: 16px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path>
+                                        <circle cx="12" cy="7" r="4"></circle>
+                                    </svg>
                                 </div>
                             </div>
                         `,
@@ -599,101 +761,218 @@
                     rawTechMarker = L.marker([lat, lng], { icon: techIcon }).addTo(rawTechMap);
                 },
 
-                renderActiveMissionRoute(destLat, destLng, customerName) {
+                calculateHaversineDistance(lat1, lon1, lat2, lon2) {
+                    const R = 6371; // km
+                    const dLat = (lat2 - lat1) * Math.PI / 180;
+                    const dLon = (lon2 - lon1) * Math.PI / 180;
+                    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                              Math.sin(dLon / 2) * Math.sin(dLon / 2);
+                    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+                    return Math.round(R * c * 1.25 * 10) / 10;
+                },
+
+                calculateETA(distanceKm) {
+                    if (!distanceKm || distanceKm <= 0) return 3;
+                    return Math.max(2, Math.round((distanceKm / 25) * 60));
+                },
+
+                currentDestLat: null,
+                currentDestLng: null,
+
+                async renderActiveMissionRoute(destLat, destLng, customerName, customerPhone = null) {
                     if (!rawTechMap) return;
+
+                    const techLat = (this.technician && this.technician.lat) ? parseFloat(this.technician.lat) : 36.5444;
+                    const techLng = (this.technician && this.technician.lng) ? parseFloat(this.technician.lng) : 52.6780;
+                    const parsedDestLat = parseFloat(destLat);
+                    const parsedDestLng = parseFloat(destLng);
+
+                    let dist = this.calculateHaversineDistance(techLat, techLng, parsedDestLat, parsedDestLng);
+                    let eta = this.calculateETA(dist);
+                    this.activeMissionDist = dist;
+                    this.activeMissionEta = `حدود ${eta} دقیقه`;
+                    if (customerName) this.activeMissionCustomerName = customerName;
+                    if (customerPhone) this.activeMissionCustomerPhone = customerPhone;
+
+                    // If route is already rendered with the exact same destination, update info and don't re-create layers or reset view
+                    if (rawCustomerMarker && this.currentDestLat === parsedDestLat && this.currentDestLng === parsedDestLng) {
+                        return;
+                    }
+
                     this.clearActiveMissionRoute();
+                    this.currentDestLat = parsedDestLat;
+                    this.currentDestLng = parsedDestLng;
 
-                    const techLat = (this.technician && this.technician.lat) ? this.technician.lat : 36.5444;
-                    const techLng = (this.technician && this.technician.lng) ? this.technician.lng : 52.6780;
+                    // Fetch real street road route from Routing Service
+                    let routeCoords = [[techLat, techLng], [parsedDestLat, parsedDestLng]];
+                    try {
+                        const url = `{{ route('fieldservice.api.route') }}?origin_lat=${techLat}&origin_lng=${techLng}&dest_lat=${parsedDestLat}&dest_lng=${parsedDestLng}`;
+                        const response = await fetch(url);
+                        if (response.ok) {
+                            const data = await response.json();
+                            if (data.coordinates && data.coordinates.length > 1) {
+                                routeCoords = data.coordinates;
+                                if (data.distance_km) {
+                                    this.activeMissionDist = data.distance_km;
+                                }
+                                if (data.eta_minutes) {
+                                    this.activeMissionEta = `حدود ${data.eta_minutes} دقیقه`;
+                                }
+                            }
+                        }
+                    } catch (err) {
+                        console.warn('Technician road route fallback to direct line:', err);
+                    }
 
-                    // Customer destination pin
+                    // Customer destination pin (Clean vector SVG)
                     const customerIcon = L.divIcon({
                         className: 'customer-destination-pin',
                         html: `
-                            <div style="position: relative; display: flex; flex-direction: column; align-items: center;">
-                                <div style="background: #ef4444; color: white; border-radius: 50%; width: 34px; height: 34px; border: 3px solid white; box-shadow: 0 6px 18px rgba(239,68,68,0.5); display: flex; align-items: center; justify-content: center; font-size: 16px;">
-                                    📍
+                            <div style="position: relative; display: flex; flex-direction: column; align-items: center; filter: drop-shadow(0 4px 12px rgba(239,68,68,0.45));">
+                                <div style="background: #ef4444; color: white; border-radius: 50%; width: 34px; height: 34px; border: 2.5px solid white; box-shadow: 0 4px 12px rgba(239,68,68,0.4); display: flex; align-items: center; justify-content: center;">
+                                    <svg style="width: 17px; height: 17px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"></path>
+                                        <circle cx="12" cy="10" r="3"></circle>
+                                    </svg>
+                                </div>
+                                <div style="background: rgba(15,23,42,0.92); color: white; font-size: 10px; font-weight: 800; font-family: IRANYekanX, sans-serif; padding: 2px 8px; border-radius: 9999px; margin-top: 3px; white-space: nowrap; border: 1px solid rgba(255,255,255,0.15);">
+                                    محل مشتری
                                 </div>
                             </div>
                         `,
-                        iconSize: [34, 34],
-                        iconAnchor: [17, 34],
+                        iconSize: [34, 56],
+                        iconAnchor: [17, 17],
                     });
 
-                    rawCustomerMarker = L.marker([destLat, destLng], { icon: customerIcon })
+                    rawCustomerMarker = L.marker([parsedDestLat, parsedDestLng], { icon: customerIcon })
                         .addTo(rawTechMap)
                         .bindPopup(`<b style="font-family: IRANYekanX, sans-serif; font-size: 12px;">محل مشتری: ${customerName || 'کارفرما'}</b>`);
 
-                    // Connecting Route Polyline
-                    rawRoutePolyline = L.polyline([[techLat, techLng], [destLat, destLng]], {
-                        color: '#6366f1',
-                        weight: 4,
-                        opacity: 0.85,
-                        dashArray: '8, 8',
+                    // Dual layer high-contrast polyline (glow + vibrant line) along actual roads
+                    rawRouteGlowPolyline = L.polyline(routeCoords, {
+                        color: '#4f46e5',
+                        weight: 8,
+                        opacity: 0.35,
+                        lineCap: 'round',
+                        lineJoin: 'round',
                     }).addTo(rawTechMap);
 
-                    this.centerOnRoute(destLat, destLng);
+                    rawRoutePolyline = L.polyline(routeCoords, {
+                        color: '#6366f1',
+                        weight: 4.5,
+                        opacity: 0.95,
+                        lineCap: 'round',
+                        lineJoin: 'round',
+                    }).addTo(rawTechMap);
+
+                    try {
+                        const bounds = L.latLngBounds(routeCoords);
+                        rawTechMap.fitBounds(bounds, { padding: [80, 80], maxZoom: 16 });
+                    } catch (e) {}
                 },
 
                 clearActiveMissionRoute() {
                     if (!rawTechMap) return;
+                    this.currentDestLat = null;
+                    this.currentDestLng = null;
                     if (rawCustomerMarker) {
-                        rawTechMap.removeLayer(rawCustomerMarker);
+                        try { rawTechMap.removeLayer(rawCustomerMarker); } catch (e) {}
                         rawCustomerMarker = null;
                     }
+                    if (rawRouteGlowPolyline) {
+                        try { rawTechMap.removeLayer(rawRouteGlowPolyline); } catch (e) {}
+                        rawRouteGlowPolyline = null;
+                    }
                     if (rawRoutePolyline) {
-                        rawTechMap.removeLayer(rawRoutePolyline);
+                        try { rawTechMap.removeLayer(rawRoutePolyline); } catch (e) {}
                         rawRoutePolyline = null;
                     }
+                    this.activeMissionDist = null;
+                    this.activeMissionEta = '';
+                },
+
+                addOrUpdateMissionMarker(m) {
+                    if (!m || !m.id || !m.lat || !m.lng || !rawMissionsLayer) return null;
+
+                    // If already exists, update position and return
+                    if (rawMissionMarkersMap[m.id]) {
+                        rawMissionMarkersMap[m.id].setLatLng([m.lat, m.lng]);
+                        return rawMissionMarkersMap[m.id];
+                    }
+
+                    const pinIcon = L.divIcon({
+                        className: 'available-job-pin',
+                        html: `
+                            <div style="position: relative; display: flex; flex-direction: column; align-items: center; cursor: pointer;">
+                                <div style="background: ${m.is_emergency ? '#d97706' : '#4f46e5'}; width: 30px; height: 30px; border-radius: 50%; border: 2px solid white; box-shadow: 0 4px 12px rgba(0,0,0,0.35); display: flex; align-items: center; justify-content: center; color: white; transition: transform 0.2s;" class="hover:scale-110 active:scale-95">
+                                    ${m.is_emergency ? `
+                                        <svg style="width: 15px; height: 15px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+                                            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+                                        </svg>
+                                    ` : `
+                                        <svg style="width: 14px; height: 14px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                            <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path>
+                                        </svg>
+                                    `}
+                                </div>
+                            </div>
+                        `,
+                        iconSize: [30, 30],
+                        iconAnchor: [15, 15],
+                    });
+
+                    const mark = L.marker([m.lat, m.lng], { icon: pinIcon }).addTo(rawMissionsLayer);
+                    const titleText = m.category?.name || m.category_name || m.appliance_label || 'سفارش';
+                    const orderNum = m.order_number || m.id;
+
+                    mark.bindTooltip(`<div style="font-family: IRANYekanX, sans-serif; font-size: 11px; padding: 2px 4px; text-align: center;"><b>${titleText}</b><div style="color: #6366f1; font-weight: bold; margin-top: 2px;">#${orderNum}</div></div>`, {
+                        direction: 'top',
+                        offset: [0, -12]
+                    });
+
+                    rawMissionMarkersMap[m.id] = mark;
+
+                    mark.on('click', () => {
+                        this.sheetExpanded = true;
+                        this.focusOnMission(m.id, m.lat, m.lng, titleText);
+                        if (window.Livewire) {
+                            window.Livewire.dispatch('order-pin-clicked', { orderId: m.id });
+                        }
+                        setTimeout(() => {
+                            const card = document.getElementById('mission-card-' + m.id);
+                            if (card) {
+                                card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            }
+                        }, 100);
+                    });
+
+                    return mark;
                 },
 
                 renderAvailableMissionsMarkers() {
                     if (!rawMissionsLayer) return;
-                    rawMissionsLayer.clearLayers();
-                    rawMissionMarkersMap = {};
 
-                    if (!this.technician || !this.technician.is_online) return;
+                    if (!this.technician || !this.technician.is_online || this.hasActiveMission) {
+                        rawMissionsLayer.clearLayers();
+                        rawMissionMarkersMap = {};
+                        return;
+                    }
 
-                    this.availableMissions.forEach((m) => {
-                        if (!m.lat || !m.lng) return;
+                    const currentMissions = this.availableMissions || [];
+                    const currentIds = currentMissions.map(m => Number(m.id));
 
-                        const pinIcon = L.divIcon({
-                            className: 'available-job-pin',
-                            html: `
-                                <div style="position: relative; display: flex; flex-direction: column; align-items: center; cursor: pointer;">
-                                    <div style="background: #4f46e5; width: 32px; height: 32px; border-radius: 50%; border: 2.5px solid white; box-shadow: 0 4px 14px rgba(79,70,229,0.5); display: flex; align-items: center; justify-content: center; color: white; font-size: 14px; transition: transform 0.2s;" class="hover:scale-110 active:scale-95">
-                                        ${m.is_emergency ? '⚡' : '🛠️'}
-                                    </div>
-                                </div>
-                            `,
-                            iconSize: [32, 32],
-                            iconAnchor: [16, 16],
-                        });
+                    // Remove stale markers smoothly
+                    Object.keys(rawMissionMarkersMap).forEach((id) => {
+                        if (!currentIds.includes(Number(id))) {
+                            rawMissionsLayer.removeLayer(rawMissionMarkersMap[id]);
+                            delete rawMissionMarkersMap[id];
+                        }
+                    });
 
-                        const mark = L.marker([m.lat, m.lng], { icon: pinIcon }).addTo(rawMissionsLayer);
-                        mark.bindTooltip(`<div style="font-family: IRANYekanX, sans-serif; font-size: 11px; padding: 2px 4px; text-align: center;"><b>${m.category?.name || 'سفارش'}</b><div style="color: #6366f1; font-weight: bold; margin-top: 2px;">#${m.order_number}</div></div>`, {
-                            direction: 'top',
-                            offset: [0, -12]
-                        });
-
-                        rawMissionMarkersMap[m.id] = mark;
-
-                        mark.on('click', () => {
-                            this.sheetExpanded = true;
-                            // 1. Focus map and draw preview route line
-                            this.focusOnMission(m.id, m.lat, m.lng, m.category?.name || 'سفارش');
-                            // 2. Dispatch to Livewire to open order details modal and select card
-                            if (window.Livewire) {
-                                window.Livewire.dispatch('order-pin-clicked', { orderId: m.id });
-                            }
-                            // 3. Scroll to card in list
-                            setTimeout(() => {
-                                const card = document.getElementById('mission-card-' + m.id);
-                                if (card) {
-                                    card.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                                }
-                            }, 100);
-                        });
+                    // Add or update all current missions
+                    currentMissions.forEach((m) => {
+                        this.addOrUpdateMissionMarker(m);
                     });
                 },
 
@@ -702,6 +981,18 @@
 
                     // Clear previous preview line and focus ring
                     this.clearMissionFocus();
+
+                    // Ensure the mission pin is physically rendered on map before focusing!
+                    if (!rawMissionMarkersMap[orderId] && rawMissionsLayer) {
+                        this.addOrUpdateMissionMarker({
+                            id: orderId,
+                            lat: lat,
+                            lng: lng,
+                            category_name: title,
+                            order_number: orderId,
+                            is_emergency: false,
+                        });
+                    }
 
                     // Smooth fly to order position
                     rawTechMap.flyTo([lat, lng], 16, { duration: 0.8 });

@@ -49,7 +49,7 @@
             {{-- Header --}}
             <div class="px-6 pt-6 pb-4 text-center border-b border-slate-100 dark:border-slate-800/80">
                 <h3 class="text-base font-black text-slate-900 dark:text-white">
-                    {{ $isRegister ? 'تکمیل ثبت‌نام مشتری' : 'ورود / ثبت‌نام در نصاب‌باشی' }}
+                    {{ $isRegister ? 'تکمیل ثبت‌نام مشتری' : ('ورود / ثبت‌نام در ' . ($platformName ?? 'سامانه')) }}
                 </h3>
                 @if($isRegister)
                 <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
@@ -122,7 +122,8 @@
                                     <span class="text-slate-500 dark:text-slate-400 font-medium">شماره موبایل:</span>
                                     <span class="font-bold text-slate-800 dark:text-slate-100 font-sans mr-1" dir="ltr">{{ $otpUsername }}</span>
                                 </div>
-                                <button type="button" wire:click="resetOtp" class="text-indigo-600 dark:text-indigo-400 font-bold hover:underline">
+                                <button type="button" wire:click="resetOtp"
+                                        class="px-2.5 py-1 rounded-xl bg-slate-200/80 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-650 text-slate-700 dark:text-slate-200 font-bold text-[11px] transition active:scale-95">
                                     ویرایش شماره
                                 </button>
                             </div>
@@ -153,7 +154,7 @@
                             <div class="text-center pt-1">
                                 <button type="button" wire:click="sendOtp"
                                         :disabled="resendTimer > 0"
-                                        class="text-xs font-bold text-indigo-600 dark:text-indigo-400 disabled:text-slate-400 disabled:cursor-not-allowed hover:underline transition">
+                                        class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-750 text-xs font-bold text-indigo-600 dark:text-indigo-400 disabled:opacity-50 disabled:hover:bg-slate-100 dark:disabled:hover:bg-slate-800 disabled:cursor-not-allowed transition active:scale-95 shadow-xs">
                                     <span x-show="resendTimer <= 0">ارسال مجدد کد پیامکی</span>
                                     <span x-show="resendTimer > 0">ارسال مجدد تا <span x-text="resendTimer"></span> ثانیه دیگر</span>
                                 </button>
@@ -185,8 +186,9 @@
                                     <span class="text-slate-500 dark:text-slate-400">کاربر:</span>
                                     <span class="font-bold text-slate-800 dark:text-slate-100 font-sans mr-1" dir="ltr">{{ $username }}</span>
                                 </div>
-                                <button type="button" wire:click="$set('pwdStep', 1)" class="text-indigo-600 dark:text-indigo-400 font-bold hover:underline">
-                                    تغییر
+                                <button type="button" wire:click="$set('pwdStep', 1)"
+                                        class="px-2.5 py-1 rounded-xl bg-slate-200/80 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-650 text-slate-700 dark:text-slate-200 font-bold text-[11px] transition active:scale-95">
+                                    تغییر کاربر
                                 </button>
                             </div>
 
@@ -208,7 +210,7 @@
 
             {{-- Footer Trust Note --}}
             <div class="px-6 py-3 bg-slate-50/80 dark:bg-slate-850 border-t border-slate-100 dark:border-slate-800 text-center text-[11px] text-slate-400">
-                <span>امنیت اطلاعات و حریم خصوصی تضمین شده نصاب‌باشی</span>
+                <span>امنیت اطلاعات و حریم خصوصی تضمین شده {{ $platformName ?? '' }}</span>
             </div>
 
         </div>

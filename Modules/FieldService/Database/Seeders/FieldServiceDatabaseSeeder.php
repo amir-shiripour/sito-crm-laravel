@@ -148,7 +148,7 @@ class FieldServiceDatabaseSeeder extends Seeder
                 'full_name'     => 'مهندس احمد رضایی',
                 'phone'         => '09111199887',
                 'national_code' => '2059998877',
-                'notes'         => 'مشتری تست سامانه نصاب‌باشی',
+                'notes'         => 'مشتری تست سامانه خدمات فنی',
             ]);
         }
 

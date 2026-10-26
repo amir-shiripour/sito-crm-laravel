@@ -23,8 +23,9 @@ class ReverseGeocodingService
         $ne = $coveredBox['northEast'];
 
         if ($lat < $sw[0] || $lat > $ne[0] || $lng < $sw[1] || $lng > $ne[1]) {
+            $platform = FieldServiceSetting::getPlatformName();
             return [
-                'formatted_address' => 'موقعیت خارج از محدوده تحت پوشش خدمات نصاب‌باشی',
+                'formatted_address' => "موقعیت خارج از محدوده تحت پوشش خدمات {$platform}",
                 'short_address'     => 'خارج از محدوده پوشش',
                 'city'              => 'نامشخص',
                 'province'          => 'خارج از محدوده',
@@ -187,7 +188,7 @@ class ReverseGeocodingService
         try {
             $response = Http::timeout(2.5)
                 ->withHeaders([
-                    'User-Agent'      => 'LaravelCRM-NasabBashi/1.0 (info@nasab-bashi.com)',
+                    'User-Agent'      => 'LaravelCRM-FieldService/1.0',
                     'Accept-Language' => 'fa',
                 ])
                 ->get("https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat={$lat}&lon={$lng}&accept-language=fa&zoom=18&addressdetails=1&countrycodes=ir");

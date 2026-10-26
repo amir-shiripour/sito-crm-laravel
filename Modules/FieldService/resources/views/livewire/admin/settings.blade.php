@@ -1,6 +1,6 @@
 <div class="space-y-6 font-sans max-w-4xl">
     <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl border border-gray-200/70 dark:border-gray-700/60 shadow-sm">
-        <h1 class="text-lg font-black text-gray-900 dark:text-white">پیکربندی و تنظیمات هوشمند نصاب‌باشی</h1>
+        <h1 class="text-lg font-black text-gray-900 dark:text-white">پیکربندی و تنظیمات هوشمند خدمات فنی</h1>
         <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">مدیریت وب‌سرویس نقشه‌های ایرانی و بین‌المللی، تعرفه‌های پایه و رادار اعزام</p>
     </div>
 
@@ -202,7 +202,7 @@
 
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                    <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">درصد کمیسیون نصاب‌باشی از اجرت</label>
+                    <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">درصد کمیسیون سامانه از اجرت</label>
                     <div class="relative">
                         <input type="number" step="0.5" wire:model="default_commission_percent" class="w-full h-9 pr-3 pl-8 rounded-xl bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-xs text-gray-800 dark:text-gray-200 font-sans">
                         <span class="absolute left-3 top-2 text-xs text-gray-400">٪</span>
@@ -234,11 +234,11 @@
         <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl border border-gray-200/70 dark:border-gray-700/60 shadow-sm space-y-4">
             <div class="flex items-center gap-2 border-b border-gray-100 dark:border-gray-700/60 pb-3">
                 <span class="text-xl">🖥️</span>
-                <h2 class="text-sm font-black text-gray-900 dark:text-white font-sans">تنظیمات فرانت و لندینگ پیج نصاب‌باشی</h2>
+                <h2 class="text-sm font-black text-gray-900 dark:text-white font-sans">تنظیمات فرانت و لندینگ پیج فیلد سرویس</h2>
             </div>
 
             <p class="text-xs text-gray-500 dark:text-gray-400 leading-relaxed font-sans">
-                هنگامی که در «تنظیمات کلی سیستم» قالب اصلی بر روی «نصاب‌باشی» تنظیم شود، موارد زیر در بالای سایت و بخش لندینگ پیج عمومی اعمال خواهند شد.
+                هنگامی که در «تنظیمات کلی سیستم» قالب اصلی بر روی «خدمات فنی (FieldService)» تنظیم شود، موارد زیر در بالای سایت و بخش لندینگ پیج عمومی اعمال خواهند شد.
             </p>
 
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -265,7 +265,7 @@
         {{-- Submit button --}}
         <div class="flex justify-end">
             <button type="submit" class="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs sm:text-sm rounded-xl shadow-md shadow-indigo-600/20 transition">
-                ذخیره تنظیمات نصاب‌باشی
+                ذخیره تنظیمات
             </button>
         </div>
     </form>

@@ -22,11 +22,98 @@ class MissionFeed extends Component
     public ?int $previewOrderId = null;
     public array $dismissedOrderIds = [];
 
-    protected $listeners = [
-        'technician-authenticated' => 'refreshTechnician',
-        'refresh-mission-feed'     => '$refresh',
-        'order-pin-clicked'        => 'selectMissionFromMap',
-    ];
+    // Cancellation Modal State
+    public bool $showCancelModal = false;
+    public string $cancelAction = 'redispatch';
+    public string $cancelReason = 'vehicle_breakdown';
+    public string $cancelNote = '';
+
+    public function getListeners()
+    {
+        return [
+            'technician-authenticated'                          => 'refreshTechnician',
+            'refresh-mission-feed'                              => '$refresh',
+            'order-pin-clicked'                                 => 'selectMissionFromMap',
+            'echo:fieldservice.fleet,ServiceOrderCreated'       => 'onServiceOrderCreated',
+            'echo:fieldservice.fleet,.ServiceOrderCreated'      => 'onServiceOrderCreated',
+            'echo:fieldservice.fleet,ServiceOrderStatusChanged'  => 'onServiceOrderStatusChanged',
+            'echo:fieldservice.fleet,.ServiceOrderStatusChanged' => 'onServiceOrderStatusChanged',
+        ];
+    }
+
+    public function onServiceOrderCreated(array $payload)
+    {
+        $tech = Technician::find($this->technicianId);
+        if (!$tech || !$tech->is_online || $tech->is_busy) {
+            return;
+        }
+
+        // Check if category matches technician skills
+        if (!empty($payload['category_id']) && !empty($tech->skills)) {
+            $catId = (int) $payload['category_id'];
+            if (!in_array($catId, (array) $tech->skills, true)) {
+                return;
+            }
+        }
+
+        // Check city
+        if (!empty($payload['city']) && !empty($tech->city) && $payload['city'] !== $tech->city) {
+            return;
+        }
+
+        // Check distance if coordinates present
+        if (!empty($payload['lat']) && !empty($payload['lng']) && $tech->lat && $tech->lng) {
+            $dist = self::calculateDistance((float)$tech->lat, (float)$tech->lng, (float)$payload['lat'], (float)$payload['lng']);
+            $maxRadius = (float) ($tech->operational_radius_km ?: 25);
+            if ($dist > $maxRadius) {
+                return;
+            }
+            $payload['distance_km'] = round($dist, 1);
+        }
+
+        // Dispatch to map
+        $this->dispatch('new-mission-received-on-map', $payload);
+
+        // Notify technician
+        $this->dispatch('notify', [
+            'type' => 'info',
+            'text' => "سفارش جدید #{$payload['order_number']} در محدوده کاری شما ثبت شد!",
+        ]);
+    }
+
+    public function onServiceOrderStatusChanged(array $payload)
+    {
+        $orderId = (int) ($payload['order_id'] ?? 0);
+        $newStatus = $payload['status'] ?? '';
+        $assignedTechId = isset($payload['technician_id']) ? (int) $payload['technician_id'] : null;
+
+        if ($newStatus === 'cancelled') {
+            if ($assignedTechId === (int) $this->technicianId) {
+                // This technician's active mission was cancelled!
+                $this->previewOrderId = null;
+                $this->dispatch('mission-cancelled-by-admin');
+                $this->dispatch('notify', [
+                    'type' => 'warning',
+                    'text' => "ماموریت #{$payload['order_number']} توسط مدیریت یا مشتری لغو گردید.",
+                ]);
+            } else {
+                $this->dispatch('mission-removed-from-map', ['orderId' => $orderId]);
+            }
+        } elseif (in_array($newStatus, ['accepted', 'en_route', 'arrived', 'in_progress', 'completed'])) {
+            if ($assignedTechId !== (int) $this->technicianId) {
+                if ($this->previewOrderId === $orderId) {
+                    $this->previewOrderId = null;
+                }
+                $this->dispatch('mission-removed-from-map', ['orderId' => $orderId]);
+            }
+        }
+    }
+
+    public function heartbeat()
+    {
+        // Periodic sync trigger for polling fallback
+        $this->refreshTechnician();
+    }
 
     public function mount(?int $technicianId = null)
     {
@@ -113,6 +200,7 @@ class MissionFeed extends Component
                     'lng'      => (float) $order->lng,
                     'address'  => $order->address,
                     'customer' => $order->customer_name,
+                    'phone'    => $order->customer_phone,
                 ]);
 
                 $this->dispatch('notify', [
@@ -226,6 +314,97 @@ class MissionFeed extends Component
         }
     }
 
+    public function openCancelModal(): void
+    {
+        $this->cancelAction = 'redispatch';
+        $this->cancelReason = 'vehicle_breakdown';
+        $this->cancelNote = '';
+        $this->showCancelModal = true;
+    }
+
+    public function closeCancelModal(): void
+    {
+        $this->showCancelModal = false;
+    }
+
+    public function confirmTechnicianCancel(): void
+    {
+        $tech = Technician::find($this->technicianId);
+        if (!$tech) {
+            return;
+        }
+
+        $order = ServiceOrder::where('technician_id', $tech->id)
+            ->whereIn('status', [
+                OrderStatus::ACCEPTED,
+                OrderStatus::EN_ROUTE,
+            ])
+            ->latest()
+            ->first();
+
+        if (!$order) {
+            $this->showCancelModal = false;
+            return;
+        }
+
+        $reasons = ServiceOrder::technicianCancellationReasons();
+        $reasonTitle = $reasons[$this->cancelReason] ?? 'انصراف تکنسین';
+        $fullNote = $reasonTitle . (!empty($this->cancelNote) ? ' - ' . trim($this->cancelNote) : '');
+
+        if ($this->cancelAction === 'redispatch') {
+            // 1. Release technician and re-queue order in radar for other technicians
+            $order->technician_id = null;
+            $order->status = OrderStatus::SEARCHING;
+            $order->dispatched_at = now();
+            $meta = $order->meta ?? [];
+            $meta['unassigned_history'][] = [
+                'technician_id'   => $tech->id,
+                'technician_name' => $tech->full_name,
+                'reason'          => $fullNote,
+                'at'              => now()->toIso8601String(),
+            ];
+            $order->meta = $meta;
+            $order->save();
+
+            $tech->is_busy = false;
+            $tech->save();
+
+            $this->previewOrderId = null;
+            $this->showCancelModal = false;
+
+            // Clear route line and focus on map
+            $this->dispatch('mission-cancelled-by-admin');
+
+            $this->dispatch('notify', [
+                'type' => 'info',
+                'text' => "ماموریت #{$order->order_number} از کارتابل شما آزاد و مجدداً به رادار همکاران واگذار شد.",
+            ]);
+        } else {
+            // 2. Full cancellation
+            $order->status = OrderStatus::CANCELLED;
+            $order->cancelled_at = now();
+            $order->cancellation_reason = "لغو توسط تکنسین: {$fullNote}";
+            $meta = $order->meta ?? [];
+            $meta['cancelled_by'] = 'technician';
+            $meta['cancel_reason_key'] = $this->cancelReason;
+            $order->meta = $meta;
+            $order->save();
+
+            $tech->is_busy = false;
+            $tech->save();
+
+            $this->previewOrderId = null;
+            $this->showCancelModal = false;
+
+            $this->dispatch('mission-cancelled-by-admin');
+
+            $this->dispatch('notify', [
+                'type' => 'warning',
+                'text' => "سفارش #{$order->order_number} به عنوان لغو نهایی ثبت گردید.",
+            ]);
+        }
+    }
+
     private static function calculateDistance(float $lat1, float $lon1, float $lat2, float $lon2): float
     {
         $earthRadius = 6371; // km
@@ -303,11 +482,60 @@ class MissionFeed extends Component
                 ->first();
         }
 
+        $activeDist = null;
+        $activeEta = null;
+        if ($activeMission && $activeMission->lat && $activeMission->lng) {
+            $tLat = (float) ($tech?->lat ?: 36.5444);
+            $tLng = (float) ($tech?->lng ?: 52.6780);
+            $routeData = app(\Modules\FieldService\App\Services\RoutingService::class)->getRoute(
+                $tLat,
+                $tLng,
+                (float) $activeMission->lat,
+                (float) $activeMission->lng
+            );
+            $activeDist = $routeData['distance_km'] ?? null;
+            $activeEta = $routeData['eta_minutes'] ?? null;
+            $activeMission->distance_km = $activeDist;
+            $activeMission->eta_minutes = $activeEta;
+        }
+
+        $missionsPayload = $availableMissions->map(function ($m) {
+            return [
+                'id'            => $m->id,
+                'order_number'  => $m->order_number,
+                'lat'           => (float) $m->lat,
+                'lng'           => (float) $m->lng,
+                'is_emergency'  => (bool) $m->is_emergency,
+                'category_name' => $m->category?->name ?: 'سفارش',
+                'customer_name' => $m->customer_name,
+                'distance_km'   => $m->distance_km ?? null,
+            ];
+        })->values()->toArray();
+
+        // Synchronize outer Alpine peek bar and Leaflet map with latest mission state & markers
+        $this->dispatch('active-mission-state-changed', [
+            'hasActiveMission' => (bool) $activeMission,
+            'title'            => $activeMission ? ($activeMission->category?->name ?: $activeMission->customer_name) : '',
+            'status'           => $activeMission ? $activeMission->status->label() : '',
+            'statusCode'       => $activeMission ? $activeMission->status->value : '',
+            'city'             => $activeMission ? $activeMission->city : '',
+            'customerName'     => $activeMission ? $activeMission->customer_name : '',
+            'customerPhone'    => $activeMission ? $activeMission->customer_phone : '',
+            'destLat'          => $activeMission ? (float) $activeMission->lat : null,
+            'destLng'          => $activeMission ? (float) $activeMission->lng : null,
+            'distanceKm'       => $activeDist,
+            'etaMinutes'       => $activeEta,
+            'etaText'          => $activeEta ? ('حدود ' . $activeEta . ' دقیقه') : '',
+            'availableCount'   => $availableMissions->count(),
+            'missions'         => $missionsPayload,
+        ]);
+
         return view('fieldservice::livewire.technician.mission-feed', [
-            'tech'              => $tech,
-            'availableMissions' => $availableMissions,
-            'activeMission'     => $activeMission,
-            'previewOrder'      => $previewOrder,
+            'tech'                          => $tech,
+            'availableMissions'             => $availableMissions,
+            'activeMission'                 => $activeMission,
+            'previewOrder'                  => $previewOrder,
+            'technicianCancellationReasons' => ServiceOrder::technicianCancellationReasons(),
         ]);
     }
 }

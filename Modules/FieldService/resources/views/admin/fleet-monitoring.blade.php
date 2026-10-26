@@ -3,8 +3,8 @@
 @section('title', 'مانیتورینگ زنده ناوگان استان مازندران')
 
 @push('styles')
-    {{-- Leaflet CSS --}}
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    {{-- Leaflet CSS (Local Core Asset) --}}
+    <link rel="stylesheet" href="{{ asset('vendor/leaflet/leaflet.css') }}" />
 @endpush
 
 @section('content')
@@ -14,8 +14,8 @@
 @endsection
 
 @push('scripts')
-    {{-- Leaflet JS --}}
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    {{-- Leaflet JS (Local Core Asset) --}}
+    <script src="{{ asset('vendor/leaflet/leaflet.js') }}"></script>
 
     {{-- Map Handler for Livewire & Alpine --}}
     <script>
@@ -43,7 +43,7 @@
                     L.tileLayer(this.config.tile_url, {
                         maxZoom: this.config.max_zoom || 19,
                         subdomains: subdomains,
-                        attribution: '&copy; NasabBashi Fleet GIS',
+                        attribution: '&copy; ' + @json($platformName ?? 'Fleet GIS') + ' | ' + (this.config.name || 'GIS'),
                     }).addTo(this.map);
 
                     this.markersLayer = L.layerGroup().addTo(this.map);
