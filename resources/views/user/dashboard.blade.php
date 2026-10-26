@@ -84,7 +84,7 @@
         $widget['visible'] = true; // پیش‌فرض نمایش داده شوند
         
         // تنظیمات پیش‌فرض برای عرض و ارتفاع ویجت‌ها
-        if ($widget['key'] === 'today_reminders') {
+        if (in_array($widget['key'], ['today_reminders', 'booking_daily_appointments'], true)) {
              $widget['colSpan'] = 2;
         } else {
              $widget['colSpan'] = 1;

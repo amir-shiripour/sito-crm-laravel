@@ -35,7 +35,7 @@ class TechnicianPortalController extends Controller
 
                     // Assign role
                     $role = Role::firstOrCreate(['name' => 'technician', 'guard_name' => 'web'], [
-                        'display_name' => 'متخصص و تکنسین فنی (نصاب‌باشی)',
+                        'display_name' => 'متخصص و تکنسین فنی',
                     ]);
                     if (!$user->hasRole('technician')) {
                         $user->assignRole($role);

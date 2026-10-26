@@ -140,7 +140,7 @@ class FieldServiceSettings extends Component
 
         $this->dispatch('notify', [
             'type' => 'success',
-            'text' => 'تنظیمات سامانه نصاب‌باشی و مناطق تحت پوشش با موفقیت ذخیره شد.',
+            'text' => 'تنظیمات سامانه خدمات فنی و مناطق تحت پوشش با موفقیت ذخیره شد.',
         ]);
     }
 

@@ -120,6 +120,22 @@
     $clientInvoiceStats = $clientInvoiceStats ?? ['count' => 0, 'total' => 0, 'paid' => 0, 'due' => 0];
     $clientAccountingStats = $clientAccountingStats ?? ['documents_count' => 0, 'transactions_count' => 0, 'total_turnover' => 0, 'system_docs_count' => 0, 'manual_docs_count' => 0];
     $statCardClass = "rounded-3xl border p-5 flex items-center gap-5 overflow-hidden transition-all duration-300 hover:shadow-md";
+
+    $schemaFieldsList    = isset($activeForm) && isset($activeForm->schema['fields']) ? $activeForm->schema['fields'] : [];
+    $caseNotesFields     = collect($schemaFieldsList)->filter(function($f) {
+        return ($f['type'] ?? '') === 'case_notes';
+    });
+    $showCaseNotesTab    = $caseNotesFields->isNotEmpty();
+    $totalCaseNotesCount = 0;
+    if ($showCaseNotesTab) {
+        $totalCaseNotesCount = $caseNotesFields->sum(function($cnf) use ($client) {
+            $raw = $client->meta[$cnf['id']] ?? [];
+            if (is_string($raw)) {
+                $raw = json_decode($raw, true) ?: [];
+            }
+            return is_array($raw) ? count($raw) : 0;
+        });
+    }
 @endphp
 
 @extends('layouts.user')
@@ -129,6 +145,7 @@
     <div class="mx-auto max-w-full" x-data="{
         activeTab: 'general',
         showWorkflowTab: {{ $showWorkflowTab ? 'true' : 'false' }},
+        caseNotesCount: {{ $totalCaseNotesCount }},
         init() {
             const hash = window.location.hash.substring(1);
             const urlParams = new URLSearchParams(window.location.search);
@@ -140,6 +157,7 @@
             else if (urlParams.has('transactions_page')) defaultTab = 'transactions';
 
             const validTabs = ['general','appointments','laboratory','orders','invoices','rental_bookings','domains','directadmin','transactions','wallet'];
+            if ({{ $showCaseNotesTab ? 'true' : 'false' }}) validTabs.push('case_notes');
             if ({{ !empty($isClientScheduleEnabled) ? 'true' : 'false' }}) validTabs.push('schedule');
             if (this.showWorkflowTab) validTabs.push('workflows');
             if ({{ $showFieldServiceTab ? 'true' : 'false' }}) validTabs.push('fieldservice');
@@ -153,7 +171,10 @@
             this.activeTab = tab;
             history.replaceState(null, '', '#' + tab);
         }
-    }" x-init="init()" x-cloak>
+    }" x-init="init()"
+       x-on:case-note-added.window="caseNotesCount++"
+       x-on:case-note-deleted.window="caseNotesCount = Math.max(0, caseNotesCount - 1)"
+       x-cloak>
         <div
             class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden mb-6">
             <div
@@ -288,6 +309,30 @@
                     </svg>
                     اطلاعات عمومی
                 </button>
+
+                @if($showCaseNotesTab)
+                    {{-- Tab: Case Notes (ثبت/یادداشت پرونده) --}}
+                    @php
+                        $tabCaseNotesTitle = $caseNotesFields->count() === 1 
+                            ? ($caseNotesFields->first()['label'] ?? 'ثبت/یادداشت پرونده') 
+                            : 'ثبت/یادداشت پرونده';
+                    @endphp
+                    <button @click="setTab('case_notes')"
+                            :class="activeTab === 'case_notes' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/25' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/50'"
+                            class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 active:scale-95 font-sans">
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                  d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
+                        </svg>
+                        <span>{{ $tabCaseNotesTitle }}</span>
+                        <span
+                            :class="activeTab === 'case_notes' ? 'bg-white/20 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300'"
+                            class="inline-flex items-center justify-center min-w-5.5 h-5 px-1.5 rounded-full text-[10px] font-black font-sans"
+                            x-text="caseNotesCount">
+                            {{ $faNum($totalCaseNotesCount) }}
+                        </span>
+                    </button>
+                @endif
 
                 @if($bookingModule && $bookingModule->installed && $bookingModule->active)
                     {{-- Tab: Appointments (نوبت‌ها) --}}
@@ -925,253 +970,277 @@
                             </div>
                         @endif
 
-                        {{-- فیلدهای سفارشی ثبت/یادداشت پرونده (case_notes) --}}
-                        @if($caseNotesFields->isNotEmpty())
-                            @foreach($caseNotesFields as $cnf)
-                                @php
-                                    $cnFid = $cnf['id'];
-                                    $cnLabel = $cnf['label'] ?? 'ثبت/یادداشت پرونده';
-                                    $cnPlaceholder = $cnf['placeholder'] ?? 'متن مورد یا یادداشت پرونده را وارد کنید...';
-                                    $cnRaw = $client->meta[$cnFid] ?? [];
-                                    if (is_string($cnRaw)) {
-                                        $cnRaw = json_decode($cnRaw, true) ?: [];
-                                    }
-                                    if (!is_array($cnRaw)) {
-                                        $cnRaw = [];
-                                    }
-                                    $cnAllowDelete = $cnf['allow_delete'] ?? true;
-                                    $cnDeletePermission = $cnf['delete_permission'] ?? 'author_and_admin';
-                                    $cnRecordTimestamp = $cnf['record_timestamp'] ?? true;
-                                    $cnRecordAuthor = $cnf['record_author'] ?? true;
-                                    $cnSortOrder = $cnf['sort_order'] ?? 'desc';
-                                    $canUserEdit = auth()->user()->can('clients.edit');
-                                    $currUserId = auth()->id();
-                                    $isSuperAdmin = auth()->user() && (auth()->user()->hasRole('super-admin') || auth()->user()->can('manage-everything') || auth()->user()->can('clients.manage'));
-                                @endphp
-
-                                <div class="mt-6 pt-6 border-t border-gray-100 dark:border-gray-700/60"
-                                     x-data="caseNotesManager_{{ str_replace('-', '_', $cnFid) }}()">
-                                    
-                                    {{-- عنوان سکشن و تعداد آیتم‌ها --}}
-                                    <div class="flex items-center justify-between mb-3">
-                                        <h4 class="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2 font-sans">
-                                            <span class="w-2 h-2 rounded-full bg-indigo-500"></span>
-                                            <span>{{ $cnLabel }}</span>
-                                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-sans font-medium bg-indigo-50 text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300 border border-indigo-100 dark:border-indigo-900/50"
-                                                  x-text="items.length + ' مورد'">
-                                                {{ count($cnRaw) }} مورد
-                                            </span>
-                                        </h4>
-                                    </div>
-
-                                    {{-- فرم ثبت سریع آنی --}}
-                                    @if($canUserEdit)
-                                        <div class="mb-4 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-3 shadow-2xs focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-500/20 transition-all">
-                                            <textarea
-                                                x-model="newText"
-                                                @keydown.enter="handleEnter($event)"
-                                                rows="2"
-                                                placeholder="{{ $cnPlaceholder }}"
-                                                class="w-full bg-transparent border-0 p-1 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:ring-0 resize-y min-h-[50px] outline-none font-sans leading-relaxed"></textarea>
-
-                                            <div class="flex items-center justify-between pt-2 border-t border-gray-100 dark:border-gray-700/60 mt-2">
-                                                <span class="text-[11px] text-gray-400 dark:text-gray-500 flex items-center gap-1 font-sans">
-                                                    <svg class="w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                    </svg>
-                                                    Enter برای ثبت سریع، Shift+Enter برای خط جدید
-                                                </span>
-
-                                                <button
-                                                    type="button"
-                                                    @click="submitNote()"
-                                                    :disabled="isSubmitting || !newText.trim()"
-                                                    class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium shadow-sm transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer font-sans">
-                                                    <svg x-show="!isSubmitting" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-                                                    </svg>
-                                                    <svg x-show="isSubmitting" class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
-                                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
-                                                    </svg>
-                                                    <span x-text="isSubmitting ? 'در حال ثبت...' : 'ثبت یادداشت'">ثبت یادداشت</span>
-                                                </button>
-                                            </div>
-                                        </div>
-                                    @endif
-
-                                    {{-- لیست موارد ثبت‌شده --}}
-                                    <div class="space-y-2.5 max-h-[420px] overflow-y-auto pr-1">
-                                        <template x-for="(item, idx) in items" :key="item.id || idx">
-                                            <div class="group relative p-3 rounded-xl bg-gray-50/80 hover:bg-white dark:bg-gray-800/50 dark:hover:bg-gray-800 border border-gray-200/80 dark:border-gray-700/80 transition-all shadow-2xs">
-                                                <div class="flex items-start justify-between gap-3">
-                                                    <div class="flex-1 space-y-1.5">
-                                                        <p class="text-xs sm:text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap leading-relaxed font-sans select-text"
-                                                           x-text="item.text"></p>
-
-                                                        <div class="flex flex-wrap items-center gap-2 pt-1">
-                                                            <template x-if="recordTimestamp && item.jalali_date">
-                                                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-sans font-medium bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300 border border-indigo-100/80 dark:border-indigo-800/40">
-                                                                    <svg class="w-3 h-3 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                                    </svg>
-                                                                    <span x-text="item.jalali_date"></span>
-                                                                </span>
-                                                            </template>
-
-                                                            <template x-if="recordAuthor && item.user_name">
-                                                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-sans font-medium bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300">
-                                                                    <svg class="w-3 h-3 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                                                                    </svg>
-                                                                    <span x-text="item.user_name"></span>
-                                                                </span>
-                                                            </template>
-                                                        </div>
-                                                    </div>
-
-                                                    <template x-if="canDeleteItem(item)">
-                                                        <button
-                                                            type="button"
-                                                            @click="deleteNote(item.id)"
-                                                            class="opacity-60 group-hover:opacity-100 text-gray-400 hover:text-red-500 p-1 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-900/30 transition-all cursor-pointer"
-                                                            title="حذف این مورد">
-                                                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                            </svg>
-                                                        </button>
-                                                    </template>
-                                                </div>
-                                            </div>
-                                        </template>
-
-                                        <template x-if="items.length === 0">
-                                            <div class="py-4 px-4 rounded-xl border border-dashed border-gray-200 dark:border-gray-700 text-center">
-                                                <span class="text-xs text-gray-400 dark:text-gray-500 font-sans">
-                                                    هنوز موردی برای این پرونده ثبت نشده است.
-                                                </span>
-                                            </div>
-                                        </template>
-                                    </div>
-                                </div>
-
-                                <script>
-                                    function caseNotesManager_{{ str_replace('-', '_', $cnFid) }}() {
-                                        return {
-                                            fieldId: '{{ $cnFid }}',
-                                            newText: '',
-                                            isSubmitting: false,
-                                            items: @json($cnRaw),
-                                            recordTimestamp: {{ $cnRecordTimestamp ? 'true' : 'false' }},
-                                            recordAuthor: {{ $cnRecordAuthor ? 'true' : 'false' }},
-                                            allowDelete: {{ $cnAllowDelete ? 'true' : 'false' }},
-                                            deletePermission: '{{ $cnDeletePermission }}',
-                                            sortOrder: '{{ $cnSortOrder }}',
-                                            currentUserId: {{ $currUserId ?? 'null' }},
-                                            isSuperAdmin: {{ $isSuperAdmin ? 'true' : 'false' }},
-
-                                            canDeleteItem(item) {
-                                                if (!this.allowDelete) return false;
-                                                if (this.deletePermission === 'all' || this.isSuperAdmin) return true;
-                                                if (this.deletePermission === 'author_and_admin') {
-                                                    return item.user_id && this.currentUserId && Number(item.user_id) === Number(this.currentUserId);
-                                                }
-                                                return false;
-                                            },
-
-                                            handleEnter(e) {
-                                                if (!e.shiftKey) {
-                                                    e.preventDefault();
-                                                    this.submitNote();
-                                                }
-                                            },
-
-                                            async submitNote() {
-                                                const text = this.newText.trim();
-                                                if (!text || this.isSubmitting) return;
-
-                                                this.isSubmitting = true;
-                                                try {
-                                                    const res = await fetch('{{ route('user.clients.case-notes.store', $client->id) }}', {
-                                                        method: 'POST',
-                                                        headers: {
-                                                            'Content-Type': 'application/json',
-                                                            'Accept': 'application/json',
-                                                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content ?? '',
-                                                            'X-Requested-With': 'XMLHttpRequest'
-                                                        },
-                                                        body: JSON.stringify({
-                                                            field_id: this.fieldId,
-                                                            text: text
-                                                        })
-                                                    });
-
-                                                    const data = await res.json();
-                                                    if (res.ok && data.success) {
-                                                        if (data.item) {
-                                                            if (this.sortOrder === 'asc') {
-                                                                this.items.push(data.item);
-                                                            } else {
-                                                                this.items.unshift(data.item);
-                                                            }
-                                                        } else if (data.items) {
-                                                            this.items = data.items;
-                                                        }
-                                                        this.newText = '';
-                                                        if (window.dispatchEvent) {
-                                                            window.dispatchEvent(new CustomEvent('notify', {
-                                                                detail: { type: 'success', text: data.message || 'یادداشت ثبت شد.' }
-                                                            }));
-                                                        }
-                                                    } else {
-                                                        alert(data.message || 'خطا در ثبت یادداشت.');
-                                                    }
-                                                } catch (err) {
-                                                    alert('خطای ارتباط با سرور.');
-                                                } finally {
-                                                    this.isSubmitting = false;
-                                                }
-                                            },
-
-                                            async deleteNote(itemId) {
-                                                if (!confirm('آیا از حذف این مورد اطمینان دارید؟')) return;
-
-                                                try {
-                                                    const url = '{{ url('user/clients/' . $client->id . '/case-notes') }}/' + encodeURIComponent(itemId);
-                                                    const res = await fetch(url, {
-                                                        method: 'DELETE',
-                                                        headers: {
-                                                            'Content-Type': 'application/json',
-                                                            'Accept': 'application/json',
-                                                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content ?? '',
-                                                            'X-Requested-With': 'XMLHttpRequest'
-                                                        },
-                                                        body: JSON.stringify({ field_id: this.fieldId })
-                                                    });
-
-                                                    const data = await res.json();
-                                                    if (res.ok && data.success) {
-                                                        this.items = this.items.filter(it => it.id !== itemId);
-                                                        if (window.dispatchEvent) {
-                                                            window.dispatchEvent(new CustomEvent('notify', {
-                                                                detail: { type: 'success', text: data.message || 'مورد حذف شد.' }
-                                                            }));
-                                                        }
-                                                    } else {
-                                                        alert(data.message || 'خطا در حذف مورد.');
-                                                    }
-                                                } catch (err) {
-                                                    alert('خطای ارتباط با سرور.');
-                                                }
-                                            }
-                                        };
-                                    }
-                                </script>
-                            @endforeach
-                        @endif
                     </div>
                 </div>
             </div>
+
+            @if($showCaseNotesTab)
+                {{-- ================= Case Notes Tab (ثبت/یادداشت پرونده) ================= --}}
+                <div x-show="activeTab === 'case_notes'" x-cloak x-transition:enter="transition ease-out duration-200"
+                     x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" class="p-6 sm:p-8 space-y-6">
+                    @foreach($caseNotesFields as $cnf)
+                        @php
+                            $cnFid = $cnf['id'];
+                            $cnLabel = $cnf['label'] ?? 'ثبت/یادداشت پرونده';
+                            $cnPlaceholder = $cnf['placeholder'] ?? 'متن مورد یا یادداشت پرونده را وارد کنید...';
+                            $cnRaw = $client->meta[$cnFid] ?? [];
+                            if (is_string($cnRaw)) {
+                                $cnRaw = json_decode($cnRaw, true) ?: [];
+                            }
+                            if (!is_array($cnRaw)) {
+                                $cnRaw = [];
+                            }
+                            $cnAllowDelete = $cnf['allow_delete'] ?? true;
+                            $cnDeletePermission = $cnf['delete_permission'] ?? 'author_and_admin';
+                            $cnRecordTimestamp = $cnf['record_timestamp'] ?? true;
+                            $cnRecordAuthor = $cnf['record_author'] ?? true;
+                            $cnSortOrder = $cnf['sort_order'] ?? 'desc';
+                            $canUserEdit = auth()->user()->can('clients.edit');
+                            $currUserId = auth()->id();
+                            $isSuperAdmin = auth()->user() && (auth()->user()->hasRole('super-admin') || auth()->user()->can('manage-everything') || auth()->user()->can('clients.manage'));
+                        @endphp
+
+                        <div class="space-y-6" x-data="caseNotesManager_{{ str_replace('-', '_', $cnFid) }}()">
+                            
+                            {{-- هدر بخش یادداشت پرونده --}}
+                            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-gray-100 dark:border-gray-700/60">
+                                <div>
+                                    <h3 class="text-base sm:text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2.5 font-sans">
+                                        <span class="w-2.5 h-2.5 rounded-full bg-indigo-500 ring-4 ring-indigo-500/20"></span>
+                                        <span>{{ $cnLabel }}</span>
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-sans font-bold bg-indigo-50 text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300 border border-indigo-100 dark:border-indigo-900/50"
+                                              x-text="items.length + ' یادداشت ثبت‌شده'">
+                                            {{ count($cnRaw) }} یادداشت ثبت‌شده
+                                        </span>
+                                    </h3>
+                                    <p class="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-1 font-sans">
+                                        ثبت تاریخچه وقایع، دستورات بالینی و یادداشت‌های پرونده با ثبت خودکار زمان و کارشناس ثبت‌کننده
+                                    </p>
+                                </div>
+                            </div>
+
+                            {{-- فرم ثبت سریع یادداشت جدید --}}
+                            @if($canUserEdit)
+                                <div class="bg-gray-50/70 dark:bg-gray-900/40 rounded-2xl border border-gray-200 dark:border-gray-700/80 p-4 sm:p-5 shadow-2xs focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-500/20 transition-all">
+                                    <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2 font-sans">
+                                        ثبت یادداشت یا رخداد جدید:
+                                    </label>
+                                    <textarea
+                                        x-model="newText"
+                                        @keydown.enter="handleEnter($event)"
+                                        rows="3"
+                                        placeholder="{{ $cnPlaceholder }}"
+                                        class="w-full bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-3.5 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 resize-y min-h-[80px] outline-none font-sans leading-relaxed transition-all shadow-inner"></textarea>
+
+                                    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-3 mt-1">
+                                        <div class="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 font-sans">
+                                            <svg class="w-4 h-4 text-indigo-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                            </svg>
+                                            <span>کلید <kbd class="px-1.5 py-0.5 text-[11px] font-sans font-semibold text-gray-800 bg-gray-200 dark:bg-gray-700 dark:text-gray-200 rounded border border-gray-300 dark:border-gray-600">Enter</kbd> برای ثبت سریع، <kbd class="px-1.5 py-0.5 text-[11px] font-sans font-semibold text-gray-800 bg-gray-200 dark:bg-gray-700 dark:text-gray-200 rounded border border-gray-300 dark:border-gray-600">Shift + Enter</kbd> برای خط جدید</span>
+                                        </div>
+
+                                        <button
+                                            type="button"
+                                            @click="submitNote()"
+                                            :disabled="isSubmitting || !newText.trim()"
+                                            class="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold shadow-sm shadow-indigo-600/30 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer font-sans self-end sm:self-auto">
+                                            <svg x-show="!isSubmitting" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                                            </svg>
+                                            <svg x-show="isSubmitting" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                                            </svg>
+                                            <span x-text="isSubmitting ? 'در حال ثبت...' : 'ثبت یادداشت در پرونده'">ثبت یادداشت در پرونده</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            @endif
+
+                            {{-- لیست یادداشت‌های پرونده --}}
+                            <div class="space-y-3">
+                                <template x-for="(item, idx) in items" :key="item.id || idx">
+                                    <div class="group relative p-4 sm:p-5 rounded-2xl bg-white dark:bg-gray-800/80 border border-gray-200 dark:border-gray-700/80 hover:border-indigo-300 dark:hover:border-indigo-600/50 transition-all shadow-2xs hover:shadow-sm">
+                                        <div class="flex items-start justify-between gap-4">
+                                            <div class="flex-1 space-y-2.5">
+                                                {{-- اطلاعات فراداده یادداشت: تاریخ و کاربر --}}
+                                                <div class="flex flex-wrap items-center gap-2">
+                                                    <template x-if="recordTimestamp && item.jalali_date">
+                                                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-sans font-medium bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300 border border-indigo-100/80 dark:border-indigo-800/40">
+                                                            <svg class="w-3.5 h-3.5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                            </svg>
+                                                            <span x-text="item.jalali_date"></span>
+                                                        </span>
+                                                    </template>
+
+                                                    <template x-if="recordAuthor && item.user_name">
+                                                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-sans font-medium bg-gray-100 text-gray-700 dark:bg-gray-700/60 dark:text-gray-300">
+                                                            <svg class="w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                                            </svg>
+                                                            <span x-text="item.user_name"></span>
+                                                        </span>
+                                                    </template>
+                                                </div>
+
+                                                {{-- متن یادداشت --}}
+                                                <p class="text-sm sm:text-base text-gray-800 dark:text-gray-200 whitespace-pre-wrap leading-relaxed font-sans select-text pt-1"
+                                                   x-text="item.text"></p>
+                                            </div>
+
+                                            {{-- دکمه حذف --}}
+                                            <template x-if="canDeleteItem(item)">
+                                                <button
+                                                    type="button"
+                                                    @click="deleteNote(item.id)"
+                                                    class="opacity-60 group-hover:opacity-100 text-gray-400 hover:text-red-500 p-1.5 rounded-xl hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-all cursor-pointer"
+                                                    title="حذف این مورد">
+                                                    <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                    </svg>
+                                                </button>
+                                            </template>
+                                        </div>
+                                    </div>
+                                </template>
+
+                                <template x-if="items.length === 0">
+                                    <div class="py-12 px-4 rounded-2xl border-2 border-dashed border-gray-200 dark:border-gray-700/80 text-center bg-gray-50/50 dark:bg-gray-900/20">
+                                        <div class="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 mb-3">
+                                            <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                            </svg>
+                                        </div>
+                                        <h4 class="text-sm font-bold text-gray-900 dark:text-gray-100 font-sans">
+                                            هنوز یادداشتی برای این پرونده ثبت نشده است
+                                        </h4>
+                                        <p class="text-xs text-gray-400 dark:text-gray-500 font-sans mt-1">
+                                            از کادر بالا می‌توانید اولین یادداشت، شرح حال یا دستور این پرونده را ثبت فرمایید.
+                                        </p>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+
+                        <script>
+                            function caseNotesManager_{{ str_replace('-', '_', $cnFid) }}() {
+                                return {
+                                    fieldId: '{{ $cnFid }}',
+                                    newText: '',
+                                    isSubmitting: false,
+                                    items: @json($cnRaw),
+                                    recordTimestamp: {{ $cnRecordTimestamp ? 'true' : 'false' }},
+                                    recordAuthor: {{ $cnRecordAuthor ? 'true' : 'false' }},
+                                    allowDelete: {{ $cnAllowDelete ? 'true' : 'false' }},
+                                    deletePermission: '{{ $cnDeletePermission }}',
+                                    sortOrder: '{{ $cnSortOrder }}',
+                                    currentUserId: {{ $currUserId ?? 'null' }},
+                                    isSuperAdmin: {{ $isSuperAdmin ? 'true' : 'false' }},
+
+                                    canDeleteItem(item) {
+                                        if (!this.allowDelete) return false;
+                                        if (this.deletePermission === 'all' || this.isSuperAdmin) return true;
+                                        if (this.deletePermission === 'author_and_admin') {
+                                            return item.user_id && this.currentUserId && Number(item.user_id) === Number(this.currentUserId);
+                                        }
+                                        return false;
+                                    },
+
+                                    handleEnter(e) {
+                                        if (!e.shiftKey) {
+                                            e.preventDefault();
+                                            this.submitNote();
+                                        }
+                                    },
+
+                                    async submitNote() {
+                                        const text = this.newText.trim();
+                                        if (!text || this.isSubmitting) return;
+
+                                        this.isSubmitting = true;
+                                        try {
+                                            const res = await fetch('{{ route('user.clients.case-notes.store', $client->id) }}', {
+                                                method: 'POST',
+                                                headers: {
+                                                    'Content-Type': 'application/json',
+                                                    'Accept': 'application/json',
+                                                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content ?? '',
+                                                    'X-Requested-With': 'XMLHttpRequest'
+                                                },
+                                                body: JSON.stringify({
+                                                    field_id: this.fieldId,
+                                                    text: text
+                                                })
+                                            });
+
+                                            const data = await res.json();
+                                            if (res.ok && data.success) {
+                                                if (data.item) {
+                                                    if (this.sortOrder === 'asc') {
+                                                        this.items.push(data.item);
+                                                    } else {
+                                                        this.items.unshift(data.item);
+                                                    }
+                                                } else if (data.items) {
+                                                    this.items = data.items;
+                                                }
+                                                this.newText = '';
+                                                window.dispatchEvent(new CustomEvent('case-note-added'));
+                                                if (window.dispatchEvent) {
+                                                    window.dispatchEvent(new CustomEvent('notify', {
+                                                        detail: { type: 'success', text: data.message || 'یادداشت ثبت شد.' }
+                                                    }));
+                                                }
+                                            } else {
+                                                alert(data.message || 'خطا در ثبت یادداشت.');
+                                            }
+                                        } catch (err) {
+                                            alert('خطای ارتباط با سرور.');
+                                        } finally {
+                                            this.isSubmitting = false;
+                                        }
+                                    },
+
+                                    async deleteNote(itemId) {
+                                        if (!confirm('آیا از حذف این مورد اطمینان دارید؟')) return;
+
+                                        try {
+                                            const url = '{{ url('user/clients/' . $client->id . '/case-notes') }}/' + encodeURIComponent(itemId);
+                                            const res = await fetch(url, {
+                                                method: 'DELETE',
+                                                headers: {
+                                                    'Content-Type': 'application/json',
+                                                    'Accept': 'application/json',
+                                                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content ?? '',
+                                                    'X-Requested-With': 'XMLHttpRequest'
+                                                },
+                                                body: JSON.stringify({ field_id: this.fieldId })
+                                            });
+
+                                            const data = await res.json();
+                                            if (res.ok && data.success) {
+                                                this.items = this.items.filter(it => it.id !== itemId);
+                                                window.dispatchEvent(new CustomEvent('case-note-deleted'));
+                                                if (window.dispatchEvent) {
+                                                    window.dispatchEvent(new CustomEvent('notify', {
+                                                        detail: { type: 'success', text: data.message || 'مورد حذف شد.' }
+                                                    }));
+                                                }
+                                            } else {
+                                                alert(data.message || 'خطا در حذف مورد.');
+                                            }
+                                        } catch (err) {
+                                            alert('خطای ارتباط با سرور.');
+                                        }
+                                    }
+                                };
+                            }
+                        </script>
+                    @endforeach
+                </div>
+            @endif
 
             @if($bookingModule && $bookingModule->installed && $bookingModule->active)
                 {{-- ================= Appointments Tab (نوبت‌ها) ================= --}}

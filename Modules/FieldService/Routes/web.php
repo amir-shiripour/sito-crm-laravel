@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use Modules\FieldService\App\Http\Controllers\Admin\BuildingsManagementController;
+use Modules\FieldService\App\Http\Controllers\Admin\CategoriesManagementController;
 use Modules\FieldService\App\Http\Controllers\Admin\DashboardController;
 use Modules\FieldService\App\Http\Controllers\Admin\FleetMonitoringController;
 use Modules\FieldService\App\Http\Controllers\Admin\OrdersManagementController;
@@ -12,6 +13,7 @@ use Modules\FieldService\App\Http\Controllers\Admin\VendorsManagementController;
 use Modules\FieldService\App\Http\Controllers\B2BPortalController;
 use Modules\FieldService\App\Http\Controllers\CustomerPortalController;
 use Modules\FieldService\App\Http\Controllers\ReverseGeocodeController;
+use Modules\FieldService\App\Http\Controllers\RoutingApiController;
 use Modules\FieldService\App\Http\Controllers\TechnicianPortalController;
 
 /*
@@ -30,6 +32,7 @@ Route::middleware(['auth'])->prefix('user/fieldservice')->name('user.fieldservic
     Route::get('/vendors', [VendorsManagementController::class, 'index'])->name('vendors.index');
     Route::get('/settlements', [SettlementsController::class, 'index'])->name('settlements.index');
     Route::get('/settlements/export-batch', [SettlementsController::class, 'exportBatch'])->name('settlements.export');
+    Route::get('/categories', [CategoriesManagementController::class, 'index'])->name('categories.index');
     Route::get('/settings', [SettingsController::class, 'index'])->name('settings.index');
 });
 
@@ -46,4 +49,12 @@ Route::middleware(['web'])->prefix('fieldservice')->name('fieldservice.')->group
             \App\Http\Middleware\VerifyCsrfToken::class,
         ])
         ->name('api.reverse_geocode');
+
+    Route::get('/api/route', [RoutingApiController::class, 'getRoute'])
+        ->withoutMiddleware([
+            \Illuminate\Session\Middleware\StartSession::class,
+            \Illuminate\View\Middleware\ShareErrorsFromSession::class,
+            \App\Http\Middleware\VerifyCsrfToken::class,
+        ])
+        ->name('api.route');
 });

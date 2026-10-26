@@ -25,7 +25,7 @@ class TechnicianLifecycleService
         // 1. Resolve names
         $nameParts = explode(' ', trim($user->name ?? ''), 2);
         $firstName = !empty($data['first_name']) ? trim($data['first_name']) : ($nameParts[0] ?? 'تکنسین');
-        $lastName  = !empty($data['last_name']) ? trim($data['last_name']) : ($nameParts[1] ?? 'نصاب‌باشی');
+        $lastName  = !empty($data['last_name']) ? trim($data['last_name']) : ($nameParts[1] ?? 'فنی');
         $mobile    = !empty($data['mobile']) ? trim($data['mobile']) : ($user->mobile ?? '');
 
         // 2. Province and City normalization using Core App\Helpers\ProvinceCity
@@ -126,13 +126,18 @@ class TechnicianLifecycleService
                 foreach ($categories as $catId) {
                     $catId = (int)$catId;
                     if ($catId > 0 && Category::where('id', $catId)->exists()) {
-                        TechnicianSkill::firstOrCreate([
+                        $skill = TechnicianSkill::firstOrCreate([
                             'technician_id' => $technician->id,
                             'category_id'   => $catId,
                         ], [
                             'is_verified'      => ($status === TechnicianStatus::ACTIVE),
                             'experience_years' => 1,
                         ]);
+
+                        if ($status === TechnicianStatus::ACTIVE && !$skill->is_verified) {
+                            $skill->is_verified = true;
+                            $skill->save();
+                        }
                     }
                 }
             }
@@ -154,7 +159,7 @@ class TechnicianLifecycleService
     {
         $mobile = trim($data['mobile'] ?? '');
         $firstName = trim($data['first_name'] ?? 'تکنسین');
-        $lastName = trim($data['last_name'] ?? 'نصاب‌باشی');
+        $lastName = trim($data['last_name'] ?? 'فنی');
         $fullName = trim("{$firstName} {$lastName}");
 
         // Find or create User
@@ -180,7 +185,7 @@ class TechnicianLifecycleService
 
         // Make sure technician role exists and assign
         $role = Role::firstOrCreate(['name' => 'technician', 'guard_name' => 'web'], [
-            'display_name' => 'متخصص و تکنسین فنی (نصاب‌باشی)',
+            'display_name' => 'متخصص و تکنسین فنی',
         ]);
         if (!$user->hasRole('technician')) {
             $user->assignRole($role);

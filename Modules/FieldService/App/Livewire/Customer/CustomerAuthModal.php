@@ -206,7 +206,8 @@ class CustomerAuthModal extends Component
                 if (!empty($patternId)) {
                     $sms->sendPattern($phone, (string) $patternId, [$code], $options);
                 } else {
-                    $sms->sendText($phone, "کد ورود نصاب‌باشی: {$code}", $options);
+                    $platform = \Modules\FieldService\App\Models\FieldServiceSetting::getPlatformName();
+                    $sms->sendText($phone, "کد ورود {$platform}: {$code}", $options);
                 }
             } catch (\Throwable $e) {
                 \Log::warning('SMS sending error: ' . $e->getMessage());

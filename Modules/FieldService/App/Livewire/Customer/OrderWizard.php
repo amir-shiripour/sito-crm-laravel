@@ -69,15 +69,17 @@ class OrderWizard extends Component
     public ?int $createdOrderId = null;
 
     protected $listeners = [
-        'map-coordinates-updated' => 'updateCoordinates',
-        'city-selected'           => 'selectCity',
-        'client-authenticated'    => 'syncAuthenticatedClient',
-        'client-logged-out'       => 'syncLoggedOutClient',
-        'set-order-for'           => 'setOrderFor',
-        'select-saved-address'    => 'selectSavedAddress',
-        'confirm-origin'          => 'confirmLocation',
-        'confirm-location'        => 'confirmLocation',
-        'return-to-map'           => 'returnToMap',
+        'map-coordinates-updated'     => 'updateCoordinates',
+        'city-selected'               => 'selectCity',
+        'client-authenticated'        => 'syncAuthenticatedClient',
+        'client-logged-out'           => 'syncLoggedOutClient',
+        'set-order-for'               => 'setOrderFor',
+        'select-saved-address'        => 'selectSavedAddress',
+        'confirm-origin'              => 'confirmLocation',
+        'confirm-location'            => 'confirmLocation',
+        'return-to-map'               => 'returnToMap',
+        'start-new-order'             => 'startNewOrder',
+        'order-cancelled-by-customer' => '$refresh',
     ];
 
     protected function rules(): array
@@ -120,14 +122,20 @@ class OrderWizard extends Component
             $this->address = $geo['formatted_address'];
         }
 
-        // Auto-check if order_id is in query string
+        // Auto-check for active unresolved order (by client ID, session, or query param)
+        $clientId = Auth::guard('client')->id();
+        $sessionOrderId = session('fieldservice_active_order_id');
         $orderIdParam = request()->query('order_id');
-        if ($orderIdParam) {
-            $existing = ServiceOrder::find($orderIdParam);
-            if ($existing) {
-                $this->createdOrderId = $existing->id;
-                $this->step = 4;
-            }
+
+        $activeOrder = ServiceOrder::resolveActiveForClient($clientId, $sessionOrderId, $orderIdParam);
+        if ($activeOrder) {
+            $this->createdOrderId = $activeOrder->id;
+            $this->step = 4;
+            $this->lat = (float) $activeOrder->lat;
+            $this->lng = (float) $activeOrder->lng;
+            $this->address = $activeOrder->address ?: '';
+            $this->location_name = $activeOrder->address ?: '';
+            session(['fieldservice_active_order_id' => $activeOrder->id]);
         }
     }
 
@@ -259,6 +267,32 @@ class OrderWizard extends Component
     public function syncAuthenticatedClient($data = [])
     {
         $this->syncAuthUser();
+
+        if ($this->clientId && $this->step < 4) {
+            $activeOrder = ServiceOrder::resolveActiveForClient($this->clientId);
+            if ($activeOrder) {
+                $this->createdOrderId = $activeOrder->id;
+                $this->step = 4;
+                $this->lat = (float) $activeOrder->lat;
+                $this->lng = (float) $activeOrder->lng;
+                $this->address = $activeOrder->address ?: '';
+                $this->location_name = $activeOrder->address ?: '';
+                session(['fieldservice_active_order_id' => $activeOrder->id]);
+
+                $this->dispatch('active-order-resumed', [
+                    'orderId' => $activeOrder->id,
+                    'lat' => (float) $activeOrder->lat,
+                    'lng' => (float) $activeOrder->lng,
+                    'status' => $activeOrder->status->value,
+                    'technician' => $activeOrder->technician ? [
+                        'lat' => (float) $activeOrder->technician->lat,
+                        'lng' => (float) $activeOrder->technician->lng,
+                        'name' => $activeOrder->technician->full_name,
+                        'mobile' => $activeOrder->technician->mobile,
+                    ] : null,
+                ]);
+            }
+        }
     }
 
     public function syncLoggedOutClient()
@@ -267,6 +301,7 @@ class OrderWizard extends Component
         $this->clientId = null;
         $this->customer_name = '';
         $this->customer_phone = '';
+        session()->forget('fieldservice_active_order_id');
     }
 
     public function updatedProvince($value)
@@ -483,6 +518,33 @@ class OrderWizard extends Component
             }
         }
 
+        // Guard: Prevent duplicate order if customer already has an active unresolved order
+        if ($client) {
+            $existingActive = ServiceOrder::resolveActiveForClient($client->id);
+            if ($existingActive) {
+                $this->createdOrderId = $existingActive->id;
+                $this->step = 4;
+                session(['fieldservice_active_order_id' => $existingActive->id]);
+                $this->dispatch('notify', [
+                    'type' => 'warning',
+                    'text' => 'شما دارای یک درخواست در حال پیگیری باز هستید و به صفحه رهگیری متصل شدید.',
+                ]);
+                $this->dispatch('active-order-resumed', [
+                    'orderId'    => $existingActive->id,
+                    'lat'        => (float) $existingActive->lat,
+                    'lng'        => (float) $existingActive->lng,
+                    'status'     => $existingActive->status->value,
+                    'technician' => $existingActive->technician ? [
+                        'lat'    => (float) $existingActive->technician->lat,
+                        'lng'    => (float) $existingActive->technician->lng,
+                        'name'   => $existingActive->technician->full_name,
+                        'mobile' => $existingActive->technician->mobile,
+                    ] : null,
+                ]);
+                return;
+            }
+        }
+
         // Update address in client addresses if not present
         if ($client && class_exists(ClientAddress::class)) {
             $existingAddress = $client->addresses()->where('address', $fullAddress)->first();
@@ -543,6 +605,7 @@ class OrderWizard extends Component
         ]);
 
         $this->createdOrderId = $order->id;
+        session(['fieldservice_active_order_id' => $order->id]);
 
         // 4. Trigger initial workflow event
         app(FieldServiceWorkflowBridgeService::class)->triggerOrderCreated($order);
@@ -584,6 +647,21 @@ class OrderWizard extends Component
             $this->createdOrderId = $order->id;
             $this->mode = 'create';
             $this->step = 4;
+            if ($order->isActive()) {
+                session(['fieldservice_active_order_id' => $order->id]);
+            }
+            $this->dispatch('active-order-resumed', [
+                'orderId'    => $order->id,
+                'lat'        => (float) $order->lat,
+                'lng'        => (float) $order->lng,
+                'status'     => $order->status->value,
+                'technician' => $order->technician ? [
+                    'lat'    => (float) $order->technician->lat,
+                    'lng'    => (float) $order->technician->lng,
+                    'name'   => $order->technician->full_name,
+                    'mobile' => $order->technician->mobile,
+                ] : null,
+            ]);
         } else {
             $this->lookupError = 'سفارش فعالی با این مشخصات یافت نشد.';
         }
@@ -591,6 +669,18 @@ class OrderWizard extends Component
 
     public function startNewOrder()
     {
+        if ($this->createdOrderId) {
+            $order = ServiceOrder::find($this->createdOrderId);
+            if ($order && $order->isActive()) {
+                $this->dispatch('notify', [
+                    'type' => 'warning',
+                    'text' => 'امکان ثبت سفارش جدید وجود ندارد. لطفاً ابتدا سفارش فعال فعلی را به اتمام رسانده یا لغو نمایید.',
+                ]);
+                return;
+            }
+        }
+
+        session()->forget('fieldservice_active_order_id');
         $this->reset([
             'step',
             'createdOrderId',

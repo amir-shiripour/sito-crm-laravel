@@ -114,9 +114,10 @@ class TechniciansManager extends Component
             'categories'            => $this->selectedCategories,
         ]);
 
+        $platform = \Modules\FieldService\App\Models\FieldServiceSetting::getPlatformName();
         $this->dispatch('notify', [
             'type' => 'success',
-            'text' => "تکنسین {$tech->full_name} با موفقیت در ناوگان نصاب‌باشی ثبت و فعال گردید.",
+            'text' => "تکنسین {$tech->full_name} با موفقیت در ناوگان {$platform} ثبت و فعال گردید.",
         ]);
 
         $this->closeCreateModal();
@@ -135,6 +136,17 @@ class TechniciansManager extends Component
                 $tech->status = TechnicianStatus::ACTIVE;
                 $tech->verified_at = now();
                 $msg = "مدارک و صلاحیت تکنسین {$tech->full_name} تایید و فعال شد.";
+
+                // Also sync RegistrationRequest if exists
+                if (!empty($tech->mobile) && class_exists(\App\Models\RegistrationRequest::class)) {
+                    \App\Models\RegistrationRequest::where('mobile', $tech->mobile)
+                        ->where('status', 'pending')
+                        ->update([
+                            'status'      => 'approved',
+                            'reviewed_by' => auth()->id(),
+                            'reviewed_at' => now(),
+                        ]);
+                }
             }
             $tech->save();
 

@@ -9,6 +9,7 @@ class DutyToggle extends Component
 {
     public ?int $technicianId = null;
     public bool $isOnline = false;
+    public string $status = 'active';
 
     public function mount(?int $technicianId = null)
     {
@@ -22,6 +23,9 @@ class DutyToggle extends Component
         if ($tech) {
             $this->technicianId = $tech->id;
             $this->isOnline = (bool) $tech->is_online;
+            $this->status = $tech->status instanceof \Modules\FieldService\App\Enums\TechnicianStatus
+                ? $tech->status->value
+                : (string) $tech->status;
         }
     }
 
@@ -34,6 +38,19 @@ class DutyToggle extends Component
 
         $tech = Technician::find($this->technicianId);
         if ($tech) {
+            // Guard: Must be approved / active to toggle online
+            if ($tech->status !== \Modules\FieldService\App\Enums\TechnicianStatus::ACTIVE) {
+                $this->isOnline = false;
+                $this->status = $tech->status instanceof \Modules\FieldService\App\Enums\TechnicianStatus
+                    ? $tech->status->value
+                    : (string) $tech->status;
+                $this->dispatch('notify', [
+                    'type' => 'warning',
+                    'text' => 'حساب شما در انتظار بررسی و تایید مدارک توسط ناظران ناوگان می‌باشد و امکان آنلاین شدن وجود ندارد.',
+                ]);
+                return;
+            }
+
             $tech->is_online = !$tech->is_online;
             $tech->last_active_at = now();
             $tech->save();

@@ -1,6 +1,6 @@
 @extends('layouts.user')
 
-@section('title', 'داشبورد فرماندهی نصاب‌باشی')
+@section('title', 'داشبورد فرماندهی خدمات فنی')
 
 @section('content')
 <div class="space-y-6 font-sans">
@@ -18,7 +18,7 @@
                     </span>
                 </div>
                 <h1 class="text-2xl sm:text-3xl font-black tracking-tight leading-tight">
-                    مرکز عملیات و فرماندهی نصاب‌باشی
+                    مرکز عملیات و فرماندهی {{ $platformName ?? 'خدمات فنی' }}
                 </h1>
                 <p class="text-indigo-100 text-xs sm:text-sm mt-1.5 max-w-2xl leading-relaxed">
                     مدیریت یکپارچه ناوگان تکنسین‌ها، گردش مالی امانی (Escrow)، تسویه‌های شبانه پایا و درخواست‌های اعزام اضطراری
@@ -34,6 +34,9 @@
                 </a>
                 <a href="{{ route('user.fieldservice.orders.index') }}" class="px-4 py-2.5 bg-indigo-500/30 hover:bg-indigo-500/40 text-white font-bold text-xs sm:text-sm rounded-xl border border-white/20 transition-all flex items-center gap-2">
                     سفارش‌ها و ماموریت‌ها
+                </a>
+                <a href="{{ route('user.fieldservice.categories.index') }}" class="px-4 py-2.5 bg-indigo-500/30 hover:bg-indigo-500/40 text-white font-bold text-xs sm:text-sm rounded-xl border border-white/20 transition-all flex items-center gap-2">
+                    مدیریت خدمات
                 </a>
             </div>
         </div>
@@ -186,7 +189,7 @@
         <div class="space-y-6">
             {{-- Quick Portal Links --}}
             <div class="bg-gradient-to-br from-indigo-50/80 to-purple-50/50 dark:from-gray-800 dark:to-gray-800/80 p-5 rounded-2xl border border-indigo-100 dark:border-gray-700 shadow-sm">
-                <h3 class="text-sm font-black text-gray-900 dark:text-white mb-3">پرتال‌ها و وب‌اپ‌های نصاب‌باشی</h3>
+                <h3 class="text-sm font-black text-gray-900 dark:text-white mb-3">پرتال‌ها و وب‌اپ‌های ناوگان {{ $platformName ?? '' }}</h3>
                 <div class="space-y-2.5">
                     <a href="{{ route('fieldservice.customer') }}" target="_blank" class="flex items-center justify-between p-3 rounded-xl bg-white dark:bg-gray-700/80 border border-gray-200/70 dark:border-gray-600 hover:border-emerald-500 transition-all group">
                         <div class="flex items-center gap-2.5">

@@ -134,7 +134,7 @@
                         🔧
                     </div>
                     <div>
-                        <h2 class="text-base font-black text-gray-900 dark:text-white">ثبت تکنسین جدید در ناوگان نصاب‌باشی</h2>
+                        <h2 class="text-base font-black text-gray-900 dark:text-white">ثبت تکنسین جدید در ناوگان {{ $platformName ?? '' }}</h2>
                         <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">افزودن مستقیم متخصص فنی به پایگاه داده و تخصیص محدوده جغرافیایی</p>
                     </div>
                 </div>

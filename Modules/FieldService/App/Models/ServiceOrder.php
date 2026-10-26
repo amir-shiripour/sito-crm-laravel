@@ -117,6 +117,56 @@ class ServiceOrder extends Model
         return $this->hasOne(ServiceRating::class, 'order_id');
     }
 
+    public static function getActiveStatuses(): array
+    {
+        return [
+            OrderStatus::PENDING,
+            OrderStatus::SEARCHING,
+            OrderStatus::DISPATCHED,
+            OrderStatus::ACCEPTED,
+            OrderStatus::EN_ROUTE,
+            OrderStatus::ARRIVED,
+            OrderStatus::IN_PROGRESS,
+            OrderStatus::INVOICE_PENDING,
+            OrderStatus::INVOICE_APPROVED,
+        ];
+    }
+
+    public function isActive(): bool
+    {
+        return in_array($this->status, self::getActiveStatuses(), true);
+    }
+
+    public static function resolveActiveForClient(?int $clientId = null, ?int $sessionOrderId = null, ?int $queryOrderId = null): ?self
+    {
+        if ($queryOrderId) {
+            $order = self::with(['technician', 'category', 'invoice.items'])->find($queryOrderId);
+            if ($order && $order->isActive()) {
+                return $order;
+            }
+        }
+
+        if ($clientId) {
+            $order = self::with(['technician', 'category', 'invoice.items'])
+                ->where('client_id', $clientId)
+                ->whereIn('status', self::getActiveStatuses())
+                ->latest()
+                ->first();
+            if ($order) {
+                return $order;
+            }
+        }
+
+        if ($sessionOrderId) {
+            $order = self::with(['technician', 'category', 'invoice.items'])->find($sessionOrderId);
+            if ($order && $order->isActive()) {
+                return $order;
+            }
+        }
+
+        return null;
+    }
+
     /**
      * Generate unique sequential order number NB-1405-XXXX.
      */
@@ -135,5 +185,48 @@ class ServiceOrder extends Model
     public function canSubmitInvoice(): bool
     {
         return in_array($this->status, [OrderStatus::IN_PROGRESS, OrderStatus::ARRIVED]);
+    }
+
+    public function canCustomerCancel(): bool
+    {
+        return in_array($this->status, [
+            OrderStatus::PENDING,
+            OrderStatus::SEARCHING,
+            OrderStatus::DISPATCHED,
+            OrderStatus::ACCEPTED,
+            OrderStatus::EN_ROUTE,
+        ]);
+    }
+
+    public function canTechnicianCancel(): bool
+    {
+        return in_array($this->status, [
+            OrderStatus::ACCEPTED,
+            OrderStatus::EN_ROUTE,
+        ]);
+    }
+
+    public static function customerCancellationReasons(): array
+    {
+        return [
+            'schedule_changed'   => 'تغییر برنامه زمانی یا عدم حضور در منزل',
+            'problem_resolved'   => 'حل خودبه‌خود مشکل یا تعمیر توسط شخص دیگر',
+            'technician_delayed' => 'طولانی شدن زمان اعزام و تاخیر تکنسین',
+            'wrong_details'      => 'اشتباه در ثبت آدرس یا انتخاب نوع دستگاه',
+            'technician_issue'   => 'عدم پاسخگویی یا ناهماهنگی تکنسین',
+            'other'              => 'سایر موارد (توضیحات در کادر زیر)',
+        ];
+    }
+
+    public static function technicianCancellationReasons(): array
+    {
+        return [
+            'vehicle_breakdown'      => 'نقص فنی وسیله نقلیه / تصادف در مسیر',
+            'customer_unreachable'   => 'عدم پاسخگویی تلفن مشتری پس از چند بار تماس',
+            'wrong_address'          => 'آدرس اشتباه، بن‌بست یا خارج از محدوده تردد',
+            'special_tools_needed'   => 'نیاز به تجهیزات یا قطعات خاص خارج از ابزار همراه',
+            'emergency'              => 'شرایط جوی اضطراری یا بیماری ناگهانی',
+            'other'                  => 'سایر موارد موجه',
+        ];
     }
 }

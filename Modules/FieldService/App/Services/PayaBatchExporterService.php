@@ -22,7 +22,8 @@ class PayaBatchExporterService
             $amount = (int) $settlement->amount;
             $name = str_replace(',', ' ', $settlement->account_owner_name);
             $code = $settlement->tracking_code;
-            $desc = "تسویه کارکرد تکنسین نصاب‌باشی - {$settlement->technician?->full_name}";
+            $platform = \Modules\FieldService\App\Models\FieldServiceSetting::getPlatformName();
+            $desc = "تسویه کارکرد تکنسین {$platform} - {$settlement->technician?->full_name}";
 
             $lines[] = "{$shaba},{$amount},\"{$name}\",{$code},{$batchRef},\"{$desc}\"";
 

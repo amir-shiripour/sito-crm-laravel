@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Gate;
 use App\Services\Modules\BaseModuleInstaller;
 use Modules\Booking\Entities\BookingSetting;
 use Illuminate\Support\Facades\Schema;
+use App\Support\WidgetRegistry;
 
 class BookingServiceProvider extends ServiceProvider
 {
@@ -67,6 +68,16 @@ class BookingServiceProvider extends ServiceProvider
         \Livewire\Livewire::component('booking.user.laboratory-manager', \Modules\Booking\App\Livewire\User\LaboratoryManager::class);
         \Livewire\Livewire::component('booking.user.laboratory-daily-board', \Modules\Booking\App\Livewire\User\LaboratoryDailyBoard::class);
         \Livewire\Livewire::component('booking.user.client-weekly-schedule', \Modules\Booking\App\Livewire\User\ClientWeeklySchedule::class);
+
+        $widgetsFile = __DIR__ . '/../Config/widgets.php';
+        if (file_exists($widgetsFile)) {
+            $widgets = require $widgetsFile;
+            foreach ($widgets as $key => $definition) {
+                WidgetRegistry::register($key, $definition);
+            }
+        }
+        \Livewire\Livewire::component('booking.user.daily-appointments-widget', \Modules\Booking\App\Livewire\Widgets\DailyAppointmentsWidget::class);
+        \Livewire\Livewire::component('booking::widgets.daily-appointments', \Modules\Booking\App\Livewire\Widgets\DailyAppointmentsWidget::class);
 
         if (class_exists(\Modules\Booking\App\Models\TreatmentPlan::class)) {
             \Modules\Booking\App\Models\TreatmentPlan::observe(\Modules\Booking\App\Observers\TreatmentPlanObserver::class);

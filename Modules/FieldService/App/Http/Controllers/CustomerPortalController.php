@@ -3,6 +3,7 @@
 namespace Modules\FieldService\App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
 use Modules\FieldService\App\Models\Category;
 use Modules\FieldService\App\Models\FieldServiceSetting;
@@ -21,7 +22,22 @@ class CustomerPortalController extends Controller
             ->get(['id', 'first_name', 'last_name', 'mobile', 'city', 'lat', 'lng', 'is_busy', 'rating_avg', 'completed_orders_count']);
             
         $activeTechniciansCount = $onlineTechnicians->count();
-        $latestOrder = ServiceOrder::latest()->first();
+
+        // Resolve active/unresolved order for current customer or session
+        $clientId = Auth::guard('client')->id();
+        $sessionOrderId = session('fieldservice_active_order_id');
+        $queryOrderId = request()->query('order_id');
+
+        $activeOrder = ServiceOrder::resolveActiveForClient($clientId, $sessionOrderId, $queryOrderId);
+
+        if ($activeOrder) {
+            session(['fieldservice_active_order_id' => $activeOrder->id]);
+        } elseif ($sessionOrderId) {
+            $sessOrder = ServiceOrder::find($sessionOrderId);
+            if (!$sessOrder || !$sessOrder->isActive()) {
+                session()->forget('fieldservice_active_order_id');
+            }
+        }
 
         // Dynamically fetch active covered cities with coordinates from FieldServiceSettings
         $coveredCities = FieldServiceSetting::getCoveredCitiesWithCoords();
@@ -32,7 +48,7 @@ class CustomerPortalController extends Controller
             'categories',
             'onlineTechnicians',
             'activeTechniciansCount',
-            'latestOrder',
+            'activeOrder',
             'coveredCities',
             'mazandaranCities'
         ));

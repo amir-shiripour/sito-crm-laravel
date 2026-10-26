@@ -7,8 +7,10 @@
     <div class="space-y-4 py-2">
         <div class="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
             <h3 class="text-sm font-black text-slate-800 dark:text-slate-100">پیگیری و رهگیری سفارش</h3>
-            <button type="button" wire:click="setMode('create')" class="text-xs text-indigo-600 dark:text-indigo-400 font-bold hover:underline">
-                ← بازگشت به نقشه
+            <button type="button" wire:click="setMode('create')"
+                    class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-200 text-xs font-bold transition active:scale-95 shadow-xs">
+                <span>←</span>
+                <span>بازگشت به نقشه</span>
             </button>
         </div>
 
@@ -79,12 +81,18 @@
 
             {{-- Order For 'Other' indicator pill if selected --}}
             @if($order_for === 'other')
-            <div class="p-2 rounded-xl bg-indigo-50/80 dark:bg-indigo-500/15 border border-indigo-200/80 dark:border-indigo-500/30 flex items-center justify-between text-xs text-indigo-700 dark:text-indigo-300">
+            <div class="p-2.5 rounded-2xl bg-indigo-50/80 dark:bg-indigo-500/15 border border-indigo-200/80 dark:border-indigo-500/30 flex items-center justify-between text-xs text-indigo-700 dark:text-indigo-300">
                 <div class="flex items-center gap-1.5 font-bold">
-                    <span>👥</span>
-                    <span>ثبت سفارش برای شخص دیگر فعال است</span>
+                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="9" cy="7" r="4"></circle>
+                        <path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                    </svg>
+                    <span>ثبت سفارش برای تحویل‌گیرنده در محل</span>
                 </div>
-                <button type="button" wire:click="setOrderFor('self')" class="text-[11px] font-bold text-indigo-600 hover:underline">
+                <button type="button" wire:click="setOrderFor('self')"
+                        class="px-2.5 py-1 rounded-xl bg-indigo-100 hover:bg-indigo-200 dark:bg-indigo-500/25 dark:hover:bg-indigo-500/35 text-indigo-700 dark:text-indigo-200 text-[11px] font-bold transition active:scale-95">
                     تغییر به خودم
                 </button>
             </div>
@@ -120,9 +128,10 @@
                     <div class="text-[11px] font-black text-slate-500 dark:text-slate-400 mb-1.5 px-0.5 flex items-center justify-between">
                         <span>انتخاب نوع خدمت و دستگاه:</span>
                         @if($categories->count() > 3)
-                        <button type="button" wire:click="setSubTab('all_services')" class="text-[11px] text-indigo-600 dark:text-indigo-400 font-bold hover:underline flex items-center gap-1 transition">
-                            <span>خدمات کامل ({{ $categories->count() }})</span>
-                            <span class="text-xs">←</span>
+                        <button type="button" wire:click="setSubTab('all_services')"
+                                class="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-500/15 dark:hover:bg-indigo-500/25 text-[11px] text-indigo-600 dark:text-indigo-300 font-bold transition active:scale-95 border border-indigo-200/50 dark:border-indigo-500/30 shadow-xs">
+                            <span>خدمات بیشتر ({{ $categories->count() }})</span>
+                            <span class="text-[10px]">←</span>
                         </button>
                         @endif
                     </div>
@@ -179,18 +188,23 @@
 
                 {{-- Two Snapp-Style Service Rows (Normal vs Emergency) --}}
                 <div class="space-y-1.5 pt-0.5">
-                    {{-- Row 1: نصاب‌باشی (اعزام عادی) --}}
+                    {{-- Row 1: اعزام عادی --}}
                     <div wire:click="setPriority('normal')"
                          class="w-full p-3 rounded-2xl flex items-center justify-between cursor-pointer transition-all duration-150 {{ $priority === 'normal' ? 'bg-[#f0fdf4] dark:bg-emerald-950/25 border border-emerald-500/30 shadow-xs' : 'hover:bg-slate-50 dark:hover:bg-slate-800/60 border border-transparent' }}">
                         
                         {{-- Right in RTL: Icon + Title + Subtitle --}}
                         <div class="flex items-center gap-3">
-                            <div class="w-11 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-2xl shrink-0 shadow-xs">
-                                🚗
+                            <div class="w-11 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shrink-0 shadow-xs">
+                                <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"></path>
+                                    <circle cx="7" cy="17" r="2"></circle>
+                                    <path d="M9 17h6"></path>
+                                    <circle cx="17" cy="17" r="2"></circle>
+                                </svg>
                             </div>
                             <div>
                                 <div class="text-xs sm:text-sm font-black text-slate-900 dark:text-white flex items-center gap-1.5">
-                                    <span>نصاب‌باشی</span>
+                                    <span>{{ $platformName ?? 'اعزام عادی' }}</span>
                                     @if($priority === 'normal')
                                     <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
                                     @endif
@@ -209,7 +223,7 @@
                         </div>
                     </div>
 
-                    {{-- Row 2: نصاب‌باشی پلاس (اعزام فوری) --}}
+                    {{-- Row 2: اعزام فوری پلاس --}}
                     <div wire:click="setPriority('emergency')"
                          class="w-full p-3 rounded-2xl flex items-center justify-between cursor-pointer transition-all duration-150 {{ $priority === 'emergency' ? 'bg-[#f0fdf4] dark:bg-emerald-950/25 border border-emerald-500/30 shadow-xs' : 'hover:bg-slate-50 dark:hover:bg-slate-800/60 border border-transparent' }}">
                         
@@ -220,7 +234,7 @@
                             </div>
                             <div>
                                 <div class="text-xs sm:text-sm font-black text-slate-900 dark:text-white flex items-center gap-1.5">
-                                    <span>نصاب‌باشی پلاس</span>
+                                    <span>{{ ($platformName ?? '') . ' پلاس' }}</span>
                                     @if($priority === 'emergency')
                                     <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
                                     @endif
@@ -280,7 +294,7 @@
                 <div class="pt-0.5">
                     <button type="button" wire:click="submitOrder"
                             class="w-full py-3.5 sm:py-4 bg-[#00a651] hover:bg-[#009247] active:scale-[0.99] text-white font-black text-sm sm:text-base rounded-2xl shadow-xl shadow-emerald-600/25 transition-all flex items-center justify-center">
-                        <span>درخواست نصاب‌باشی</span>
+                        <span>درخواست اعزام تکنسین ({{ $platformName ?? '' }})</span>
                     </button>
                 </div>
             </div>
@@ -339,7 +353,15 @@
                     {{-- Order for other recipient --}}
                     @if($order_for === 'other')
                     <div class="p-3 rounded-2xl bg-amber-50/80 dark:bg-amber-500/10 border border-amber-200/80 dark:border-amber-500/20 space-y-2">
-                        <div class="text-xs font-black text-amber-900 dark:text-amber-300">👥 مشخصات تحویل‌گیرنده در محل:</div>
+                        <div class="text-xs font-black text-amber-900 dark:text-amber-300 flex items-center gap-1.5">
+                            <svg class="w-4 h-4 text-amber-600 dark:text-amber-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+                                <circle cx="9" cy="7" r="4"></circle>
+                                <path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>
+                                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                            </svg>
+                            <span>مشخصات تحویل‌گیرنده در محل:</span>
+                        </div>
                         <div class="grid grid-cols-2 gap-2">
                             <div>
                                 <input type="text" wire:model="recipient_name" placeholder="نام تحویل‌گیرنده *"
@@ -379,7 +401,10 @@
                         <span>بازگشت به انتخاب خدمت</span>
                     </button>
                     <div class="text-xs font-black text-slate-900 dark:text-white flex items-center gap-1.5">
-                        <span>🏷️</span>
+                        <svg class="w-4 h-4 text-indigo-600 dark:text-indigo-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z"></path>
+                            <path d="M7 7h.01"></path>
+                        </svg>
                         <span>کد تخفیف و معرف</span>
                     </div>
                 </div>
@@ -427,7 +452,12 @@
                 <div class="relative">
                     <input type="text" wire:model.live.debounce.200ms="categorySearch" placeholder="جستجو در خدمات (پکیج، اسپلیت، یخچال، پمپ، آسانسور...)"
                            class="w-full h-10 pr-9 pl-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-800 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-sans">
-                    <span class="absolute right-3 top-2.5 text-slate-400 text-sm">🔍</span>
+                    <span class="absolute right-3 top-3 text-slate-400">
+                        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                        </svg>
+                    </span>
                 </div>
 
                 {{-- Full 2-Column Grid of All Categories --}}
@@ -483,10 +513,36 @@
         @if($step === 4 && $createdOrderId)
         <div class="space-y-3">
             <div class="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
-                <div class="text-xs font-bold text-slate-500 dark:text-slate-400">رهگیری زنده ماموریت</div>
-                <button type="button" wire:click="startNewOrder" class="text-xs text-indigo-600 dark:text-indigo-400 font-bold hover:underline">
-                    + ثبت درخواست جدید دیگر
-                </button>
+                <div class="flex items-center gap-2">
+                    <button type="button" @click="$dispatch('collapse-sheet')"
+                            class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-200 text-xs font-bold transition active:scale-95 shadow-xs border border-slate-200/70 dark:border-slate-700/60"
+                            title="کوچک کردن پنل و مشاهده نقشه">
+                        <svg class="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/><line x1="9" x2="9" y1="3" y2="18"/><line x1="15" x2="15" y1="6" y2="21"/></svg>
+                        <span>مشاهده نقشه</span>
+                        <svg class="w-3 h-3 text-slate-400 dark:text-slate-500 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                    </button>
+                    <span class="text-slate-300 dark:text-slate-700">|</span>
+                    <span class="text-xs font-bold text-slate-500 dark:text-slate-400">رهگیری زنده ماموریت</span>
+                </div>
+                @php
+                    $trackedOrder = \Modules\FieldService\App\Models\ServiceOrder::find($createdOrderId);
+                    $isOpen = $trackedOrder && $trackedOrder->isActive();
+                @endphp
+                @if(!$isOpen)
+                    <button type="button" wire:click="startNewOrder"
+                            class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-500/15 dark:hover:bg-indigo-500/25 text-indigo-600 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-500/30 text-xs font-bold transition-all active:scale-95 shadow-xs">
+                        <span>+</span>
+                        <span>ثبت درخواست جدید</span>
+                    </button>
+                @else
+                    <span class="text-[11px] font-bold text-amber-700 dark:text-amber-300 flex items-center gap-1.5 bg-amber-50 dark:bg-amber-500/15 px-3 py-1 rounded-xl border border-amber-200/80 dark:border-amber-500/30 shadow-xs">
+                        <span class="relative flex h-2 w-2 shrink-0">
+                            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                            <span class="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+                        </span>
+                        <span>سفارش باز در جریان</span>
+                    </span>
+                @endif
             </div>
 
             @livewire('fieldservice::live-tracking', ['orderId' => $createdOrderId], key('tracking-'.$createdOrderId))
