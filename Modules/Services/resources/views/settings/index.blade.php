@@ -1251,7 +1251,7 @@
                                                         <span
                                                             class="text-sm font-bold text-gray-800 dark:text-gray-200 truncate">{{ $field['label'] }}</span>
                                                         <span
-                                                            class="text-[10px] text-gray-400 dir-ltr font-mono truncate">{{ $field['id'] }}</span>
+                                                            class="text-[10px] text-gray-400 dir-ltr font-sans truncate">{{ $field['id'] }}</span>
                                                     </span>
 
                                                     @if($field['is_system'])

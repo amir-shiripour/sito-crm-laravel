@@ -143,9 +143,57 @@
         ? ClientForm::active()
         : null;
 
+    if (!function_exists('parseClientFieldOptionsForOfficialPrint')) {
+        function parseClientFieldOptionsForOfficialPrint($rawOpts): array {
+            $options = [];
+            if (empty($rawOpts)) return [];
+            if (is_array($rawOpts)) {
+                foreach ($rawOpts as $k => $v) {
+                    if (is_array($v)) {
+                        $val = (string)($v['key'] ?? $v['value'] ?? $k);
+                        $lab = (string)($v['label'] ?? $v['name'] ?? $val);
+                        $options[$val] = $lab;
+                    } elseif (is_string($k) && !is_numeric($k)) {
+                        $options[(string)$k] = (string)$v;
+                    } else {
+                        $options[(string)$v] = (string)$v;
+                    }
+                }
+                return $options;
+            }
+            if (is_string($rawOpts)) {
+                $decoded = json_decode($rawOpts, true);
+                if (is_array($decoded)) {
+                    return parseClientFieldOptionsForOfficialPrint($decoded);
+                }
+                $lines = array_filter(array_map('trim', explode("\n", $rawOpts)));
+                foreach ($lines as $line) {
+                    if (str_contains($line, ':')) {
+                        [$okey, $oval] = array_map('trim', explode(':', $line, 2));
+                        $options[$okey] = $oval;
+                    } else {
+                        $options[$line] = $line;
+                    }
+                }
+            }
+            return $options;
+        }
+    }
+
     foreach ($savedBuyerFieldIds as $fid) {
         $selectedVal = $clientSelectedFields[$fid] ?? null;
+        $fieldDef = $activeClientForm ? $activeClientForm->field($fid) : null;
+        $opts = (!empty($fieldDef['options_json'])) ? parseClientFieldOptionsForOfficialPrint($fieldDef['options_json']) : [];
+
         if (!empty($selectedVal)) {
+            if (!empty($opts)) {
+                if (is_array($selectedVal)) {
+                    $selectedVal = array_map(fn($v) => $opts[(string)$v] ?? $v, $selectedVal);
+                } elseif (isset($opts[(string)$selectedVal])) {
+                    $selectedVal = $opts[(string)$selectedVal];
+                }
+            }
+
             $formattedVal = is_array($selectedVal)
                 ? implode(' ، ', array_filter(array_map('trim', $selectedVal)))
                 : trim((string)$selectedVal);
@@ -155,8 +203,7 @@
                     $fieldsById[$fid]['value'] = $formattedVal;
                 } else {
                     $label = $systemLabels[$fid] ?? null;
-                    if (!$label && $activeClientForm) {
-                        $fieldDef = $activeClientForm->field($fid);
+                    if (!$label && $fieldDef) {
                         $label = $fieldDef['label'] ?? null;
                     }
                     $fieldsById[$fid] = [

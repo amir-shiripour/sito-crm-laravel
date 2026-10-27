@@ -107,6 +107,43 @@
         }
     }
 
+    if (!function_exists('parseClientSelectOptions')) {
+        function parseClientSelectOptions($rawOpts): array {
+            $options = [];
+            if (empty($rawOpts)) return [];
+            if (is_array($rawOpts)) {
+                foreach ($rawOpts as $k => $v) {
+                    if (is_array($v)) {
+                        $val = (string)($v['key'] ?? $v['value'] ?? $k);
+                        $lab = (string)($v['label'] ?? $v['name'] ?? $val);
+                        $options[$val] = $lab;
+                    } elseif (is_string($k) && !is_numeric($k)) {
+                        $options[(string)$k] = (string)$v;
+                    } else {
+                        $options[(string)$v] = (string)$v;
+                    }
+                }
+                return $options;
+            }
+            if (is_string($rawOpts)) {
+                $decoded = json_decode($rawOpts, true);
+                if (is_array($decoded)) {
+                    return parseClientSelectOptions($decoded);
+                }
+                $lines = array_filter(array_map('trim', explode("\n", $rawOpts)));
+                foreach ($lines as $line) {
+                    if (str_contains($line, ':')) {
+                        [$okey, $oval] = array_map('trim', explode(':', $line, 2));
+                        $options[$okey] = $oval;
+                    } else {
+                        $options[$line] = $line;
+                    }
+                }
+            }
+            return $options;
+        }
+    }
+
     $checkedClientFields = json_decode($settings['services_invoice_client_fields'] ?? '[]', true);
     if (!is_array($checkedClientFields) || empty($checkedClientFields)) {
         $checkedClientFields = ['full_name', 'phone', 'email', 'national_code', 'case_number'];
@@ -128,27 +165,84 @@
     $allFieldsMap['address'] = 'آدرس';
     $allFieldsMap['addresses'] = 'آدرس‌ها';
 
+    $formFieldsById = collect($formSchema['fields'] ?? [])->keyBy('id');
+    $systemDefaults = ClientForm::systemFieldDefaults();
+    $clientCustomFieldsForInvoice = [];
+    $multiFieldIds = [];
+
+    if (in_array('address', $checkedClientFields, true)) $multiFieldIds[] = 'address';
+    if (in_array('addresses', $checkedClientFields, true)) $multiFieldIds[] = 'addresses';
+
+    foreach ($checkedClientFields as $fid) {
+        if (in_array($fid, ['full_name', 'phone', 'email', 'address', 'addresses'], true)) {
+            continue;
+        }
+        if ($formFieldsById->has($fid)) {
+            $fDef = $formFieldsById->get($fid);
+            $type = $fDef['type'] ?? 'text';
+            $options = [];
+            if (!empty($fDef['options_json'])) {
+                $options = parseClientSelectOptions($fDef['options_json']);
+            }
+            $isMulti = !empty($fDef['multiple']) || $type === 'checkbox';
+            if ($isMulti) {
+                $multiFieldIds[] = $fid;
+            }
+            $clientCustomFieldsForInvoice[] = [
+                'id' => $fid,
+                'label' => $fDef['label'] ?? $fid,
+                'type' => $type,
+                'placeholder' => $fDef['placeholder'] ?? '',
+                'required' => !empty($fDef['required']),
+                'multiple' => !empty($fDef['multiple']),
+                'options' => $options,
+                'is_system' => false,
+            ];
+        } elseif (isset($systemDefaults[$fid])) {
+            $sysDef = $systemDefaults[$fid];
+            $clientCustomFieldsForInvoice[] = [
+                'id' => $fid,
+                'label' => $sysDef['label'] ?? $fid,
+                'type' => $sysDef['type'] ?? 'text',
+                'placeholder' => $sysDef['placeholder'] ?? '',
+                'required' => false,
+                'multiple' => false,
+                'options' => [],
+                'is_system' => true,
+            ];
+        }
+    }
+
+    $invoiceHasAddressesKey = in_array('addresses', $checkedClientFields, true);
+
     $customersListForJs = $customers->map(function ($c) use ($checkedClientFields, $formSchema, $allFieldsMap) {
-        $multiSubFields = [];
-        foreach ($checkedClientFields as $fieldId) {
-            $subItems = extractClientFieldSubItems($c, $fieldId, $formSchema);
-            if (count($subItems) > 1) {
-                $multiSubFields[] = [
-                    'id' => $fieldId,
-                    'label' => $allFieldsMap[$fieldId] ?? $fieldId,
-                    'options' => $subItems,
-                ];
+        $addressOptions = [];
+        if (in_array('address', $checkedClientFields, true) || in_array('addresses', $checkedClientFields, true)) {
+            if ($c->addresses && $c->addresses->count() > 0) {
+                foreach ($c->addresses as $addr) {
+                    $parts = array_filter([
+                        $addr->title ? "{$addr->title}:" : null,
+                        $addr->province,
+                        $addr->city,
+                        $addr->address,
+                        $addr->postal_code ? "(کدپستی: {$addr->postal_code})" : null,
+                    ]);
+                    $addressOptions[] = implode(' ', $parts);
+                }
             }
         }
 
         return [
-            'id'       => $c->id,
-            'name'     => $c->full_name,
-            'email'    => $c->email,
-            'phone'    => $c->phone ?? '',
-            'username' => $c->username ?? '',
-            'label'    => $c->full_name . ' - ' . ($c->email ?? $c->phone ?? ''),
-            'multi_sub_fields' => $multiSubFields,
+            'id'              => $c->id,
+            'name'            => $c->full_name,
+            'email'           => $c->email,
+            'phone'           => $c->phone ?? '',
+            'username'        => $c->username ?? '',
+            'national_code'   => $c->national_code ?? '',
+            'case_number'     => $c->case_number ?? '',
+            'meta'            => is_array($c->meta) ? $c->meta : (json_decode($c->meta ?? '', true) ?: []),
+            'address_options' => $addressOptions,
+            'label'           => $c->full_name . ' - ' . ($c->email ?? $c->phone ?? ''),
         ];
     })->values();
 
@@ -551,8 +645,7 @@
 
                                 <div x-show="selectedCustomer" x-transition class="flex-1 flex flex-col gap-3 h-full">
                                     <div
-                                        class="flex items-center gap-4 p-4 rounded-2xl border-2 border-indigo-200 dark:border-indigo-500/30 bg-indigo-50/60 dark:bg-indigo-500/10 shadow-xs"
-                                        :class="(selectedCustomerData?.multi_sub_fields && selectedCustomerData.multi_sub_fields.length > 0) ? '' : 'flex-1 flex items-center'">
+                                        class="flex items-center gap-4 p-4 rounded-2xl border-2 border-indigo-200 dark:border-indigo-500/30 bg-indigo-50/60 dark:bg-indigo-500/10 shadow-xs flex-1 flex items-center">
                                         <span
                                             class="flex items-center justify-center w-12 h-12 rounded-full bg-indigo-600 text-white font-black text-base shrink-0 shadow-xs"
                                             x-text="(selectedCustomerData?.name || '؟').trim().charAt(0)"></span>
@@ -574,58 +667,193 @@
                                         </button>
                                     </div>
 
-                                    <template
-                                        x-if="selectedCustomerData?.multi_sub_fields && selectedCustomerData.multi_sub_fields.length > 0">
-                                        <div
-                                            class="p-5 rounded-2xl border border-indigo-200/80 dark:border-indigo-800/60 bg-white dark:bg-gray-800 shadow-xs space-y-4">
-                                            <div
-                                                class="flex flex-wrap items-center justify-between border-b border-gray-100 dark:border-gray-700 pb-2.5 gap-2">
-                                                <div
-                                                    class="flex items-center gap-2 text-xs font-bold text-indigo-700 dark:text-indigo-300">
-                                                    <svg class="w-4 h-4 text-indigo-600 dark:text-indigo-400"
-                                                         fill="none"
-                                                         viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                                        <path stroke-linecap="round" stroke-linejoin="round"
-                                                              d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+                                    {{-- فیلدهای سفارشی و انتخابی مشتری در فاکتور --}}
+                                    @if(!empty($clientCustomFieldsForInvoice) || in_array('address', $checkedClientFields, true) || in_array('addresses', $checkedClientFields, true))
+                                        <div class="p-4 sm:p-5 rounded-2xl border border-indigo-100 dark:border-indigo-900/40 bg-white dark:bg-gray-800/80 shadow-xs space-y-4">
+                                            <div class="flex items-center justify-between border-b border-gray-100 dark:border-gray-700/60 pb-3">
+                                                <div class="flex items-center gap-2 text-xs font-bold text-indigo-700 dark:text-indigo-400">
+                                                    <svg class="w-4 h-4 text-indigo-600 dark:text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                                                     </svg>
-                                                    <span>انتخاب زیرمجموعه‌های مشتری در فاکتور (چند انتخابی / Multi-Select)</span>
+                                                    <span>فیلدهای مشتری در این فاکتور</span>
                                                 </div>
-                                                <span class="text-[10px] text-gray-400 font-medium">امکان انتخاب چند زیرمجموعه به صورت همزمان</span>
+                                                <span class="text-[10px] text-gray-400 dark:text-gray-500 font-medium">مشخص‌شده در تنظیمات فاکتور</span>
                                             </div>
+
                                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                                <template x-for="field in selectedCustomerData.multi_sub_fields"
-                                                          :key="field.id">
-                                                    <div
-                                                        class="space-y-2 p-3 rounded-xl bg-gray-50/70 dark:bg-gray-900/40 border border-gray-100 dark:border-gray-700/60">
-                                                        <div class="flex items-center justify-between">
-                                                            <label
-                                                                class="block text-xs font-bold text-gray-800 dark:text-gray-200"
-                                                                x-text="field.label"></label>
-                                                            <div class="flex items-center gap-2">
-                                                                <button type="button"
-                                                                        @click="selectAllSubItems(field.id, field.options)"
-                                                                        class="text-[10px] font-bold text-indigo-600 hover:text-indigo-800 dark:text-indigo-400">
-                                                                    انتخاب همه
-                                                                </button>
-                                                                <span class="text-[10px] text-gray-300">|</span>
-                                                                <button type="button"
-                                                                        @click="deselectAllSubItems(field.id)"
-                                                                        class="text-[10px] text-gray-400 hover:text-gray-600">
-                                                                    پاک کردن
-                                                                </button>
+                                                @foreach($clientCustomFieldsForInvoice as $cf)
+                                                    @php
+                                                        $cfId = $cf['id'];
+                                                        $cfLabel = $cf['label'];
+                                                        $cfType = $cf['type'];
+                                                        $cfPlaceholder = $cf['placeholder'];
+                                                        $cfOptions = $cf['options'];
+                                                        $cfMultiple = $cf['multiple'];
+                                                    @endphp
+
+                                                    @if($cfType === 'select')
+                                                        @if($cfMultiple)
+                                                            <div class="space-y-2 col-span-full">
+                                                                <div class="flex items-center justify-between">
+                                                                    <label class="block text-xs font-bold text-gray-700 dark:text-gray-200">
+                                                                        {{ $cfLabel }}
+                                                                        @if($cf['required']) <span class="text-rose-500 font-black">*</span> @endif
+                                                                    </label>
+                                                                    <span class="text-[10px] text-gray-400 font-medium">چند انتخابی</span>
+                                                                </div>
+                                                                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+                                                                    @foreach($cfOptions as $optVal => $optLabel)
+                                                                        <label class="flex items-center gap-2.5 p-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/30 hover:border-indigo-300 dark:hover:border-indigo-600 transition-colors cursor-pointer text-xs text-gray-700 dark:text-gray-300">
+                                                                            <input type="checkbox"
+                                                                                   name="client_selected_fields[{{ $cfId }}][]"
+                                                                                   value="{{ $optVal }}"
+                                                                                   :checked="isSubItemChecked('{{ $cfId }}', '{{ $optVal }}')"
+                                                                                   @change="toggleSubItem('{{ $cfId }}', '{{ $optVal }}')"
+                                                                                   class="rounded border-gray-300 dark:border-gray-600 text-indigo-600 focus:ring-indigo-500">
+                                                                            <span class="min-w-0 truncate font-sans">{{ $optLabel }}</span>
+                                                                        </label>
+                                                                    @endforeach
+                                                                </div>
+                                                            </div>
+                                                        @else
+                                                            {{-- منوی کشویی تک‌انتخابی استاندارد مطابق تنظیمات فرم‌ساز --}}
+                                                            <div class="space-y-1.5">
+                                                                <label class="block text-xs font-bold text-gray-700 dark:text-gray-200">
+                                                                    {{ $cfLabel }}
+                                                                    @if($cf['required']) <span class="text-rose-500 font-black">*</span> @endif
+                                                                </label>
+                                                                <select name="client_selected_fields[{{ $cfId }}]"
+                                                                        x-model="clientSelectedFields['{{ $cfId }}']"
+                                                                        class="w-full rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 text-xs text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all dark:border-gray-700 dark:bg-gray-900/50 dark:text-white font-sans cursor-pointer"
+                                                                        @if($cf['required']) required @endif>
+                                                                    <option value="">{{ $cfPlaceholder ?: 'انتخاب کنید...' }}</option>
+                                                                    @foreach($cfOptions as $optVal => $optLabel)
+                                                                        <option value="{{ $optVal }}">{{ $optLabel }}</option>
+                                                                    @endforeach
+                                                                </select>
+                                                            </div>
+                                                        @endif
+
+                                                    @elseif($cfType === 'radio')
+                                                        <div class="space-y-2 col-span-full">
+                                                            <label class="block text-xs font-bold text-gray-700 dark:text-gray-200">
+                                                                {{ $cfLabel }}
+                                                                @if($cf['required']) <span class="text-rose-500 font-black">*</span> @endif
+                                                            </label>
+                                                            <div class="flex flex-wrap gap-4 pt-1">
+                                                                @foreach($cfOptions as $optVal => $optLabel)
+                                                                    <label class="inline-flex items-center gap-2 cursor-pointer group">
+                                                                        <input type="radio"
+                                                                               name="client_selected_fields[{{ $cfId }}]"
+                                                                               value="{{ $optVal }}"
+                                                                               x-model="clientSelectedFields['{{ $cfId }}']"
+                                                                               class="w-4 h-4 text-indigo-600 border-gray-300 dark:border-gray-600 focus:ring-indigo-500 dark:bg-gray-800">
+                                                                        <span class="text-xs text-gray-700 dark:text-gray-300 font-sans">{{ $optLabel }}</span>
+                                                                    </label>
+                                                                @endforeach
                                                             </div>
                                                         </div>
-                                                        <div class="max-h-40 overflow-y-auto space-y-1.5 pe-1">
-                                                            <template x-for="opt in (field.options || [])" :key="opt">
-                                                                <label
-                                                                    class="flex items-center gap-2.5 p-1.5 rounded-lg hover:bg-white dark:hover:bg-gray-800 cursor-pointer transition-colors text-xs text-gray-700 dark:text-gray-300">
+
+                                                    @elseif($cfType === 'checkbox')
+                                                        <div class="space-y-2 col-span-full">
+                                                            <label class="block text-xs font-bold text-gray-700 dark:text-gray-200">
+                                                                {{ $cfLabel }}
+                                                                @if($cf['required']) <span class="text-rose-500 font-black">*</span> @endif
+                                                            </label>
+                                                            <div class="flex flex-wrap gap-4 pt-1">
+                                                                @foreach($cfOptions as $optVal => $optLabel)
+                                                                    <label class="inline-flex items-center gap-2 cursor-pointer group">
+                                                                        <input type="checkbox"
+                                                                               name="client_selected_fields[{{ $cfId }}][]"
+                                                                               value="{{ $optVal }}"
+                                                                               :checked="isSubItemChecked('{{ $cfId }}', '{{ $optVal }}')"
+                                                                               @change="toggleSubItem('{{ $cfId }}', '{{ $optVal }}')"
+                                                                               class="w-4 h-4 rounded text-indigo-600 border-gray-300 dark:border-gray-600 focus:ring-indigo-500 dark:bg-gray-800">
+                                                                        <span class="text-xs text-gray-700 dark:text-gray-300 font-sans">{{ $optLabel }}</span>
+                                                                    </label>
+                                                                @endforeach
+                                                            </div>
+                                                        </div>
+
+                                                    @elseif($cfType === 'date')
+                                                        <div class="space-y-1.5">
+                                                            <label class="block text-xs font-bold text-gray-700 dark:text-gray-200">
+                                                                {{ $cfLabel }}
+                                                                @if($cf['required']) <span class="text-rose-500 font-black">*</span> @endif
+                                                            </label>
+                                                            <input type="text"
+                                                                   name="client_selected_fields[{{ $cfId }}]"
+                                                                   x-model="clientSelectedFields['{{ $cfId }}']"
+                                                                   data-jdp data-jdp-only-date autocomplete="off"
+                                                                   placeholder="{{ $cfPlaceholder ?: 'انتخاب تاریخ...' }}"
+                                                                   class="w-full rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 text-xs text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all dark:border-gray-700 dark:bg-gray-900/50 dark:text-white font-sans cursor-pointer"
+                                                                   @if($cf['required']) required @endif>
+                                                        </div>
+
+                                                    @elseif($cfType === 'textarea')
+                                                        <div class="space-y-1.5 col-span-full">
+                                                            <label class="block text-xs font-bold text-gray-700 dark:text-gray-200">
+                                                                {{ $cfLabel }}
+                                                                @if($cf['required']) <span class="text-rose-500 font-black">*</span> @endif
+                                                            </label>
+                                                            <textarea name="client_selected_fields[{{ $cfId }}]"
+                                                                      x-model="clientSelectedFields['{{ $cfId }}']"
+                                                                      rows="2"
+                                                                      placeholder="{{ $cfPlaceholder ?: $cfLabel }}"
+                                                                      class="w-full rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 text-xs text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all dark:border-gray-700 dark:bg-gray-900/50 dark:text-white font-sans resize-y"
+                                                                      @if($cf['required']) required @endif></textarea>
+                                                        </div>
+
+                                                    @else
+                                                        {{-- text, number, email, etc. --}}
+                                                        <div class="space-y-1.5">
+                                                            <label class="block text-xs font-bold text-gray-700 dark:text-gray-200">
+                                                                {{ $cfLabel }}
+                                                                @if($cf['required']) <span class="text-rose-500 font-black">*</span> @endif
+                                                            </label>
+                                                            <input type="{{ $cfType === 'number' ? 'number' : ($cfType === 'email' ? 'email' : 'text') }}"
+                                                                   name="client_selected_fields[{{ $cfId }}]"
+                                                                   x-model="clientSelectedFields['{{ $cfId }}']"
+                                                                   placeholder="{{ $cfPlaceholder ?: $cfLabel }}"
+                                                                   class="w-full rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 text-xs text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all dark:border-gray-700 dark:bg-gray-900/50 dark:text-white font-sans"
+                                                                   @if($cf['required']) required @endif>
+                                                        </div>
+                                                    @endif
+                                                @endforeach
+
+                                                {{-- انتخاب آدرس مشتری (در صورت وجود آدرس برای مشتری) --}}
+                                                <template x-if="selectedCustomerData?.address_options && selectedCustomerData.address_options.length > 0">
+                                                    <div class="space-y-2 col-span-full p-3 rounded-xl bg-gray-50/70 dark:bg-gray-900/40 border border-gray-100 dark:border-gray-700/60">
+                                                        <div class="flex items-center justify-between">
+                                                            <label class="block text-xs font-bold text-gray-800 dark:text-gray-200">
+                                                                نشانی / آدرس در فاکتور
+                                                            </label>
+                                                            <template x-if="selectedCustomerData.address_options.length > 1">
+                                                                <div class="flex items-center gap-2">
+                                                                    <button type="button"
+                                                                            @click="selectAllSubItems(invoiceHasAddressesKey ? 'addresses' : 'address', selectedCustomerData.address_options)"
+                                                                            class="text-[10px] font-bold text-indigo-600 hover:text-indigo-800 dark:text-indigo-400">
+                                                                        انتخاب همه
+                                                                    </button>
+                                                                    <span class="text-[10px] text-gray-300">|</span>
+                                                                    <button type="button"
+                                                                            @click="deselectAllSubItems(invoiceHasAddressesKey ? 'addresses' : 'address')"
+                                                                            class="text-[10px] text-gray-400 hover:text-gray-600">
+                                                                        پاک کردن
+                                                                    </button>
+                                                                </div>
+                                                            </template>
+                                                        </div>
+                                                        <div class="max-h-36 overflow-y-auto space-y-1.5 pe-1">
+                                                            <template x-for="addr in selectedCustomerData.address_options" :key="addr">
+                                                                <label class="flex items-center gap-2.5 p-2 rounded-lg hover:bg-white dark:hover:bg-gray-800 cursor-pointer transition-colors text-xs text-gray-700 dark:text-gray-300">
                                                                     <input type="checkbox"
-                                                                           :name="'client_selected_fields[' + field.id + '][]'"
-                                                                           :value="opt"
-                                                                           :checked="isSubItemChecked(field.id, opt)"
-                                                                           @change="toggleSubItem(field.id, opt)"
+                                                                           :name="'client_selected_fields[' + (invoiceHasAddressesKey ? 'addresses' : 'address') + '][]'"
+                                                                           :value="addr"
+                                                                           :checked="isSubItemChecked(invoiceHasAddressesKey ? 'addresses' : 'address', addr)"
+                                                                           @change="toggleSubItem(invoiceHasAddressesKey ? 'addresses' : 'address', addr)"
                                                                            class="rounded border-gray-300 dark:border-gray-600 text-indigo-600 focus:ring-indigo-500">
-                                                                    <span x-text="opt" class="min-w-0 truncate"></span>
+                                                                    <span x-text="addr" class="min-w-0 truncate font-sans"></span>
                                                                 </label>
                                                             </template>
                                                         </div>
@@ -633,7 +861,7 @@
                                                 </template>
                                             </div>
                                         </div>
-                                    </template>
+                                    @endif
                                 </div>
                             </div>
 
@@ -2304,6 +2532,8 @@
                     selectedCustomer: @json(old('customer_id', $invoice->customer_id)),
                     selectedCustomerData: null,
                     clientSelectedFields: @json(old('client_selected_fields', $invoice->meta['client_selected_fields'] ?? (object)[])),
+                    multiFieldIds: @json($multiFieldIds),
+                    invoiceHasAddressesKey: @json($invoiceHasAddressesKey),
                     customersList: @json($customersListForJs),
                     customerQuery: '',
                     customerDropdownOpen: false,
@@ -2457,14 +2687,32 @@
                         this.selectedCustomerData = c;
                         this.customerQuery = '';
                         this.customerDropdownOpen = false;
-                        if (c && c.multi_sub_fields) {
-                            c.multi_sub_fields.forEach(f => {
-                                if (!this.clientSelectedFields[f.id]) {
-                                    this.clientSelectedFields[f.id] = [...(f.options || [])];
-                                }
-                            });
+                        if (c) {
+                            this.syncCustomerFields(c);
                         }
                         this.fetchCustomerDebts(c.id);
+                    },
+                    syncCustomerFields(c) {
+                        if (!c) return;
+                        if (c.national_code && !this.clientSelectedFields['national_code']) {
+                            this.clientSelectedFields['national_code'] = c.national_code;
+                        }
+                        if (c.case_number && !this.clientSelectedFields['case_number']) {
+                            this.clientSelectedFields['case_number'] = c.case_number;
+                        }
+                        if (c.meta && typeof c.meta === 'object') {
+                            for (const [k, v] of Object.entries(c.meta)) {
+                                if (this.clientSelectedFields[k] === undefined || this.clientSelectedFields[k] === null || this.clientSelectedFields[k] === '') {
+                                    this.clientSelectedFields[k] = v;
+                                }
+                            }
+                        }
+                        if (c.address_options && c.address_options.length > 0) {
+                            const addrKey = this.invoiceHasAddressesKey ? 'addresses' : 'address';
+                            if (!this.clientSelectedFields[addrKey] || (Array.isArray(this.clientSelectedFields[addrKey]) && this.clientSelectedFields[addrKey].length === 0)) {
+                                this.clientSelectedFields[addrKey] = [...c.address_options];
+                            }
+                        }
                     },
                     clearCustomer() {
                         this.selectedCustomer = '';
@@ -2669,10 +2917,11 @@
                     },
                     isSubItemChecked(fieldId, opt) {
                         if (!this.clientSelectedFields[fieldId]) return false;
-                        const arr = Array.isArray(this.clientSelectedFields[fieldId])
-                            ? this.clientSelectedFields[fieldId]
-                            : [this.clientSelectedFields[fieldId]];
-                        return arr.includes(opt);
+                        const val = this.clientSelectedFields[fieldId];
+                        if (Array.isArray(val)) {
+                            return val.includes(opt);
+                        }
+                        return String(val) === String(opt);
                     },
                     toggleSubItem(fieldId, opt) {
                         if (!this.clientSelectedFields[fieldId] || !Array.isArray(this.clientSelectedFields[fieldId])) {
@@ -2726,8 +2975,18 @@
                         this.setDefaultDates();
                         if (this.selectedCustomer) {
                             const c = this.customersList.find(c => c.id == this.selectedCustomer);
-                            if (c) this.selectedCustomerData = c;
+                            if (c) {
+                                this.selectedCustomerData = c;
+                                this.syncCustomerFields(c);
+                            }
                             this.fetchCustomerDebts(this.selectedCustomer);
+                        }
+                        if (this.clientSelectedFields && typeof this.clientSelectedFields === 'object') {
+                            for (const [k, v] of Object.entries(this.clientSelectedFields)) {
+                                if (Array.isArray(v) && v.length === 1 && !this.multiFieldIds.includes(k)) {
+                                    this.clientSelectedFields[k] = v[0];
+                                }
+                            }
                         }
                         this.syncDebtRowState();
                         this.forceSyncDateInputs();

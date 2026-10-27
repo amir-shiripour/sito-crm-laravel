@@ -148,6 +148,34 @@
                 $val = $order->customer->meta[$fieldId] ?? null;
             }
 
+            if ($val !== null && $val !== '' && !empty($fieldDef['options_json'])) {
+                $opts = [];
+                $rawOpts = $fieldDef['options_json'];
+                if (is_array($rawOpts)) { $opts = $rawOpts; }
+                elseif (is_string($rawOpts)) {
+                    $decoded = json_decode($rawOpts, true);
+                    if (is_array($decoded)) { $opts = $decoded; }
+                    else {
+                        $lines = array_filter(array_map('trim', explode("\n", $rawOpts)));
+                        foreach ($lines as $line) {
+                            if (str_contains($line, ':')) {
+                                [$okey, $oval] = array_map('trim', explode(':', $line, 2));
+                                $opts[$okey] = $oval;
+                            } else {
+                                $opts[$line] = $line;
+                            }
+                        }
+                    }
+                }
+                if (!empty($opts)) {
+                    if (is_array($val)) {
+                        $val = array_map(fn($v) => $opts[(string)$v] ?? $v, $val);
+                    } elseif (isset($opts[(string)$val])) {
+                        $val = $opts[(string)$val];
+                    }
+                }
+            }
+
             if (is_array($val)) {
                 $val = implode('، ', $val);
             }

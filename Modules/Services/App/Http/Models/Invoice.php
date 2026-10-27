@@ -372,4 +372,21 @@ class Invoice extends Model
         $meta = is_array($this->meta) ? $this->meta : (json_decode($this->meta ?? '', true) ?? []);
         return isset($meta['extra_discount_value']) ? (float)$meta['extra_discount_value'] : 0;
     }
+
+    /**
+     * فیلتر فاکتورها بر اساس فیلد سفارشی مشتری در متای فاکتور (برای گزارش‌گیری و فیلترهای آینده)
+     */
+    public function scopeWhereClientField($query, string $fieldId, $value)
+    {
+        if (is_array($value)) {
+            return $query->where(function ($q) use ($fieldId, $value) {
+                foreach ($value as $val) {
+                    $q->orWhereJsonContains("meta->client_selected_fields->{$fieldId}", $val);
+                }
+            });
+        }
+
+        return $query->where("meta->client_selected_fields->{$fieldId}", $value)
+            ->orWhereJsonContains("meta->client_selected_fields->{$fieldId}", $value);
+    }
 }
