@@ -184,15 +184,17 @@ class Client extends Authenticatable
             $fType = $fieldDef['type'] ?? '';
 
             if ($fType === 'select-user-by-role' && ($value === null || $value === '' || (is_array($value) && empty($value)))) {
-                $roleName = $fieldDef['role'] ?? null;
-                $uq = $this->users();
-                if (!empty($roleName)) {
-                    $uq->whereHas('roles', fn($q) => $q->where('name', $roleName)->orWhere('id', $roleName));
-                }
-                $uIds = $uq->pluck('users.id')->toArray();
-                if (!empty($uIds)) {
-                    $userNames = \App\Models\User::whereIn('id', $uIds)->pluck('name')->toArray();
-                    $value = !empty($userNames) ? implode('، ', $userNames) : null;
+                if (\Illuminate\Support\Facades\Schema::hasTable('client_user')) {
+                    $roleName = $fieldDef['role'] ?? null;
+                    $uq = $this->users();
+                    if (!empty($roleName)) {
+                        $uq->whereHas('roles', fn($q) => $q->where('name', $roleName)->orWhere('id', $roleName));
+                    }
+                    $uIds = $uq->pluck('users.id')->toArray();
+                    if (!empty($uIds)) {
+                        $userNames = \App\Models\User::whereIn('id', $uIds)->pluck('name')->toArray();
+                        $value = !empty($userNames) ? implode('، ', $userNames) : null;
+                    }
                 }
             }
 
