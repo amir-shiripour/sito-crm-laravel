@@ -198,6 +198,11 @@
         $fieldDef = $activeClientForm ? $activeClientForm->field($fid) : null;
         $opts = (!empty($fieldDef['options_json'])) ? parseClientFieldOptionsForPrint($fieldDef['options_json']) : [];
 
+        if (array_key_exists($fid, $clientSelectedFields) && ($selectedVal === '' || $selectedVal === null || (is_array($selectedVal) && empty($selectedVal)))) {
+            unset($fieldsById[$fid]);
+            continue;
+        }
+
         if (!empty($selectedVal)) {
             $fType = $fieldDef['type'] ?? '';
             if ($fType === 'select-user-by-role') {
