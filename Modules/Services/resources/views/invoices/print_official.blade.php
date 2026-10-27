@@ -186,7 +186,22 @@
         $opts = (!empty($fieldDef['options_json'])) ? parseClientFieldOptionsForOfficialPrint($fieldDef['options_json']) : [];
 
         if (!empty($selectedVal)) {
-            if (!empty($opts)) {
+            $fType = $fieldDef['type'] ?? '';
+            if ($fType === 'select-user-by-role') {
+                $uIds = is_array($selectedVal) ? $selectedVal : (is_string($selectedVal) && str_starts_with(trim($selectedVal), '[') ? json_decode($selectedVal, true) : [$selectedVal]);
+                $uIds = array_filter(array_map('intval', (array)$uIds));
+                if (!empty($uIds)) {
+                    $userNames = \App\Models\User::whereIn('id', $uIds)->pluck('name')->toArray();
+                    $selectedVal = !empty($userNames) ? $userNames : $selectedVal;
+                }
+            } elseif ($fType === 'select-province-city') {
+                $decoded = is_array($selectedVal) ? $selectedVal : json_decode($selectedVal, true);
+                if (is_array($decoded)) {
+                    $p = trim($decoded['province'] ?? '');
+                    $c = trim($decoded['city'] ?? '');
+                    $selectedVal = array_filter([$p, $c]) ? implode(' - ', array_filter([$p, $c])) : $selectedVal;
+                }
+            } elseif (!empty($opts)) {
                 if (is_array($selectedVal)) {
                     $selectedVal = array_map(fn($v) => $opts[(string)$v] ?? $v, $selectedVal);
                 } elseif (isset($opts[(string)$selectedVal])) {

@@ -148,7 +148,22 @@
                 $val = $order->customer->meta[$fieldId] ?? null;
             }
 
-            if ($val !== null && $val !== '' && !empty($fieldDef['options_json'])) {
+            $fType = $fieldDef['type'] ?? '';
+            if ($fType === 'select-user-by-role') {
+                $uIds = is_array($val) ? $val : (is_string($val) && str_starts_with(trim($val), '[') ? json_decode($val, true) : [$val]);
+                $uIds = array_filter(array_map('intval', (array)$uIds));
+                if (!empty($uIds)) {
+                    $userNames = \App\Models\User::whereIn('id', $uIds)->pluck('name')->toArray();
+                    $val = !empty($userNames) ? $userNames : $val;
+                }
+            } elseif ($fType === 'select-province-city') {
+                $decoded = is_array($val) ? $val : json_decode($val, true);
+                if (is_array($decoded)) {
+                    $p = trim($decoded['province'] ?? '');
+                    $c = trim($decoded['city'] ?? '');
+                    $val = array_filter([$p, $c]) ? implode(' - ', array_filter([$p, $c])) : $val;
+                }
+            } elseif ($val !== null && $val !== '' && !empty($fieldDef['options_json'])) {
                 $opts = [];
                 $rawOpts = $fieldDef['options_json'];
                 if (is_array($rawOpts)) { $opts = $rawOpts; }
