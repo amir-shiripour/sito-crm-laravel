@@ -192,6 +192,36 @@
                         $q->whereHas('roles', fn($r) => $r->where('name', $role)->orWhere('id', $role));
                     });
                 }
+                // Also ensure any user IDs stored in customers' profiles for this field exist in the options
+                $assignedUserIds = [];
+                foreach ($customers as $cust) {
+                    $m = is_array($cust->meta) ? $cust->meta : (json_decode($cust->meta ?? '', true) ?: []);
+                    $v = $m[$fid] ?? ($cust->{$fid} ?? null);
+                    if (!empty($v)) {
+                        if (is_array($v)) {
+                            foreach ($v as $subV) { if (is_numeric($subV)) $assignedUserIds[] = (int)$subV; }
+                        } elseif (is_numeric($v)) {
+                            $assignedUserIds[] = (int)$v;
+                        } elseif (is_string($v) && str_starts_with(trim($v), '[') && str_ends_with(trim($v), ']')) {
+                            $dec = json_decode($v, true);
+                            if (is_array($dec)) {
+                                foreach ($dec as $subV) { if (is_numeric($subV)) $assignedUserIds[] = (int)$subV; }
+                            }
+                        }
+                    }
+                }
+                // Also ensure invoice's own saved value for this field is in the options
+                $savedInvVal = $invoice->meta['client_selected_fields'][$fid] ?? null;
+                if (!empty($savedInvVal)) {
+                    if (is_array($savedInvVal)) {
+                        foreach ($savedInvVal as $subV) { if (is_numeric($subV)) $assignedUserIds[] = (int)$subV; }
+                    } elseif (is_numeric($savedInvVal)) {
+                        $assignedUserIds[] = (int)$savedInvVal;
+                    }
+                }
+                if (!empty($assignedUserIds)) {
+                    $usersQ->orWhereIn('id', array_unique($assignedUserIds));
+                }
                 $options = $usersQ->select('id', 'name')->orderBy('name')->pluck('name', 'id')->mapWithKeys(function($name, $id) {
                     return [(string)$id => (string)$name];
                 })->toArray();
@@ -235,8 +265,8 @@
 
     $invoiceHasAddressesKey = in_array('addresses', $checkedClientFields, true);
 
-    if ($customers instanceof \Illuminate\Support\Collection && $customers->isNotEmpty()) {
-        $customers->loadMissing(['users.roles', 'addresses']);
+    if ($customers instanceof \Illuminate\Support\Collection && $customers->isNotEmpty() && \Illuminate\Support\Facades\Schema::hasTable('client_addresses')) {
+        $customers->loadMissing('addresses');
     }
 
     $customersListForJs = $customers->map(function ($c) use ($checkedClientFields, $formSchema, $allFieldsMap, $clientCustomFieldsForInvoice) {
@@ -260,48 +290,19 @@
 
         foreach ($clientCustomFieldsForInvoice as $cfInfo) {
             $cfId = $cfInfo['id'];
-            $cfType = $cfInfo['type'];
-
-            if ($cfType === 'select-user-by-role') {
-                if (empty($cMeta[$cfId])) {
-                    $targetRole = null;
-                    if (!empty($formSchema['fields'])) {
-                        foreach ($formSchema['fields'] as $f) {
-                            if (($f['id'] ?? '') === $cfId) {
-                                $targetRole = $f['role'] ?? null;
-                                break;
-                            }
-                        }
-                    }
-                    $matchingUsers = ($c->relationLoaded('users') && $c->users)
-                        ? $c->users->filter(function ($u) use ($targetRole) {
-                            if (empty($targetRole)) return true;
-                            return $u->roles ? ($u->roles->contains('name', $targetRole) || $u->roles->contains('id', $targetRole)) : false;
-                        })
-                        : collect();
-
-                    if ($matchingUsers->isNotEmpty()) {
-                        if (!empty($cfInfo['multiple'])) {
-                            $cMeta[$cfId] = $matchingUsers->pluck('id')->map(fn($id) => (string)$id)->values()->all();
-                        } else {
-                            $cMeta[$cfId] = (string)$matchingUsers->first()->id;
-                        }
-                    } elseif (isset($c->{$cfId})) {
-                        $cMeta[$cfId] = (string)$c->{$cfId};
-                    }
-                } else {
-                    if (is_array($cMeta[$cfId])) {
-                        if (empty($cfInfo['multiple']) && count($cMeta[$cfId]) > 0) {
-                            $cMeta[$cfId] = (string)$cMeta[$cfId][0];
-                        } else {
-                            $cMeta[$cfId] = array_map('strval', $cMeta[$cfId]);
-                        }
-                    } else {
-                        $cMeta[$cfId] = (string)$cMeta[$cfId];
-                    }
-                }
-            } elseif (isset($c->{$cfId}) && !isset($cMeta[$cfId])) {
+            if (!isset($cMeta[$cfId]) && isset($c->{$cfId})) {
                 $cMeta[$cfId] = $c->{$cfId};
+            }
+            if (isset($cMeta[$cfId])) {
+                if (is_array($cMeta[$cfId])) {
+                    if (empty($cfInfo['multiple']) && count($cMeta[$cfId]) > 0) {
+                        $cMeta[$cfId] = (string)$cMeta[$cfId][0];
+                    } else {
+                        $cMeta[$cfId] = array_map('strval', $cMeta[$cfId]);
+                    }
+                } elseif (!is_object($cMeta[$cfId])) {
+                    $cMeta[$cfId] = (string)$cMeta[$cfId];
+                }
             }
         }
 
@@ -2683,7 +2684,18 @@
                     mergedSourceIds: @json(!empty($invoice->meta['merged_from_invoice_ids']) ? implode(',', (array)$invoice->meta['merged_from_invoice_ids']) : ''),
                     selectedCustomer: @json(old('customer_id', $invoice->customer_id)),
                     selectedCustomerData: null,
-                    clientSelectedFields: @json(old('client_selected_fields', $invoice->meta['client_selected_fields'] ?? (object)[])),
+                    clientSelectedFields: (function() {
+                        const initObj = @json(old('client_selected_fields', $invoice->meta['client_selected_fields'] ?? (object)[]));
+                        const cfIds = @json(array_column($clientCustomFieldsForInvoice, 'id'));
+                        if (Array.isArray(cfIds)) {
+                            cfIds.forEach(id => {
+                                if (initObj[id] === undefined) {
+                                    initObj[id] = '';
+                                }
+                            });
+                        }
+                        return initObj;
+                    })(),
                     multiFieldIds: @json($multiFieldIds),
                     invoiceHasAddressesKey: @json($invoiceHasAddressesKey),
                     customersList: @json($customersListForJs),
@@ -2877,6 +2889,7 @@
                                 this.clientSelectedFields[addrKey] = [...c.address_options];
                             }
                         }
+                        this.clientSelectedFields = Object.assign({}, this.clientSelectedFields);
                     },
                     clearCustomer() {
                         this.selectedCustomer = '';
@@ -3141,7 +3154,13 @@
                             const c = this.customersList.find(c => c.id == this.selectedCustomer);
                             if (c) {
                                 this.selectedCustomerData = c;
+                                const savedFields = Object.assign({}, this.clientSelectedFields);
                                 this.syncCustomerFields(c);
+                                for (const [k, v] of Object.entries(savedFields)) {
+                                    if (v !== undefined && v !== null && v !== '') {
+                                        this.clientSelectedFields[k] = v;
+                                    }
+                                }
                             }
                             this.fetchCustomerDebts(this.selectedCustomer);
                         }
