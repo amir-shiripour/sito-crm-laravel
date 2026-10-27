@@ -779,7 +779,9 @@ class InvoiceController extends Controller
                 if (is_array($vals)) {
                     $cleanedSelectedFields[$fid] = array_values(array_filter(array_map('trim', $vals)));
                 } elseif (is_string($vals) && trim($vals) !== '') {
-                    $cleanedSelectedFields[$fid] = [trim($vals)];
+                    $cleanedSelectedFields[$fid] = trim($vals);
+                } elseif (is_numeric($vals)) {
+                    $cleanedSelectedFields[$fid] = $vals;
                 }
             }
             $existingMeta['client_selected_fields'] = $cleanedSelectedFields;
@@ -2398,7 +2400,9 @@ class InvoiceController extends Controller
                 if (is_array($vals)) {
                     $cleanedSelectedFields[$fid] = array_values(array_filter(array_map('trim', $vals)));
                 } elseif (is_string($vals) && trim($vals) !== '') {
-                    $cleanedSelectedFields[$fid] = [trim($vals)];
+                    $cleanedSelectedFields[$fid] = trim($vals);
+                } elseif (is_numeric($vals)) {
+                    $cleanedSelectedFields[$fid] = $vals;
                 }
             }
             $existingMeta['client_selected_fields'] = $cleanedSelectedFields;
