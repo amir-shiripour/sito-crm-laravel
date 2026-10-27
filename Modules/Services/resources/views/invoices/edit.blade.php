@@ -184,6 +184,23 @@
             if (!empty($fDef['options_json'])) {
                 $options = parseClientSelectOptions($fDef['options_json']);
             }
+            if ($type === 'select-user-by-role') {
+                $role = $fDef['role'] ?? null;
+                $usersQ = \App\Models\User::query();
+                if (!empty($role)) {
+                    try {
+                        $usersQ->role($role);
+                    } catch (\Throwable $e) {}
+                }
+                $options = $usersQ->select('id', 'name')->orderBy('name')->pluck('name', 'id')->toArray();
+            }
+            $provincesData = [];
+            if ($type === 'select-province-city') {
+                $jsonPath = base_path('Modules/Clients/resources/data/iran-provinces-cities.json');
+                if (file_exists($jsonPath)) {
+                    $provincesData = json_decode(file_get_contents($jsonPath), true) ?? [];
+                }
+            }
             $isMulti = !empty($fDef['multiple']) || $type === 'checkbox';
             if ($isMulti) {
                 $multiFieldIds[] = $fid;
@@ -196,6 +213,7 @@
                 'required' => !empty($fDef['required']),
                 'multiple' => !empty($fDef['multiple']),
                 'options' => $options,
+                'provinces_data' => $provincesData,
                 'is_system' => false,
             ];
         } elseif (isset($systemDefaults[$fid])) {
@@ -691,7 +709,7 @@
                                                         $cfMultiple = $cf['multiple'];
                                                     @endphp
 
-                                                    @if($cfType === 'select')
+                                                    @if($cfType === 'select' || $cfType === 'select-user-by-role')
                                                         @if($cfMultiple)
                                                             <div class="space-y-2 col-span-full">
                                                                 <div class="flex items-center justify-between">
@@ -726,13 +744,92 @@
                                                                         x-model="clientSelectedFields['{{ $cfId }}']"
                                                                         class="w-full rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 text-xs text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all dark:border-gray-700 dark:bg-gray-900/50 dark:text-white font-sans cursor-pointer"
                                                                         @if($cf['required']) required @endif>
-                                                                    <option value="">{{ $cfPlaceholder ?: 'انتخاب کنید...' }}</option>
+                                                                    <option value="">{{ $cfPlaceholder ?: ($cfType === 'select-user-by-role' ? 'انتخاب کاربر...' : 'انتخاب کنید...') }}</option>
                                                                     @foreach($cfOptions as $optVal => $optLabel)
                                                                         <option value="{{ $optVal }}">{{ $optLabel }}</option>
                                                                     @endforeach
                                                                 </select>
                                                             </div>
                                                         @endif
+
+                                                    @elseif($cfType === 'select-province-city')
+                                                        @php
+                                                            $pData = $cf['provinces_data'] ?? [];
+                                                            $provincesList = array_keys($pData);
+                                                        @endphp
+                                                        <div class="space-y-1.5 col-span-full sm:col-span-2"
+                                                             x-data="{
+                                                                 allProvincesData: @js($pData),
+                                                                 curProvince: '',
+                                                                 curCity: '',
+                                                                 citiesList: [],
+                                                                 init() {
+                                                                     let raw = this.clientSelectedFields['{{ $cfId }}'];
+                                                                     if (typeof raw === 'string' && (raw.startsWith('{') || raw.startsWith('['))) {
+                                                                         try { raw = JSON.parse(raw); } catch(e){}
+                                                                     }
+                                                                     if (raw && typeof raw === 'object') {
+                                                                         this.curProvince = raw.province || '';
+                                                                         this.curCity = raw.city || '';
+                                                                     } else if (typeof raw === 'string' && raw.includes('-')) {
+                                                                         const parts = raw.split('-').map(s => s.trim());
+                                                                         this.curProvince = parts[0] || '';
+                                                                         this.curCity = parts[1] || '';
+                                                                     }
+                                                                     this.updateCities();
+                                                                     this.$watch('clientSelectedFields.{{ $cfId }}', (newVal) => {
+                                                                         let parsed = newVal;
+                                                                         if (typeof parsed === 'string' && (parsed.startsWith('{') || parsed.startsWith('['))) {
+                                                                             try { parsed = JSON.parse(parsed); } catch(e){}
+                                                                         }
+                                                                         if (parsed && typeof parsed === 'object') {
+                                                                             this.curProvince = parsed.province || '';
+                                                                             this.curCity = parsed.city || '';
+                                                                             this.updateCities();
+                                                                         }
+                                                                     });
+                                                                 },
+                                                                 updateCities() {
+                                                                     this.citiesList = (this.curProvince && this.allProvincesData[this.curProvince]) ? this.allProvincesData[this.curProvince] : [];
+                                                                 },
+                                                                 onProvinceChange() {
+                                                                     this.updateCities();
+                                                                     this.curCity = '';
+                                                                     this.commitVal();
+                                                                 },
+                                                                 onCityChange() {
+                                                                     this.commitVal();
+                                                                 },
+                                                                 commitVal() {
+                                                                     if (this.curProvince || this.curCity) {
+                                                                         this.clientSelectedFields['{{ $cfId }}'] = JSON.stringify({province: this.curProvince, city: this.curCity});
+                                                                     } else {
+                                                                         this.clientSelectedFields['{{ $cfId }}'] = '';
+                                                                     }
+                                                                 }
+                                                             }">
+                                                            <label class="block text-xs font-bold text-gray-700 dark:text-gray-200">
+                                                                {{ $cfLabel }}
+                                                                @if($cf['required']) <span class="text-rose-500 font-black">*</span> @endif
+                                                            </label>
+                                                            <input type="hidden" name="client_selected_fields[{{ $cfId }}]" :value="clientSelectedFields['{{ $cfId }}'] || ''">
+                                                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                                                <select x-model="curProvince" @change="onProvinceChange()"
+                                                                        class="w-full rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 text-xs text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all dark:border-gray-700 dark:bg-gray-900/50 dark:text-white font-sans cursor-pointer">
+                                                                    <option value="">انتخاب استان...</option>
+                                                                    @foreach($provincesList as $prov)
+                                                                        <option value="{{ $prov }}">{{ $prov }}</option>
+                                                                    @endforeach
+                                                                </select>
+                                                                <select x-model="curCity" @change="onCityChange()"
+                                                                        class="w-full rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 text-xs text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all dark:border-gray-700 dark:bg-gray-900/50 dark:text-white font-sans cursor-pointer">
+                                                                    <option value="">انتخاب شهر...</option>
+                                                                    <template x-for="c in citiesList" :key="c">
+                                                                        <option :value="c" x-text="c" :selected="c === curCity"></option>
+                                                                    </template>
+                                                                </select>
+                                                            </div>
+                                                        </div>
 
                                                     @elseif($cfType === 'radio')
                                                         <div class="space-y-2 col-span-full">
@@ -2703,7 +2800,19 @@
                         if (c.meta && typeof c.meta === 'object') {
                             for (const [k, v] of Object.entries(c.meta)) {
                                 if (this.clientSelectedFields[k] === undefined || this.clientSelectedFields[k] === null || this.clientSelectedFields[k] === '') {
-                                    this.clientSelectedFields[k] = v;
+                                    let val = v;
+                                    if (typeof v === 'string' && (v.startsWith('[') || v.startsWith('{'))) {
+                                        try { val = JSON.parse(v); } catch(e){}
+                                    }
+                                    if (Array.isArray(val) && val.length === 1 && !this.multiFieldIds.includes(k)) {
+                                        this.clientSelectedFields[k] = String(val[0]);
+                                    } else if (!Array.isArray(val) && typeof val !== 'object' && !this.multiFieldIds.includes(k) && val !== null && val !== undefined) {
+                                        this.clientSelectedFields[k] = String(val);
+                                    } else if (typeof val === 'object' && val !== null && !Array.isArray(val)) {
+                                        this.clientSelectedFields[k] = JSON.stringify(val);
+                                    } else {
+                                        this.clientSelectedFields[k] = val;
+                                    }
                                 }
                             }
                         }
@@ -2984,7 +3093,9 @@
                         if (this.clientSelectedFields && typeof this.clientSelectedFields === 'object') {
                             for (const [k, v] of Object.entries(this.clientSelectedFields)) {
                                 if (Array.isArray(v) && v.length === 1 && !this.multiFieldIds.includes(k)) {
-                                    this.clientSelectedFields[k] = v[0];
+                                    this.clientSelectedFields[k] = String(v[0]);
+                                } else if (!Array.isArray(v) && typeof v !== 'object' && !this.multiFieldIds.includes(k) && v !== null && v !== undefined) {
+                                    this.clientSelectedFields[k] = String(v);
                                 }
                             }
                         }

@@ -181,6 +181,67 @@ class Client extends Authenticatable
 
             $label = $fieldDef['label'] ?? $fieldId;
             $value = ($this->meta ?? [])[$fieldId] ?? null;
+            $fType = $fieldDef['type'] ?? '';
+
+            if ($value !== null && $value !== '') {
+                if ($fType === 'select-user-by-role') {
+                    $uIds = [];
+                    if (is_array($value)) {
+                        $uIds = $value;
+                    } elseif (is_string($value) && str_starts_with(trim($value), '[') && str_ends_with(trim($value), ']')) {
+                        $decoded = json_decode($value, true);
+                        $uIds = is_array($decoded) ? $decoded : [$value];
+                    } elseif (!empty($value)) {
+                        $uIds = [$value];
+                    }
+                    $uIds = array_filter(array_map('intval', (array)$uIds));
+                    if (!empty($uIds)) {
+                        $userNames = \App\Models\User::whereIn('id', $uIds)->pluck('name')->toArray();
+                        $value = !empty($userNames) ? implode('، ', $userNames) : $value;
+                    }
+                } elseif ($fType === 'select-province-city') {
+                    $decoded = is_array($value) ? $value : json_decode($value, true);
+                    if (is_array($decoded)) {
+                        $p = trim($decoded['province'] ?? '');
+                        $c = trim($decoded['city'] ?? '');
+                        $value = array_filter([$p, $c]) ? implode(' - ', array_filter([$p, $c])) : $value;
+                    }
+                } elseif (!empty($fieldDef['options_json'])) {
+                    $opts = [];
+                    $rawOpts = $fieldDef['options_json'];
+                    if (is_array($rawOpts)) {
+                        $opts = $rawOpts;
+                    } elseif (is_string($rawOpts)) {
+                        $decoded = json_decode($rawOpts, true);
+                        if (is_array($decoded)) {
+                            $opts = $decoded;
+                        } else {
+                            $lines = array_filter(array_map('trim', explode("\n", $rawOpts)));
+                            foreach ($lines as $line) {
+                                if (str_contains($line, ':')) {
+                                    [$okey, $oval] = array_map('trim', explode(':', $line, 2));
+                                    $opts[$okey] = $oval;
+                                } else {
+                                    $opts[$line] = $line;
+                                }
+                            }
+                        }
+                    }
+                    if (!empty($opts)) {
+                        if (is_array($value)) {
+                            $value = array_map(function ($v) use ($opts) {
+                                $vStr = (string)$v;
+                                return $opts[$vStr] ?? $v;
+                            }, $value);
+                        } else {
+                            $vStr = (string)$value;
+                            if (isset($opts[$vStr])) {
+                                $value = $opts[$vStr];
+                            }
+                        }
+                    }
+                }
+            }
         }
 
         if ($value === null || $value === '' || (is_array($value) && empty($value))) {
