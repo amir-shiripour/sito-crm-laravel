@@ -191,11 +191,13 @@
                 $role = $fDef['role'] ?? null;
                 $usersQ = \App\Models\User::query();
                 if (!empty($role)) {
-                    try {
-                        $usersQ->role($role);
-                    } catch (\Throwable $e) {}
+                    $usersQ->where(function($q) use ($role) {
+                        $q->whereHas('roles', fn($r) => $r->where('name', $role)->orWhere('id', $role));
+                    });
                 }
-                $options = $usersQ->select('id', 'name')->orderBy('name')->pluck('name', 'id')->toArray();
+                $options = $usersQ->select('id', 'name')->orderBy('name')->pluck('name', 'id')->mapWithKeys(function($name, $id) {
+                    return [(string)$id => (string)$name];
+                })->toArray();
             }
             $provincesData = [];
             if ($type === 'select-province-city') {
@@ -236,7 +238,11 @@
 
     $invoiceHasAddressesKey = in_array('addresses', $checkedClientFields, true);
 
-    $customersListForJs = $customers->map(function ($c) use ($checkedClientFields, $formSchema, $allFieldsMap) {
+    if ($customers instanceof \Illuminate\Support\Collection && $customers->isNotEmpty()) {
+        $customers->loadMissing(['users.roles', 'addresses']);
+    }
+
+    $customersListForJs = $customers->map(function ($c) use ($checkedClientFields, $formSchema, $allFieldsMap, $clientCustomFieldsForInvoice) {
         $addressOptions = [];
         if (in_array('address', $checkedClientFields, true) || in_array('addresses', $checkedClientFields, true)) {
             if ($c->addresses && $c->addresses->count() > 0) {
@@ -253,6 +259,55 @@
             }
         }
 
+        $cMeta = is_array($c->meta) ? $c->meta : (json_decode($c->meta ?? '', true) ?: []);
+
+        foreach ($clientCustomFieldsForInvoice as $cfInfo) {
+            $cfId = $cfInfo['id'];
+            $cfType = $cfInfo['type'];
+
+            if ($cfType === 'select-user-by-role') {
+                if (empty($cMeta[$cfId])) {
+                    $targetRole = null;
+                    if (!empty($formSchema['fields'])) {
+                        foreach ($formSchema['fields'] as $f) {
+                            if (($f['id'] ?? '') === $cfId) {
+                                $targetRole = $f['role'] ?? null;
+                                break;
+                            }
+                        }
+                    }
+                    $matchingUsers = ($c->relationLoaded('users') && $c->users)
+                        ? $c->users->filter(function ($u) use ($targetRole) {
+                            if (empty($targetRole)) return true;
+                            return $u->roles ? ($u->roles->contains('name', $targetRole) || $u->roles->contains('id', $targetRole)) : false;
+                        })
+                        : collect();
+
+                    if ($matchingUsers->isNotEmpty()) {
+                        if (!empty($cfInfo['multiple'])) {
+                            $cMeta[$cfId] = $matchingUsers->pluck('id')->map(fn($id) => (string)$id)->values()->all();
+                        } else {
+                            $cMeta[$cfId] = (string)$matchingUsers->first()->id;
+                        }
+                    } elseif (isset($c->{$cfId})) {
+                        $cMeta[$cfId] = (string)$c->{$cfId};
+                    }
+                } else {
+                    if (is_array($cMeta[$cfId])) {
+                        if (empty($cfInfo['multiple']) && count($cMeta[$cfId]) > 0) {
+                            $cMeta[$cfId] = (string)$cMeta[$cfId][0];
+                        } else {
+                            $cMeta[$cfId] = array_map('strval', $cMeta[$cfId]);
+                        }
+                    } else {
+                        $cMeta[$cfId] = (string)$cMeta[$cfId];
+                    }
+                }
+            } elseif (isset($c->{$cfId}) && !isset($cMeta[$cfId])) {
+                $cMeta[$cfId] = $c->{$cfId};
+            }
+        }
+
         return [
             'id'              => $c->id,
             'name'            => $c->full_name,
@@ -261,7 +316,7 @@
             'username'        => $c->username ?? '',
             'national_code'   => $c->national_code ?? '',
             'case_number'     => $c->case_number ?? '',
-            'meta'            => is_array($c->meta) ? $c->meta : (json_decode($c->meta ?? '', true) ?: []),
+            'meta'            => $cMeta,
             'address_options' => $addressOptions,
             'label'           => $c->full_name . ' - ' . ($c->email ?? $c->phone ?? ''),
         ];
@@ -2537,24 +2592,24 @@
                     },
                     syncCustomerFields(c) {
                         if (!c) return;
-                        if (c.national_code && !this.clientSelectedFields['national_code']) {
+                        if (c.national_code) {
                             this.clientSelectedFields['national_code'] = c.national_code;
                         }
-                        if (c.case_number && !this.clientSelectedFields['case_number']) {
+                        if (c.case_number) {
                             this.clientSelectedFields['case_number'] = c.case_number;
                         }
                         if (c.meta && typeof c.meta === 'object') {
                             for (const [k, v] of Object.entries(c.meta)) {
-                                if (this.clientSelectedFields[k] === undefined || this.clientSelectedFields[k] === null || this.clientSelectedFields[k] === '') {
+                                if (v !== null && v !== undefined && v !== '') {
                                     let val = v;
                                     if (typeof v === 'string' && (v.startsWith('[') || v.startsWith('{'))) {
                                         try { val = JSON.parse(v); } catch(e){}
                                     }
                                     if (Array.isArray(val) && val.length === 1 && !this.multiFieldIds.includes(k)) {
                                         this.clientSelectedFields[k] = String(val[0]);
-                                    } else if (!Array.isArray(val) && typeof val !== 'object' && !this.multiFieldIds.includes(k) && val !== null && val !== undefined) {
+                                    } else if (!Array.isArray(val) && typeof val !== 'object' && !this.multiFieldIds.includes(k)) {
                                         this.clientSelectedFields[k] = String(val);
-                                    } else if (typeof val === 'object' && val !== null && !Array.isArray(val)) {
+                                    } else if (typeof val === 'object' && !Array.isArray(val)) {
                                         this.clientSelectedFields[k] = JSON.stringify(val);
                                     } else {
                                         this.clientSelectedFields[k] = val;
