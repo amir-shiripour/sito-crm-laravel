@@ -122,10 +122,10 @@ class ServicesSettingsController extends Controller
             })
             ->values();
 
-        $customFields = collect([]);
-        $form = ClientForm::active(ClientSetting::getValue('default_form_key'));
-        if ($form) {
-            $customFields = collect($form->schema['fields'] ?? [])
+        $customFields = collect();
+        $allForms = class_exists(ClientForm::class) ? ClientForm::all() : collect();
+        foreach ($allForms as $form) {
+            $fields = collect($form->schema['fields'] ?? [])
                 ->reject(function ($f) use ($excludedIds, $excludedTypes) {
                     $id = $f['id'] ?? '';
                     return in_array($id, $excludedIds, true)
@@ -139,8 +139,12 @@ class ServicesSettingsController extends Controller
                         'group' => $f['group'] ?? 'سایر',
                         'is_system' => false,
                     ];
-                })
-                ->values();
+                });
+            foreach ($fields as $field) {
+                if (!$customFields->contains('id', $field['id'])) {
+                    $customFields->push($field);
+                }
+            }
         }
 
         return $systemFields->merge($customFields)->all();

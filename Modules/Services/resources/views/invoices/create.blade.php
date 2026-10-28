@@ -152,23 +152,40 @@
         $checkedClientFields = ['full_name', 'phone', 'email', 'national_code', 'case_number'];
     }
 
-    $activeForm = ClientForm::active(ClientSetting::getValue('default_form_key'));
-    $formSchema = $activeForm ? $activeForm->schema : [];
+    $allClientForms = class_exists(ClientForm::class) ? ClientForm::all() : collect();
+    $formFieldsById = collect();
     $allFieldsMap = [];
     foreach (ClientForm::systemFieldDefaults() as $fid => $f) {
         $allFieldsMap[$fid] = $f['label'] ?? $fid;
     }
-    if ($activeForm && !empty($formSchema['fields'])) {
-        foreach ($formSchema['fields'] as $f) {
+    $allFieldsMap['address'] = 'آدرس';
+    $allFieldsMap['addresses'] = 'آدرس‌ها';
+
+    $defaultFormKey = class_exists(ClientSetting::class) ? ClientSetting::getValue('default_form_key') : null;
+    $defaultForm = class_exists(ClientForm::class) ? ClientForm::active($defaultFormKey) : null;
+    if ($defaultForm && !empty($defaultForm->schema['fields'])) {
+        foreach ($defaultForm->schema['fields'] as $f) {
             if (!empty($f['id'])) {
+                $formFieldsById->put($f['id'], $f);
                 $allFieldsMap[$f['id']] = $f['label'] ?? $f['id'];
             }
         }
     }
-    $allFieldsMap['address'] = 'آدرس';
-    $allFieldsMap['addresses'] = 'آدرس‌ها';
-
-    $formFieldsById = collect($formSchema['fields'] ?? [])->keyBy('id');
+    foreach ($allClientForms as $frm) {
+        if (!empty($frm->schema['fields']) && is_array($frm->schema['fields'])) {
+            foreach ($frm->schema['fields'] as $f) {
+                if (!empty($f['id'])) {
+                    if (!$formFieldsById->has($f['id'])) {
+                        $formFieldsById->put($f['id'], $f);
+                    }
+                    if (!isset($allFieldsMap[$f['id']])) {
+                        $allFieldsMap[$f['id']] = $f['label'] ?? $f['id'];
+                    }
+                }
+            }
+        }
+    }
+    $formSchema = $defaultForm ? $defaultForm->schema : [];
     $systemDefaults = ClientForm::systemFieldDefaults();
     $clientCustomFieldsForInvoice = [];
     $multiFieldIds = [];
@@ -184,8 +201,14 @@
             $fDef = $formFieldsById->get($fid);
             $type = $fDef['type'] ?? 'text';
             $options = [];
-            if (!empty($fDef['options_json'])) {
-                $options = parseClientSelectOptions($fDef['options_json']);
+            $rawOpts = !empty($fDef['options_json']) ? $fDef['options_json'] : ($fDef['options'] ?? null);
+            if (!empty($rawOpts)) {
+                $options = parseClientSelectOptions($rawOpts);
+            }
+            if (!empty($fDef['use_clients_list'])) {
+                $options = \Modules\Clients\Entities\Client::select('id', 'full_name')->orderBy('full_name')->pluck('full_name', 'id')->mapWithKeys(function($name, $id) {
+                    return [(string)$id => (string)$name];
+                })->toArray();
             }
             if ($type === 'select-user-by-role') {
                 $role = $fDef['role'] ?? null;
@@ -219,6 +242,13 @@
                 $options = $usersQ->select('id', 'name')->orderBy('name')->pluck('name', 'id')->mapWithKeys(function($name, $id) {
                     return [(string)$id => (string)$name];
                 })->toArray();
+
+                // Fallback: If no users were found by role, provide all users so the dropdown is never empty
+                if (empty($options)) {
+                    $options = \App\Models\User::select('id', 'name')->orderBy('name')->pluck('name', 'id')->mapWithKeys(function($name, $id) {
+                        return [(string)$id => (string)$name];
+                    })->toArray();
+                }
             }
             $provincesData = [];
             if ($type === 'select-province-city') {
@@ -381,7 +411,7 @@
               action="{{ route('services.invoices.store') }}"
               method="POST" enctype="multipart/form-data" class="space-y-8">
             @csrf
-            <input type="hidden" name="invoice_type" value="{{ $type }}">
+            <input type="hidden" name="invoice_type" value="{{ old('invoice_type', $type ?? 'invoice') }}">
             @if(!empty($mergedFromIds))
                 <input type="hidden" name="merged_from_invoice_ids" value="{{ $mergedFromIds }}">
                 <input type="hidden" name="merge_invoices" value="{{ $mergedFromIds }}">

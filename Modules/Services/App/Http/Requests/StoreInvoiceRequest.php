@@ -22,6 +22,11 @@ class StoreInvoiceRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
+        $invType = $this->input('invoice_type');
+        if (empty($invType) || !in_array($invType, ['invoice', 'proforma'], true)) {
+            $this->merge(['invoice_type' => 'invoice']);
+        }
+
         $settings = Setting::pluck('value', 'key')->toArray();
         $invoiceAuto = !empty($settings['services_invoice_auto_numbering']) || !empty($settings['services_invoice_auto']);
         $proformaAuto = !empty($settings['services_proforma_invoice_auto']);
