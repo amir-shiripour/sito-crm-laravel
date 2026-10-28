@@ -152,9 +152,18 @@
         'case_number' => 'شماره پرونده',
         'address' => 'نشانی',
     ];
-    $activeClientForm = class_exists(ClientForm::class)
-        ? ClientForm::active()
-        : null;
+    $allClientForms = class_exists(ClientForm::class) ? ClientForm::all() : collect();
+    $allFormFieldsMap = [];
+    foreach ($allClientForms as $frm) {
+        if (!empty($frm->schema['fields']) && is_array($frm->schema['fields'])) {
+            foreach ($frm->schema['fields'] as $f) {
+                if (!empty($f['id']) && !isset($allFormFieldsMap[$f['id']])) {
+                    $allFormFieldsMap[$f['id']] = $f;
+                }
+            }
+        }
+    }
+    $activeClientForm = class_exists(ClientForm::class) ? ClientForm::active() : null;
 
     if (!function_exists('parseClientFieldOptionsForPrint')) {
         function parseClientFieldOptionsForPrint($rawOpts): array {
@@ -195,12 +204,13 @@
 
     foreach ($savedBuyerFieldIds as $fid) {
         $selectedVal = $clientSelectedFields[$fid] ?? null;
-        $fieldDef = $activeClientForm ? $activeClientForm->field($fid) : null;
-        $opts = (!empty($fieldDef['options_json'])) ? parseClientFieldOptionsForPrint($fieldDef['options_json']) : [];
-
-        if (array_key_exists($fid, $clientSelectedFields) && ($selectedVal === '' || $selectedVal === null || (is_array($selectedVal) && empty($selectedVal)))) {
-            unset($fieldsById[$fid]);
-            continue;
+        $fieldDef = $allFormFieldsMap[$fid] ?? ($activeClientForm ? $activeClientForm->field($fid) : null);
+        $rawOpts = !empty($fieldDef['options_json']) ? $fieldDef['options_json'] : ($fieldDef['options'] ?? null);
+        $opts = (!empty($rawOpts)) ? parseClientFieldOptionsForPrint($rawOpts) : [];
+        if (!empty($fieldDef['use_clients_list'])) {
+            $opts = \Modules\Clients\Entities\Client::select('id', 'full_name')->orderBy('full_name')->pluck('full_name', 'id')->mapWithKeys(function($name, $id) {
+                return [(string)$id => (string)$name];
+            })->toArray();
         }
 
         if (!empty($selectedVal)) {
@@ -232,20 +242,22 @@
                 : trim((string)$selectedVal);
 
             if ($formattedVal !== '') {
-                if (isset($fieldsById[$fid])) {
-                    $fieldsById[$fid]['value'] = $formattedVal;
-                } else {
-                    $label = $systemLabels[$fid] ?? null;
-                    if (!$label && $fieldDef) {
-                        $label = $fieldDef['label'] ?? null;
-                    }
-                    $fieldsById[$fid] = [
-                        'id' => $fid,
-                        'label' => $label ?: $fid,
-                        'value' => $formattedVal,
-                    ];
+                $label = $systemLabels[$fid] ?? null;
+                if (!$label && $fieldDef) {
+                    $label = $fieldDef['label'] ?? null;
                 }
+                $fieldsById[$fid] = [
+                    'id' => $fid,
+                    'label' => $label ?: ($fieldsById[$fid]['label'] ?? $fid),
+                    'value' => $formattedVal,
+                ];
             }
+        }
+
+        // Omit field only if BOTH client profile value AND invoice selected value are empty
+        $currentVal = $fieldsById[$fid]['value'] ?? null;
+        if ((empty($currentVal) || $currentVal === '') && (empty($selectedVal) || $selectedVal === '')) {
+            unset($fieldsById[$fid]);
         }
     }
 

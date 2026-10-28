@@ -176,6 +176,16 @@ class Client extends Authenticatable
             $fieldDef = $form?->field($fieldId);
 
             if (!$fieldDef) {
+                foreach (ClientForm::all() as $frm) {
+                    $found = $frm->field($fieldId);
+                    if ($found) {
+                        $fieldDef = $found;
+                        break;
+                    }
+                }
+            }
+
+            if (!$fieldDef) {
                 return null;
             }
 
@@ -221,38 +231,46 @@ class Client extends Authenticatable
                         $c = trim($decoded['city'] ?? '');
                         $value = array_filter([$p, $c]) ? implode(' - ', array_filter([$p, $c])) : $value;
                     }
-                } elseif (!empty($fieldDef['options_json'])) {
-                    $opts = [];
-                    $rawOpts = $fieldDef['options_json'];
-                    if (is_array($rawOpts)) {
-                        $opts = $rawOpts;
-                    } elseif (is_string($rawOpts)) {
-                        $decoded = json_decode($rawOpts, true);
-                        if (is_array($decoded)) {
-                            $opts = $decoded;
-                        } else {
-                            $lines = array_filter(array_map('trim', explode("\n", $rawOpts)));
-                            foreach ($lines as $line) {
-                                if (str_contains($line, ':')) {
-                                    [$okey, $oval] = array_map('trim', explode(':', $line, 2));
-                                    $opts[$okey] = $oval;
-                                } else {
-                                    $opts[$line] = $line;
+                } else {
+                    $rawOpts = !empty($fieldDef['options_json']) ? $fieldDef['options_json'] : ($fieldDef['options'] ?? null);
+                    if (!empty($rawOpts)) {
+                        $opts = [];
+                        if (is_array($rawOpts)) {
+                            $opts = $rawOpts;
+                        } elseif (is_string($rawOpts)) {
+                            $decoded = json_decode($rawOpts, true);
+                            if (is_array($decoded)) {
+                                $opts = $decoded;
+                            } else {
+                                $lines = array_filter(array_map('trim', explode("\n", $rawOpts)));
+                                foreach ($lines as $line) {
+                                    if (str_contains($line, ':')) {
+                                        [$okey, $oval] = array_map('trim', explode(':', $line, 2));
+                                        $opts[$okey] = $oval;
+                                    } else {
+                                        $opts[$line] = $line;
+                                    }
+                                }
+                            }
+                        }
+                        if (!empty($opts)) {
+                            if (is_array($value)) {
+                                $value = array_map(function ($v) use ($opts) {
+                                    $vStr = (string)$v;
+                                    return $opts[$vStr] ?? $v;
+                                }, $value);
+                            } else {
+                                $vStr = (string)$value;
+                                if (isset($opts[$vStr])) {
+                                    $value = $opts[$vStr];
                                 }
                             }
                         }
                     }
-                    if (!empty($opts)) {
-                        if (is_array($value)) {
-                            $value = array_map(function ($v) use ($opts) {
-                                $vStr = (string)$v;
-                                return $opts[$vStr] ?? $v;
-                            }, $value);
-                        } else {
-                            $vStr = (string)$value;
-                            if (isset($opts[$vStr])) {
-                                $value = $opts[$vStr];
-                            }
+                    if (!empty($fieldDef['use_clients_list']) && !empty($value)) {
+                        $cName = Client::where('id', $value)->value('full_name');
+                        if ($cName) {
+                            $value = $cName;
                         }
                     }
                 }
