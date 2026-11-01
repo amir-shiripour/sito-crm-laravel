@@ -21,6 +21,6 @@ class PropertyImage extends Model
         if ($this->path) {
             return asset('storage/' . $this->path);
         }
-        return asset('assets/images/placeholder.jpg');
+        return asset('images/property-placeholder.svg');
     }
 }

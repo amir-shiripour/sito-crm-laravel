@@ -18,6 +18,14 @@
     $appLogo = isset($globalSettings['app_logo']) ? asset($globalSettings['app_logo']) : null;
     $footerText = $globalSettings['footer_text'] ?? 'تمام حقوق محفوظ است.';
     $appTheme = $globalSettings['app_theme'] ?? 'default';
+    try {
+        if (class_exists(\App\Services\ThemeManager::class)) {
+            $themeChain = app(\App\Services\ThemeManager::class)->getThemeChain();
+            if (!empty($themeChain[0])) {
+                $appTheme = $themeChain[0];
+            }
+        }
+    } catch (\Throwable $e) {}
 
     $isMarketActive = false;
     try {
@@ -45,6 +53,10 @@
     'properties' => [
     'glow' => 'bg-blue-500/20 dark:bg-blue-500/10',
     'gradient_bg' => 'radial-gradient(circle at 50% 0%, rgba(59, 130, 246, 0.12) 0%, transparent 50%), radial-gradient(circle at 100% 0%, rgba(14, 165, 233, 0.08) 0%, transparent 50%)',
+    ],
+    'mrvilalafoor' => [
+    'glow' => 'hidden',
+    'gradient_bg' => 'none',
     ],
     'fieldservice' => [
     'glow' => 'bg-indigo-500/20 dark:bg-indigo-500/10',
@@ -80,6 +92,19 @@
         /* کلاس کمکی برای safe-area در گوشی‌های آیفون و گوشی‌های جدید که Bottom Navigation دارند */
         .pb-safe {
             padding-bottom: env(safe-area-inset-bottom);
+        }
+
+        /* عنوان اقامتگاه دو خطی با ارتفاع یکدست و ثابت */
+        .card-title-fixed-height {
+            line-height: 2em !important;
+            height: 4em !important;
+            min-height: 4em !important;
+            max-height: 4em !important;
+            display: -webkit-box !important;
+            -webkit-line-clamp: 2 !important;
+            -webkit-box-orient: vertical !important;
+            overflow: hidden !important;
+            word-break: break-word;
         }
     </style>
 
@@ -120,8 +145,12 @@
 
 <body class="antialiased bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100 min-h-screen flex flex-col relative overflow-x-hidden transition-colors duration-300">
 
-    <div class="fixed inset-0 theme-dynamic-bg pointer-events-none z-0"></div>
-    <div class="fixed top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] {{ $activeStyle['glow'] }} blur-[100px] rounded-full pointer-events-none z-0"></div>
+    @if(!empty($activeStyle['gradient_bg']) && $activeStyle['gradient_bg'] !== 'none')
+        <div class="fixed inset-0 theme-dynamic-bg pointer-events-none z-0"></div>
+    @endif
+    @if(!empty($activeStyle['glow']) && $activeStyle['glow'] !== 'hidden')
+        <div class="fixed top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] {{ $activeStyle['glow'] }} blur-[100px] rounded-full pointer-events-none z-0"></div>
+    @endif
 
     {{-- Toast / Notification Component --}}
     <div

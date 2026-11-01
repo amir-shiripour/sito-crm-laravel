@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="800" height="600">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F1F5F9" />
+      <stop offset="100%" stop-color="#E2E8F0" />
+    </linearGradient>
+    <linearGradient id="iconGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#94A3B8" />
+      <stop offset="100%" stop-color="#64748B" />
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="800" height="600" fill="url(#bgGrad)" />
+
+  <!-- Subtle Decorative Geometric Elements -->
+  <circle cx="400" cy="270" r="110" fill="#CBD5E1" opacity="0.4" />
+  <circle cx="400" cy="270" r="85" fill="#FFFFFF" opacity="0.6" />
+
+  <!-- Stylized Camera / House Outline Icon -->
+  <g transform="translate(352, 222)" fill="none" stroke="url(#iconGrad)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Camera Body -->
+    <path d="M12 28 C12 20, 20 20, 24 20 L28 12 C30 8, 36 8, 38 12 L42 20 C46 20, 84 20, 84 28 L84 76 C84 84, 76 84, 72 84 L24 84 C16 84, 12 84, 12 76 Z" fill="#F8FAFC" />
+    <!-- Lens -->
+    <circle cx="48" cy="52" r="18" fill="#E2E8F0" />
+    <circle cx="48" cy="52" r="10" stroke="#64748B" fill="#FFFFFF" />
+    <!-- Flash / Small indicator -->
+    <circle cx="70" cy="32" r="3" fill="#94A3B8" />
+  </g>
+
+  <!-- Persian Typography -->
+  <text x="400" y="405" 
+        text-anchor="middle" 
+        font-family="IRANYekanX, Tahoma, sans-serif" 
+        font-size="22" 
+        font-weight="700" 
+        fill="#334155" 
+        letter-spacing="0">
+    تصویر ثبت نشده است
+  </text>
+
+  <text x="400" y="438" 
+        text-anchor="middle" 
+        font-family="IRANYekanX, Tahoma, sans-serif" 
+        font-size="14" 
+        font-weight="500" 
+        fill="#64748B">
+    مستر ویلا لفور
+  </text>
+</svg>
