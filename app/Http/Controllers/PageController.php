@@ -111,16 +111,17 @@ class PageController extends Controller
             }
         }
 
-        // [Architecture Note]: واکشی دیتای واقعی برای تم املاک (Properties)
-        if ($appThemeLower === 'properties') {
+        // [Architecture Note]: واکشی دیتای واقعی برای تم املاک (Properties) و تم اختصاصی مستر ویلا لفور (MrVilaLafoor)
+        if (in_array($appThemeLower, ['properties', 'mrvilalafoor'])) {
             if (class_exists(\Modules\Properties\Entities\Property::class)) {
-                // دریافت ۶ ملک آخر برای نمایش در صفحه اصلی
-                // با اضافه کردن attributeValues.attribute از N+1 Query جلوگیری می‌کنیم
+                // دریافت املاک و اقامتگاه‌ها برای نمایش در صفحه اصلی با تمام روابط اجاره روزانه و چندمیزبانی
                 $data['latestProperties'] = \Modules\Properties\Entities\Property::query()
-                    ->with(['status', 'category', 'attributeValues.attribute'])
+                    ->with(['status', 'category', 'attributeValues.attribute', 'rentalConfig', 'host.user', 'images'])
                     ->latest()
-                    ->take(6)
+                    ->take(16)
                     ->get();
+
+                $data['properties'] = $data['latestProperties'];
 
                 // واکشی امن تنظیمات دسترسی برای جلوگیری از ارور در View
                 $getSetting = function($key) {
@@ -135,13 +136,51 @@ class PageController extends Controller
 
                 // تنظیمات جستجوی هوشمند را برای ویو ارسال می‌کنیم
                 $data['aiSearchEnabled'] = \Modules\Properties\Entities\PropertySetting::get('ai_property_search', 0);
+
+                // تنظیمات اختصاصی اجاره روزانه و بازار چندمیزبانی
+                $data['rentalModeEnabled'] = (bool) \Modules\Properties\Entities\PropertySetting::get('rental_mode_enabled', 1);
+                $data['rentalMultiHostEnabled'] = (bool) \Modules\Properties\Entities\PropertySetting::get('rental_multi_host_enabled', 0);
+
+                // مقاصد در دسترس (استان‌ها و شهرهایی که اقامتگاه فعال و قابل رزرو دارند)
+                $data['availableDestinations'] = \Modules\Properties\Entities\Property::query()
+                    ->where('publication_status', 'published')
+                    ->where('listing_type', 'daily_rental')
+                    ->whereNotNull('province')
+                    ->select('province', 'city')
+                    ->distinct()
+                    ->get()
+                    ->groupBy('province')
+                    ->map(function ($items, $province) {
+                        return [
+                            'province' => $province,
+                            'cities' => $items->pluck('city')->filter()->unique()->values()->all()
+                        ];
+                    })
+                    ->values()
+                    ->all();
+                $data['rentalDisplaySettings'] = [
+                    'show_host_box' => \Modules\Properties\Entities\PropertySetting::get('rental_show_host_box', 'all'),
+                    'host_show_avatar' => (bool) \Modules\Properties\Entities\PropertySetting::get('rental_host_show_avatar', 1),
+                    'host_show_badge' => (bool) \Modules\Properties\Entities\PropertySetting::get('rental_host_show_badge', 1),
+                    'host_show_about' => (bool) \Modules\Properties\Entities\PropertySetting::get('rental_host_show_about', 1),
+                    'host_show_phone' => \Modules\Properties\Entities\PropertySetting::get('rental_host_show_phone', 'confirmed_booking'),
+                    'show_address' => \Modules\Properties\Entities\PropertySetting::get('rental_show_address', 'all'),
+                    'show_map' => \Modules\Properties\Entities\PropertySetting::get('rental_show_map', 'all'),
+                    'map_display_type' => \Modules\Properties\Entities\PropertySetting::get('rental_map_display_type', 'circle_then_exact'),
+                    'map_circle_radius' => (int) \Modules\Properties\Entities\PropertySetting::get('rental_map_circle_radius', 300),
+                    'show_direct_call_btn' => \Modules\Properties\Entities\PropertySetting::get('rental_show_direct_call_btn', 'all'),
+                ];
             } else {
                 $data['latestProperties'] = collect();
+                $data['properties'] = collect();
                 $data['priceRoles'] = [];
                 $data['coverRoles'] = [];
                 $data['mapRoles'] = [];
                 $data['showFeaturesInCard'] = 1;
                 $data['aiSearchEnabled'] = 0;
+                $data['rentalModeEnabled'] = true;
+                $data['rentalMultiHostEnabled'] = false;
+                $data['rentalDisplaySettings'] = [];
             }
         }
 

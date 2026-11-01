@@ -623,7 +623,12 @@ class PropertyController extends Controller
             }
         }
 
-        $meta = $property->meta ?? [];
+        $rawMeta = $property->meta;
+        if (is_string($rawMeta)) {
+            $decoded = json_decode($rawMeta, true);
+            $rawMeta = is_array($decoded) ? $decoded : [];
+        }
+        $meta = is_array($rawMeta) ? $rawMeta : [];
         $meta['details'] = [];
 
         if (isset($data['meta'])) {
@@ -698,7 +703,12 @@ class PropertyController extends Controller
             }
         }
 
-        $meta = $property->meta ?? [];
+        $rawMeta = $property->meta;
+        if (is_string($rawMeta)) {
+            $decoded = json_decode($rawMeta, true);
+            $rawMeta = is_array($decoded) ? $decoded : [];
+        }
+        $meta = is_array($rawMeta) ? $rawMeta : [];
         $meta['features'] = [];
 
         if (isset($request->meta) && is_array($request->meta)) {
@@ -931,7 +941,12 @@ class PropertyController extends Controller
             }
         }
 
-        $processedMeta = $property->meta ?? [];
+        $rawMeta = $property->meta;
+        if (is_string($rawMeta)) {
+            $decoded = json_decode($rawMeta, true);
+            $rawMeta = is_array($decoded) ? $decoded : [];
+        }
+        $processedMeta = is_array($rawMeta) ? $rawMeta : [];
         $processedMeta['is_special'] = $request->has('is_special');
         $processedMeta['show_on_site'] = $request->has('show_on_site');
         $processedMeta['details'] = [];
@@ -961,8 +976,10 @@ class PropertyController extends Controller
             unset($data['publication_status']);
             unset($data['confidential_notes']);
             // حفظ تنظیمات قبلی آگهی ویژه و نمایش در سایت
-            $processedMeta['is_special'] = (bool) ($property->meta['is_special'] ?? false);
-            $processedMeta['show_on_site'] = (bool) ($property->meta['show_on_site'] ?? true);
+            $isSpecialPrev = is_array($property->meta) ? ($property->meta['is_special'] ?? false) : false;
+            $showOnSitePrev = is_array($property->meta) ? ($property->meta['show_on_site'] ?? true) : true;
+            $processedMeta['is_special'] = (bool) $isSpecialPrev;
+            $processedMeta['show_on_site'] = (bool) $showOnSitePrev;
         }
 
         $data['meta'] = $processedMeta;

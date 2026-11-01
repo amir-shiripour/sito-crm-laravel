@@ -72,6 +72,23 @@ class PropertyController extends Controller
         $categories = PropertyCategory::all();
         $buildings = PropertyBuilding::latest()->get();
 
+        // مقاصد در دسترس (استان‌ها و شهرهای دارای ملک قابل نمایش)
+        $availableDestinations = Property::visibleToUser()
+            ->where('publication_status', 'published')
+            ->whereNotNull('province')
+            ->select('province', 'city')
+            ->distinct()
+            ->get()
+            ->groupBy('province')
+            ->map(function ($items, $province) {
+                return [
+                    'province' => $province,
+                    'cities' => $items->pluck('city')->filter()->unique()->values()->all()
+                ];
+            })
+            ->values()
+            ->all();
+
         // Visibility Settings for View
         $visibilitySettings = [
             'price_info' => json_decode(PropertySetting::get('visibility_price_info', '[]'), true),
@@ -81,7 +98,7 @@ class PropertyController extends Controller
             'convertible_with' => json_decode(PropertySetting::get('visibility_convertible_with', '[]'), true),
         ];
 
-        return view('properties::index', compact('properties', 'showFeatures', 'filterableAttributes', 'features', 'categories', 'buildings', 'visibilitySettings'));
+        return view('properties::index', compact('properties', 'showFeatures', 'filterableAttributes', 'features', 'categories', 'buildings', 'visibilitySettings', 'availableDestinations'));
     }
 
     public function map(Request $request)
@@ -200,6 +217,14 @@ class PropertyController extends Controller
         // 2. نوع معامله
         if ($request->filled('listing_type')) {
             $query->where('listing_type', $request->listing_type);
+        }
+
+        // 2.1 فیلتر استان و شهر
+        if ($request->filled('province')) {
+            $query->where('province', $request->province);
+        }
+        if ($request->filled('city')) {
+            $query->where('city', $request->city);
         }
 
         // 3. نوع ملک

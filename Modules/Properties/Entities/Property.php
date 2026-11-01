@@ -235,25 +235,54 @@ class Property extends Model
 
     public function getPrimaryImageUrlAttribute(): string
     {
-        if ($this->cover_image) {
-            return asset('storage/' . $this->cover_image);
+        if (!empty($this->cover_image)) {
+            return str_starts_with($this->cover_image, 'http')
+                ? $this->cover_image
+                : asset('storage/' . $this->cover_image);
         }
 
-        if ($this->relationLoaded('primaryImage') && $this->primaryImage) {
-            return $this->primaryImage->image_url;
-        }
-
-        $image = $this->primaryImage ?: $this->images()->first();
-        if ($image) {
-            return $image->image_url;
-        }
-
-        return asset('assets/images/placeholder.jpg');
+        return asset('images/property-placeholder.svg');
     }
 
     public function attributeValues()
     {
         return $this->hasMany(PropertyAttributeValue::class);
+    }
+
+    public function getMetaAttribute($value)
+    {
+        if (is_null($value) || $value === '') {
+            return [];
+        }
+
+        if (is_array($value)) {
+            return $value;
+        }
+
+        if (is_string($value)) {
+            $decoded = json_decode($value, true);
+            if (is_string($decoded)) {
+                $decodedAgain = json_decode($decoded, true);
+                if (is_array($decodedAgain)) {
+                    return $decodedAgain;
+                }
+            }
+            return is_array($decoded) ? $decoded : [];
+        }
+
+        return [];
+    }
+
+    public function setMetaAttribute($value)
+    {
+        if (is_string($value)) {
+            $decoded = json_decode($value, true);
+            if (is_array($decoded)) {
+                $value = $decoded;
+            }
+        }
+
+        $this->attributes['meta'] = is_array($value) ? json_encode($value, JSON_UNESCAPED_UNICODE) : (empty($value) ? null : $value);
     }
 
     public function getBedroomsAttribute($value)

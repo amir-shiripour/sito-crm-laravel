@@ -243,7 +243,7 @@ class PropertyRevisionService
 
         // بررسی ویژگی‌های سفارشی (Custom Meta Details)
         if (isset($additionalMeta['meta_details'])) {
-            $currentMetaDetails = $property->meta['details'] ?? [];
+            $currentMetaDetails = (is_array($property->meta) && isset($property->meta['details'])) ? $property->meta['details'] : [];
             $newMetaDetails = $additionalMeta['meta_details'];
 
             if ($currentMetaDetails !== $newMetaDetails) {
@@ -271,7 +271,7 @@ class PropertyRevisionService
 
         // بررسی امکانات سفارشی (Custom Meta Features)
         if (isset($additionalMeta['meta_features'])) {
-            $currentMetaFeatures = (array) ($property->meta['features'] ?? []);
+            $currentMetaFeatures = (is_array($property->meta) && isset($property->meta['features'])) ? (array) $property->meta['features'] : [];
             $newMetaFeatures = (array) $additionalMeta['meta_features'];
 
             $tempOld = array_values(array_filter($currentMetaFeatures));
@@ -655,7 +655,7 @@ class PropertyRevisionService
                 }
 
                 if (isset($newData['meta_details']) || isset($newData['meta_features'])) {
-                    $meta = $property->meta ?? [];
+                    $meta = is_array($property->meta) ? $property->meta : [];
                     if (isset($newData['meta_details'])) {
                         $meta['details'] = $newData['meta_details'];
                     }
