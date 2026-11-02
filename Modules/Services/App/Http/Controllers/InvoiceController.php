@@ -2653,6 +2653,10 @@ class InvoiceController extends Controller
         $marketItems = [];
 
         foreach ($preparedItems as $index => $item) {
+            $isDebt = !empty($item['meta']['debt_invoice_ids']) || !empty($item['meta']['_isDebt']);
+            if ($isDebt) {
+                continue;
+            }
             $type = $item['meta']['type'] ?? (!empty($item['service_id']) ? 'service' : 'manual');
             if ($type === 'product') {
                 $marketItems[$index] = $item;
@@ -2859,6 +2863,9 @@ class InvoiceController extends Controller
             $serviceItems = $unmatchedItems;
         }
 
+        // Permanently clear any orphaned soft-deleted orders for this invoice to prevent unique constraint collisions
+        Order::onlyTrashed()->where('invoice_id', $invoice->id)->forceDelete();
+
         $existingOrders = Order::where('invoice_id', $invoice->id)->orderBy('id')->get();
 
         $orderStatus = Status::where('type', 'order')->where('name', 'در انتظار')->first()
@@ -2919,8 +2926,18 @@ class InvoiceController extends Controller
 
             $order = $existingOrders->get($newIndexPosition);
 
+            $orderNumber = $order?->order_number;
+            if (!$orderNumber) {
+                $num = $newIndexPosition + 1;
+                do {
+                    $candidateNumber = 'ORD-' . $invoice->id . '-' . $num;
+                    $num++;
+                } while (Order::withTrashed()->where('order_number', $candidateNumber)->exists());
+                $orderNumber = $candidateNumber;
+            }
+
             $orderData = [
-                'order_number' => $order?->order_number ?: ('ORD-' . $invoice->id . '-' . ($newIndexPosition + 1)),
+                'order_number' => $orderNumber,
                 'invoice_id' => $invoice->id,
                 'service_id' => $serviceId,
                 'customer_id' => $invoice->customer_id,
@@ -2961,7 +2978,7 @@ class InvoiceController extends Controller
             $newIndexPosition++;
         }
 
-        $existingOrders->whereNotIn('id', $usedOrderIds)->each->delete();
+        $existingOrders->whereNotIn('id', $usedOrderIds)->each->forceDelete();
     }
 
 
