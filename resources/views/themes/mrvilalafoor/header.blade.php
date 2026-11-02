@@ -163,11 +163,10 @@
                     </button>
                 </div>
             @else
-                <button type="button" 
-                        onclick="openAuthModal()" 
-                        class="px-4 py-2 rounded-xl border border-[#ECECEE] dark:border-zinc-800 hover:border-[#18181B] dark:hover:border-zinc-600 bg-white dark:bg-zinc-900 text-xs font-bold text-[#18181B] dark:text-zinc-100 transition-colors shadow-sm">
+                <a href="{{ route('login') }}" 
+                   class="px-4 py-2 rounded-xl border border-[#ECECEE] dark:border-zinc-800 hover:border-[#18181B] dark:hover:border-zinc-600 bg-white dark:bg-zinc-900 text-xs font-bold text-[#18181B] dark:text-zinc-100 transition-colors shadow-sm inline-flex items-center">
                     ورود / ثبت‌نام
-                </button>
+                </a>
             @endif
 
         </div>
