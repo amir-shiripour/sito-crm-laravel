@@ -287,6 +287,39 @@ Quill.js Editor Custom Styles (Professional RTL & Dark Mode)
 /* =========================================
    Custom Sleek Scrollbars (Dark Mode & RTL Compatible)
    ========================================= */
+/* Global Sleek Scrollbar for entire application */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+::-webkit-scrollbar-thumb {
+    background: rgba(156, 163, 175, 0.4);
+    border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(99, 102, 241, 0.6);
+}
+.dark ::-webkit-scrollbar-track {
+    background: transparent;
+}
+.dark ::-webkit-scrollbar-thumb {
+    background: rgba(75, 85, 99, 0.55);
+    border-radius: 9999px;
+}
+.dark ::-webkit-scrollbar-thumb:hover {
+    background: rgba(129, 140, 248, 0.7);
+}
+* {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(156, 163, 175, 0.4) transparent;
+}
+.dark * {
+    scrollbar-color: rgba(75, 85, 99, 0.55) transparent;
+}
+
 .custom-modal-scrollbar::-webkit-scrollbar {
     width: 5px;
 }

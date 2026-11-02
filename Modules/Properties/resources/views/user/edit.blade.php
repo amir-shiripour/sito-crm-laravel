@@ -570,9 +570,12 @@
                                         <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                                             @foreach($featuresAttributes as $attr)
                                                 @php $hasValue = $property->attributeValues->where('attribute_id', $attr->id)->isNotEmpty(); @endphp
-                                                <label class="group flex items-center gap-3 p-3 rounded-xl border border-gray-200 bg-gray-50 hover:bg-white hover:border-indigo-200 cursor-pointer transition-all dark:bg-gray-700/30 dark:border-gray-700 dark:hover:bg-gray-700 dark:hover:border-indigo-700">
+                                                <label class="group flex items-center gap-2.5 p-3 rounded-xl border border-gray-200 bg-gray-50 hover:bg-white hover:border-indigo-200 cursor-pointer transition-all dark:bg-gray-700/30 dark:border-gray-700 dark:hover:bg-gray-700 dark:hover:border-indigo-700">
                                                     <input type="checkbox" name="features[]" value="{{ $attr->id }}" {{ $hasValue ? 'checked' : '' }} class="w-5 h-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:bg-gray-800 dark:border-gray-600 ai-feature" data-attr-id="{{ $attr->id }}">
-                                                    <span class="text-xs font-medium text-gray-700 group-hover:text-indigo-700 dark:text-gray-300 dark:group-hover:text-indigo-300">{{ $attr->name }}</span>
+                                                    @if(!empty($attr->icon))
+                                                        <span class="text-base select-none">{{ $attr->icon }}</span>
+                                                    @endif
+                                                    <span class="text-xs font-medium text-gray-700 group-hover:text-indigo-700 dark:text-gray-300 dark:group-hover:text-indigo-300 truncate">{{ $attr->name }}</span>
                                                 </label>
                                             @endforeach
                                         </div>

@@ -34,6 +34,7 @@ class AttributesController extends Controller
             'name' => 'required|string|max:255',
             'type' => 'required|in:text,number,select,checkbox',
             'section' => 'required|in:details,features',
+            'icon' => 'nullable|string|max:100',
             'options' => 'nullable|string',
             'is_filterable' => 'nullable|boolean',
             'is_range_filter' => 'nullable|boolean',
@@ -66,6 +67,7 @@ class AttributesController extends Controller
         $data = $request->validate([
             'name' => 'required|string|max:255',
             'type' => 'required|in:text,number,select,checkbox',
+            'icon' => 'nullable|string|max:100',
             'options' => 'nullable|string',
             'is_filterable' => 'nullable|boolean',
             'is_range_filter' => 'nullable|boolean',
@@ -99,63 +101,70 @@ class AttributesController extends Controller
 
         $defaults = [
             'details' => [
-                ['name' => 'متراژ اقامتگاه (زیربنا)', 'type' => 'number', 'options' => null, 'is_filterable' => true, 'is_range_filter' => true],
-                ['name' => 'متراژ کل زمین / محوطه', 'type' => 'number', 'options' => null, 'is_filterable' => true, 'is_range_filter' => true],
-                ['name' => 'متراژ', 'type' => 'number', 'options' => null, 'is_filterable' => true, 'is_range_filter' => true],
-                ['name' => 'تعداد اتاق خواب', 'type' => 'number', 'options' => null, 'is_filterable' => true, 'is_range_filter' => true],
-                ['name' => 'تعداد حمام', 'type' => 'number', 'options' => null, 'is_filterable' => false, 'is_range_filter' => false],
-                ['name' => 'تعداد سرویس بهداشتی', 'type' => 'number', 'options' => null, 'is_filterable' => false, 'is_range_filter' => false],
-                ['name' => 'تعداد تخت دو نفره', 'type' => 'number', 'options' => null, 'is_filterable' => true, 'is_range_filter' => false],
-                ['name' => 'تعداد تخت یک نفره', 'type' => 'number', 'options' => null, 'is_filterable' => true, 'is_range_filter' => false],
-                ['name' => 'سال ساخت', 'type' => 'number', 'options' => null, 'is_filterable' => true, 'is_range_filter' => true],
-                ['name' => 'طبقه', 'type' => 'number', 'options' => null, 'is_filterable' => true, 'is_range_filter' => false],
-                ['name' => 'تعداد کل طبقات', 'type' => 'number', 'options' => null, 'is_filterable' => false, 'is_range_filter' => false],
-                ['name' => 'تعداد واحد در هر طبقه', 'type' => 'number', 'options' => null, 'is_filterable' => false, 'is_range_filter' => false],
-                ['name' => 'موقعیت و جهت ملک', 'type' => 'select', 'options' => ['شمالی', 'جنوبی', 'شرقی', 'غربی', 'دو کله', 'دو نبش'], 'is_filterable' => true, 'is_range_filter' => false],
-                ['name' => 'نوع کفپوش', 'type' => 'select', 'options' => ['سرامیک', 'پارکت', 'لمینت', 'سنگ', 'موزاییک'], 'is_filterable' => true, 'is_range_filter' => false],
-                ['name' => 'سیستم سرمایش', 'type' => 'select', 'options' => ['کولر آبی', 'کولر گازی / اسپلیت', 'داکت اسپلیت', 'چیلر', 'فن کوئل'], 'is_filterable' => true, 'is_range_filter' => false],
-                ['name' => 'سیستم گرمایش', 'type' => 'select', 'options' => ['پکیج و رادیاتور', 'بخاری گازی', 'گرمایش از کف', 'شومینه', 'موتورخانه مرکزی'], 'is_filterable' => true, 'is_range_filter' => false],
-                ['name' => 'تأمین آب گرم', 'type' => 'select', 'options' => ['پکیج', 'آبگرمکن', 'موتورخانه'], 'is_filterable' => true, 'is_range_filter' => false],
+                ['name' => 'متراژ اقامتگاه (زیربنا)', 'type' => 'number', 'icon' => '📐', 'options' => null, 'is_filterable' => true, 'is_range_filter' => true],
+                ['name' => 'متراژ کل زمین / محوطه', 'type' => 'number', 'icon' => '🏡', 'options' => null, 'is_filterable' => true, 'is_range_filter' => true],
+                ['name' => 'متراژ', 'type' => 'number', 'icon' => '📏', 'options' => null, 'is_filterable' => true, 'is_range_filter' => true],
+                ['name' => 'تعداد اتاق خواب', 'type' => 'number', 'icon' => '🚪', 'options' => null, 'is_filterable' => true, 'is_range_filter' => true],
+                ['name' => 'تعداد حمام', 'type' => 'number', 'icon' => '🚿', 'options' => null, 'is_filterable' => false, 'is_range_filter' => false],
+                ['name' => 'تعداد سرویس بهداشتی', 'type' => 'number', 'icon' => '🚽', 'options' => null, 'is_filterable' => false, 'is_range_filter' => false],
+                ['name' => 'تعداد تخت دو نفره', 'type' => 'number', 'icon' => '🛏️', 'options' => null, 'is_filterable' => true, 'is_range_filter' => false],
+                ['name' => 'تعداد تخت یک نفره', 'type' => 'number', 'icon' => '🛋️', 'options' => null, 'is_filterable' => true, 'is_range_filter' => false],
+                ['name' => 'سال ساخت', 'type' => 'number', 'icon' => '🗓️', 'options' => null, 'is_filterable' => true, 'is_range_filter' => true],
+                ['name' => 'طبقه', 'type' => 'number', 'icon' => '🏢', 'options' => null, 'is_filterable' => true, 'is_range_filter' => false],
+                ['name' => 'تعداد کل طبقات', 'type' => 'number', 'icon' => '🏬', 'options' => null, 'is_filterable' => false, 'is_range_filter' => false],
+                ['name' => 'تعداد واحد در هر طبقه', 'type' => 'number', 'icon' => '🔢', 'options' => null, 'is_filterable' => false, 'is_range_filter' => false],
+                ['name' => 'موقعیت و جهت ملک', 'type' => 'select', 'icon' => '🧭', 'options' => ['شمالی', 'جنوبی', 'شرقی', 'غربی', 'دو کله', 'دو نبش'], 'is_filterable' => true, 'is_range_filter' => false],
+                ['name' => 'نوع کفپوش', 'type' => 'select', 'icon' => '🪵', 'options' => ['سرامیک', 'پارکت', 'لمینت', 'سنگ', 'موزاییک'], 'is_filterable' => true, 'is_range_filter' => false],
+                ['name' => 'سیستم سرمایش', 'type' => 'select', 'icon' => '❄️', 'options' => ['کولر آبی', 'کولر گازی / اسپلیت', 'داکت اسپلیت', 'چیلر', 'فن کوئل'], 'is_filterable' => true, 'is_range_filter' => false],
+                ['name' => 'سیستم گرمایش', 'type' => 'select', 'icon' => '🔥', 'options' => ['پکیج و رادیاتور', 'بخاری گازی', 'گرمایش از کف', 'شومینه', 'موتورخانه مرکزی'], 'is_filterable' => true, 'is_range_filter' => false],
+                ['name' => 'تأمین آب گرم', 'type' => 'select', 'icon' => '♨️', 'options' => ['پکیج', 'آبگرمکن', 'موتورخانه'], 'is_filterable' => true, 'is_range_filter' => false],
             ],
             'features' => [
-                ['name' => 'استخر سرپوشیده آبگرم', 'type' => 'checkbox', 'options' => null, 'is_filterable' => true, 'is_range_filter' => false],
-                ['name' => 'استخر روباز', 'type' => 'checkbox', 'options' => null, 'is_filterable' => true, 'is_range_filter' => false],
-                ['name' => 'جکوزی', 'type' => 'checkbox', 'options' => null, 'is_filterable' => true, 'is_range_filter' => false],
-                ['name' => 'سونا', 'type' => 'checkbox', 'options' => null, 'is_filterable' => true, 'is_range_filter' => false],
-                ['name' => 'میز بیلیارد', 'type' => 'checkbox', 'options' => null, 'is_filterable' => true, 'is_range_filter' => false],
-                ['name' => 'فوتبال دستی', 'type' => 'checkbox', 'options' => null, 'is_filterable' => true, 'is_range_filter' => false],
-                ['name' => 'اینترنت پرسرعت Wi-Fi', 'type' => 'checkbox', 'options' => null, 'is_filterable' => true, 'is_range_filter' => false],
-                ['name' => 'پارکینگ اختصاصی', 'type' => 'checkbox', 'options' => null, 'is_filterable' => true, 'is_range_filter' => false],
-                ['name' => 'آسانسور', 'type' => 'checkbox', 'options' => null, 'is_filterable' => true, 'is_range_filter' => false],
-                ['name' => 'انباری', 'type' => 'checkbox', 'options' => null, 'is_filterable' => true, 'is_range_filter' => false],
-                ['name' => 'بالکن / تراس', 'type' => 'checkbox', 'options' => null, 'is_filterable' => true, 'is_range_filter' => false],
-                ['name' => 'حیاط و فضای سبز', 'type' => 'checkbox', 'options' => null, 'is_filterable' => true, 'is_range_filter' => false],
-                ['name' => 'روف گاردن', 'type' => 'checkbox', 'options' => null, 'is_filterable' => true, 'is_range_filter' => false],
-                ['name' => 'باربیکیو / کباب‌پز', 'type' => 'checkbox', 'options' => null, 'is_filterable' => true, 'is_range_filter' => false],
-                ['name' => 'چشم‌انداز دریا / جنگل / کوهستان', 'type' => 'checkbox', 'options' => null, 'is_filterable' => true, 'is_range_filter' => false],
-                ['name' => 'تجهیزات کامل آشپزخانه', 'type' => 'checkbox', 'options' => null, 'is_filterable' => true, 'is_range_filter' => false],
-                ['name' => 'ماشین لباسشویی', 'type' => 'checkbox', 'options' => null, 'is_filterable' => true, 'is_range_filter' => false],
-                ['name' => 'تلویزیون و سیستم صوتی', 'type' => 'checkbox', 'options' => null, 'is_filterable' => true, 'is_range_filter' => false],
-                ['name' => 'درب ضد سرقت و ریموت‌دار', 'type' => 'checkbox', 'options' => null, 'is_filterable' => true, 'is_range_filter' => false],
-                ['name' => 'دوربین مداربسته و نگهبانی', 'type' => 'checkbox', 'options' => null, 'is_filterable' => true, 'is_range_filter' => false],
+                ['name' => 'استخر سرپوشیده آبگرم', 'type' => 'checkbox', 'icon' => '🏊', 'options' => null, 'is_filterable' => true, 'is_range_filter' => false],
+                ['name' => 'استخر روباز', 'type' => 'checkbox', 'icon' => '🏊‍♂️', 'options' => null, 'is_filterable' => true, 'is_range_filter' => false],
+                ['name' => 'جکوزی', 'type' => 'checkbox', 'icon' => '🛁', 'options' => null, 'is_filterable' => true, 'is_range_filter' => false],
+                ['name' => 'سونا', 'type' => 'checkbox', 'icon' => '🧖', 'options' => null, 'is_filterable' => true, 'is_range_filter' => false],
+                ['name' => 'میز بیلیارد', 'type' => 'checkbox', 'icon' => '🎱', 'options' => null, 'is_filterable' => true, 'is_range_filter' => false],
+                ['name' => 'فوتبال دستی', 'type' => 'checkbox', 'icon' => '⚽', 'options' => null, 'is_filterable' => true, 'is_range_filter' => false],
+                ['name' => 'اینترنت پرسرعت Wi-Fi', 'type' => 'checkbox', 'icon' => '📶', 'options' => null, 'is_filterable' => true, 'is_range_filter' => false],
+                ['name' => 'پارکینگ اختصاصی', 'type' => 'checkbox', 'icon' => '🚗', 'options' => null, 'is_filterable' => true, 'is_range_filter' => false],
+                ['name' => 'آسانسور', 'type' => 'checkbox', 'icon' => '🛗', 'options' => null, 'is_filterable' => true, 'is_range_filter' => false],
+                ['name' => 'انباری', 'type' => 'checkbox', 'icon' => '📦', 'options' => null, 'is_filterable' => true, 'is_range_filter' => false],
+                ['name' => 'بالکن / تراس', 'type' => 'checkbox', 'icon' => '🌅', 'options' => null, 'is_filterable' => true, 'is_range_filter' => false],
+                ['name' => 'حیاط و فضای سبز', 'type' => 'checkbox', 'icon' => '🌳', 'options' => null, 'is_filterable' => true, 'is_range_filter' => false],
+                ['name' => 'روف گاردن', 'type' => 'checkbox', 'icon' => '🌿', 'options' => null, 'is_filterable' => true, 'is_range_filter' => false],
+                ['name' => 'باربیکیو / کباب‌پز', 'type' => 'checkbox', 'icon' => '🥩', 'options' => null, 'is_filterable' => true, 'is_range_filter' => false],
+                ['name' => 'چشم‌انداز دریا / جنگل / کوهستان', 'type' => 'checkbox', 'icon' => '🌲', 'options' => null, 'is_filterable' => true, 'is_range_filter' => false],
+                ['name' => 'تجهیزات کامل آشپزخانه', 'type' => 'checkbox', 'icon' => '🍳', 'options' => null, 'is_filterable' => true, 'is_range_filter' => false],
+                ['name' => 'ماشین لباسشویی', 'type' => 'checkbox', 'icon' => '🧺', 'options' => null, 'is_filterable' => true, 'is_range_filter' => false],
+                ['name' => 'تلویزیون و سیستم صوتی', 'type' => 'checkbox', 'icon' => '📺', 'options' => null, 'is_filterable' => true, 'is_range_filter' => false],
+                ['name' => 'درب ضد سرقت و ریموت‌دار', 'type' => 'checkbox', 'icon' => '🔐', 'options' => null, 'is_filterable' => true, 'is_range_filter' => false],
+                ['name' => 'دوربین مداربسته و نگهبانی', 'type' => 'checkbox', 'icon' => '🛡️', 'options' => null, 'is_filterable' => true, 'is_range_filter' => false],
             ],
         ];
 
         $targetSections = ($section === 'all') ? ['details', 'features'] : (in_array($section, ['details', 'features']) ? [$section] : ['details']);
         $addedCount = 0;
+        $updatedCount = 0;
 
         foreach ($targetSections as $sec) {
             $items = $defaults[$sec] ?? [];
             $maxSort = PropertyAttribute::where('section', $sec)->max('sort_order') ?? 0;
 
             foreach ($items as $item) {
-                $exists = PropertyAttribute::where('name', $item['name'])->where('section', $sec)->exists();
-                if (!$exists) {
+                $existing = PropertyAttribute::where('name', $item['name'])->where('section', $sec)->first();
+                if ($existing) {
+                    if (empty($existing->icon) && !empty($item['icon'])) {
+                        $existing->update(['icon' => $item['icon']]);
+                        $updatedCount++;
+                    }
+                } else {
                     $maxSort++;
                     PropertyAttribute::create([
                         'name' => $item['name'],
                         'type' => $item['type'],
                         'section' => $sec,
+                        'icon' => $item['icon'] ?? null,
                         'options' => $item['options'],
                         'sort_order' => $maxSort,
                         'is_active' => true,
@@ -168,9 +177,16 @@ class AttributesController extends Controller
         }
 
         $activeTab = in_array($section, ['details', 'features']) ? $section : 'details';
-        $message = $addedCount > 0
-            ? "الگوی پیش‌فرض با موفقیت بارگذاری شد ({$addedCount} مورد جدید اضافه شد)."
-            : 'همه موارد الگوی پیش‌فرض از قبل در سیستم موجود هستند.';
+        $messages = [];
+        if ($addedCount > 0) {
+            $messages[] = "{$addedCount} ویژگی جدید اضافه شد";
+        }
+        if ($updatedCount > 0) {
+            $messages[] = "آیکون {$updatedCount} ویژگی به‌روزرسانی شد";
+        }
+        $message = !empty($messages) 
+            ? 'الگوی پیش‌فرض با موفقیت اعمال شد (' . implode(' و ', $messages) . ').'
+            : 'همه موارد الگوی پیش‌فرض و آیکون‌ها از قبل در سیستم موجود هستند.';
 
         return back()->with('success', $message)->with('active_tab', $activeTab);
     }

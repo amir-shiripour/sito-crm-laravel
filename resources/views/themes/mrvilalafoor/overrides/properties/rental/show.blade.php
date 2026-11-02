@@ -95,11 +95,11 @@
             if (preg_match('/^(\d{1,2}:\d{2})/', trim($time), $m)) return $m[1];
             return $time;
         };
-        $checkInTimeFormatted = $formatTimeOnly($config?->check_in_time, '14:00');
-        $checkOutTimeFormatted = $formatTimeOnly($config?->check_out_time, '12:00');
+        $checkInTimeFormatted = !empty($config?->check_in_time) ? $formatTimeOnly($config->check_in_time) : null;
+        $checkOutTimeFormatted = !empty($config?->check_out_time) ? $formatTimeOnly($config->check_out_time) : null;
 
         // محاسبات قیمت پایه و تخفیف روزانه
-        $baseNightPrice = (float) ($config?->price_per_night ?: ($property->rent_price ?: $property->price ?: 2000000));
+        $baseNightPrice = (float) ($config?->price_per_night ?: ($property->rent_price ?: ($property->price ?: 0)));
         $hasDiscount = !empty($config?->has_discount) && (float)($config?->discount_value ?? 0) > 0;
         $discountAmount = $hasDiscount ? $config->calculateDiscountAmount($baseNightPrice) : 0;
         $payablePrice = max(0, $baseNightPrice - $discountAmount);
@@ -113,9 +113,24 @@
         }
         $isInstant = !empty($config?->instant_booking);
 
-        $features = $property->attributeValues->filter(function($attr) {
+        $features = $property->attributeValues ? $property->attributeValues->filter(function($attr) {
             return $attr->attribute && $attr->attribute->section === 'features' && ($attr->value == '1' || $attr->value === true);
-        });
+        }) : collect();
+
+        // استخراج و تفکیک مشخصات واقعی اقامتگاه از مقادیر ویژگی‌ها بدون دیتای فیک
+        $attrMap = [];
+        if ($property->relationLoaded('attributeValues') || $property->attributeValues) {
+            foreach ($property->attributeValues as $av) {
+                if ($av->attribute) {
+                    $attrMap[trim($av->attribute->name)] = $av->value;
+                }
+            }
+        }
+        $bedroomsCount = $property->bedrooms ?: (!empty($attrMap['تعداد اتاق خواب']) ? (int)$attrMap['تعداد اتاق خواب'] : null);
+        $doubleBeds = !empty($attrMap['تعداد تخت دو نفره']) ? (int)$attrMap['تعداد تخت دو نفره'] : null;
+        $singleBeds = !empty($attrMap['تعداد تخت یک نفره']) ? (int)$attrMap['تعداد تخت یک نفره'] : null;
+        $bathroomsCount = $property->bathrooms ?: (!empty($attrMap['تعداد حمام']) ? (int)$attrMap['تعداد حمام'] : (!empty($attrMap['تعداد سرویس بهداشتی']) ? (int)$attrMap['تعداد سرویس بهداشتی'] : null));
+        $areaValue = $property->area_formatted ?? ($property->area ? $property->area . ' متر' : (!empty($attrMap['متراژ اقامتگاه (زیربنا)']) ? $attrMap['متراژ اقامتگاه (زیربنا)'] . ' متر' : (!empty($attrMap['متراژ']) ? $attrMap['متراژ'] . ' متر' : null)));
 
         // استخراج و تفکیک دقیق قوانین اقامتگاه
         $allHouseRules = $config?->house_rules ?? [];
@@ -211,9 +226,9 @@
                     <span x-text="formatNumber(activeIndex + 1) + ' / ' + formatNumber(total)"></span>
                 </div>
 
-                {{-- دکمه‌های قبلی / بعدی لمسی --}}
-                <button type="button" @click="activeIndex = (activeIndex < total - 1 ? activeIndex + 1 : 0)" class="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/40 hover:bg-black/60 text-white flex items-center justify-center transition shadow" title="تصویر بعدی">❯</button>
-                <button type="button" @click="activeIndex = (activeIndex > 0 ? activeIndex - 1 : total - 1)" class="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/40 hover:bg-black/60 text-white flex items-center justify-center transition shadow" title="تصویر قبلی">❮</button>
+                {{-- دکمه‌های قبلی / بعدی لمسی (اصلاح جهت RTL: فلش راست = قبلی، فلش چپ = بعدی) --}}
+                <button type="button" @click="activeIndex = (activeIndex > 0 ? activeIndex - 1 : total - 1)" class="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/50 hover:bg-black/70 text-white flex items-center justify-center transition shadow z-10" title="تصویر قبلی">❯</button>
+                <button type="button" @click="activeIndex = (activeIndex < total - 1 ? activeIndex + 1 : 0)" class="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/50 hover:bg-black/70 text-white flex items-center justify-center transition shadow z-10" title="تصویر بعدی">❮</button>
             </div>
 
             {{-- نمایش دسکتاپ (موزاییک ۵ عکسی شبیه جاباما / جاجیگا) --}}
@@ -276,22 +291,28 @@
                     </h1>
 
                     <div class="flex items-center gap-2.5 text-xs text-gray-500 dark:text-gray-400 flex-wrap pt-1">
-                        <span class="inline-flex items-center gap-1 font-bold text-gray-900 dark:text-gray-200">
-                            <span class="text-amber-500 text-sm">★</span>
-                            <span>۴.۹</span>
-                            <span class="text-gray-400 font-normal">(۲۴ نظر مسافران)</span>
-                        </span>
-                        <span class="text-gray-300 dark:text-gray-700">•</span>
+                        @if(!empty($property->rating))
+                            <span class="inline-flex items-center gap-1 font-bold text-gray-900 dark:text-gray-200">
+                                <span class="text-amber-500 text-sm">★</span>
+                                <span>{{ number_format($property->rating, 1) }}</span>
+                                @if(!empty($property->reviews_count))
+                                    <span class="text-gray-400 font-normal">({{ $property->reviews_count }} نظر مسافران)</span>
+                                @endif
+                            </span>
+                            <span class="text-gray-300 dark:text-gray-700">•</span>
+                        @endif
                         <span>کد اقامتگاه: <strong class="text-gray-700 dark:text-gray-300 font-sans">{{ $property->code }}</strong></span>
-                        <span class="text-gray-300 dark:text-gray-700">•</span>
-                        <span class="flex items-center gap-1 text-gray-700 dark:text-gray-300">
-                            <svg class="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/></svg>
-                            <span>{{ $property->province ?? 'مازندران' }}، {{ $property->city ?? 'لفور' }}</span>
-                        </span>
+                        @if(!empty($property->province) || !empty($property->city))
+                            <span class="text-gray-300 dark:text-gray-700">•</span>
+                            <span class="flex items-center gap-1 text-gray-700 dark:text-gray-300">
+                                <svg class="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/></svg>
+                                <span>{{ implode('، ', array_filter([$property->province, $property->city])) }}</span>
+                            </span>
+                        @endif
                     </div>
                 </div>
 
-                {{-- ۳. نوار خلاصه میزبان (مانند نمونه ضمیمه) --}}
+                {{-- ۳. نوار خلاصه میزبان (اطلاعات واقعی میزبان) --}}
                 @if($canShowHostBox && $host)
                     <div class="flex items-center justify-between gap-4 py-2 border-b border-gray-100 dark:border-zinc-800 pb-5">
                         <div class="flex items-center gap-3 min-w-0">
@@ -304,11 +325,25 @@
                             @endif
                             <div class="truncate space-y-0.5">
                                 <h3 class="text-sm font-bold text-gray-900 dark:text-white truncate">
-                                    میزبان: {{ $host->display_name ?: ($host->user?->name ?: 'میزبان لفور') }}
+                                    میزبان: {{ $host->display_name ?: ($host->user?->name ?: 'میزبان اقامتگاه') }}
                                 </h3>
-                                <p class="text-xs text-gray-400 dark:text-gray-500 truncate">
-                                    عضویت از سال ۱۴۰۲ • نرخ پاسخگویی ۱۰۰٪ • میزبان برگزیده
-                                </p>
+                                @php
+                                    $hostMeta = [];
+                                    if (!empty($host->created_at)) {
+                                        $hostMeta[] = 'عضویت از سال ' . verta($host->created_at)->format('Y');
+                                    }
+                                    if (!empty($host->response_rate)) {
+                                        $hostMeta[] = 'نرخ پاسخگویی ' . $host->response_rate . '٪';
+                                    }
+                                    if (!empty($host->is_superhost)) {
+                                        $hostMeta[] = 'میزبان برگزیده';
+                                    }
+                                @endphp
+                                @if(!empty($hostMeta))
+                                    <p class="text-xs text-gray-400 dark:text-gray-500 truncate">
+                                        {{ implode(' • ', $hostMeta) }}
+                                    </p>
+                                @endif
                             </div>
                         </div>
 
@@ -320,40 +355,59 @@
                     </div>
                 @endif
 
-                {{-- ۴. چهار مشخصه اصلی در یک ردیف (ظرفیت، اتاق، نوع، متراژ) --}}
-                <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 py-1">
-                    <div class="p-3.5 rounded-2xl bg-gray-50/70 dark:bg-zinc-900/60 border border-gray-200/60 dark:border-zinc-800/60 text-center space-y-1">
-                        <div class="w-7 h-7 mx-auto rounded-xl bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 flex items-center justify-center">
-                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-                        </div>
-                        <span class="text-[11px] text-gray-400 block font-medium">ظرفیت</span>
-                        <strong class="text-xs sm:text-sm font-black text-gray-900 dark:text-white block">{{ $config?->base_guests ?? 2 }} تا {{ $config?->max_guests ?? 4 }} نفر</strong>
-                    </div>
+                {{-- ۴. مشخصه‌های اصلی اقامتگاه (تنها کارت‌های دارای دیتای واقعی نمایش داده می‌شوند) --}}
+                @php
+                    $mainSpecs = [];
+                    if (!empty($config?->base_guests) || !empty($config?->max_guests) || !empty($property->max_guests)) {
+                        $capText = (!empty($config?->base_guests) && !empty($config?->max_guests) && $config->base_guests != $config->max_guests)
+                            ? "{$config->base_guests} تا {$config->max_guests} نفر"
+                            : "تا " . ($config?->max_guests ?? $property->max_guests ?? $config?->base_guests) . " نفر";
+                        $mainSpecs[] = [
+                            'label' => 'ظرفیت',
+                            'value' => $capText,
+                            'iconBg' => 'bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400',
+                            'svg' => '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />'
+                        ];
+                    }
+                    if (!empty($bedroomsCount) && $bedroomsCount > 0) {
+                        $mainSpecs[] = [
+                            'label' => 'تعداد اتاق',
+                            'value' => "{$bedroomsCount} اتاق خواب",
+                            'iconBg' => 'bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400',
+                            'svg' => '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />'
+                        ];
+                    }
+                    if (!empty($property->property_type_name) || !empty($property->propertyType?->name)) {
+                        $mainSpecs[] = [
+                            'label' => 'نوع اقامتگاه',
+                            'value' => $property->property_type_name ?? $property->propertyType?->name,
+                            'iconBg' => 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400',
+                            'svg' => '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />'
+                        ];
+                    }
+                    if (!empty($areaValue)) {
+                        $mainSpecs[] = [
+                            'label' => 'متراژ زیربنا',
+                            'value' => $areaValue,
+                            'iconBg' => 'bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400',
+                            'svg' => '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />'
+                        ];
+                    }
+                @endphp
 
-                    <div class="p-3.5 rounded-2xl bg-gray-50/70 dark:bg-zinc-900/60 border border-gray-200/60 dark:border-zinc-800/60 text-center space-y-1">
-                        <div class="w-7 h-7 mx-auto rounded-xl bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400 flex items-center justify-center">
-                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>
-                        </div>
-                        <span class="text-[11px] text-gray-400 block font-medium">تعداد اتاق</span>
-                        <strong class="text-xs sm:text-sm font-black text-gray-900 dark:text-white block">{{ $property->bedrooms ?? 2 }} اتاق خواب</strong>
+                @if(!empty($mainSpecs))
+                    <div class="grid grid-cols-2 sm:grid-cols-{{ min(count($mainSpecs), 4) }} gap-2.5 py-1">
+                        @foreach($mainSpecs as $spec)
+                            <div class="p-3.5 rounded-2xl bg-gray-50/70 dark:bg-zinc-900/60 border border-gray-200/60 dark:border-zinc-800/60 text-center space-y-1">
+                                <div class="w-7 h-7 mx-auto rounded-xl {{ $spec['iconBg'] }} flex items-center justify-center">
+                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">{!! $spec['svg'] !!}</svg>
+                                </div>
+                                <span class="text-[11px] text-gray-400 block font-medium">{{ $spec['label'] }}</span>
+                                <strong class="text-xs sm:text-sm font-black text-gray-900 dark:text-white block">{{ $spec['value'] }}</strong>
+                            </div>
+                        @endforeach
                     </div>
-
-                    <div class="p-3.5 rounded-2xl bg-gray-50/70 dark:bg-zinc-900/60 border border-gray-200/60 dark:border-zinc-800/60 text-center space-y-1">
-                        <div class="w-7 h-7 mx-auto rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
-                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
-                        </div>
-                        <span class="text-[11px] text-gray-400 block font-medium">نوع اقامتگاه</span>
-                        <strong class="text-xs sm:text-sm font-black text-gray-900 dark:text-white block">{{ $property->property_type_name ?? 'ویلای دربست' }}</strong>
-                    </div>
-
-                    <div class="p-3.5 rounded-2xl bg-gray-50/70 dark:bg-zinc-900/60 border border-gray-200/60 dark:border-zinc-800/60 text-center space-y-1">
-                        <div class="w-7 h-7 mx-auto rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 flex items-center justify-center">
-                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" /></svg>
-                        </div>
-                        <span class="text-[11px] text-gray-400 block font-medium">متراژ زیربنا</span>
-                        <strong class="text-xs sm:text-sm font-black text-gray-900 dark:text-white block">{{ $property->area_formatted ?? ($property->area ? $property->area . ' متر' : '۱۲۰ متر') }}</strong>
-                    </div>
-                </div>
+                @endif
 
                 {{-- ۵. بنر رزرو آنی با رنگ بنفش/ایندیگو جذاب (دقیقاً مثل نمونه ضمیمه) --}}
                 @if($isInstant)
@@ -380,149 +434,187 @@
                     </div>
                 @endif
 
-                {{-- ۶. مشخصات کلی اقامتگاه (لیست آیکون‌دار مثل نمونه ضمیمه) --}}
-                <div class="space-y-4 pt-4 border-t border-gray-100 dark:border-zinc-800">
-                    <h3 class="text-base sm:text-lg font-black text-gray-900 dark:text-white">
-                        مشخصات کلی اقامتگاه
-                    </h3>
+                {{-- ۶. مشخصات کلی اقامتگاه (کاملاً داینامیک و تنها در صورت وجود اطلاعات) --}}
+                @php
+                    $generalSpecs = [];
+                    if (!empty($property->property_type_name) || !empty($areaValue)) {
+                        $parts = [];
+                        if (!empty($property->property_type_name)) $parts[] = $property->property_type_name;
+                        if (!empty($areaValue)) $parts[] = 'با متراژ ' . $areaValue . ' زیربنا';
+                        if (!empty($property->city)) $parts[] = 'در محدوده ' . $property->city;
+                        $generalSpecs[] = [
+                            'icon' => '🏡',
+                            'title' => 'درباره فضا و ساختمان',
+                            'desc' => implode(' ', $parts)
+                        ];
+                    }
+                    if (!empty($config?->base_guests) || !empty($config?->max_guests)) {
+                        $guestDesc = 'ظرفیت استاندارد ' . ($config->base_guests ?? $config->max_guests) . ' نفر';
+                        if (!empty($config->max_guests) && $config->max_guests > ($config->base_guests ?? 1)) {
+                            $guestDesc .= ' (امکان پذیرش تا ' . $config->max_guests . ' نفر مهمان با هزینه نفر اضافه)';
+                        }
+                        $generalSpecs[] = [
+                            'icon' => '👥',
+                            'title' => 'ظرفیت مسافران',
+                            'desc' => $guestDesc
+                        ];
+                    }
+                    if (!empty($checkInTimeFormatted) || !empty($checkOutTimeFormatted)) {
+                        $timeDesc = [];
+                        if (!empty($checkInTimeFormatted)) {
+                            $timeDesc[] = 'تحویل اقامتگاه از ساعت ' . $checkInTimeFormatted;
+                        }
+                        if (!empty($checkOutTimeFormatted)) {
+                            $timeDesc[] = 'تخلیه اقامتگاه تا ساعت ' . $checkOutTimeFormatted;
+                        }
+                        $generalSpecs[] = [
+                            'icon' => '🕒',
+                            'title' => 'ساعت ورود و خروج',
+                            'desc' => implode(' • ', $timeDesc)
+                        ];
+                    }
+                    if (!empty($bedroomsCount) || !empty($bathroomsCount) || !empty($doubleBeds) || !empty($singleBeds)) {
+                        $roomDesc = [];
+                        if (!empty($bedroomsCount)) $roomDesc[] = "دارای {$bedroomsCount} اتاق خواب";
+                        if (!empty($doubleBeds)) $roomDesc[] = "{$doubleBeds} تخت دو نفره";
+                        if (!empty($singleBeds)) $roomDesc[] = "{$singleBeds} تخت یک نفره";
+                        if (!empty($bathroomsCount)) $roomDesc[] = "{$bathroomsCount} سرویس بهداشتی و حمام";
+                        $generalSpecs[] = [
+                            'icon' => '🛏️',
+                            'title' => 'فضای خواب و سرویس بهداشتی',
+                            'desc' => implode('، ', $roomDesc)
+                        ];
+                    }
+                @endphp
 
-                    <div class="space-y-3.5 text-xs">
-                        <div class="flex items-start gap-3">
-                            <span class="w-5 h-5 text-gray-400 mt-0.5 shrink-0">🏡</span>
-                            <div>
-                                <strong class="text-gray-900 dark:text-white block font-bold">درباره فضا و ساختمان</strong>
-                                <span class="text-gray-500 dark:text-gray-400 mt-0.5 block leading-relaxed">
-                                    {{ $property->property_type_name ?? 'ویلای دربست' }} با متراژ {{ $property->area_formatted ?? ($property->area ? $property->area . ' متر' : '۱۲۰ متر') }} زیربنا، در بافت زیبای جنگلی و کوهستانی لفور
-                                </span>
-                            </div>
-                        </div>
-
-                        <div class="flex items-start gap-3">
-                            <span class="w-5 h-5 text-gray-400 mt-0.5 shrink-0">👥</span>
-                            <div>
-                                <strong class="text-gray-900 dark:text-white block font-bold">ظرفیت مسافران</strong>
-                                <span class="text-gray-500 dark:text-gray-400 mt-0.5 block leading-relaxed">
-                                    ظرفیت استاندارد {{ $config?->base_guests ?? 2 }} نفر (امکان پذیرش تا {{ $config?->max_guests ?? 4 }} نفر مهمان با هزینه نفر اضافه)
-                                </span>
-                            </div>
-                        </div>
-
-                        <div class="flex items-start gap-3">
-                            <span class="w-5 h-5 text-gray-400 mt-0.5 shrink-0">🕒</span>
-                            <div>
-                                <strong class="text-gray-900 dark:text-white block font-bold">ساعت ورود و خروج</strong>
-                                <span class="text-gray-500 dark:text-gray-400 mt-0.5 block leading-relaxed">
-                                    تحویل اقامتگاه از ساعت <strong class="text-emerald-600 dark:text-emerald-400 font-sans">{{ $checkInTimeFormatted }}</strong> • تخلیه اقامتگاه تا ساعت <strong class="text-rose-600 dark:text-rose-400 font-sans">{{ $checkOutTimeFormatted }}</strong>
-                                </span>
-                            </div>
-                        </div>
-
-                        <div class="flex items-start gap-3">
-                            <span class="w-5 h-5 text-gray-400 mt-0.5 shrink-0">🛏️</span>
-                            <div>
-                                <strong class="text-gray-900 dark:text-white block font-bold">فضای خواب و سرویس بهداشتی</strong>
-                                <span class="text-gray-500 dark:text-gray-400 mt-0.5 block leading-relaxed">
-                                    دارای {{ $property->bedrooms ?? 2 }} اتاق خواب مجهز، تخت‌های دو نفره و یک نفره، و {{ $property->bathrooms ?? 1 }} سرویس بهداشتی
-                                </span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {{-- ۷. فضای خواب و اتاق‌ها (کارت‌های تفکیک اتاق‌ها) --}}
-                <div class="space-y-4 pt-4 border-t border-gray-100 dark:border-zinc-800">
-                    <h3 class="text-base sm:text-lg font-black text-gray-900 dark:text-white">
-                        فضای خواب و تخت‌ها
-                    </h3>
-
-                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                        <div class="p-4 rounded-2xl bg-gray-50/70 dark:bg-zinc-900/60 border border-gray-200/60 dark:border-zinc-800/60 space-y-2">
-                            <div class="flex items-center gap-2 text-indigo-600 dark:text-indigo-400">
-                                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
-                                <span class="text-xs font-black text-gray-900 dark:text-white">اتاق خواب ۱</span>
-                            </div>
-                            <p class="text-xs text-gray-500 dark:text-gray-400">
-                                ۱ تخت خواب ۲ نفره<br>سرویس خواب کامل و تمیز
-                            </p>
-                        </div>
-
-                        <div class="p-4 rounded-2xl bg-gray-50/70 dark:bg-zinc-900/60 border border-gray-200/60 dark:border-zinc-800/60 space-y-2">
-                            <div class="flex items-center gap-2 text-indigo-600 dark:text-indigo-400">
-                                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
-                                <span class="text-xs font-black text-gray-900 dark:text-white">اتاق خواب ۲</span>
-                            </div>
-                            <p class="text-xs text-gray-500 dark:text-gray-400">
-                                ۲ تخت خواب ۱ نفره<br>کمد لباس و پنجره روبه‌جنگل
-                            </p>
-                        </div>
-
-                        <div class="p-4 rounded-2xl bg-gray-50/70 dark:bg-zinc-900/60 border border-gray-200/60 dark:border-zinc-800/60 space-y-2">
-                            <div class="flex items-center gap-2 text-indigo-600 dark:text-indigo-400">
-                                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z"/></svg>
-                                <span class="text-xs font-black text-gray-900 dark:text-white">فضای نشیمن</span>
-                            </div>
-                            <p class="text-xs text-gray-500 dark:text-gray-400">
-                                ۲ دست رخت‌خواب سنتی<br>مبلمان راحتی پذیرایی
-                            </p>
-                        </div>
-                    </div>
-                </div>
-
-                {{-- ۸. درباره این اقامتگاه با قابلیت بستن / باز کردن متن --}}
-                <div class="space-y-3 pt-4 border-t border-gray-100 dark:border-zinc-800" x-data="{ expanded: false }">
-                    <h3 class="text-base sm:text-lg font-black text-gray-900 dark:text-white">
-                        درباره این اقامتگاه
-                    </h3>
-                    <div class="text-xs sm:text-sm leading-relaxed text-gray-600 dark:text-gray-300 relative transition-all"
-                         :class="expanded ? '' : 'line-clamp-4'">
-                        {{ $property->description ?: 'این اقامتگاه زیبا با چشم‌اندازی بی‌نظیر از طبیعت بکر، کوهستان و جنگل‌های لفور، محیطی آرامش‌بخش، تمیز و دلنشین را برای اقامت مسافران گرامی و خانواده‌ها فراهم می‌آورد. دسترسی آسان به جاذبه‌های توریستی و دریاچه سد لفور از مزایای بارز این مکان است.' }}
-                    </div>
-                    <button type="button" 
-                            @click="expanded = !expanded" 
-                            class="text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:underline inline-flex items-center gap-1 pt-1">
-                        <span x-text="expanded ? '− بستن توضیحات' : '+ مشاهده توضیحات کامل'"></span>
-                    </button>
-                </div>
-
-                {{-- ۹. امکانات رفاهی و اقامتی (آیکون‌دار + دکمه بازکردن مودال همه امکانات) --}}
-                <div class="space-y-4 pt-4 border-t border-gray-100 dark:border-zinc-800" x-data="{ showAmenitiesModal: false }">
-                    <div class="flex items-center justify-between">
+                @if(!empty($generalSpecs))
+                    <div class="space-y-4 pt-4 border-t border-gray-100 dark:border-zinc-800">
                         <h3 class="text-base sm:text-lg font-black text-gray-900 dark:text-white">
-                            امکانات اقامتگاه
+                            مشخصات کلی اقامتگاه
                         </h3>
-                    </div>
 
-                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                        @php
-                            $popularAmenities = [
-                                ['title' => 'استخر آبگرم با تصفیه اتوماتیک', 'icon' => '🏊'],
-                                ['title' => 'سیستم صوتی حرفه‌ای', 'icon' => '🔊'],
-                                ['title' => 'باربیکیو گازی و زغالی', 'icon' => '🥩'],
-                                ['title' => 'اینترنت پرسرعت Wi-Fi', 'icon' => '📶'],
-                                ['title' => 'سیستم سرمایش اسپلیت', 'icon' => '❄️'],
-                                ['title' => 'سیستم گرمایش پکیج و شوفاژ', 'icon' => '🔥'],
-                                ['title' => 'پارکینگ اختصاصی روباز', 'icon' => '🚗'],
-                                ['title' => 'آشپزخانه با وسایل کامل پخت‌وپز', 'icon' => '🍳'],
-                                ['title' => 'تراس با چشم‌انداز جنگلی', 'icon' => '🌲'],
-                            ];
-                        @endphp
-
-                        @foreach($popularAmenities as $amenity)
-                            <div class="flex items-center gap-2.5 p-3 rounded-2xl bg-gray-50/70 dark:bg-zinc-900/60 border border-gray-200/60 dark:border-zinc-800/60 text-xs font-bold text-gray-800 dark:text-gray-200">
-                                <span class="text-base">{{ $amenity['icon'] }}</span>
-                                <span class="truncate">{{ $amenity['title'] }}</span>
-                            </div>
-                        @endforeach
-                    </div>
-
-                    @if($features->isNotEmpty())
-                        <div class="pt-2">
-                            <button type="button" 
-                                    @click="showAmenitiesModal = true" 
-                                    class="w-full py-3 rounded-2xl border border-gray-200 dark:border-zinc-800 hover:bg-gray-50 dark:hover:bg-zinc-800 text-xs font-bold text-gray-900 dark:text-white transition shadow-2xs">
-                                مشاهده همه امکانات اقامتگاه ({{ $features->count() + count($popularAmenities) }} مورد)
-                            </button>
+                        <div class="space-y-3.5 text-xs">
+                            @foreach($generalSpecs as $gSpec)
+                                <div class="flex items-start gap-3">
+                                    <span class="w-5 h-5 text-gray-400 mt-0.5 shrink-0 text-base select-none">{{ $gSpec['icon'] }}</span>
+                                    <div>
+                                        <strong class="text-gray-900 dark:text-white block font-bold">{{ $gSpec['title'] }}</strong>
+                                        <span class="text-gray-500 dark:text-gray-400 mt-0.5 block leading-relaxed">
+                                            {{ $gSpec['desc'] }}
+                                        </span>
+                                    </div>
+                                </div>
+                            @endforeach
                         </div>
+                    </div>
+                @endif
+
+                {{-- ۷. فضای خواب و اتاق‌ها (فقط در صورت وجود اطلاعات واقعی اتاق یا تخت‌ها نمایش داده می‌شود) --}}
+                @php
+                    $roomCards = [];
+                    if (!empty($bedroomsCount) && $bedroomsCount > 0) {
+                        for ($r = 1; $r <= min($bedroomsCount, 6); $r++) {
+                            $rDesc = [];
+                            if ($r === 1 && !empty($doubleBeds)) {
+                                $rDesc[] = $doubleBeds . ' تخت ۲ نفره';
+                            } elseif ($r > 1 && !empty($singleBeds)) {
+                                $rDesc[] = ceil($singleBeds / max(1, $bedroomsCount - 1)) . ' تخت ۱ نفره';
+                            } else {
+                                $rDesc[] = 'سرویس خواب استاندارد و تمیز';
+                            }
+                            $roomCards[] = [
+                                'title' => 'اتاق خواب ' . $r,
+                                'desc' => implode(' • ', $rDesc),
+                                'icon' => '🚪'
+                            ];
+                        }
+                    } elseif (!empty($doubleBeds) || !empty($singleBeds)) {
+                        if (!empty($doubleBeds)) {
+                            $roomCards[] = [
+                                'title' => 'تخت دو نفره',
+                                'desc' => $doubleBeds . ' عدد تخت ۲ نفره استاندارد',
+                                'icon' => '🛏️'
+                            ];
+                        }
+                        if (!empty($singleBeds)) {
+                            $roomCards[] = [
+                                'title' => 'تخت یک نفره',
+                                'desc' => $singleBeds . ' عدد تخت ۱ نفره استاندارد',
+                                'icon' => '🛋️'
+                            ];
+                        }
+                    }
+                @endphp
+
+                @if(!empty($roomCards))
+                    <div class="space-y-4 pt-4 border-t border-gray-100 dark:border-zinc-800">
+                        <h3 class="text-base sm:text-lg font-black text-gray-900 dark:text-white">
+                            فضای خواب و تخت‌ها
+                        </h3>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-{{ min(count($roomCards), 3) }} gap-3">
+                            @foreach($roomCards as $rc)
+                                <div class="p-4 rounded-2xl bg-gray-50/70 dark:bg-zinc-900/60 border border-gray-200/60 dark:border-zinc-800/60 space-y-2">
+                                    <div class="flex items-center gap-2 text-indigo-600 dark:text-indigo-400">
+                                        <span class="text-base select-none">{{ $rc['icon'] }}</span>
+                                        <span class="text-xs font-black text-gray-900 dark:text-white">{{ $rc['title'] }}</span>
+                                    </div>
+                                    <p class="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
+                                        {{ $rc['desc'] }}
+                                    </p>
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
+                @endif
+
+                {{-- ۸. درباره این اقامتگاه (تنها در صورت وجود توضیحات ثبت شده نمایش داده می‌شود) --}}
+                @if(!empty(trim($property->description ?? '')))
+                    <div class="space-y-3 pt-4 border-t border-gray-100 dark:border-zinc-800" x-data="{ expanded: false }">
+                        <h3 class="text-base sm:text-lg font-black text-gray-900 dark:text-white">
+                            درباره این اقامتگاه
+                        </h3>
+                        <div class="text-xs sm:text-sm leading-relaxed text-gray-600 dark:text-gray-300 relative transition-all"
+                             :class="expanded ? '' : 'line-clamp-4'">
+                            {!! nl2br(e($property->description)) !!}
+                        </div>
+                        @if(mb_strlen($property->description) > 200)
+                            <button type="button" 
+                                    @click="expanded = !expanded" 
+                                    class="text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:underline inline-flex items-center gap-1 pt-1">
+                                <span x-text="expanded ? '− بستن توضیحات' : '+ مشاهده توضیحات کامل'"></span>
+                            </button>
+                        @endif
+                    </div>
+                @endif
+
+                {{-- ۹. امکانات رفاهی و اقامتی (تنها در صورت ثبت امکانات برای اقامتگاه نمایش داده می‌شود) --}}
+                @if($features->isNotEmpty())
+                    <div class="space-y-4 pt-4 border-t border-gray-100 dark:border-zinc-800" x-data="{ showAmenitiesModal: false }">
+                        <div class="flex items-center justify-between">
+                            <h3 class="text-base sm:text-lg font-black text-gray-900 dark:text-white">
+                                امکانات اقامتگاه
+                            </h3>
+                        </div>
+
+                        <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                            @foreach($features->take(9) as $feat)
+                                <div class="flex items-center gap-2.5 p-3 rounded-2xl bg-gray-50/70 dark:bg-zinc-900/60 border border-gray-200/60 dark:border-zinc-800/60 text-xs font-bold text-gray-800 dark:text-gray-200">
+                                    <span class="text-base select-none">{{ $feat->attribute->icon ?: '✨' }}</span>
+                                    <span class="truncate">{{ $feat->attribute->name }}</span>
+                                </div>
+                            @endforeach
+                        </div>
+
+                        @if($features->count() > 9)
+                            <div class="pt-2">
+                                <button type="button" 
+                                        @click="showAmenitiesModal = true" 
+                                        class="w-full py-3 rounded-2xl border border-gray-200 dark:border-zinc-800 hover:bg-gray-50 dark:hover:bg-zinc-800 text-xs font-bold text-gray-900 dark:text-white transition shadow-2xs">
+                                    مشاهده همه امکانات اقامتگاه ({{ $features->count() }} مورد)
+                                </button>
+                            </div>
+                        @endif
 
                         {{-- مودال همه امکانات --}}
                         <div x-show="showAmenitiesModal" 
@@ -531,27 +623,21 @@
                             <div @click.away="showAmenitiesModal = false" 
                                  class="w-full max-w-lg bg-white dark:bg-zinc-900 rounded-3xl p-6 shadow-2xl border border-gray-200 dark:border-zinc-800 max-h-[85vh] overflow-y-auto space-y-4">
                                 <div class="flex items-center justify-between border-b border-gray-100 dark:border-zinc-800 pb-3">
-                                    <h4 class="text-base font-black text-gray-900 dark:text-white">امکانات کامل اقامتگاه</h4>
-                                    <button type="button" @click="showAmenitiesModal = false" class="text-gray-400 hover:text-gray-600 text-xl font-bold">✕</button>
+                                    <h4 class="text-base font-black text-gray-900 dark:text-white">امکانات کامل اقامتگاه ({{ $features->count() }} مورد)</h4>
+                                    <button type="button" @click="showAmenitiesModal = false" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-xl font-bold">✕</button>
                                 </div>
                                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-2">
                                     @foreach($features as $feat)
-                                        <div class="flex items-center gap-2 p-2.5 rounded-xl bg-gray-50 dark:bg-zinc-800 text-xs font-bold text-gray-800 dark:text-gray-200">
-                                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                        <div class="flex items-center gap-2.5 p-3 rounded-xl bg-gray-50 dark:bg-zinc-800 text-xs font-bold text-gray-800 dark:text-gray-200">
+                                            <span class="text-base select-none">{{ $feat->attribute->icon ?: '✨' }}</span>
                                             <span>{{ $feat->attribute->name }}</span>
-                                        </div>
-                                    @endforeach
-                                    @foreach($popularAmenities as $amenity)
-                                        <div class="flex items-center gap-2 p-2.5 rounded-xl bg-gray-50 dark:bg-zinc-800 text-xs font-bold text-gray-800 dark:text-gray-200">
-                                            <span>{{ $amenity['icon'] }}</span>
-                                            <span>{{ $amenity['title'] }}</span>
                                         </div>
                                     @endforeach
                                 </div>
                             </div>
                         </div>
-                    @endif
-                </div>
+                    </div>
+                @endif
 
                 {{-- ۱۰. تقویم رزرو و قیمت‌ها (شبیه نمونه ضمیمه‌شده) --}}
                 <div id="calendar-section" class="p-5 sm:p-7 rounded-3xl bg-white dark:bg-zinc-900 border border-gray-200/80 dark:border-zinc-800 shadow-sm space-y-6">
@@ -929,8 +1015,9 @@
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             @foreach($similarList as $sim)
                                 @php
-                                    $simPrice = $sim->rentalConfig?->price_per_night ?? $sim->rent_price ?? $sim->price ?? 2000000;
+                                    $simPrice = $sim->rentalConfig?->price_per_night ?? $sim->rent_price ?? $sim->price ?? null;
                                     $simCover = $sim->cover_image ? (str_starts_with($sim->cover_image, 'http') ? $sim->cover_image : asset('storage/' . $sim->cover_image)) : asset('images/property-placeholder.svg');
+                                    $simGuests = $sim->rentalConfig?->max_guests ?? $sim->max_guests ?? null;
                                 @endphp
                                 <a href="{{ route('properties.show', $sim->slug ?: $sim->id) }}" class="group block p-3 rounded-2xl border border-gray-200/80 dark:border-zinc-800 hover:border-emerald-500 transition-all bg-white dark:bg-zinc-900 shadow-2xs">
                                     <div class="aspect-[16/10] rounded-xl overflow-hidden mb-2.5">
@@ -940,9 +1027,13 @@
                                         {{ $sim->title }}
                                     </h4>
                                     <div class="flex items-center justify-between text-[11px] text-gray-500 mt-1">
-                                        <span>تا {{ $sim->rentalConfig?->max_guests ?? 4 }} نفر</span>
+                                        <span>{{ $simGuests ? 'تا ' . $simGuests . ' نفر' : ($sim->city ?? '') }}</span>
                                         <span class="font-bold text-emerald-600 dark:text-emerald-400 font-sans">
-                                            {{ number_format($simPrice) }} {{ $currencyLabel }}
+                                            @if($simPrice && $simPrice > 0)
+                                                {{ number_format($simPrice) }} {{ $currencyLabel }}
+                                            @else
+                                                استعلام قیمت
+                                            @endif
                                         </span>
                                     </div>
                                 </a>
@@ -1122,8 +1213,10 @@
         </div>
 
         <div class="relative w-full max-w-5xl flex items-center justify-center flex-1">
-            <button type="button" onclick="nextImage()" class="absolute right-4 text-white w-12 h-12 rounded-full bg-black/40 hover:bg-black/70 flex items-center justify-center transition text-xl font-bold z-10" title="تصویر بعدی">❯</button>
-            <button type="button" onclick="prevImage()" class="absolute left-4 text-white w-12 h-12 rounded-full bg-black/40 hover:bg-black/70 flex items-center justify-center transition text-xl font-bold z-10" title="تصویر قبلی">❮</button>
+            {{-- دکمه قبلی (سمت راست در چیدمان راست‌به‌چپ با فلش راست) --}}
+            <button type="button" onclick="prevImage()" class="absolute right-4 text-white w-12 h-12 rounded-full bg-black/50 hover:bg-black/75 flex items-center justify-center transition text-xl font-bold z-10" title="تصویر قبلی">❯</button>
+            {{-- دکمه بعدی (سمت چپ در چیدمان راست‌به‌چپ با فلش چپ) --}}
+            <button type="button" onclick="nextImage()" class="absolute left-4 text-white w-12 h-12 rounded-full bg-black/50 hover:bg-black/75 flex items-center justify-center transition text-xl font-bold z-10" title="تصویر بعدی">❮</button>
             <img id="lightbox-image" src="" alt="{{ $property->title }}" class="max-h-[75vh] max-w-[90vw] object-contain rounded-2xl shadow-2xl transition-all duration-200">
         </div>
 
@@ -1151,10 +1244,10 @@
 
                 checkIn: '',
                 checkOut: '',
-                guests: Number(config?.base_guests || 2),
-                baseGuests: Number(config?.base_guests || 2),
-                maxGuests: Number(config?.max_guests || 6),
-                basePrice: Number(config?.price_per_night || 2000000),
+                guests: Number(config?.base_guests || 1),
+                baseGuests: Number(config?.base_guests || 1),
+                maxGuests: Number(config?.max_guests || config?.base_guests || 1),
+                basePrice: Number(config?.price_per_night || {{ (float)$baseNightPrice }}),
                 extraGuestFee: Number(config?.extra_guest_fee || 0),
                 cleaningFee: Number(config?.cleaning_fee || 0),
                 minStayNights: Number(config?.min_stay_nights || 1),
@@ -1442,8 +1535,8 @@
             const lb = document.getElementById('lightbox');
             if (!lb || lb.classList.contains('hidden')) return;
             if (e.key === 'Escape') closeLightbox();
-            if (e.key === 'ArrowRight') nextImage();
-            if (e.key === 'ArrowLeft') prevImage();
+            if (e.key === 'ArrowRight') prevImage();
+            if (e.key === 'ArrowLeft') nextImage();
         });
 
         function shareProperty() {
