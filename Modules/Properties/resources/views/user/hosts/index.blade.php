@@ -2,7 +2,7 @@
 
 @php
     $title = 'مدیریت میزبانان اقامتگاه';
-    $cardClass = "bg-white dark:bg-gray-800 rounded-3xl border border-gray-200/80 dark:border-gray-700/80 shadow-sm overflow-hidden transition-all duration-200";
+    $cardClass = "bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden transition-all duration-200";
     $badgeClass = "inline-flex items-center px-2.5 py-1 rounded-xl text-xs font-bold font-sans";
 @endphp
 
@@ -38,7 +38,7 @@
                            x-model="searchQuery"
                            value="{{ request('search') }}" 
                            placeholder="جستجوی نام، اقامتگاه، شماره تماس..." 
-                           class="w-64 sm:w-80 rounded-2xl border-gray-200/90 bg-gray-50/70 px-4 py-2.5 pr-9 pl-8 text-xs text-slate-800 placeholder-slate-400 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 transition-all dark:border-gray-700 dark:bg-gray-800/90 dark:text-slate-100 dark:placeholder-slate-500 dark:focus:border-indigo-400 dark:focus:bg-gray-800 dark:focus:ring-indigo-500/30 font-sans shadow-sm">
+                           class="w-64 sm:w-80 rounded-2xl border-slate-200/90 bg-slate-50/70 px-4 py-2.5 pr-9 pl-8 text-xs text-slate-800 placeholder-slate-400 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 transition-all dark:border-slate-700 dark:bg-slate-800/90 dark:text-slate-100 dark:placeholder-slate-400 dark:focus:border-indigo-400 dark:focus:bg-slate-800 dark:focus:ring-indigo-500/30 font-sans shadow-sm">
                     <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-slate-400 dark:text-slate-400">
                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                     </div>
@@ -55,7 +55,7 @@
                     <select name="status" 
                             x-model="statusFilter"
                             onchange="this.form.submit()" 
-                            class="rounded-2xl border-gray-200/90 bg-gray-50/70 px-3.5 py-2.5 text-xs text-slate-700 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 transition-all dark:border-gray-700 dark:bg-gray-800/90 dark:text-slate-200 dark:focus:border-indigo-400 dark:focus:bg-gray-800 dark:focus:ring-indigo-500/30 font-sans shadow-sm cursor-pointer">
+                            class="rounded-2xl border-slate-200/90 bg-slate-50/70 px-3.5 py-2.5 text-xs text-slate-700 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 transition-all dark:border-slate-700 dark:bg-slate-800/90 dark:text-slate-200 dark:focus:border-indigo-400 dark:focus:bg-slate-800 dark:focus:ring-indigo-500/30 font-sans shadow-sm cursor-pointer">
                         <option value="">همه وضعیت‌ها</option>
                         <option value="pending" {{ request('status') === 'pending' ? 'selected' : '' }}>در انتظار تایید</option>
                         <option value="active" {{ request('status') === 'active' ? 'selected' : '' }}>فعال</option>
@@ -82,15 +82,15 @@
                 </a>
             </div>
 
-            <div class="p-4 rounded-2xl bg-white dark:bg-gray-800 border border-indigo-100 dark:border-indigo-900/50 flex flex-wrap items-center justify-between gap-4 text-xs">
+            <div class="p-4 rounded-2xl bg-white dark:bg-slate-800/90 border border-indigo-100 dark:border-slate-700/80 flex flex-wrap items-center justify-between gap-4 text-xs">
                 <div class="flex flex-wrap items-center gap-6 sm:gap-10">
                     <div>
-                        <span class="text-gray-400 block text-[11px] mb-0.5">نام کاربری (موبایل ورود):</span>
-                        <strong class="text-gray-900 dark:text-gray-100 font-sans text-sm dir-ltr">{{ $creds['mobile'] }}</strong>
+                        <span class="text-slate-500 dark:text-slate-400 block text-[11px] mb-0.5">نام کاربری (موبایل ورود):</span>
+                        <strong class="text-slate-900 dark:text-white font-sans text-sm dir-ltr">{{ $creds['mobile'] }}</strong>
                     </div>
                     @if(!empty($creds['password']))
                         <div>
-                            <span class="text-gray-400 block text-[11px] mb-0.5">رمز عبور اختصاص‌یافته:</span>
+                            <span class="text-slate-500 dark:text-slate-400 block text-[11px] mb-0.5">رمز عبور اختصاص‌یافته:</span>
                             <strong class="text-indigo-600 dark:text-indigo-400 font-sans text-sm dir-ltr">{{ $creds['password'] }}</strong>
                         </div>
                     @endif
@@ -98,8 +98,8 @@
                 @if(!empty($creds['password']))
                     <button type="button" 
                             onclick="navigator.clipboard.writeText('اطلاعات ورود به سامانه میزبانی مسترویلا:\nنام کاربری: {{ $creds['mobile'] }}\nرمز عبور: {{ $creds['password'] }}\nآدرس ورود: {{ route('login') }}'); alert('مشخصات ورود به همراه لینک پنل با موفقیت در کلیپ‌بورد کپی شد.');"
-                            class="px-3.5 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 font-bold transition flex items-center gap-1.5 cursor-pointer">
-                        <svg class="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                            class="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 font-bold transition flex items-center gap-1.5 cursor-pointer">
+                        <svg class="w-4 h-4 text-slate-500 dark:text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
                         <span>کپی مشخصات ورود (جهت ارسال به میزبان)</span>
                     </button>
                 @endif
@@ -119,7 +119,7 @@
     <div class="{{ $cardClass }}">
         @if($hosts->isEmpty())
             <div class="py-16 text-center space-y-2">
-                <div class="w-12 h-12 mx-auto rounded-2xl bg-gray-100 dark:bg-gray-700/50 flex items-center justify-center text-gray-400">
+                <div class="w-12 h-12 mx-auto rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400">
                     <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" /></svg>
                 </div>
                 <p class="text-sm font-bold text-gray-700 dark:text-gray-300 font-sans">هیچ میزبان ثبت‌شده‌ای با این مشخصات یافت نشد.</p>
@@ -127,7 +127,7 @@
         @else
             <div class="overflow-x-auto">
                 <table class="w-full text-right text-xs">
-                    <thead class="bg-gray-50/80 dark:bg-gray-900/40 text-[11px] font-bold text-gray-500 dark:text-gray-400 border-b border-gray-100 dark:border-gray-700/80">
+                    <thead class="bg-slate-50/80 dark:bg-slate-900/60 text-[11px] font-bold text-slate-500 dark:text-slate-400 border-b border-slate-100 dark:border-slate-800">
                         <tr>
                             <th class="px-6 py-4">میزبان / کاربر متصل</th>
                             <th class="px-6 py-4">اطلاعات تماس و شبا</th>
@@ -137,7 +137,7 @@
                             <th class="px-6 py-4 text-center">عملیات</th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-gray-100 dark:divide-gray-700/60 font-sans">
+                    <tbody class="divide-y divide-slate-100 dark:divide-slate-800 font-sans">
                         @foreach($hosts as $host)
                             @php
                                 $hostJson = [
@@ -215,7 +215,7 @@
 
                             <tr x-init="registerHost({{ json_encode($hostJson['searchable_meta']) }})"
                                 x-show="matchesSearch({{ json_encode($hostJson['searchable_meta']) }})"
-                                class="hover:bg-gray-50/70 dark:hover:bg-gray-700/20 transition-colors">
+                                class="hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors">
                                 {{-- ستون میزبان --}}
                                 <td class="px-6 py-4">
                                     <div class="flex items-center gap-3">
@@ -256,7 +256,7 @@
 
                                 {{-- ستون تعداد اقامتگاه --}}
                                 <td class="px-6 py-4 font-sans text-center">
-                                    <span class="px-2.5 py-1 rounded-xl bg-gray-100 dark:bg-gray-700/60 text-gray-800 dark:text-gray-200 font-bold text-xs">
+                                    <span class="px-2.5 py-1 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-bold text-xs">
                                         {{ $host->properties_count }} ملک
                                     </span>
                                 </td>
@@ -355,7 +355,7 @@
                         {{-- ردیف عدم تطابق در جستجوی زنده --}}
                         <tr x-show="visibleRowsCount === 0 && searchQuery.trim() !== ''" style="display: none;">
                             <td colspan="6" class="py-12 text-center">
-                                <div class="w-10 h-10 mx-auto rounded-2xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-slate-400 mb-2">
+                                <div class="w-10 h-10 mx-auto rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400 mb-2">
                                     <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                                 </div>
                                 <p class="text-xs font-bold text-slate-700 dark:text-slate-300">هیچ میزبانی با عبارت جستجوی «<span x-text="searchQuery"></span>» یافت نشد.</p>
@@ -368,7 +368,7 @@
                 </table>
             </div>
 
-            <div class="p-4 border-t border-gray-100 dark:border-gray-800">
+            <div class="p-4 border-t border-slate-100 dark:border-slate-800">
                 {{ $hosts->links() }}
             </div>
         @endif
@@ -383,10 +383,10 @@
          style="display: none;">
         <div class="min-h-screen px-4 text-center flex items-center justify-center">
             {{-- پس‌زمینه مات --}}
-            <div class="fixed inset-0 bg-gray-950/70 backdrop-blur-sm transition-opacity" @click="showDetailsModal = false"></div>
+            <div class="fixed inset-0 bg-slate-950/70 dark:bg-slate-950/80 backdrop-blur-sm transition-opacity" @click="showDetailsModal = false"></div>
 
             {{-- بدنه مودال --}}
-            <div class="inline-block w-full max-w-3xl my-8 text-right align-middle transition-all transform bg-white dark:bg-gray-900 rounded-3xl shadow-2xl border border-gray-200 dark:border-gray-800 overflow-hidden relative z-10 font-sans"
+            <div class="inline-block w-full max-w-3xl my-8 text-right align-middle transition-all transform bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden relative z-10 font-sans"
                  x-show="showDetailsModal"
                  x-transition:enter="ease-out duration-300"
                  x-transition:enter-start="opacity-0 scale-95"
@@ -395,8 +395,8 @@
                  x-transition:leave-start="opacity-100 scale-100"
                  x-transition:leave-end="opacity-0 scale-95">
 
-                {{-- سربرگ مودال (هماهنگ با بنر پروفایل و برند سازمان) --}}
-                <div class="relative overflow-hidden p-6 bg-gradient-to-br from-indigo-900 via-indigo-800 to-slate-900 dark:from-indigo-950 dark:via-slate-900 dark:to-gray-950 text-white border-b border-indigo-700/30 dark:border-gray-800">
+                {{-- سربرگ مودال (هماهنگ با بنر برند و هویت بصری) --}}
+                <div class="relative overflow-hidden p-6 bg-gradient-to-br from-indigo-900 via-indigo-800 to-slate-900 dark:from-slate-900 dark:via-indigo-950 dark:to-slate-950 text-white border-b border-indigo-700/30 dark:border-slate-800">
                     {{-- افکت نوری محو پشت سربرگ --}}
                     <div class="absolute -top-16 -left-16 w-48 h-48 bg-indigo-500/20 rounded-full blur-2xl pointer-events-none"></div>
 
@@ -431,18 +431,18 @@
                             </div>
                         </div>
 
-                        <button @click="showDetailsModal = false" class="p-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white/80 hover:text-white transition focus:outline-none">
+                        <button @click="showDetailsModal = false" class="p-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white/80 hover:text-white transition focus:outline-none cursor-pointer">
                             <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
                         </button>
                     </div>
                 </div>
 
                 {{-- محتوای مودال --}}
-                <div class="p-6 space-y-6 max-h-[75vh] overflow-y-auto bg-gray-50/50 dark:bg-gray-900/50">
+                <div class="p-6 space-y-6 max-h-[75vh] overflow-y-auto bg-slate-50/60 dark:bg-slate-950/40">
 
                     {{-- بخش علت رد قبلی اگر وجود دارد --}}
                     <template x-if="selectedHost?.kyc_rejection_reason">
-                        <div class="p-4 rounded-2xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/60 text-xs text-red-800 dark:text-red-200 space-y-1">
+                        <div class="p-4 rounded-2xl bg-red-50/80 dark:bg-red-950/40 border border-red-200 dark:border-red-900/60 text-xs text-red-800 dark:text-red-200 space-y-1">
                             <div class="font-bold flex items-center gap-2 text-red-900 dark:text-red-300">
                                 <svg class="w-4 h-4 text-red-600 dark:text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
                                 آخرین علت ثبت شده برای عدم تأیید / تعلیق:
@@ -454,23 +454,23 @@
                     {{-- شبکه اطلاعات اصلی (Bento Info Grid) --}}
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {{-- کارت اطلاعات کاربری و تماس --}}
-                        <div class="p-4 rounded-2xl bg-white dark:bg-gray-800/90 border border-gray-200/80 dark:border-gray-700/80 shadow-sm space-y-3">
-                            <h4 class="text-xs font-black text-gray-900 dark:text-white flex items-center gap-2">
+                        <div class="p-4 rounded-2xl bg-white dark:bg-slate-800/90 border border-slate-200/80 dark:border-slate-700/80 shadow-xs space-y-3">
+                            <h4 class="text-xs font-black text-slate-900 dark:text-white flex items-center gap-2">
                                 <span class="w-2 h-2 rounded-full bg-indigo-500"></span>
                                 حساب کاربری و تماس
                             </h4>
                             <div class="space-y-2.5 text-xs">
                                 <div class="flex justify-between items-center text-slate-600 dark:text-slate-300">
                                     <span>نام کاربر در سامانه:</span>
-                                    <span class="font-bold text-gray-900 dark:text-gray-100" x-text="selectedHost?.user_name"></span>
+                                    <span class="font-bold text-slate-900 dark:text-white" x-text="selectedHost?.user_name"></span>
                                 </div>
                                 <div class="flex justify-between items-center text-slate-600 dark:text-slate-300">
                                     <span>شماره همراه کاربر:</span>
-                                    <span class="font-bold text-gray-900 dark:text-gray-100 dir-ltr font-sans" x-text="selectedHost?.user_mobile || selectedHost?.user_phone || selectedHost?.phone || 'ثبت نشده'"></span>
+                                    <span class="font-bold text-slate-900 dark:text-white dir-ltr font-sans" x-text="selectedHost?.user_mobile || selectedHost?.user_phone || selectedHost?.phone || 'ثبت نشده'"></span>
                                 </div>
                                 <div class="flex justify-between items-center text-slate-600 dark:text-slate-300" x-show="selectedHost?.phone && selectedHost?.phone !== (selectedHost?.user_mobile || selectedHost?.user_phone)">
                                     <span>تلفن تماس و هماهنگی میزبان:</span>
-                                    <span class="font-bold text-gray-900 dark:text-gray-100 dir-ltr font-sans" x-text="selectedHost?.phone"></span>
+                                    <span class="font-bold text-slate-900 dark:text-white dir-ltr font-sans" x-text="selectedHost?.phone"></span>
                                 </div>
                                 <div class="flex justify-between items-center text-slate-600 dark:text-slate-300">
                                     <span>کارمزد پلتفرم:</span>
@@ -480,29 +480,29 @@
                         </div>
 
                         {{-- کارت اطلاعات بانکی و شبا --}}
-                        <div class="p-4 rounded-2xl bg-white dark:bg-gray-800/90 border border-gray-200/80 dark:border-gray-700/80 shadow-sm space-y-3">
-                            <h4 class="text-xs font-black text-gray-900 dark:text-white flex items-center gap-2">
+                        <div class="p-4 rounded-2xl bg-white dark:bg-slate-800/90 border border-slate-200/80 dark:border-slate-700/80 shadow-xs space-y-3">
+                            <h4 class="text-xs font-black text-slate-900 dark:text-white flex items-center gap-2">
                                 <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
                                 مشخصات بانکی و تسویه
                             </h4>
                             <div class="space-y-2.5 text-xs">
                                 <div class="flex justify-between items-center text-slate-600 dark:text-slate-300">
                                     <span>نام بانک:</span>
-                                    <span class="font-bold text-gray-900 dark:text-gray-100" x-text="selectedHost?.bank_name || 'ثبت نشده'"></span>
+                                    <span class="font-bold text-slate-900 dark:text-white" x-text="selectedHost?.bank_name || 'ثبت نشده'"></span>
                                 </div>
                                 <div class="flex justify-between items-center text-slate-600 dark:text-slate-300">
                                     <span>صاحب حساب:</span>
-                                    <span class="font-bold text-gray-900 dark:text-gray-100" x-text="selectedHost?.account_owner_name || 'ثبت نشده'"></span>
+                                    <span class="font-bold text-slate-900 dark:text-white" x-text="selectedHost?.account_owner_name || 'ثبت نشده'"></span>
                                 </div>
                                 <div class="flex justify-between items-center text-slate-600 dark:text-slate-300">
                                     <span>شماره شبا:</span>
-                                    <span class="font-bold dir-ltr text-gray-900 dark:text-gray-100" x-text="selectedHost?.shaba_number ? 'IR ' + selectedHost.shaba_number : 'ثبت نشده'"></span>
+                                    <span class="font-bold dir-ltr text-slate-900 dark:text-white" x-text="selectedHost?.shaba_number ? 'IR ' + selectedHost.shaba_number : 'ثبت نشده'"></span>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    {{-- کارت احراز هویت و مدارک هویتی (KYC) پویا --}}
+                    {{-- کارت احراز هویت و مدارک هویتی پویا --}}
                     <div class="p-5 rounded-2xl bg-indigo-50/50 dark:bg-indigo-950/30 border border-indigo-100 dark:border-indigo-900/50 space-y-4">
                         <div class="flex items-center justify-between">
                             <h4 class="text-xs font-black text-indigo-950 dark:text-indigo-200 flex items-center gap-2">
@@ -514,7 +514,7 @@
                                       'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20': selectedHost?.kyc_status === 'approved',
                                       'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20': selectedHost?.kyc_status === 'pending',
                                       'bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20': selectedHost?.kyc_status === 'rejected',
-                                      'bg-gray-100 dark:bg-gray-700 text-gray-500': !selectedHost?.kyc_status || selectedHost?.kyc_status === 'not_submitted'
+                                      'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400': !selectedHost?.kyc_status || selectedHost?.kyc_status === 'not_submitted'
                                   }"
                                   x-text="selectedHost?.kyc_status === 'approved' ? 'تأیید شده' : (selectedHost?.kyc_status === 'pending' ? 'در انتظار بررسی' : (selectedHost?.kyc_status === 'rejected' ? 'رد شده' : 'ثبت نشده'))"></span>
                         </div>
@@ -523,9 +523,9 @@
                         <template x-if="selectedHost?.verification_fields && selectedHost.verification_fields.length > 0">
                             <div class="space-y-3">
                                 <template x-for="vf in selectedHost.verification_fields" :key="vf.name">
-                                    <div class="border border-indigo-100/80 dark:border-indigo-900/40 rounded-2xl p-4 bg-white dark:bg-gray-800/90 shadow-sm space-y-2">
+                                    <div class="border border-indigo-100/80 dark:border-slate-700/80 rounded-2xl p-4 bg-white dark:bg-slate-800/90 shadow-xs space-y-2">
                                         <div class="flex items-center justify-between text-xs">
-                                            <span class="font-bold text-gray-900 dark:text-white" x-text="vf.label"></span>
+                                            <span class="font-bold text-slate-900 dark:text-white" x-text="vf.label"></span>
                                             <template x-if="vf.type !== 'file'">
                                                 <span class="font-bold dir-ltr text-indigo-700 dark:text-indigo-300 font-sans" x-text="vf.value || 'ثبت نشده'"></span>
                                             </template>
@@ -537,8 +537,8 @@
                                                 <template x-if="vf.value && vf.is_image">
                                                     <div class="space-y-2 text-center pt-1">
                                                         <div class="relative inline-block group">
-                                                            <img :src="vf.file_url" class="max-h-52 mx-auto rounded-xl object-contain border border-gray-200 dark:border-gray-700 shadow-sm transition hover:brightness-95">
-                                                            <a :href="vf.file_url" target="_blank" class="absolute bottom-2 left-2 px-3 py-1.5 rounded-lg bg-gray-900/80 hover:bg-gray-900 text-white text-[11px] font-bold flex items-center gap-1.5 backdrop-blur-sm transition">
+                                                            <img :src="vf.file_url" class="max-h-52 mx-auto rounded-xl object-contain border border-slate-200 dark:border-slate-700 shadow-xs transition hover:brightness-95">
+                                                            <a :href="vf.file_url" target="_blank" class="absolute bottom-2 left-2 px-3 py-1.5 rounded-lg bg-slate-900/80 hover:bg-slate-900 text-white text-[11px] font-bold flex items-center gap-1.5 backdrop-blur-sm transition">
                                                                 <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
                                                                 مشاهده سایز اصلی
                                                             </a>
@@ -548,13 +548,13 @@
                                                 <template x-if="vf.value && !vf.is_image">
                                                     <div class="flex items-center justify-between pt-1">
                                                         <span class="text-xs text-slate-500 dark:text-slate-400">فایل ضمیمه بارگذاری شده</span>
-                                                        <a :href="vf.file_url" target="_blank" class="px-3 py-1 rounded-xl bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 text-xs font-bold hover:underline">
+                                                        <a :href="vf.file_url" target="_blank" class="px-3 py-1 rounded-xl bg-indigo-50 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 text-xs font-bold hover:underline">
                                                             دانلود / مشاهده فایل
                                                         </a>
                                                     </div>
                                                 </template>
                                                 <template x-if="!vf.value">
-                                                    <div class="py-3 text-center text-slate-400 text-xs">
+                                                    <div class="py-3 text-center text-slate-400 dark:text-slate-500 text-xs font-sans">
                                                         مدرکی برای این فیلد بارگذاری نشده است.
                                                     </div>
                                                 </template>
@@ -567,7 +567,7 @@
 
                         {{-- در صورتی که فیلدی تعریف نشده باشد --}}
                         <template x-if="!selectedHost?.verification_fields || selectedHost.verification_fields.length === 0">
-                            <div class="border border-indigo-100/80 dark:border-indigo-900/40 rounded-2xl p-4 bg-white dark:bg-gray-800/90 text-center shadow-inner">
+                            <div class="border border-indigo-100/80 dark:border-indigo-900/40 rounded-2xl p-4 bg-white dark:bg-slate-800/90 text-center shadow-inner">
                                 <div class="py-4 text-slate-500 dark:text-slate-400 text-xs font-sans">
                                     فیلد احراز هویت سفارشی تعریف نشده است.
                                 </div>
@@ -577,26 +577,26 @@
 
                     {{-- متن درباره میزبان --}}
                     <template x-if="selectedHost?.about">
-                        <div class="p-4 rounded-2xl bg-white dark:bg-gray-800/90 border border-gray-200/80 dark:border-gray-700/80 shadow-sm space-y-1.5">
-                            <h4 class="text-xs font-black text-gray-900 dark:text-white">درباره میزبان و سوابق:</h4>
+                        <div class="p-4 rounded-2xl bg-white dark:bg-slate-800/90 border border-slate-200/80 dark:border-slate-700/80 shadow-xs space-y-1.5">
+                            <h4 class="text-xs font-black text-slate-900 dark:text-white">درباره میزبان و سوابق:</h4>
                             <p class="text-xs text-slate-700 dark:text-slate-300 leading-relaxed font-sans" x-text="selectedHost.about"></p>
                         </div>
                     </template>
 
                     {{-- لیست اقامتگاه‌های ثبت شده توسط میزبان --}}
                     <div class="space-y-3">
-                        <h4 class="text-xs font-black text-gray-900 dark:text-white flex items-center justify-between">
+                        <h4 class="text-xs font-black text-slate-900 dark:text-white flex items-center justify-between">
                             <span>اقامتگاه‌های ثبت شده میزبان</span>
                             <span class="text-slate-500 dark:text-slate-400 font-normal" x-text="'مجموعاً ' + (selectedHost?.properties_count || 0) + ' اقامتگاه'"></span>
                         </h4>
 
-                        <div class="border border-gray-200/80 dark:border-gray-750/80 rounded-2xl overflow-hidden divide-y divide-gray-100 dark:divide-gray-700/60 text-xs shadow-sm">
+                        <div class="border border-slate-200/80 dark:border-slate-700/80 rounded-2xl overflow-hidden divide-y divide-slate-100 dark:divide-slate-700/60 text-xs shadow-xs">
                             <template x-if="selectedHost?.properties && selectedHost.properties.length > 0">
                                 <div>
                                     <template x-for="prop in selectedHost.properties" :key="prop.id">
-                                        <div class="p-3 bg-white dark:bg-gray-800/90 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-700/40 transition">
+                                        <div class="p-3 bg-white dark:bg-slate-800/90 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-750 transition">
                                             <div class="flex items-center gap-2">
-                                                <span class="font-bold text-gray-900 dark:text-white" x-text="prop.title"></span>
+                                                <span class="font-bold text-slate-900 dark:text-white" x-text="prop.title"></span>
                                                 <span class="text-[11px] text-slate-500 dark:text-slate-400" x-text="'(کد: ' + prop.code + ')'"></span>
                                             </div>
                                             <div class="flex items-center gap-2">
@@ -616,7 +616,7 @@
                                 </div>
                             </template>
                             <template x-if="!selectedHost?.properties || selectedHost.properties.length === 0">
-                                <div class="p-4 text-center text-slate-500 dark:text-slate-400 text-xs bg-white dark:bg-gray-800/60">
+                                <div class="p-4 text-center text-slate-500 dark:text-slate-400 text-xs bg-white dark:bg-slate-800/60 font-sans">
                                     هنوز اقامتگاهی توسط این میزبان ثبت نشده است.
                                 </div>
                             </template>
@@ -626,8 +626,8 @@
                 </div>
 
                 {{-- پاورقی و دکمه‌های اقدام مستقیم در مودال --}}
-                <div class="p-5 border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900/90 flex items-center justify-between">
-                    <button type="button" @click="showDetailsModal = false" class="px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 text-slate-700 dark:text-slate-300 text-xs font-bold hover:bg-gray-100 dark:hover:bg-gray-800 transition">
+                <div class="p-5 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/95 flex items-center justify-between">
+                    <button type="button" @click="showDetailsModal = false" class="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer">
                         بستن پنجره
                     </button>
 
@@ -635,7 +635,7 @@
                         {{-- دکمه ویرایش اطلاعات میزبان --}}
                         <button type="button" 
                                 @click="showDetailsModal = false; openEditModal(selectedHost)"
-                                class="px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs shadow-md shadow-amber-500/20 transition flex items-center gap-1.5">
+                                class="px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs shadow-md shadow-amber-500/20 transition flex items-center gap-1.5 cursor-pointer">
                             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                             <span>ویرایش اطلاعات</span>
                         </button>
@@ -643,7 +643,7 @@
                         <template x-if="selectedHost?.status !== 'active'">
                             <form :action="selectedHost?.approve_url" method="POST">
                                 @csrf
-                                <button type="submit" class="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md shadow-emerald-600/20 transition flex items-center gap-1.5">
+                                <button type="submit" class="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md shadow-emerald-600/20 transition flex items-center gap-1.5 cursor-pointer">
                                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
                                     تأیید و فعال‌سازی میزبان
                                 </button>
@@ -654,7 +654,7 @@
                         <template x-if="selectedHost?.status === 'active' && selectedHost?.kyc_status === 'pending'">
                             <form :action="selectedHost?.approve_kyc_url" method="POST">
                                 @csrf
-                                <button type="submit" class="px-5 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs shadow-md shadow-teal-600/20 transition flex items-center gap-1.5">
+                                <button type="submit" class="px-5 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs shadow-md shadow-teal-600/20 transition flex items-center gap-1.5 cursor-pointer">
                                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
                                     تأیید مدارک احراز هویت
                                 </button>
@@ -663,7 +663,7 @@
 
                         <button type="button" 
                                 @click="showDetailsModal = false; openRejectModal(selectedHost)"
-                                class="px-5 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs shadow-md shadow-red-600/20 transition flex items-center gap-1.5">
+                                class="px-5 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs shadow-md shadow-red-600/20 transition flex items-center gap-1.5 cursor-pointer">
                             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
                             <span x-text="selectedHost?.status === 'active' ? (selectedHost?.kyc_status === 'pending' ? 'عدم تأیید مدارک با دلیل' : 'تعلیق حساب میزبان') : 'عدم تأیید مدارک با دلیل'"></span>
                         </button>
@@ -683,10 +683,10 @@
          style="display: none;">
         <div class="min-h-screen px-4 text-center flex items-center justify-center">
             {{-- پس‌زمینه مات --}}
-            <div class="fixed inset-0 bg-gray-950/70 backdrop-blur-sm transition-opacity" @click="showEditModal = false"></div>
+            <div class="fixed inset-0 bg-slate-950/70 dark:bg-slate-950/80 backdrop-blur-sm transition-opacity" @click="showEditModal = false"></div>
 
             {{-- بدنه مودال --}}
-            <div class="inline-block w-full max-w-4xl my-8 text-right align-middle transition-all transform bg-white dark:bg-gray-900 rounded-3xl shadow-2xl border border-gray-200 dark:border-gray-800 overflow-hidden relative z-10 font-sans"
+            <div class="inline-block w-full max-w-4xl my-8 text-right align-middle transition-all transform bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden relative z-10 font-sans"
                  x-show="showEditModal"
                  x-transition:enter="ease-out duration-300"
                  x-transition:enter-start="opacity-0 scale-95"
@@ -701,7 +701,7 @@
                     @method('PUT')
 
                     {{-- سربرگ مودال ویرایش --}}
-                    <div class="relative overflow-hidden p-6 bg-gradient-to-br from-indigo-900 via-indigo-800 to-slate-900 dark:from-indigo-950 dark:via-slate-900 dark:to-gray-950 text-white border-b border-indigo-700/30 dark:border-gray-800">
+                    <div class="relative overflow-hidden p-6 bg-gradient-to-br from-indigo-900 via-indigo-800 to-slate-900 dark:from-slate-900 dark:via-indigo-950 dark:to-slate-950 text-white border-b border-indigo-700/30 dark:border-slate-800">
                         <div class="absolute -top-16 -left-16 w-48 h-48 bg-amber-500/20 rounded-full blur-2xl pointer-events-none"></div>
 
                         <div class="relative z-10 flex items-center justify-between">
@@ -720,21 +720,21 @@
                                 </div>
                             </div>
 
-                            <button type="button" @click="showEditModal = false" class="p-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white/80 hover:text-white transition focus:outline-none">
+                            <button type="button" @click="showEditModal = false" class="p-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white/80 hover:text-white transition focus:outline-none cursor-pointer">
                                 <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
                             </button>
                         </div>
                     </div>
 
                     {{-- بدنه اسکرول‌خور مودال با ساختار Bento --}}
-                    <div class="p-6 space-y-6 max-h-[75vh] overflow-y-auto bg-gray-50/50 dark:bg-gray-900/50">
+                    <div class="p-6 space-y-6 max-h-[75vh] overflow-y-auto bg-slate-50/60 dark:bg-slate-950/40">
 
                         {{-- ردیف ۱: اطلاعات پایه و حساب بانکی --}}
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             
                             {{-- کارت مشخصات اصلی میزبان --}}
-                            <div class="p-5 rounded-2xl bg-white dark:bg-gray-800/90 border border-gray-200/80 dark:border-gray-700/80 shadow-sm space-y-4">
-                                <h4 class="text-xs font-black text-gray-900 dark:text-white flex items-center gap-2 border-b border-gray-100 dark:border-gray-700/60 pb-2">
+                            <div class="p-5 rounded-2xl bg-white dark:bg-slate-800/90 border border-slate-200/80 dark:border-slate-700/80 shadow-xs space-y-4">
+                                <h4 class="text-xs font-black text-slate-900 dark:text-white flex items-center gap-2 border-b border-slate-100 dark:border-slate-700/60 pb-2">
                                     <span class="w-2 h-2 rounded-full bg-indigo-500"></span>
                                     مشخصات نمایشی و کارمزد
                                 </h4>
@@ -748,7 +748,7 @@
                                                name="display_name" 
                                                x-model="editForm.display_name" 
                                                required
-                                               class="w-full rounded-xl border-gray-200 bg-gray-50/60 p-2.5 text-xs text-gray-900 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 transition-all dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 font-sans"
+                                               class="w-full rounded-xl border-slate-200 bg-slate-50/70 p-2.5 text-xs text-slate-900 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 transition-all dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:bg-slate-800 dark:focus:border-indigo-400 dark:focus:ring-indigo-500/30 placeholder-slate-400 dark:placeholder-slate-500 font-sans"
                                                placeholder="مثلاً: اقامتگاه بوم‌گردی نگین یا علی حسینی">
                                     </div>
 
@@ -760,7 +760,7 @@
                                                name="phone" 
                                                x-model="editForm.phone" 
                                                required
-                                               class="w-full rounded-xl border-gray-200 bg-gray-50/60 p-2.5 text-xs text-gray-900 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 transition-all dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 font-sans dir-ltr text-right"
+                                               class="w-full rounded-xl border-slate-200 bg-slate-50/70 p-2.5 text-xs text-slate-900 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 transition-all dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:bg-slate-800 dark:focus:border-indigo-400 dark:focus:ring-indigo-500/30 placeholder-slate-400 dark:placeholder-slate-500 font-sans dir-ltr text-right"
                                                placeholder="0912...">
                                     </div>
 
@@ -774,9 +774,9 @@
                                                max="100" 
                                                name="commission_rate" 
                                                x-model="editForm.commission_rate" 
-                                               class="w-full rounded-xl border-gray-200 bg-gray-50/60 p-2.5 text-xs text-gray-900 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 transition-all dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 font-sans dir-ltr text-right"
+                                               class="w-full rounded-xl border-slate-200 bg-slate-50/70 p-2.5 text-xs text-slate-900 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 transition-all dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:bg-slate-800 dark:focus:border-indigo-400 dark:focus:ring-indigo-500/30 placeholder-slate-400 dark:placeholder-slate-500 font-sans dir-ltr text-right"
                                                placeholder="خالی = استفاده از پیش‌فرض سامانه">
-                                        <span class="block text-[10px] text-gray-400 mt-1">در صورت خالی گذاشتن، نرخ پیش‌فرض سامانه اعمال می‌گردد.</span>
+                                        <span class="block text-[10px] text-slate-500 dark:text-slate-400 mt-1">در صورت خالی گذاشتن، نرخ پیش‌فرض سامانه اعمال می‌گردد.</span>
                                     </div>
 
                                     <div>
@@ -786,15 +786,15 @@
                                         <textarea name="about" 
                                                   x-model="editForm.about" 
                                                   rows="2" 
-                                                  class="w-full rounded-xl border-gray-200 bg-gray-50/60 p-2.5 text-xs text-gray-900 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 transition-all dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 font-sans resize-none"
+                                                  class="w-full rounded-xl border-slate-200 bg-slate-50/70 p-2.5 text-xs text-slate-900 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 transition-all dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:bg-slate-800 dark:focus:border-indigo-400 dark:focus:ring-indigo-500/30 placeholder-slate-400 dark:placeholder-slate-500 font-sans resize-none"
                                                   placeholder="توضیحات کوتاه در مورد میزبان..."></textarea>
                                     </div>
                                 </div>
                             </div>
 
                             {{-- کارت اطلاعات بانکی و شبا --}}
-                            <div class="p-5 rounded-2xl bg-white dark:bg-gray-800/90 border border-gray-200/80 dark:border-gray-700/80 shadow-sm space-y-4">
-                                <h4 class="text-xs font-black text-gray-900 dark:text-white flex items-center gap-2 border-b border-gray-100 dark:border-gray-700/60 pb-2">
+                            <div class="p-5 rounded-2xl bg-white dark:bg-slate-800/90 border border-slate-200/80 dark:border-slate-700/80 shadow-xs space-y-4">
+                                <h4 class="text-xs font-black text-slate-900 dark:text-white flex items-center gap-2 border-b border-slate-100 dark:border-slate-700/60 pb-2">
                                     <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
                                     مشخصات بانکی و تسویه حساب
                                 </h4>
@@ -810,7 +810,7 @@
                                                    x-model="editForm.shaba_number" 
                                                    @input="detectEditBank()" 
                                                    maxlength="24" 
-                                                   class="w-full rounded-xl border-gray-200 bg-gray-50/60 p-2.5 pl-14 text-xs text-gray-900 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 transition-all dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 font-sans dir-ltr text-left tracking-wider"
+                                                   class="w-full rounded-xl border-slate-200 bg-slate-50/70 p-2.5 pl-14 text-xs text-slate-900 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 transition-all dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:bg-slate-800 dark:focus:border-indigo-400 dark:focus:ring-indigo-500/30 placeholder-slate-400 dark:placeholder-slate-500 font-sans dir-ltr text-left tracking-wider"
                                                    placeholder="000000000000000000000000">
                                             <span class="absolute inset-y-0 left-3 flex items-center text-xs font-bold text-indigo-500 dark:text-indigo-400 font-sans">IR</span>
                                         </div>
@@ -823,7 +823,7 @@
                                         <input type="text" 
                                                name="bank_name" 
                                                x-model="editForm.bank_name" 
-                                               class="w-full rounded-xl border-gray-200 bg-gray-50/60 p-2.5 text-xs text-gray-900 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 transition-all dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 font-sans"
+                                               class="w-full rounded-xl border-slate-200 bg-slate-50/70 p-2.5 text-xs text-slate-900 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 transition-all dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:bg-slate-800 dark:focus:border-indigo-400 dark:focus:ring-indigo-500/30 placeholder-slate-400 dark:placeholder-slate-500 font-sans"
                                                placeholder="نام بانک (تشخیص خودکار از روی شبا)">
                                     </div>
 
@@ -834,7 +834,7 @@
                                         <input type="text" 
                                                name="account_owner_name" 
                                                x-model="editForm.account_owner_name" 
-                                               class="w-full rounded-xl border-gray-200 bg-gray-50/60 p-2.5 text-xs text-gray-900 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 transition-all dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 font-sans"
+                                               class="w-full rounded-xl border-slate-200 bg-slate-50/70 p-2.5 text-xs text-slate-900 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 transition-all dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:bg-slate-800 dark:focus:border-indigo-400 dark:focus:ring-indigo-500/30 placeholder-slate-400 dark:placeholder-slate-500 font-sans"
                                                placeholder="نام دقیق صاحب حساب">
                                     </div>
                                 </div>
@@ -852,7 +852,7 @@
                             </div>
 
                             {{-- راهنمای سیستم --}}
-                            <div class="p-3.5 rounded-xl bg-white/80 dark:bg-gray-800/80 border border-indigo-100 dark:border-indigo-900/30 text-xs text-slate-700 dark:text-slate-300 space-y-1">
+                            <div class="p-3.5 rounded-xl bg-white/90 dark:bg-slate-800/90 border border-indigo-100 dark:border-indigo-900/30 text-xs text-slate-700 dark:text-slate-300 space-y-1">
                                 <div class="flex items-center gap-1.5 font-bold text-indigo-900 dark:text-indigo-300">
                                     <svg class="w-4 h-4 text-indigo-600 dark:text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                                     قاعده هماهنگی سیستمی:
@@ -871,7 +871,7 @@
                                     <select name="status" 
                                             x-model="editForm.status" 
                                             required
-                                            class="w-full rounded-xl border-gray-200 bg-white p-2.5 text-xs text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 font-sans font-bold">
+                                            class="w-full rounded-xl border-slate-200 bg-white p-2.5 text-xs text-slate-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:border-indigo-400 dark:focus:ring-indigo-500/30 font-sans font-bold cursor-pointer">
                                         <option value="active">فعال (دارای مجوز و دسترسی به پنل)</option>
                                         <option value="pending">در انتظار بررسی اولیه</option>
                                         <option value="suspended">معلق / غیرفعال</option>
@@ -886,7 +886,7 @@
                                     <select name="kyc_status" 
                                             x-model="editForm.kyc_status" 
                                             required
-                                            class="w-full rounded-xl border-gray-200 bg-white p-2.5 text-xs text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 font-sans font-bold">
+                                            class="w-full rounded-xl border-slate-200 bg-white p-2.5 text-xs text-slate-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:border-indigo-400 dark:focus:ring-indigo-500/30 font-sans font-bold cursor-pointer">
                                         <option value="approved">تأیید شده کامل</option>
                                         <option value="pending">در صف بررسی مدارک</option>
                                         <option value="rejected">مدارک رد شده</option>
@@ -905,25 +905,25 @@
                                 <textarea name="kyc_rejection_reason" 
                                           x-model="editForm.kyc_rejection_reason" 
                                           rows="2" 
-                                          class="w-full rounded-xl border-red-200 bg-red-50/50 p-2.5 text-xs text-red-900 focus:border-red-500 focus:bg-white focus:ring-2 focus:ring-red-500/20 transition-all dark:border-red-900 dark:bg-red-950/30 dark:text-red-100 font-sans resize-none"
+                                          class="w-full rounded-xl border-red-200 bg-red-50/50 p-2.5 text-xs text-red-900 focus:border-red-500 focus:bg-white focus:ring-2 focus:ring-red-500/20 transition-all dark:border-red-900 dark:bg-red-950/30 dark:text-red-100 dark:focus:bg-red-950/60 dark:placeholder-red-400/60 font-sans resize-none"
                                           placeholder="توضیح دلیل عدم تأیید یا تعلیق جهت اطلاع میزبان..."></textarea>
                             </div>
                         </div>
 
                         {{-- ردیف ۳: فیلدها و مدارک احراز هویت داینامیک --}}
                         <template x-if="editingHost?.verification_fields && editingHost.verification_fields.length > 0">
-                            <div class="p-5 rounded-2xl bg-white dark:bg-gray-800/90 border border-gray-200/80 dark:border-gray-700/80 shadow-sm space-y-4">
-                                <h4 class="text-xs font-black text-gray-900 dark:text-white flex items-center gap-2 border-b border-gray-100 dark:border-gray-700/60 pb-2">
+                            <div class="p-5 rounded-2xl bg-white dark:bg-slate-800/90 border border-slate-200/80 dark:border-slate-700/80 shadow-xs space-y-4">
+                                <h4 class="text-xs font-black text-slate-900 dark:text-white flex items-center gap-2 border-b border-slate-100 dark:border-slate-700/60 pb-2">
                                     <span class="w-2 h-2 rounded-full bg-violet-500"></span>
                                     فیلدها و مدارک احراز هویت سفارشی
                                 </h4>
 
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <template x-for="vf in editingHost.verification_fields" :key="vf.name">
-                                        <div class="space-y-2 p-3.5 rounded-xl bg-gray-50/80 dark:bg-gray-900/60 border border-gray-200/60 dark:border-gray-700/60">
+                                        <div class="space-y-2 p-3.5 rounded-xl bg-slate-50/80 dark:bg-slate-900/70 border border-slate-200/70 dark:border-slate-700/70">
                                             <div class="flex items-center justify-between">
-                                                <label class="text-xs font-bold text-gray-900 dark:text-white" x-text="vf.label"></label>
-                                                <span class="text-[10px] text-slate-400" x-text="'نوع: ' + vf.type"></span>
+                                                <label class="text-xs font-bold text-slate-900 dark:text-white" x-text="vf.label"></label>
+                                                <span class="text-[10px] text-slate-500 dark:text-slate-400" x-text="'نوع: ' + vf.type"></span>
                                             </div>
 
                                             {{-- فیلدهای غیر فایل --}}
@@ -931,7 +931,7 @@
                                                 <input :type="vf.type === 'number' ? 'number' : 'text'" 
                                                        :name="'custom[' + vf.name + ']'" 
                                                        x-model="editForm.custom_fields[vf.name]" 
-                                                       class="w-full rounded-xl border-gray-200 bg-white p-2 text-xs text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 font-sans">
+                                                       class="w-full rounded-xl border-slate-200 bg-white p-2 text-xs text-slate-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:border-indigo-400 dark:focus:bg-slate-800 font-sans">
                                             </template>
 
                                             {{-- فیلد چندخطی --}}
@@ -939,14 +939,14 @@
                                                 <textarea :name="'custom[' + vf.name + ']'" 
                                                           x-model="editForm.custom_fields[vf.name]" 
                                                           rows="2" 
-                                                          class="w-full rounded-xl border-gray-200 bg-white p-2 text-xs text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 font-sans resize-none"></textarea>
+                                                          class="w-full rounded-xl border-slate-200 bg-white p-2 text-xs text-slate-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:border-indigo-400 dark:focus:bg-slate-800 font-sans resize-none"></textarea>
                                             </template>
 
                                             {{-- فیلد سلکت --}}
                                             <template x-if="vf.type === 'select'">
                                                 <select :name="'custom[' + vf.name + ']'" 
                                                         x-model="editForm.custom_fields[vf.name]" 
-                                                        class="w-full rounded-xl border-gray-200 bg-white p-2 text-xs text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 font-sans">
+                                                        class="w-full rounded-xl border-slate-200 bg-white p-2 text-xs text-slate-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:border-indigo-400 dark:focus:bg-slate-800 font-sans cursor-pointer">
                                                     <option value="">انتخاب کنید...</option>
                                                     <template x-for="(optVal, optKey) in (vf.options || {})" :key="optKey">
                                                         <option :value="optKey" x-text="optVal"></option>
@@ -961,7 +961,7 @@
                                                         <div class="flex items-center justify-between p-2 rounded-lg bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/40 text-xs">
                                                             <div class="flex items-center gap-2">
                                                                 <template x-if="vf.is_image">
-                                                                    <img :src="vf.file_url" class="w-8 h-8 rounded object-cover border border-gray-200 dark:border-gray-700">
+                                                                    <img :src="vf.file_url" class="w-8 h-8 rounded object-cover border border-slate-200 dark:border-slate-700">
                                                                 </template>
                                                                 <span class="text-[11px] text-slate-700 dark:text-slate-300 font-bold">مدرک فعلی ثبت شده</span>
                                                             </div>
@@ -975,7 +975,7 @@
                                                         </label>
                                                         <input type="file" 
                                                                :name="'custom[' + vf.name + ']'" 
-                                                               class="w-full text-xs text-slate-500 file:mr-0 file:ml-3 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-indigo-50 file:text-indigo-700 dark:file:bg-indigo-900/30 dark:file:text-indigo-300 hover:file:bg-indigo-100 font-sans">
+                                                               class="w-full text-xs text-slate-500 dark:text-slate-400 file:mr-0 file:ml-3 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-indigo-50 file:text-indigo-700 dark:file:bg-indigo-950/60 dark:file:text-indigo-300 hover:file:bg-indigo-100 dark:hover:file:bg-indigo-900/50 font-sans cursor-pointer">
                                                     </div>
                                                 </div>
                                             </template>
@@ -988,14 +988,14 @@
                     </div>
 
                     {{-- فوتر مودال ویرایش --}}
-                    <div class="p-5 border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900/90 flex items-center justify-end gap-3">
+                    <div class="p-5 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/95 flex items-center justify-end gap-3">
                         <button type="button" 
                                 @click="showEditModal = false" 
-                                class="px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 text-slate-700 dark:text-slate-300 text-xs font-bold hover:bg-gray-100 dark:hover:bg-gray-800 transition">
+                                class="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer">
                             انصراف
                         </button>
                         <button type="submit" 
-                                class="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-md shadow-indigo-600/20 transition flex items-center gap-1.5">
+                                class="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-md shadow-indigo-600/20 transition flex items-center gap-1.5 cursor-pointer">
                             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
                             <span>ذخیره کلیه تغییرات</span>
                         </button>
@@ -1016,10 +1016,10 @@
          style="display: none;">
         <div class="min-h-screen px-4 text-center flex items-center justify-center">
             {{-- پس‌زمینه مات --}}
-            <div class="fixed inset-0 bg-gray-950/70 backdrop-blur-sm transition-opacity" @click="showRejectModal = false"></div>
+            <div class="fixed inset-0 bg-slate-950/70 dark:bg-slate-950/80 backdrop-blur-sm transition-opacity" @click="showRejectModal = false"></div>
 
             {{-- بدنه مودال --}}
-            <div class="inline-block w-full max-w-lg my-8 text-right align-middle transition-all transform bg-white dark:bg-gray-900 rounded-3xl shadow-2xl border border-gray-200 dark:border-gray-800 overflow-hidden relative z-10 font-sans"
+            <div class="inline-block w-full max-w-lg my-8 text-right align-middle transition-all transform bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden relative z-10 font-sans"
                  x-show="showRejectModal"
                  x-transition:enter="ease-out duration-300"
                  x-transition:enter-start="opacity-0 scale-95"
@@ -1032,20 +1032,20 @@
                 <form :action="targetHost?.reject_url" method="POST" class="space-y-5 p-6">
                     @csrf
 
-                    <div class="flex items-center justify-between border-b border-gray-100 dark:border-gray-800 pb-4">
+                    <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4">
                         <div class="flex items-center gap-3">
                             <div class="w-10 h-10 rounded-2xl bg-red-50 dark:bg-red-950/50 text-red-600 dark:text-red-400 border border-red-100 dark:border-red-900/50 flex items-center justify-center flex-shrink-0">
                                 <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
                             </div>
                             <div>
-                                <h3 class="text-sm font-black text-gray-900 dark:text-white">
+                                <h3 class="text-sm font-black text-slate-900 dark:text-white">
                                     <span x-text="targetHost?.status === 'active' ? (targetHost?.kyc_status === 'pending' ? 'عدم تأیید مدارک احراز هویت' : 'تعلیق حساب میزبان') : 'عدم تأیید درخواست میزبانی'"></span>
                                 </h3>
-                                <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">میزبان: <span class="font-bold text-gray-900 dark:text-gray-100" x-text="targetHost?.display_name"></span></p>
+                                <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">میزبان: <span class="font-bold text-slate-900 dark:text-white" x-text="targetHost?.display_name"></span></p>
                             </div>
                         </div>
 
-                        <button type="button" @click="showRejectModal = false" class="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition">
+                        <button type="button" @click="showRejectModal = false" class="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition cursor-pointer">
                             <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
                         </button>
                     </div>
@@ -1058,22 +1058,22 @@
                         <div class="flex flex-wrap gap-1.5">
                             <button type="button" 
                                     @click="rejectionReason = 'تصویر کارت ملی ناخوانا، تار یا ناقص است. لطفاً تصویر باکیفیت بارگذاری فرمایید.'" 
-                                    class="px-2.5 py-1.5 rounded-xl bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700/80 text-slate-700 dark:text-slate-300 text-[11px] border border-gray-200/50 dark:border-gray-700/60 transition">
+                                    class="px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-[11px] border border-slate-200/60 dark:border-slate-700/60 transition cursor-pointer">
                                 تصویر کارت ملی ناخوانا
                             </button>
                             <button type="button" 
                                     @click="rejectionReason = 'کد ملی هوشمند وارد شده نامعتبر بوده یا با مشخصات هویتی کارت ملی مطابقت ندارد.'" 
-                                    class="px-2.5 py-1.5 rounded-xl bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700/80 text-slate-700 dark:text-slate-300 text-[11px] border border-gray-200/50 dark:border-gray-700/60 transition">
+                                    class="px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-[11px] border border-slate-200/60 dark:border-slate-700/60 transition cursor-pointer">
                                 مغایرت کد ملی
                             </button>
                             <button type="button" 
                                     @click="rejectionReason = 'اطلاعات شماره شبا با نام صاحب حساب و کد ملی ثبت شده مطابقت ندارد.'" 
-                                    class="px-2.5 py-1.5 rounded-xl bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700/80 text-slate-700 dark:text-slate-300 text-[11px] border border-gray-200/50 dark:border-gray-700/60 transition">
+                                    class="px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-[11px] border border-slate-200/60 dark:border-slate-700/60 transition cursor-pointer">
                                 عدم تطابق شبا بانکی
                             </button>
                             <button type="button" 
                                     @click="rejectionReason = 'نقض قوانین پلتفرم یا عدم پاسخگویی در شماره تماس هماهنگی.'" 
-                                    class="px-2.5 py-1.5 rounded-xl bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700/80 text-slate-700 dark:text-slate-300 text-[11px] border border-gray-200/50 dark:border-gray-700/60 transition">
+                                    class="px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-[11px] border border-slate-200/60 dark:border-slate-700/60 transition cursor-pointer">
                                 نقض قوانین پلتفرم
                             </button>
                         </div>
@@ -1088,18 +1088,18 @@
                                   x-model="rejectionReason"
                                   rows="4" 
                                   required 
-                                  class="w-full rounded-2xl border-gray-200 bg-gray-50/70 p-3.5 text-xs text-gray-900 focus:border-red-500 focus:bg-white focus:ring-2 focus:ring-red-500/20 transition-all dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 dark:focus:bg-gray-800/90 placeholder-gray-400 dark:placeholder-gray-500 font-sans resize-none"
+                                  class="w-full rounded-2xl border-slate-200 bg-slate-50/70 p-3.5 text-xs text-slate-900 focus:border-red-500 focus:bg-white focus:ring-2 focus:ring-red-500/20 transition-all dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:bg-slate-800 placeholder-slate-400 dark:placeholder-slate-500 font-sans resize-none"
                                   placeholder="دلیل عدم تایید یا تعلیق را به‌طور دقیق بنویسید تا میزبان بتواند آن را اصلاح کند..."></textarea>
                     </div>
 
                     {{-- دکمه‌های عملیات --}}
-                    <div class="flex items-center justify-end gap-3 pt-3 border-t border-gray-100 dark:border-gray-800">
-                        <button type="button" @click="showRejectModal = false" class="px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 text-slate-700 dark:text-slate-300 text-xs font-bold hover:bg-gray-100 dark:hover:bg-gray-800 transition">
+                    <div class="flex items-center justify-end gap-3 pt-3 border-t border-slate-100 dark:border-slate-800">
+                        <button type="button" @click="showRejectModal = false" class="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer">
                             انصراف
                         </button>
                         <button type="submit" 
                                 :disabled="!rejectionReason.trim()"
-                                class="px-5 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white font-bold text-xs shadow-md shadow-red-600/20 transition flex items-center gap-1.5">
+                                class="px-5 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white font-bold text-xs shadow-md shadow-red-600/20 transition flex items-center gap-1.5 cursor-pointer">
                             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
                             <span>ثبت علت و تعلیق حساب</span>
                         </button>
@@ -1110,7 +1110,9 @@
         </div>
     </div>
 
-    {{-- مودال افزودن میزبان جدید توسط مدیر --}}
+    {{-- ======================================================== --}}
+    {{-- ۴. مودال افزودن میزبان جدید توسط مدیر (Create Host Modal) --}}
+    {{-- ======================================================== --}}
     <div x-show="showCreateModal" 
          x-cloak
          class="fixed inset-0 z-50 overflow-y-auto"
@@ -1127,7 +1129,7 @@
                  x-transition:leave="ease-in duration-200"
                  x-transition:leave-start="opacity-100"
                  x-transition:leave-end="opacity-0"
-                 class="fixed inset-0 bg-gray-950/70 backdrop-blur-sm transition-opacity" 
+                 class="fixed inset-0 bg-slate-950/70 dark:bg-slate-950/80 backdrop-blur-sm transition-opacity" 
                  aria-hidden="true"></div>
 
             {{-- کانتینر اصلی مودال --}}
@@ -1138,279 +1140,288 @@
                  x-transition:leave="ease-in duration-200"
                  x-transition:leave-start="opacity-100 scale-100"
                  x-transition:leave-end="opacity-0 scale-95"
-                 class="relative z-10 inline-block w-full max-w-2xl my-8 text-right align-middle transition-all transform bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden font-sans">
+                 class="relative z-10 inline-block w-full max-w-2xl my-8 text-right align-middle transition-all transform bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden font-sans">
 
-                <form action="{{ route('user.properties.hosts.admin.store') }}" method="POST" enctype="multipart/form-data" class="p-6 sm:p-7 space-y-5">
+                <form action="{{ route('user.properties.hosts.admin.store') }}" method="POST" enctype="multipart/form-data">
                     @csrf
                     <input type="hidden" name="user_mode" :value="userMode">
                     <input type="hidden" name="user_id" :value="createForm.user_id">
 
-                    {{-- هدر مودال --}}
-                    <div class="flex items-center justify-between pb-4 border-b border-gray-100 dark:border-gray-700/80">
-                        <div class="flex items-center gap-3">
-                            <span class="w-10 h-10 rounded-2xl bg-indigo-50 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-300 flex items-center justify-center font-bold">
-                                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>
-                            </span>
-                            <div>
-                                <h3 class="text-base font-black text-gray-900 dark:text-white" id="modal-create-host-title">
-                                    افزودن میزبان جدید به سیستم
-                                </h3>
-                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">ثبت یکپارچه حساب کاربری، مشخصات کسب‌وکار و پروفایل میزبانی</p>
+                    {{-- سربرگ مودال هماهنگ با هویت بصری سایر مودال‌ها --}}
+                    <div class="relative overflow-hidden p-6 bg-gradient-to-br from-indigo-900 via-indigo-800 to-slate-900 dark:from-slate-900 dark:via-indigo-950 dark:to-slate-950 text-white border-b border-indigo-700/30 dark:border-slate-800">
+                        <div class="absolute -top-16 -left-16 w-48 h-48 bg-indigo-500/20 rounded-full blur-2xl pointer-events-none"></div>
+
+                        <div class="relative z-10 flex items-center justify-between">
+                            <div class="flex items-center gap-3">
+                                <div class="w-12 h-12 rounded-2xl bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/20 dark:border-white/10 text-indigo-300 flex items-center justify-center font-black text-lg shadow-lg flex-shrink-0">
+                                    <svg class="w-6 h-6 text-indigo-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>
+                                </div>
+                                <div>
+                                    <h3 class="text-base font-black text-white" id="modal-create-host-title">
+                                        افزودن میزبان جدید به سیستم
+                                    </h3>
+                                    <p class="text-xs text-indigo-200/90 dark:text-slate-300 mt-1">ثبت یکپارچه حساب کاربری، مشخصات کسب‌وکار و پروفایل میزبانی</p>
+                                </div>
+                            </div>
+
+                            <button type="button" @click="showCreateModal = false" class="p-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white/80 hover:text-white transition focus:outline-none cursor-pointer">
+                                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    {{-- بدنه اسکرول‌خور فرم --}}
+                    <div class="p-6 space-y-5 max-h-[75vh] overflow-y-auto bg-slate-50/60 dark:bg-slate-950/40">
+
+                        {{-- تب‌بار انتخاب نوع فرآیند --}}
+                        <div class="p-1.5 rounded-2xl bg-slate-200/70 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 flex items-center gap-1.5 text-xs font-bold">
+                            <button type="button" 
+                                    @click="userMode = 'new'" 
+                                    :class="userMode === 'new' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-300 shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'"
+                                    class="flex-1 py-2 rounded-xl text-center transition cursor-pointer flex items-center justify-center gap-1.5">
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>
+                                <span>۱. ایجاد کاربر و میزبان جدید</span>
+                            </button>
+                            <button type="button" 
+                                    @click="userMode = 'existing'" 
+                                    :class="userMode === 'existing' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-300 shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'"
+                                    class="flex-1 py-2 rounded-xl text-center transition cursor-pointer flex items-center justify-center gap-1.5">
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                <span>۲. تبدیل کاربر موجود به میزبان</span>
+                            </button>
+                        </div>
+
+                        {{-- ۱. بخش اطلاعات کاربری --}}
+                        <div class="p-5 rounded-2xl bg-white dark:bg-slate-800/90 border border-slate-200/80 dark:border-slate-700/80 shadow-xs space-y-4">
+                            <h4 class="text-xs font-black text-indigo-600 dark:text-indigo-400 flex items-center gap-2 border-b border-slate-100 dark:border-slate-700/60 pb-2">
+                                <span class="w-2 h-2 rounded-full bg-indigo-500"></span>
+                                اطلاعات حساب کاربری
+                            </h4>
+
+                            {{-- حالت اول: کاربر کاملاً جدید --}}
+                            <div x-show="userMode === 'new'" class="space-y-3">
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <div>
+                                        <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                                            نام و نام خانوادگی <span class="text-rose-500">*</span>
+                                        </label>
+                                        <input type="text" 
+                                               name="name" 
+                                               x-model="createForm.name" 
+                                               @input="syncDisplayName()"
+                                               :required="userMode === 'new'"
+                                               placeholder="مثال: محمد رضایی" 
+                                               class="w-full rounded-xl border-slate-200 bg-slate-50/70 p-2.5 text-xs text-slate-900 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 transition-all dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:bg-slate-800 dark:focus:border-indigo-400 dark:focus:ring-indigo-500/30 placeholder-slate-400 dark:placeholder-slate-500 font-sans">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                                            شماره موبایل (نام کاربری ورود) <span class="text-rose-500">*</span>
+                                        </label>
+                                        <input type="text" 
+                                               name="mobile" 
+                                               x-model="createForm.mobile" 
+                                               :required="userMode === 'new'"
+                                               placeholder="۰۹۱۲۳۴۵۶۷۸۹" 
+                                               class="w-full rounded-xl border-slate-200 bg-slate-50/70 p-2.5 text-xs text-slate-900 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 transition-all dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:bg-slate-800 dark:focus:border-indigo-400 dark:focus:ring-indigo-500/30 placeholder-slate-400 dark:placeholder-slate-500 font-sans dir-ltr text-right">
+                                    </div>
+                                </div>
+                            </div>
+
+                            {{-- حالت دوم: جستجو و انتخاب کاربر موجود --}}
+                            <div x-show="userMode === 'existing'" class="space-y-3">
+                                <div class="relative">
+                                    <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                                        جستجو و انتخاب کاربر از سامانه <span class="text-rose-500">*</span>
+                                    </label>
+                                    <div class="relative">
+                                        <input type="text" 
+                                               x-model="searchUserQuery" 
+                                               @input.debounce.300ms="searchAvailableUsers()" 
+                                               placeholder="نام، شماره موبایل یا ایمیل کاربر را تایپ کنید..." 
+                                               class="w-full rounded-xl border-slate-200 bg-slate-50/70 p-2.5 pr-10 text-xs text-slate-900 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 transition-all dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:bg-slate-800 dark:focus:border-indigo-400 dark:focus:ring-indigo-500/30 placeholder-slate-400 dark:placeholder-slate-500 font-sans">
+                                        <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-slate-400">
+                                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                                        </div>
+                                        <div x-show="isSearchingUser" class="absolute inset-y-0 left-0 flex items-center pl-3">
+                                            <span class="w-3.5 h-3.5 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin"></span>
+                                        </div>
+                                    </div>
+
+                                    {{-- لیست نتایج سرچ کاربر --}}
+                                    <div x-show="searchUserResults.length > 0" 
+                                         @click.outside="searchUserResults = []" 
+                                         class="absolute z-20 w-full mt-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-xl max-h-48 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-700 text-xs">
+                                        <template x-for="user in searchUserResults" :key="user.id">
+                                            <div @click="selectUser(user)" 
+                                                 class="p-3 hover:bg-indigo-50/70 dark:hover:bg-indigo-950/50 cursor-pointer flex items-center justify-between transition">
+                                                <div>
+                                                    <strong class="font-bold text-slate-900 dark:text-white" x-text="user.name"></strong>
+                                                    <span class="text-slate-400 mr-2 text-[11px]" x-text="user.email"></span>
+                                                </div>
+                                                <span class="font-sans text-indigo-600 dark:text-indigo-400 dir-ltr text-[11px]" x-text="user.mobile"></span>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </div>
+
+                                {{-- نمایش کاربر انتخاب شده --}}
+                                <div x-show="selectedExistingUser" class="p-3.5 rounded-2xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200/60 dark:border-indigo-800/50 flex items-center justify-between text-xs">
+                                    <div class="flex items-center gap-2.5">
+                                        <span class="w-8 h-8 rounded-full bg-indigo-600 text-white font-bold flex items-center justify-center text-xs">✓</span>
+                                        <div>
+                                            <strong class="text-slate-900 dark:text-white" x-text="selectedExistingUser?.name"></strong>
+                                            <span class="text-slate-500 dark:text-slate-400 block text-[11px]" x-text="selectedExistingUser?.mobile ? 'موبایل: ' + selectedExistingUser.mobile : selectedExistingUser?.email"></span>
+                                        </div>
+                                    </div>
+                                    <button type="button" @click="clearSelectedUser()" class="text-rose-500 hover:text-rose-700 text-xs font-bold cursor-pointer">
+                                        تغییر کاربر
+                                    </button>
+                                </div>
                             </div>
                         </div>
 
-                        <button type="button" @click="showCreateModal = false" class="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition cursor-pointer">
-                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
-                        </button>
-                    </div>
+                        {{-- ۲. بخش مشخصات میزبانی و کسب‌وکار --}}
+                        <div class="p-5 rounded-2xl bg-white dark:bg-slate-800/90 border border-slate-200/80 dark:border-slate-700/80 shadow-xs space-y-4">
+                            <h4 class="text-xs font-black text-indigo-600 dark:text-indigo-400 flex items-center gap-2 border-b border-slate-100 dark:border-slate-700/60 pb-2">
+                                <span class="w-2 h-2 rounded-full bg-indigo-500"></span>
+                                مشخصات کسب‌وکار و پروفایل میزبانی
+                            </h4>
 
-                    {{-- تب‌بار انتخاب نوع فرآیند --}}
-                    <div class="p-1 rounded-2xl bg-gray-100 dark:bg-gray-900/60 flex items-center gap-1 text-xs font-bold">
-                        <button type="button" 
-                                @click="userMode = 'new'" 
-                                :class="userMode === 'new' ? 'bg-white dark:bg-gray-800 text-indigo-600 dark:text-indigo-300 shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'"
-                                class="flex-1 py-2 rounded-xl text-center transition cursor-pointer flex items-center justify-center gap-1.5">
-                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>
-                            <span>۱. ایجاد کاربر و میزبان جدید</span>
-                        </button>
-                        <button type="button" 
-                                @click="userMode = 'existing'" 
-                                :class="userMode === 'existing' ? 'bg-white dark:bg-gray-800 text-indigo-600 dark:text-indigo-300 shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'"
-                                class="flex-1 py-2 rounded-xl text-center transition cursor-pointer flex items-center justify-center gap-1.5">
-                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                            <span>۲. تبدیل کاربر موجود به میزبان</span>
-                        </button>
-                    </div>
-
-                    {{-- ۱. بخش اطلاعات کاربری --}}
-                    <div class="space-y-3.5">
-                        <div class="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 flex items-center gap-1.5">
-                            <span>●</span>
-                            <span>اطلاعات حساب کاربری</span>
-                        </div>
-
-                        {{-- حالت اول: کاربر کاملاً جدید --}}
-                        <div x-show="userMode === 'new'" class="space-y-3">
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 <div>
-                                    <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
-                                        نام و نام خانوادگی <span class="text-rose-500">*</span>
+                                    <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                                        نام نمایشی میزبان <span class="text-rose-500">*</span>
                                     </label>
                                     <input type="text" 
-                                           name="name" 
-                                           x-model="createForm.name" 
-                                           @input="syncDisplayName()"
-                                           :required="userMode === 'new'"
-                                           placeholder="مثال: محمد رضایی" 
-                                           class="w-full rounded-2xl border-gray-200 bg-gray-50/70 p-3 text-xs text-gray-900 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 transition-all dark:border-gray-700 dark:bg-gray-800/90 dark:text-gray-100 font-sans">
+                                           name="display_name" 
+                                           x-model="createForm.display_name" 
+                                           required
+                                           placeholder="مثال: ویلاداران لفور یا نام میزبان" 
+                                           class="w-full rounded-xl border-slate-200 bg-slate-50/70 p-2.5 text-xs text-slate-900 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 transition-all dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:bg-slate-800 dark:focus:border-indigo-400 dark:focus:ring-indigo-500/30 placeholder-slate-400 dark:placeholder-slate-500 font-sans">
                                 </div>
                                 <div>
-                                    <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
-                                        شماره موبایل (نام کاربری ورود) <span class="text-rose-500">*</span>
+                                    <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                                        تلفن هماهنگی و تماس
                                     </label>
                                     <input type="text" 
-                                           name="mobile" 
-                                           x-model="createForm.mobile" 
-                                           :required="userMode === 'new'"
-                                           placeholder="۰۹۱۲۳۴۵۶۷۸۹" 
-                                           class="w-full rounded-2xl border-gray-200 bg-gray-50/70 p-3 text-xs text-gray-900 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 transition-all dark:border-gray-700 dark:bg-gray-800/90 dark:text-gray-100 font-sans dir-ltr text-right">
+                                           name="phone" 
+                                           x-model="createForm.phone" 
+                                           placeholder="در صورت خالی بودن شماره موبایل ثبت می‌شود" 
+                                           class="w-full rounded-xl border-slate-200 bg-slate-50/70 p-2.5 text-xs text-slate-900 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 transition-all dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:bg-slate-800 dark:focus:border-indigo-400 dark:focus:ring-indigo-500/30 placeholder-slate-400 dark:placeholder-slate-500 font-sans dir-ltr text-right">
                                 </div>
                             </div>
-                        </div>
 
-                        {{-- حالت دوم: جستجو و انتخاب کاربر موجود --}}
-                        <div x-show="userMode === 'existing'" class="space-y-3">
-                            <div class="relative">
-                                <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
-                                    جستجو و انتخاب کاربر از سامانه <span class="text-rose-500">*</span>
-                                </label>
-                                <div class="relative">
-                                    <input type="text" 
-                                           x-model="searchUserQuery" 
-                                           @input.debounce.300ms="searchAvailableUsers()" 
-                                           placeholder="نام، شماره موبایل یا ایمیل کاربر را تایپ کنید..." 
-                                           class="w-full rounded-2xl border-gray-200 bg-gray-50/70 p-3 pr-10 text-xs text-gray-900 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 transition-all dark:border-gray-700 dark:bg-gray-800/90 dark:text-gray-100 font-sans">
-                                    <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-slate-400">
-                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-                                    </div>
-                                    <div x-show="isSearchingUser" class="absolute inset-y-0 left-0 flex items-center pl-3">
-                                        <span class="w-3.5 h-3.5 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin"></span>
-                                    </div>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                                        درصد کارمزد پلتفرم از رزروها
+                                    </label>
+                                    <input type="number" 
+                                           name="commission_rate" 
+                                           x-model="createForm.commission_rate" 
+                                           step="0.5" 
+                                           min="0" 
+                                           max="100" 
+                                           placeholder="خالی = پیش‌فرض سامانه ({{ \Modules\Properties\Entities\PropertySetting::get('rental_default_commission', 10) }}٪)" 
+                                           class="w-full rounded-xl border-slate-200 bg-slate-50/70 p-2.5 text-xs text-slate-900 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 transition-all dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:bg-slate-800 dark:focus:border-indigo-400 dark:focus:ring-indigo-500/30 placeholder-slate-400 dark:placeholder-slate-500 font-sans">
                                 </div>
 
-                                {{-- لیست نتایج سرچ کاربر --}}
-                                <div x-show="searchUserResults.length > 0" 
-                                     @click.outside="searchUserResults = []"
-                                     class="absolute z-20 w-full mt-1.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-xl max-h-48 overflow-y-auto divide-y divide-gray-100 dark:divide-gray-700 text-xs">
-                                    <template x-for="user in searchUserResults" :key="user.id">
-                                        <div @click="selectUser(user)" 
-                                             class="p-3 hover:bg-indigo-50/70 dark:hover:bg-indigo-950/40 cursor-pointer flex items-center justify-between transition">
-                                            <div>
-                                                <strong class="font-bold text-gray-900 dark:text-white" x-text="user.name"></strong>
-                                                <span class="text-gray-400 mr-2 text-[11px]" x-text="user.email"></span>
-                                            </div>
-                                            <span class="font-sans text-indigo-600 dark:text-indigo-400 dir-ltr text-[11px]" x-text="user.mobile"></span>
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                                        آواتار و تصویر نمایه میزبان
+                                    </label>
+                                    <input type="file" 
+                                           name="avatar" 
+                                           accept="image/*"
+                                           class="w-full text-xs text-slate-500 dark:text-slate-400 file:mr-0 file:ml-3 file:py-2 file:px-3.5 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-indigo-50 file:text-indigo-700 dark:file:bg-indigo-950/60 dark:file:text-indigo-300 hover:file:bg-indigo-100 dark:hover:file:bg-indigo-900/50 font-sans cursor-pointer">
+                                </div>
+                            </div>
+
+                            {{-- ۳. تنظیمات وضعیت فعال‌سازی و مدارک هویتی --}}
+                            <div class="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-700/60">
+                                <label class="block text-xs font-bold text-slate-800 dark:text-slate-200">
+                                    وضعیت فعال‌سازی و مدارک هویتی:
+                                </label>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
+                                    <label class="flex items-center gap-2.5 p-3 rounded-2xl border cursor-pointer transition"
+                                           :class="createForm.verification_mode === 'instant' ? 'bg-indigo-50/80 border-indigo-400 dark:bg-indigo-950/50 dark:border-indigo-500/60 text-indigo-950 dark:text-indigo-200 shadow-xs' : 'bg-slate-50/70 dark:bg-slate-800/80 border-slate-200/80 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-600'">
+                                        <input type="radio" name="verification_mode" value="instant" x-model="createForm.verification_mode" class="text-indigo-600 focus:ring-indigo-500">
+                                        <div>
+                                            <strong class="block text-xs font-bold">تأیید فوری و فعال‌سازی کامل</strong>
+                                            <span class="text-[11px] text-slate-500 dark:text-slate-400">حساب فعال و مدارک تأیید شده است</span>
                                         </div>
-                                    </template>
-                                </div>
-                            </div>
+                                    </label>
 
-                            {{-- نمایش کاربر انتخاب شده --}}
-                            <div x-show="selectedExistingUser" class="p-3.5 rounded-2xl bg-indigo-50/70 dark:bg-indigo-950/30 border border-indigo-200/60 dark:border-indigo-800/40 flex items-center justify-between text-xs">
-                                <div class="flex items-center gap-2.5">
-                                    <span class="w-8 h-8 rounded-full bg-indigo-600 text-white font-bold flex items-center justify-center text-xs">✓</span>
-                                    <div>
-                                        <strong class="text-gray-900 dark:text-white" x-text="selectedExistingUser?.name"></strong>
-                                        <span class="text-gray-500 block text-[11px]" x-text="selectedExistingUser?.mobile ? 'موبایل: ' + selectedExistingUser.mobile : selectedExistingUser?.email"></span>
-                                    </div>
-                                </div>
-                                <button type="button" @click="clearSelectedUser()" class="text-rose-500 hover:text-rose-700 text-xs font-bold cursor-pointer">
-                                    تغییر کاربر
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
-                    {{-- ۲. بخش مشخصات میزبانی و کسب‌وکار --}}
-                    <div class="space-y-3.5 pt-3 border-t border-gray-100 dark:border-gray-700/80">
-                        <div class="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 flex items-center gap-1.5">
-                            <span>●</span>
-                            <span>مشخصات کسب‌وکار و پروفایل میزبانی</span>
-                        </div>
-
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            <div>
-                                <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
-                                    نام نمایشی میزبان <span class="text-rose-500">*</span>
-                                </label>
-                                <input type="text" 
-                                       name="display_name" 
-                                       x-model="createForm.display_name" 
-                                       required
-                                       placeholder="مثال: ویلاداران لفور یا نام میزبان" 
-                                       class="w-full rounded-2xl border-gray-200 bg-gray-50/70 p-3 text-xs text-gray-900 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 transition-all dark:border-gray-700 dark:bg-gray-800/90 dark:text-gray-100 font-sans">
-                            </div>
-                            <div>
-                                <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
-                                    تلفن هماهنگی و تماس
-                                </label>
-                                <input type="text" 
-                                       name="phone" 
-                                       x-model="createForm.phone" 
-                                       placeholder="در صورت خالی بودن شماره موبایل ثبت می‌شود" 
-                                       class="w-full rounded-2xl border-gray-200 bg-gray-50/70 p-3 text-xs text-gray-900 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 transition-all dark:border-gray-700 dark:bg-gray-800/90 dark:text-gray-100 font-sans dir-ltr text-right">
-                            </div>
-                        </div>
-
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            <div>
-                                <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
-                                    درصد کارمزد پلتفرم از رزروها
-                                </label>
-                                <input type="number" 
-                                       name="commission_rate" 
-                                       x-model="createForm.commission_rate" 
-                                       step="0.5" 
-                                       min="0" 
-                                       max="100" 
-                                       placeholder="خالی = پیش‌فرض سامانه ({{ \Modules\Properties\Entities\PropertySetting::get('rental_default_commission', 10) }}٪)" 
-                                       class="w-full rounded-2xl border-gray-200 bg-gray-50/70 p-3 text-xs text-gray-900 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 transition-all dark:border-gray-700 dark:bg-gray-800/90 dark:text-gray-100 font-sans">
-                            </div>
-
-                            <div>
-                                <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
-                                    آواتار و تصویر نمایه میزبان
-                                </label>
-                                <input type="file" 
-                                       name="avatar" 
-                                       accept="image/*"
-                                       class="w-full text-xs text-slate-500 file:mr-0 file:ml-3 file:py-2 file:px-3.5 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-indigo-50 file:text-indigo-700 dark:file:bg-indigo-900/30 dark:file:text-indigo-300 hover:file:bg-indigo-100 font-sans cursor-pointer">
-                            </div>
-                        </div>
-
-                        {{-- ۳. تنظیمات شفاف و یکپارچه وضعیت فعال‌سازی و مدارک هویتی --}}
-                        <div class="space-y-2 pt-1">
-                            <label class="block text-xs font-bold text-gray-800 dark:text-gray-200">
-                                وضعیت فعال‌سازی و مدارک هویتی:
-                            </label>
-                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-                                <label class="flex items-center gap-2.5 p-3 rounded-2xl border cursor-pointer transition"
-                                       :class="createForm.verification_mode === 'instant' ? 'bg-indigo-50/70 border-indigo-300 dark:bg-indigo-950/40 dark:border-indigo-600 text-indigo-950 dark:text-indigo-200 shadow-2xs' : 'bg-gray-50/70 border-gray-200/70 dark:bg-gray-800/80 dark:border-gray-700 text-gray-700 dark:text-gray-300'">
-                                    <input type="radio" name="verification_mode" value="instant" x-model="createForm.verification_mode" class="text-indigo-600 focus:ring-indigo-500">
-                                    <div>
-                                        <strong class="block text-xs font-bold">تأیید فوری و فعال‌سازی کامل</strong>
-                                        <span class="text-[11px] text-gray-500 dark:text-gray-400">حساب فعال و مدارک تأیید شده است</span>
-                                    </div>
-                                </label>
-
-                                <label class="flex items-center gap-2.5 p-3 rounded-2xl border cursor-pointer transition"
-                                       :class="createForm.verification_mode === 'delegate' ? 'bg-indigo-50/70 border-indigo-300 dark:bg-indigo-950/40 dark:border-indigo-600 text-indigo-950 dark:text-indigo-200 shadow-2xs' : 'bg-gray-50/70 border-gray-200/70 dark:bg-gray-800/80 dark:border-gray-700 text-gray-700 dark:text-gray-300'">
-                                    <input type="radio" name="verification_mode" value="delegate" x-model="createForm.verification_mode" class="text-indigo-600 focus:ring-indigo-500">
-                                    <div>
-                                        <strong class="block text-xs font-bold">واگذاری تکمیل مدارک به خود میزبان</strong>
-                                        <span class="text-[11px] text-gray-500 dark:text-gray-400">میزبان پس از ورود مدارک را بارگذاری می‌کند</span>
-                                    </div>
-                                </label>
-                            </div>
-                        </div>
-
-                        {{-- ۴. فیلدهای احراز هویت سفارشی تعریف‌شده در سامانه (در صورت انتخاب تأیید فوری) --}}
-                        @if(isset($verificationFieldDefs) && count($verificationFieldDefs) > 0)
-                            <div x-show="createForm.verification_mode === 'instant'" class="space-y-3 pt-3 border-t border-gray-100 dark:border-gray-700/80">
-                                <div class="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 flex items-center gap-1.5">
-                                    <span>●</span>
-                                    <span>فیلدها و مدارک احراز هویت میزبان (مدیریت فیلدهای سفارشی)</span>
-                                </div>
-                                
-                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                    @foreach($verificationFieldDefs as $f)
-                                        @php
-                                            $fType = strtolower($f->field_type ?? 'text');
-                                            $fMeta = is_array($f->meta ?? null) ? $f->meta : (is_string($f->meta ?? null) ? json_decode($f->meta, true) : []);
-                                            $fMeta = $fMeta ?: [];
-                                            $fOptions = $fMeta['options'] ?? [];
-                                        @endphp
-                                        <div class="space-y-1.5 p-3 rounded-2xl bg-gray-50/80 dark:bg-gray-900/60 border border-gray-200/60 dark:border-gray-700/60">
-                                            <div class="flex items-center justify-between">
-                                                <label class="text-xs font-bold text-gray-800 dark:text-gray-200">
-                                                    {{ $f->label ?: $f->field_name }}
-                                                </label>
-                                            </div>
-
-                                            @if($fType === 'file')
-                                                <input type="file" 
-                                                       name="custom[{{ $f->field_name }}]" 
-                                                       class="w-full text-xs text-slate-500 file:mr-0 file:ml-3 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-indigo-50 file:text-indigo-700 dark:file:bg-indigo-900/30 dark:file:text-indigo-300 hover:file:bg-indigo-100 font-sans cursor-pointer">
-                                            @elseif($fType === 'textarea')
-                                                <textarea name="custom[{{ $f->field_name }}]" 
-                                                          rows="2" 
-                                                          class="w-full rounded-xl border-gray-200 bg-white p-2.5 text-xs text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 font-sans resize-none"></textarea>
-                                            @elseif($fType === 'select')
-                                                <select name="custom[{{ $f->field_name }}]" 
-                                                        class="w-full rounded-xl border-gray-200 bg-white p-2.5 text-xs text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 font-sans cursor-pointer">
-                                                    <option value="">انتخاب کنید...</option>
-                                                    @foreach($fOptions as $optKey => $optVal)
-                                                        <option value="{{ $optKey }}">{{ $optVal }}</option>
-                                                    @endforeach
-                                                </select>
-                                            @else
-                                                <input type="{{ $fType === 'number' ? 'number' : 'text' }}" 
-                                                       name="custom[{{ $f->field_name }}]" 
-                                                       placeholder="{{ $f->label ?: $f->field_name }}"
-                                                       class="w-full rounded-xl border-gray-200 bg-white p-2.5 text-xs text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 font-sans {{ $fType === 'number' || str_contains($f->field_name, 'code') ? 'dir-ltr text-right' : '' }}">
-                                            @endif
+                                    <label class="flex items-center gap-2.5 p-3 rounded-2xl border cursor-pointer transition"
+                                           :class="createForm.verification_mode === 'delegate' ? 'bg-indigo-50/80 border-indigo-400 dark:bg-indigo-950/50 dark:border-indigo-500/60 text-indigo-950 dark:text-indigo-200 shadow-xs' : 'bg-slate-50/70 dark:bg-slate-800/80 border-slate-200/80 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-600'">
+                                        <input type="radio" name="verification_mode" value="delegate" x-model="createForm.verification_mode" class="text-indigo-600 focus:ring-indigo-500">
+                                        <div>
+                                            <strong class="block text-xs font-bold">واگذاری تکمیل مدارک به خود میزبان</strong>
+                                            <span class="text-[11px] text-slate-500 dark:text-slate-400">میزبان پس از ورود مدارک را بارگذاری می‌کند</span>
                                         </div>
-                                    @endforeach
+                                    </label>
                                 </div>
                             </div>
-                        @endif
+
+                            {{-- ۴. فیلدهای احراز هویت سفارشی تعریف‌شده در سامانه (در صورت انتخاب تأیید فوری) --}}
+                            @if(isset($verificationFieldDefs) && count($verificationFieldDefs) > 0)
+                                <div x-show="createForm.verification_mode === 'instant'" class="space-y-3 pt-3 border-t border-slate-100 dark:border-slate-700/60">
+                                    <div class="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 flex items-center gap-1.5">
+                                        <span>●</span>
+                                        <span>فیلدها و مدارک احراز هویت میزبان (مدیریت فیلدهای سفارشی)</span>
+                                    </div>
+                                    
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                        @foreach($verificationFieldDefs as $f)
+                                            @php
+                                                $fType = strtolower($f->field_type ?? 'text');
+                                                $fMeta = is_array($f->meta ?? null) ? $f->meta : (is_string($f->meta ?? null) ? json_decode($f->meta, true) : []);
+                                                $fMeta = $fMeta ?: [];
+                                                $fOptions = $fMeta['options'] ?? [];
+                                            @endphp
+                                            <div class="space-y-1.5 p-3.5 rounded-2xl bg-slate-50/80 dark:bg-slate-900/70 border border-slate-200/70 dark:border-slate-700/70">
+                                                <div class="flex items-center justify-between">
+                                                    <label class="text-xs font-bold text-slate-800 dark:text-slate-200">
+                                                        {{ $f->label ?: $f->field_name }}
+                                                    </label>
+                                                </div>
+
+                                                @if($fType === 'file')
+                                                    <input type="file" 
+                                                           name="custom[{{ $f->field_name }}]" 
+                                                           class="w-full text-xs text-slate-500 dark:text-slate-400 file:mr-0 file:ml-3 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-indigo-50 file:text-indigo-700 dark:file:bg-indigo-950/60 dark:file:text-indigo-300 hover:file:bg-indigo-100 dark:hover:file:bg-indigo-900/50 font-sans cursor-pointer">
+                                                @elseif($fType === 'textarea')
+                                                    <textarea name="custom[{{ $f->field_name }}]" 
+                                                              rows="2" 
+                                                              class="w-full rounded-xl border-slate-200 bg-white p-2.5 text-xs text-slate-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:border-indigo-400 dark:focus:bg-slate-800 font-sans resize-none"></textarea>
+                                                @elseif($fType === 'select')
+                                                    <select name="custom[{{ $f->field_name }}]" 
+                                                            class="w-full rounded-xl border-slate-200 bg-white p-2.5 text-xs text-slate-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:border-indigo-400 dark:focus:bg-slate-800 font-sans cursor-pointer">
+                                                        <option value="">انتخاب کنید...</option>
+                                                        @foreach($fOptions as $optKey => $optVal)
+                                                            <option value="{{ $optKey }}">{{ $optVal }}</option>
+                                                        @endforeach
+                                                    </select>
+                                                @else
+                                                    <input type="{{ $fType === 'number' ? 'number' : 'text' }}" 
+                                                           name="custom[{{ $f->field_name }}]" 
+                                                           placeholder="{{ $f->label ?: $f->field_name }}"
+                                                           class="w-full rounded-xl border-slate-200 bg-white p-2.5 text-xs text-slate-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:focus:border-indigo-400 dark:focus:bg-slate-800 font-sans {{ $fType === 'number' || str_contains($f->field_name, 'code') ? 'dir-ltr text-right' : '' }}">
+                                                @endif
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                </div>
+                            @endif
+                        </div>
+
                     </div>
 
                     {{-- دکمه‌های عملیات ثبت یا انصراف --}}
-                    <div class="flex items-center justify-end gap-3 pt-4 border-t border-gray-100 dark:border-gray-700/80">
+                    <div class="p-5 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/95 flex items-center justify-end gap-3">
                         <button type="button" 
                                 @click="showCreateModal = false" 
-                                class="px-5 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 text-slate-700 dark:text-slate-300 text-xs font-bold hover:bg-gray-100 dark:hover:bg-gray-800 transition cursor-pointer">
+                                class="px-5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer">
                             انصراف
                         </button>
                         <button type="submit" 
