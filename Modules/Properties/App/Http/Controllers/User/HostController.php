@@ -13,6 +13,8 @@ use App\Models\CustomUserField;
 use App\Models\UserCustomValue;
 use App\Traits\FileUploadTrait;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 
 class HostController extends Controller
 {
@@ -495,7 +497,7 @@ class HostController extends Controller
                   ->orWhereHas('user', function($uq) use ($s) {
                       $uq->where('name', 'like', "%{$s}%")
                          ->orWhere('email', 'like', "%{$s}%")
-                         ->orWhere('phone', 'like', "%{$s}%");
+                         ->orWhere('mobile', 'like', "%{$s}%");
                   })
                   ->orWhereHas('properties', function($pq) use ($s) {
                       $pq->where('title', 'like', "%{$s}%")
@@ -520,6 +522,224 @@ class HostController extends Controller
             ->get();
 
         return view('properties::user.hosts.index', compact('hosts', 'verificationFieldDefs'));
+    }
+
+    /**
+     * جستجوی کاربران موجود جهت تبدیل به میزبان (AJAX)
+     */
+    public function searchAvailableUsers(Request $request)
+    {
+        $user = auth()->user();
+        if (!$user->hasRole(['super-admin', 'admin']) && !$user->can('properties.hosts.manage') && !$user->can('properties.manage')) {
+            return response()->json([], 403);
+        }
+
+        $query = trim($request->input('q', ''));
+        if (mb_strlen($query) < 2) {
+            return response()->json([]);
+        }
+
+        // شناسه‌های کاربرانی که قبلاً میزبان شده‌اند
+        $existingHostUserIds = PropertyHost::pluck('user_id')->filter()->toArray();
+
+        $users = User::query()
+            ->whereNotIn('id', $existingHostUserIds)
+            ->where(function ($q) use ($query) {
+                $q->where('name', 'like', "%{$query}%")
+                  ->orWhere('mobile', 'like', "%{$query}%")
+                  ->orWhere('email', 'like', "%{$query}%");
+            })
+            ->limit(10)
+            ->get(['id', 'name', 'mobile', 'email']);
+
+        return response()->json($users);
+    }
+
+    /**
+     * ایجاد مستقیم میزبان و پروفایل میزبانی توسط مدیر
+     */
+    public function adminStore(Request $request)
+    {
+        $currentUser = auth()->user();
+        if (!$currentUser->hasRole(['super-admin', 'admin']) && !$currentUser->can('properties.hosts.manage') && !$currentUser->can('properties.manage')) {
+            abort(403);
+        }
+
+        $userMode = $request->input('user_mode', 'new'); // 'new' or 'existing'
+        $verificationMode = $request->input('verification_mode', 'instant'); // 'instant' or 'delegate'
+
+        // نرمال‌سازی ارقام فارسی و عربی به انگلیسی
+        $persianDigits = ['۰','۱','۲','۳','۴','۵','۶','۷','۸','۹'];
+        $arabicDigits  = ['٠','١','٢','٣','٤','٥','٦','٧','٨','٩'];
+        $englishDigits = ['0','1','2','3','4','5','6','7','8','9'];
+        if ($request->filled('mobile')) {
+            $request->merge(['mobile' => str_replace($arabicDigits, $englishDigits, str_replace($persianDigits, $englishDigits, trim((string)$request->mobile)))]);
+        }
+        if ($request->filled('phone')) {
+            $request->merge(['phone' => str_replace($arabicDigits, $englishDigits, str_replace($persianDigits, $englishDigits, trim((string)$request->phone)))]);
+        }
+
+        $status = 'active';
+        $kycStatus = ($verificationMode === 'instant') ? 'approved' : 'not_submitted';
+
+        if ($userMode === 'new') {
+            $request->validate([
+                'name' => 'required|string|max:255',
+                'mobile' => 'required|string|max:20|unique:users,mobile',
+                'display_name' => 'required|string|max:255',
+                'phone' => 'nullable|string|max:20',
+                'commission_rate' => 'nullable|numeric|min:0|max:100',
+            ], [
+                'name.required' => 'نام و نام خانوادگی کاربر الزامی است.',
+                'mobile.required' => 'شماره موبایل کاربر الزامی است.',
+                'mobile.unique' => 'این شماره موبایل قبلاً در سیستم ثبت شده است.',
+                'display_name.required' => 'نام نمایشی میزبان الزامی است.',
+            ]);
+        } else {
+            $request->validate([
+                'user_id' => 'required|exists:users,id',
+                'display_name' => 'required|string|max:255',
+                'phone' => 'nullable|string|max:20',
+                'commission_rate' => 'nullable|numeric|min:0|max:100',
+            ], [
+                'user_id.required' => 'لطفاً کاربر مورد نظر را انتخاب نمایید.',
+                'display_name.required' => 'نام نمایشی میزبان الزامی است.',
+            ]);
+
+            // اطمینان از اینکه کاربر انتخابی قبلاً میزبان نشده باشد
+            if (PropertyHost::where('user_id', $request->user_id)->exists()) {
+                return back()->withErrors(['user_id' => 'این کاربر در حال حاضر دارای پروفایل میزبانی می‌باشد.'])->withInput();
+            }
+        }
+
+        $generatedPassword = null;
+
+        $host = DB::transaction(function () use ($request, $userMode, $status, $kycStatus, &$generatedPassword, $currentUser) {
+            if ($userMode === 'new') {
+                $rawPassword = (string) random_int(100000, 999999);
+                $generatedPassword = $rawPassword;
+
+                // تولید خودکار ایمیل سیستمی معتبر
+                $cleanMobile = preg_replace('/[^0-9]/', '', $request->mobile);
+                $email = $cleanMobile ? "host_{$cleanMobile}@mrvilalafoor.ir" : 'host_' . uniqid() . '@mrvilalafoor.ir';
+
+                $targetUser = User::create([
+                    'name' => $request->name,
+                    'mobile' => $request->mobile,
+                    'email' => $email,
+                    'password' => Hash::make($rawPassword),
+                ]);
+
+                // اختصاص نقش property_host
+                $targetUser->assignRole('property_host');
+            } else {
+                $targetUser = User::findOrFail($request->user_id);
+                if (!$targetUser->hasRole('property_host')) {
+                    $targetUser->assignRole('property_host');
+                }
+            }
+
+            // همگام‌سازی با PropertyOwner (مدیریت مالکان املاک)
+            $phone = $request->filled('phone') ? $request->phone : ($targetUser->mobile ?? $targetUser->phone ?? '');
+            $owner = PropertyOwner::where('user_id', $targetUser->id)
+                ->orWhere(function ($q) use ($phone) {
+                    if ($phone) $q->where('phone', $phone);
+                })
+                ->first();
+
+            if (!$owner) {
+                $nameParts = explode(' ', $targetUser->name ?? $request->display_name, 2);
+                $firstName = $nameParts[0] ?? $request->display_name;
+                $lastName = $nameParts[1] ?? ' ';
+
+                $owner = PropertyOwner::create([
+                    'user_id' => $targetUser->id,
+                    'first_name' => $firstName,
+                    'last_name' => $lastName,
+                    'phone' => $phone,
+                    'created_by' => $currentUser->id,
+                ]);
+            } else {
+                if (!$owner->user_id) {
+                    $owner->update(['user_id' => $targetUser->id]);
+                }
+            }
+
+            $displayName = $request->display_name;
+            $slugBase = Str::slug($displayName);
+            if (empty($slugBase)) {
+                $slugBase = 'host-' . $targetUser->id;
+            } else {
+                $slugBase .= '-' . $targetUser->id;
+            }
+
+            $hostData = [
+                'user_id' => $targetUser->id,
+                'owner_id' => $owner->id,
+                'display_name' => $displayName,
+                'slug' => $slugBase,
+                'phone' => $phone,
+                'commission_rate' => $request->filled('commission_rate') ? $request->commission_rate : null,
+                'status' => $status,
+                'kyc_status' => $kycStatus,
+            ];
+
+            if ($request->hasFile('avatar')) {
+                $hostData['avatar'] = $this->uploadFile($request->file('avatar'), 'properties/hosts/avatars');
+            }
+
+            $createdHost = PropertyHost::create($hostData);
+
+            // پردازش داینامیک کلیه فیلدهای احراز هویت سفارشی (/admin/custom-fields)
+            if ($request->has('custom') && is_array($request->custom)) {
+                foreach ($request->custom as $fieldName => $val) {
+                    if ($request->hasFile("custom.{$fieldName}")) {
+                        $file = $request->file("custom.{$fieldName}");
+                        $path = $this->uploadFile($file, 'properties/hosts/kyc');
+                        UserCustomValue::updateOrCreate(
+                            ['user_id' => $targetUser->id, 'field_name' => $fieldName],
+                            ['value' => $path]
+                        );
+                        if (in_array($fieldName, ['national_card_image', 'tsoyr_kart_mly'])) {
+                            $createdHost->update(['national_card_image' => $path]);
+                        }
+                    } elseif (!is_null($val) && $val !== '') {
+                        if (is_array($val)) {
+                            $val = json_encode($val, JSON_UNESCAPED_UNICODE);
+                        }
+                        UserCustomValue::updateOrCreate(
+                            ['user_id' => $targetUser->id, 'field_name' => $fieldName],
+                            ['value' => $val]
+                        );
+                        if (in_array($fieldName, ['national_code', 'kd_mly_myzban'])) {
+                            $createdHost->update(['national_code' => $val]);
+                            if ($owner) {
+                                $owner->update(['national_code' => $val]);
+                            }
+                        }
+                    }
+                }
+            }
+
+            return $createdHost;
+        });
+
+        $credentials = null;
+        if ($userMode === 'new') {
+            $credentials = [
+                'host_id' => $host->id,
+                'display_name' => $host->display_name,
+                'name' => $host->user->name ?? $host->display_name,
+                'mobile' => $host->user->mobile ?? $host->phone,
+                'password' => $generatedPassword,
+            ];
+        }
+
+        $successMsg = "میزبان «{$host->display_name}» با موفقیت ایجاد شد.";
+
+        return redirect()->route('user.properties.hosts.admin.index')
+            ->with('success', $successMsg)
+            ->with('created_host_credentials', $credentials);
     }
 
     /**

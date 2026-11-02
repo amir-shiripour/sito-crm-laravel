@@ -232,21 +232,9 @@
                 <!-- 1. Zone -->
                 @php
                     $availableDests = $availableDestinations ?? [];
-                    if (empty($availableDests)) {
-                        $availableDests = [
-                            [
-                                'province' => 'مازندران',
-                                'cities' => ['لفور', 'شیرگاه', 'سلمان‌شهر', 'بابل']
-                            ],
-                            [
-                                'province' => 'تهران',
-                                'cities' => ['تهران']
-                            ]
-                        ];
-                    }
                     $allDestCities = collect($availableDests)->flatMap(function($g) {
-                        return collect($g['cities'])->map(function($c) use ($g) {
-                            return ['city' => $c, 'province' => $g['province']];
+                        return collect($g['cities'] ?? [])->map(function($c) use ($g) {
+                            return ['city' => $c, 'province' => $g['province'] ?? ''];
                         });
                     })->values()->all();
 
@@ -349,21 +337,23 @@
                                     <span class="text-xs font-bold text-[#007A5E] dark:text-emerald-400">انتخاب</span>
                                 </button>
 
-                                <div class="space-y-2">
-                                    <div class="text-[11px] font-extrabold text-zinc-400 px-1">شهرهای پرطرفدار:</div>
-                                    <div class="grid grid-cols-2 gap-2">
-                                        @foreach($allDestCities as $item)
-                                            <button type="button" onclick="selectDestination('{{ $item['city'] }}', '{{ $item['city'] }}', event)" data-dest-key="{{ $item['city'] }}"
-                                                    class="flex items-center justify-between px-3 py-2.5 rounded-xl bg-white dark:bg-zinc-900 border border-[#ECECEE] dark:border-zinc-700/80 hover:border-[#007A5E] dark:hover:border-emerald-500 hover:bg-[#ECFDF5] dark:hover:bg-emerald-950/40 text-right transition-all shadow-xs group active:scale-98">
-                                                <div>
-                                                    <div class="text-xs font-bold text-zinc-700 dark:text-zinc-200 group-hover:text-[#007A5E] dark:group-hover:text-emerald-400">{{ $item['city'] }}</div>
-                                                    <div class="text-[10px] text-zinc-400">استان {{ $item['province'] }}</div>
-                                                </div>
-                                                <span class="w-1.5 h-1.5 rounded-full bg-zinc-300 dark:bg-zinc-600 group-hover:bg-[#007A5E] dark:group-hover:bg-emerald-400 shrink-0 transition-colors"></span>
-                                            </button>
-                                        @endforeach
+                                @if(!empty($allDestCities))
+                                    <div class="space-y-2">
+                                        <div class="text-[11px] font-extrabold text-zinc-400 px-1">شهرهای پرطرفدار:</div>
+                                        <div class="grid grid-cols-2 gap-2">
+                                            @foreach($allDestCities as $item)
+                                                <button type="button" onclick="selectDestination('{{ $item['city'] }}', '{{ $item['city'] }}', event)" data-dest-key="{{ $item['city'] }}"
+                                                        class="flex items-center justify-between px-3 py-2.5 rounded-xl bg-white dark:bg-zinc-900 border border-[#ECECEE] dark:border-zinc-700/80 hover:border-[#007A5E] dark:hover:border-emerald-500 hover:bg-[#ECFDF5] dark:hover:bg-emerald-950/40 text-right transition-all shadow-xs group active:scale-98">
+                                                    <div>
+                                                        <div class="text-xs font-bold text-zinc-700 dark:text-zinc-200 group-hover:text-[#007A5E] dark:group-hover:text-emerald-400">{{ $item['city'] }}</div>
+                                                        <div class="text-[10px] text-zinc-400">استان {{ $item['province'] }}</div>
+                                                    </div>
+                                                    <span class="w-1.5 h-1.5 rounded-full bg-zinc-300 dark:bg-zinc-600 group-hover:bg-[#007A5E] dark:group-hover:bg-emerald-400 shrink-0 transition-colors"></span>
+                                                </button>
+                                            @endforeach
+                                        </div>
                                     </div>
-                                </div>
+                                @endif
                             </div>
 
                             <!-- Panel: Per Province -->
@@ -547,9 +537,15 @@
                 <div id="sections-wrapper" class="space-y-12 sm:space-y-16"></div>
 
                 <!-- Minimal Empty State -->
-                <div id="empty-state" class="hidden py-20 text-center">
-                    <p class="text-sm font-bold text-[#18181B] dark:text-zinc-100 mb-2">اقامتگاهی با این مشخصات یافت نشد</p>
-                    <button type="button" onclick="resetAllFilters()" class="mt-2 px-5 py-2.5 rounded-xl bg-[#F7F8F9] dark:bg-zinc-800 hover:bg-[#ECECEE] dark:hover:bg-zinc-700 text-xs font-bold text-[#18181B] dark:text-zinc-100 transition-colors">
+                <div id="empty-state" class="hidden py-20 text-center space-y-3 font-sans">
+                    <div class="w-14 h-14 rounded-2xl bg-[#ECFDF5] dark:bg-emerald-950/40 text-[#007A5E] dark:text-emerald-400 flex items-center justify-center mx-auto shadow-xs">
+                        <svg class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+                        </svg>
+                    </div>
+                    <p id="empty-state-title" class="text-sm font-bold text-[#18181B] dark:text-zinc-100">اقامتگاهی با این مشخصات یافت نشد</p>
+                    <p id="empty-state-subtitle" class="text-xs text-zinc-400 max-w-sm mx-auto leading-relaxed">می‌توانید فیلترهای جستجو را پاکسازی کرده یا مقاصد دیگر را انتخاب نمایید.</p>
+                    <button id="empty-state-btn" type="button" onclick="resetAllFilters()" class="mt-2 px-5 py-2.5 rounded-xl bg-[#007A5E] hover:bg-[#005F48] text-xs font-bold text-white transition-colors shadow-sm">
                         نمایش همه اقامتگاه‌ها
                     </button>
                 </div>
@@ -587,7 +583,7 @@
                                 <span class="text-xs text-zinc-400">کد رهگیری: {{ $bk->booking_number ?? $bk->id }}</span>
                             </div>
                             <div class="flex items-center gap-4">
-                                <img src="{{ $bk->property?->featured_image_url ?? 'https://images.unsplash.com/photo-1542718610-a1d656d1884c?auto=format&fit=crop&w=240&q=80' }}" alt="{{ $bk->property?->title }}" class="w-16 h-16 rounded-xl object-cover shrink-0">
+                                <img src="{{ $bk->property?->featured_image_url ?? asset('images/property-placeholder.svg') }}" alt="{{ $bk->property?->title }}" class="w-16 h-16 rounded-xl object-cover shrink-0">
                                 <div>
                                     <h3 class="text-sm font-bold text-[#18181B] dark:text-zinc-100">{{ $bk->property?->title ?? 'اقامتگاه بوم‌گردی' }}</h3>
                                     <p class="text-xs text-zinc-400 mt-1">{{ $bk->checkin_date }} تا {{ $bk->checkout_date }} ({{ $bk->nights }} شب)</p>
@@ -598,19 +594,17 @@
                     @endforeach
                 </div>
             @else
-                <div class="border border-[#ECECEE] dark:border-zinc-800 rounded-2xl p-5 bg-white dark:bg-zinc-900 shadow-sm">
-                    <div class="flex items-center justify-between pb-4 mb-4 border-b border-[#ECECEE] dark:border-zinc-800">
-                        <span class="text-xs font-bold text-[#007A5E] dark:text-emerald-400">رزرو فعال</span>
-                        <span class="text-xs text-zinc-400">کد پیگیری: ۹۸۴۱۲</span>
+                <div class="border border-[#ECECEE] dark:border-zinc-800 rounded-2xl p-8 bg-white dark:bg-zinc-900 shadow-sm text-center space-y-3 font-sans">
+                    <div class="w-12 h-12 rounded-2xl bg-zinc-100 dark:bg-zinc-800 text-zinc-400 flex items-center justify-center mx-auto">
+                        <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
+                        </svg>
                     </div>
-                    <div class="flex items-center gap-4">
-                        <img src="https://images.unsplash.com/photo-1542718610-a1d656d1884c?auto=format&fit=crop&w=240&q=80" alt="کلبه" class="w-16 h-16 rounded-xl object-cover shrink-0">
-                        <div>
-                            <h3 class="text-sm font-bold text-[#18181B] dark:text-zinc-100">کلبه سوئیسی اولسبلنگاه</h3>
-                            <p class="text-xs text-zinc-400 mt-1">ماسال • ۱۵ تا ۱۸ آبان (۳ شب)</p>
-                            <span class="inline-block mt-2 text-xs font-bold text-[#007A5E] dark:text-emerald-400">۷,۲۰۰,۰۰۰ تومان پرداخت شده</span>
-                        </div>
-                    </div>
+                    <h3 class="text-xs font-bold text-[#18181B] dark:text-zinc-200">هنوز سفری ثبت نشده است</h3>
+                    <p class="text-[11px] text-zinc-400 leading-relaxed max-w-xs mx-auto">رزروهای اقامتی شما پس از ثبت در این بخش قابل مشاهده و پیگیری خواهند بود.</p>
+                    <a href="{{ route('properties.index') }}" class="inline-block px-4 py-2 rounded-xl bg-[#007A5E] hover:bg-[#005F48] text-white text-xs font-bold transition shadow-sm">
+                        مشاهده اقامتگاه‌ها
+                    </a>
                 </div>
             @endif
         </div>
@@ -625,8 +619,8 @@
                 <div class="w-16 h-16 rounded-full bg-[#ECFDF5] dark:bg-emerald-950/40 text-[#007A5E] dark:text-emerald-400 flex items-center justify-center font-bold text-xl mx-auto mb-3">
                     {{ auth()->check() ? mb_substr(auth()->user()->name ?? 'م', 0, 1) : 'م' }}
                 </div>
-                <h3 class="text-sm font-bold text-[#18181B] dark:text-zinc-100">{{ auth()->check() ? auth()->user()->name : 'کاربر گرامی' }}</h3>
-                <span class="text-xs text-zinc-400 mt-0.5 block">{{ auth()->check() ? (auth()->user()->phone ?? auth()->user()->email) : '۰۹۱۲۰۰۰۰۰۰۰' }}</span>
+                <h3 class="text-sm font-bold text-[#18181B] dark:text-zinc-100">{{ auth()->check() ? auth()->user()->name : 'کاربر مهمان' }}</h3>
+                <span class="text-xs text-zinc-400 mt-0.5 block">{{ auth()->check() ? (auth()->user()->mobile ?? auth()->user()->phone ?? auth()->user()->email) : 'جهت دسترسی به امکانات کامل وارد شوید' }}</span>
             </div>
 
             {{-- Multi-Host Marketplace Card (سیستم چندمیزبانی) --}}
@@ -807,15 +801,17 @@
                             <span class="text-xs font-bold text-[#007A5E] dark:text-emerald-400">انتخاب</span>
                         </button>
 
-                        <div class="grid grid-cols-2 gap-1.5">
-                            @foreach($allDestCities as $item)
-                                <button type="button" onclick="selectDestination('{{ $item['city'] }}', '{{ $item['city'] }}', event)" data-dest-key="{{ $item['city'] }}"
-                                        class="p-2.5 rounded-xl bg-white dark:bg-zinc-900 border border-[#ECECEE] dark:border-zinc-700/80 active:scale-95 shadow-xs transition-all text-right">
-                                    <div class="text-xs font-bold text-zinc-700 dark:text-zinc-200 truncate">{{ $item['city'] }}</div>
-                                    <div class="text-[10px] text-zinc-400 truncate">استان {{ $item['province'] }}</div>
-                                </button>
-                            @endforeach
-                        </div>
+                        @if(!empty($allDestCities))
+                            <div class="grid grid-cols-2 gap-1.5">
+                                @foreach($allDestCities as $item)
+                                    <button type="button" onclick="selectDestination('{{ $item['city'] }}', '{{ $item['city'] }}', event)" data-dest-key="{{ $item['city'] }}"
+                                            class="p-2.5 rounded-xl bg-white dark:bg-zinc-900 border border-[#ECECEE] dark:border-zinc-700/80 active:scale-95 shadow-xs transition-all text-right">
+                                        <div class="text-xs font-bold text-zinc-700 dark:text-zinc-200 truncate">{{ $item['city'] }}</div>
+                                        <div class="text-[10px] text-zinc-400 truncate">استان {{ $item['province'] }}</div>
+                                    </button>
+                                @endforeach
+                            </div>
+                        @endif
                     </div>
 
                     <!-- Panel: Per Province -->
@@ -974,277 +970,8 @@
         }
     ];
 
-    // Fallback Mock data with harmonious villa photos and consistent aspects
-    const DEFAULT_LISTINGS = [
-        // 1. اقامتگاه‌های ممتاز (Premium)
-        {
-            id: 101,
-            section: 'premium',
-            title: 'کلبه سوئیسی اولسبلنگاه',
-            city: 'ماسال',
-            category: 'cabin',
-            rooms: 2,
-            maxGuests: 4,
-            rating: '۴.۹',
-            price: 2400000,
-            instant: true,
-            image: 'https://images.unsplash.com/photo-1542718610-a1d656d1884c?auto=format&fit=crop&w=800&q=80',
-            url: '{{ url("/properties") }}',
-            checkoutUrl: '{{ url("/properties") }}',
-            hostName: 'سید رضا حسینی',
-            isVerifiedHost: true
-        },
-        {
-            id: 102,
-            section: 'premium',
-            title: 'ویلا ساحلی چابکسر',
-            city: 'رامسر',
-            category: 'beach',
-            rooms: 2,
-            maxGuests: 5,
-            rating: '۴.۹',
-            price: 3100000,
-            instant: true,
-            image: 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=800&q=80',
-            url: '{{ url("/properties") }}',
-            checkoutUrl: '{{ url("/properties") }}',
-            hostName: 'امیرحسین رادمهر',
-            isVerifiedHost: true
-        },
-        {
-            id: 111,
-            section: 'premium',
-            title: 'کلبه چوبی جنگلی لفور',
-            city: 'لفور',
-            category: 'cabin',
-            rooms: 2,
-            maxGuests: 4,
-            rating: '۵.۰',
-            price: 2800000,
-            instant: true,
-            image: 'https://images.unsplash.com/photo-1587061949409-02df41d5e562?auto=format&fit=crop&w=800&q=80',
-            url: '{{ url("/properties") }}',
-            checkoutUrl: '{{ url("/properties") }}',
-            hostName: 'محمد سوادکوهی',
-            isVerifiedHost: true
-        },
-        {
-            id: 112,
-            section: 'premium',
-            title: 'ویلا لوکس استخردار شیرگاه',
-            city: 'شیرگاه',
-            category: 'pool',
-            rooms: 3,
-            maxGuests: 6,
-            rating: '۴.۹',
-            price: 4200000,
-            instant: true,
-            image: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=800&q=80',
-            url: '{{ url("/properties") }}',
-            checkoutUrl: '{{ url("/properties") }}',
-            hostName: 'فرزاد کاظمی',
-            isVerifiedHost: true
-        },
-
-        // 2. تخفیف لحظه آخری (Last Minute) - فقط آیتم‌های دارای تخفیف واقعی
-        {
-            id: 105,
-            section: 'lastminute',
-            title: 'کلبه جنگلی دالخانی',
-            city: 'دالخانی',
-            category: 'cabin',
-            rooms: 1,
-            maxGuests: 3,
-            rating: '۴.۸',
-            price: 1780000,
-            oldPrice: 2100000,
-            discountPercent: 15,
-            instant: true,
-            image: 'https://images.unsplash.com/photo-1449844908441-8829872d2607?auto=format&fit=crop&w=800&q=80',
-            url: '{{ url("/properties") }}',
-            checkoutUrl: '{{ url("/properties") }}',
-            hostName: 'مهرداد قاسمی',
-            isVerifiedHost: true
-        },
-        {
-            id: 106,
-            section: 'lastminute',
-            title: 'کلبه چوبی رودخانه‌ای',
-            city: 'شاندرمن',
-            category: 'cabin',
-            rooms: 1,
-            maxGuests: 4,
-            rating: '۴.۷',
-            price: 1350000,
-            oldPrice: 1690000,
-            discountPercent: 20,
-            instant: true,
-            image: 'https://images.unsplash.com/photo-1510798831971-661eb04b3739?auto=format&fit=crop&w=800&q=80',
-            url: '{{ url("/properties") }}',
-            checkoutUrl: '{{ url("/properties") }}',
-            hostName: 'صادق شریفی',
-            isVerifiedHost: false
-        },
-        {
-            id: 115,
-            section: 'lastminute',
-            title: 'سوئیت ساحلی تنکابن',
-            city: 'رامسر',
-            category: 'beach',
-            rooms: 1,
-            maxGuests: 3,
-            rating: '۴.۶',
-            price: 1200000,
-            oldPrice: 1500000,
-            discountPercent: 20,
-            instant: true,
-            image: 'https://images.unsplash.com/photo-1499793983690-e29da59ef1c2?auto=format&fit=crop&w=800&q=80',
-            url: '{{ url("/properties") }}',
-            checkoutUrl: '{{ url("/properties") }}',
-            hostName: 'مهدی ناصری',
-            isVerifiedHost: true
-        },
-
-        // 3. اقامتگاه‌های خاص (Unique)
-        {
-            id: 103,
-            section: 'unique',
-            title: 'ویلا استخردار شاندرمن',
-            city: 'شاندرمن',
-            category: 'pool',
-            rooms: 3,
-            maxGuests: 6,
-            rating: '۴.۸',
-            price: 3900000,
-            instant: true,
-            image: 'https://images.unsplash.com/photo-1580587771525-78b9dba3b914?auto=format&fit=crop&w=800&q=80',
-            url: '{{ url("/properties") }}',
-            checkoutUrl: '{{ url("/properties") }}',
-            hostName: 'پژمان کاظمی',
-            isVerifiedHost: true
-        },
-        {
-            id: 104,
-            section: 'unique',
-            title: 'کلبه شیشه‌ای مه‌نشین',
-            city: 'ماسال',
-            category: 'cabin',
-            rooms: 1,
-            maxGuests: 3,
-            rating: '۵.۰',
-            price: 3450000,
-            instant: true,
-            image: 'https://images.unsplash.com/photo-1518780664697-55e3ad937233?auto=format&fit=crop&w=800&q=80',
-            url: '{{ url("/properties") }}',
-            checkoutUrl: '{{ url("/properties") }}',
-            hostName: 'کامران یزدانی',
-            isVerifiedHost: true
-        },
-        {
-            id: 113,
-            section: 'unique',
-            title: 'ویلا لاکچری استخر آبگرم',
-            city: 'رامسر',
-            category: 'pool',
-            rooms: 3,
-            maxGuests: 8,
-            rating: '۴.۹',
-            price: 5200000,
-            instant: true,
-            image: 'https://images.unsplash.com/photo-1613977257363-707ba9348227?auto=format&fit=crop&w=800&q=80',
-            url: '{{ url("/properties") }}',
-            checkoutUrl: '{{ url("/properties") }}',
-            hostName: 'بهنام فرهمند',
-            isVerifiedHost: true
-        },
-        {
-            id: 114,
-            section: 'unique',
-            title: 'کلبه دنج جنگلی آلاچیق‌دار',
-            city: 'دالخانی',
-            category: 'cabin',
-            rooms: 1,
-            maxGuests: 4,
-            rating: '۴.۸',
-            price: 2150000,
-            instant: true,
-            image: 'https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=800&q=80',
-            url: '{{ url("/properties") }}',
-            checkoutUrl: '{{ url("/properties") }}',
-            hostName: 'حامد رضوی',
-            isVerifiedHost: true
-        },
-
-        // 4. جدیدترین بوم‌گردی‌ها و اقامتگاه‌ها (Newest)
-        {
-            id: 107,
-            section: 'newest',
-            title: 'بوم‌گردی تلار قلعه رودخان',
-            city: 'قلعه رودخان',
-            category: 'cabin',
-            rooms: 2,
-            maxGuests: 4,
-            rating: '۵.۰',
-            price: 1850000,
-            instant: false,
-            image: 'https://images.unsplash.com/photo-1571896349842-33c89424de2d?auto=format&fit=crop&w=800&q=80',
-            url: '{{ url("/properties") }}',
-            checkoutUrl: '{{ url("/properties") }}',
-            hostName: 'حسین میرزایی',
-            isVerifiedHost: true
-        },
-        {
-            id: 108,
-            section: 'newest',
-            title: 'خانه ساحلی سفید رامسر',
-            city: 'رامسر',
-            category: 'beach',
-            rooms: 2,
-            maxGuests: 4,
-            rating: '۴.۹',
-            price: 2650000,
-            instant: true,
-            image: 'https://images.unsplash.com/photo-1499793983690-e29da59ef1c2?auto=format&fit=crop&w=800&q=80',
-            url: '{{ url("/properties") }}',
-            checkoutUrl: '{{ url("/properties") }}',
-            hostName: 'مهدی ناصری',
-            isVerifiedHost: true
-        },
-        {
-            id: 109,
-            section: 'newest',
-            title: 'بوم‌گردی چوبی هیرکانی لفور',
-            city: 'لفور',
-            category: 'cabin',
-            rooms: 2,
-            maxGuests: 5,
-            rating: '۴.۹',
-            price: 1950000,
-            instant: true,
-            image: 'https://images.unsplash.com/photo-1542718610-a1d656d1884c?auto=format&fit=crop&w=800&q=80',
-            url: '{{ url("/properties") }}',
-            checkoutUrl: '{{ url("/properties") }}',
-            hostName: 'رضا کمالی',
-            isVerifiedHost: true
-        },
-        {
-            id: 110,
-            section: 'newest',
-            title: 'کلبه دوبلکس ماسال با بالکن ابری',
-            city: 'ماسال',
-            category: 'cabin',
-            rooms: 2,
-            maxGuests: 4,
-            rating: '۴.۸',
-            price: 2750000,
-            instant: true,
-            image: 'https://images.unsplash.com/photo-1587061949409-02df41d5e562?auto=format&fit=crop&w=800&q=80',
-            url: '{{ url("/properties") }}',
-            checkoutUrl: '{{ url("/properties") }}',
-            hostName: 'یاسر احمدی',
-            isVerifiedHost: true
-        }
-    ];
+    // دیتای اقامتگاه‌ها منحصراً از پایگاه‌داده بارگذاری می‌شود و هیچ داده فیکی رندر نمی‌شود
+    const DEFAULT_LISTINGS = [];
 
     @php
         $dbListings = [];
@@ -1370,7 +1097,7 @@
         }
     @endphp
 
-    const LISTINGS_DATA = @json(!empty($dbListings) ? $dbListings : null) || DEFAULT_LISTINGS;
+    const LISTINGS_DATA = @json($dbListings ?? []);
     const AVAILABLE_DEST_CITIES = @json($allDestCities ?? []);
 
     const currentJalaliYear = {{ $currentJalaliYear }};
@@ -1389,7 +1116,7 @@
         startDay: {{ $defaultStartDay }},
         endDay: {{ $defaultEndDay }},
         instantOnly: false,
-        favorites: [101],
+        favorites: [],
         activeModalItem: null,
         modalNights: {{ $defaultNights }}
     };
@@ -1674,6 +1401,20 @@
         if (filtered.length === 0) {
             sectionsWrapper.innerHTML = '';
             emptyState.classList.remove('hidden');
+            const emptyTitle = document.getElementById('empty-state-title');
+            const emptySubtitle = document.getElementById('empty-state-subtitle');
+            const emptyBtn = document.getElementById('empty-state-btn');
+            if (emptyTitle) {
+                if (LISTINGS_DATA.length === 0) {
+                    emptyTitle.textContent = 'در حال حاضر هیچ اقامتگاهی در سامانه ثبت نشده است.';
+                    if (emptySubtitle) emptySubtitle.textContent = 'به‌زودی اقامتگاه‌های جدید بوم‌گردی و ویلاها به سیستم افزوده خواهند شد.';
+                    if (emptyBtn) emptyBtn.style.display = 'none';
+                } else {
+                    emptyTitle.textContent = 'اقامتگاهی با این مشخصات یافت نشد';
+                    if (emptySubtitle) emptySubtitle.textContent = 'می‌توانید فیلترهای جستجو را پاکسازی کرده یا مقاصد دیگر را انتخاب نمایید.';
+                    if (emptyBtn) emptyBtn.style.display = 'inline-block';
+                }
+            }
         } else {
             emptyState.classList.add('hidden');
             const renderedSections = SECTIONS_META.map(sec => {

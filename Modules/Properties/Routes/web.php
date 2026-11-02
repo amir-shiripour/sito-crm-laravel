@@ -103,6 +103,8 @@ Route::middleware(['web', 'auth'])
                     Route::get('/profile', [HostController::class, 'profile'])->name('profile');
                     Route::put('/profile', [HostController::class, 'updateProfile'])->name('profile.update');
                     Route::get('/manage', [HostController::class, 'adminIndex'])->name('admin.index');
+                    Route::post('/manage', [HostController::class, 'adminStore'])->name('admin.store');
+                    Route::get('/available-users', [HostController::class, 'searchAvailableUsers'])->name('admin.available-users');
                     Route::put('/manage/{host}', [HostController::class, 'adminUpdate'])->name('admin.update');
                     Route::post('/{host}/approve', [HostController::class, 'approveHost'])->name('admin.approve');
                     Route::post('/{host}/approve-kyc', [HostController::class, 'approveKyc'])->name('admin.approve-kyc');

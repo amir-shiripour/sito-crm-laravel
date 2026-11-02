@@ -21,8 +21,16 @@
             <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 mr-11 font-sans">بررسی درخواست‌های میزبانی، احراز هویت هوشمند و مدیریت وضعیت فعال‌سازی</p>
         </div>
 
-        {{-- فیلتر و جستجو --}}
-        <div class="flex items-center gap-3">
+        {{-- فیلتر و دکمه افزودن میزبان جدید --}}
+        <div class="flex flex-wrap items-center gap-3">
+            {{-- دکمه افزودن میزبان جدید --}}
+            <button type="button" 
+                    @click="showCreateModal = true" 
+                    class="px-4 py-2.5 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs transition-all shadow-md shadow-indigo-600/20 flex items-center gap-2 font-sans cursor-pointer">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
+                <span>افزودن میزبان جدید</span>
+            </button>
+
             <form action="{{ route('user.properties.hosts.admin.index') }}" method="GET" class="flex flex-wrap sm:flex-nowrap items-center gap-2.5">
                 <div class="relative">
                     <input type="text" 
@@ -57,6 +65,47 @@
             </form>
         </div>
     </div>
+
+    {{-- باکس مشخصات ورود ایجاد شده --}}
+    @if(session('created_host_credentials'))
+        @php $creds = session('created_host_credentials'); @endphp
+        <div class="p-5 rounded-3xl bg-indigo-50/90 dark:bg-indigo-950/40 border border-indigo-200/80 dark:border-indigo-800/60 shadow-sm space-y-3 font-sans">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div class="flex items-center gap-2.5 text-indigo-950 dark:text-indigo-200 font-black text-sm">
+                    <span class="w-8 h-8 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-bold text-base shadow-sm">✓</span>
+                    <span>میزبان جدید «{{ $creds['display_name'] }}» با موفقیت ثبت شد</span>
+                </div>
+                <a href="{{ route('user.properties.create', ['host_id' => $creds['host_id']]) }}" 
+                   class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition shadow-sm flex items-center gap-1.5 self-start sm:self-auto">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                    <span>ثبت اولین اقامتگاه برای این میزبان</span>
+                </a>
+            </div>
+
+            <div class="p-4 rounded-2xl bg-white dark:bg-gray-800 border border-indigo-100 dark:border-indigo-900/50 flex flex-wrap items-center justify-between gap-4 text-xs">
+                <div class="flex flex-wrap items-center gap-6 sm:gap-10">
+                    <div>
+                        <span class="text-gray-400 block text-[11px] mb-0.5">نام کاربری (موبایل ورود):</span>
+                        <strong class="text-gray-900 dark:text-gray-100 font-sans text-sm dir-ltr">{{ $creds['mobile'] }}</strong>
+                    </div>
+                    @if(!empty($creds['password']))
+                        <div>
+                            <span class="text-gray-400 block text-[11px] mb-0.5">رمز عبور اختصاص‌یافته:</span>
+                            <strong class="text-indigo-600 dark:text-indigo-400 font-sans text-sm dir-ltr">{{ $creds['password'] }}</strong>
+                        </div>
+                    @endif
+                </div>
+                @if(!empty($creds['password']))
+                    <button type="button" 
+                            onclick="navigator.clipboard.writeText('اطلاعات ورود به سامانه میزبانی مسترویلا:\nنام کاربری: {{ $creds['mobile'] }}\nرمز عبور: {{ $creds['password'] }}\nآدرس ورود: {{ route('login') }}'); alert('مشخصات ورود به همراه لینک پنل با موفقیت در کلیپ‌بورد کپی شد.');"
+                            class="px-3.5 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 font-bold transition flex items-center gap-1.5 cursor-pointer">
+                        <svg class="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                        <span>کپی مشخصات ورود (جهت ارسال به میزبان)</span>
+                    </button>
+                @endif
+            </div>
+        </div>
+    @endif
 
     {{-- پیام‌های سیستمی --}}
     @if(session('success'))
@@ -95,8 +144,9 @@
                                     'id' => $host->id,
                                     'display_name' => $host->display_name,
                                     'user_name' => optional($host->user)->name ?? 'ثبت نشده',
-                                    'user_phone' => optional($host->user)->phone ?? 'ثبت نشده',
-                                    'phone' => $host->phone,
+                                    'user_phone' => optional($host->user)->mobile ?? optional($host->user)->phone ?? 'ثبت نشده',
+                                    'user_mobile' => optional($host->user)->mobile ?? optional($host->user)->phone ?? 'ثبت نشده',
+                                    'phone' => $host->phone ?: (optional($host->user)->mobile ?? optional($host->user)->phone ?? 'ثبت نشده'),
                                     'avatar' => $host->avatar ? asset('storage/' . $host->avatar) : null,
                                     'about' => $host->about,
                                     'shaba_number' => $host->shaba_number,
@@ -151,6 +201,7 @@
                                         $host->phone,
                                         $host->national_code,
                                         optional($host->user)->name,
+                                        optional($host->user)->mobile,
                                         optional($host->user)->phone,
                                         $host->properties->pluck('title')->implode(' '),
                                         $host->properties->pluck('code')->implode(' '),
@@ -184,14 +235,20 @@
                                                     </span>
                                                 @endif
                                             </div>
-                                            <span class="text-[11px] text-gray-400 mt-0.5">کاربر: {{ optional($host->user)->name ?? '—' }} ({{ optional($host->user)->phone ?? 'بدون شماره' }})</span>
+                                            <span class="text-[11px] text-gray-400 mt-0.5 font-sans">
+                                                @if(optional($host->user)->name)
+                                                    {{ optional($host->user)->name }} ({{ optional($host->user)->mobile ?? optional($host->user)->phone ?? $host->phone ?? 'بدون شماره' }})
+                                                @else
+                                                    {{ optional($host->user)->mobile ?? optional($host->user)->phone ?? $host->phone ?? 'بدون شماره' }}
+                                                @endif
+                                            </span>
                                         </div>
                                     </div>
                                 </td>
 
                                 {{-- ستون اطلاعات تماس --}}
                                 <td class="px-6 py-4 text-xs font-sans text-gray-700 dark:text-gray-300">
-                                    <div class="font-bold dir-ltr text-right inline-block">{{ $host->phone }}</div>
+                                    <div class="font-bold dir-ltr text-right inline-block">{{ $host->phone ?: (optional($host->user)->mobile ?? '—') }}</div>
                                     @if($host->shaba_number)
                                         <div class="text-[11px] text-gray-400 mt-0.5 dir-ltr text-right">IR {{ chunk_split($host->shaba_number, 4, ' ') }}</div>
                                     @endif
@@ -236,6 +293,14 @@
                                 {{-- ستون عملیات --}}
                                 <td class="px-6 py-4 text-center">
                                     <div class="flex items-center justify-center gap-1.5">
+                                        {{-- دکمه سریع ثبت اقامتگاه برای این میزبان --}}
+                                        <a href="{{ route('user.properties.create', ['host_id' => $host->id]) }}" 
+                                           class="px-2.5 py-1.5 rounded-xl bg-teal-50 hover:bg-teal-100 text-teal-700 dark:bg-teal-500/15 dark:hover:bg-teal-500/25 dark:text-teal-300 dark:border dark:border-teal-500/30 font-bold text-xs transition flex items-center gap-1"
+                                           title="ثبت مستقیم اقامتگاه برای این میزبان">
+                                            <svg class="w-4 h-4 text-teal-600 dark:text-teal-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                                            <span class="hidden xl:inline">ثبت اقامتگاه</span>
+                                        </a>
+
                                         {{-- دکمه مشاهده جزئیات --}}
                                         <button type="button" 
                                                 @click="openDetailsModal({{ json_encode($hostJson) }})"
@@ -359,7 +424,7 @@
                                     </template>
                                 </div>
                                 <p class="text-xs text-indigo-200/90 dark:text-slate-300 mt-1 flex items-center gap-3">
-                                    <span>تلفن هماهنگی: <span class="dir-ltr inline-block font-bold" x-text="selectedHost?.phone"></span></span>
+                                    <span>تلفن هماهنگی: <span class="dir-ltr inline-block font-bold" x-text="selectedHost?.phone || selectedHost?.user_mobile || selectedHost?.user_phone || 'ثبت نشده'"></span></span>
                                     <span>•</span>
                                     <span>تاریخ عضویت: <span class="font-bold" x-text="selectedHost?.created_at"></span></span>
                                 </p>
@@ -401,7 +466,11 @@
                                 </div>
                                 <div class="flex justify-between items-center text-slate-600 dark:text-slate-300">
                                     <span>شماره همراه کاربر:</span>
-                                    <span class="font-bold text-gray-900 dark:text-gray-100 dir-ltr font-sans" x-text="selectedHost?.user_phone || 'ثبت نشده'"></span>
+                                    <span class="font-bold text-gray-900 dark:text-gray-100 dir-ltr font-sans" x-text="selectedHost?.user_mobile || selectedHost?.user_phone || selectedHost?.phone || 'ثبت نشده'"></span>
+                                </div>
+                                <div class="flex justify-between items-center text-slate-600 dark:text-slate-300" x-show="selectedHost?.phone && selectedHost?.phone !== (selectedHost?.user_mobile || selectedHost?.user_phone)">
+                                    <span>تلفن تماس و هماهنگی میزبان:</span>
+                                    <span class="font-bold text-gray-900 dark:text-gray-100 dir-ltr font-sans" x-text="selectedHost?.phone"></span>
                                 </div>
                                 <div class="flex justify-between items-center text-slate-600 dark:text-slate-300">
                                     <span>کارمزد پلتفرم:</span>
@@ -812,7 +881,7 @@
                                 {{-- وضعیت احراز هویت و مدارک --}}
                                 <div>
                                     <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                                        وضعیت احراز هویت و مدارک (KYC) <span class="text-red-500">*</span>
+                                        وضعیت احراز هویت و مدارک <span class="text-red-500">*</span>
                                     </label>
                                     <select name="kyc_status" 
                                             x-model="editForm.kyc_status" 
@@ -1041,6 +1110,321 @@
         </div>
     </div>
 
+    {{-- مودال افزودن میزبان جدید توسط مدیر --}}
+    <div x-show="showCreateModal" 
+         x-cloak
+         class="fixed inset-0 z-50 overflow-y-auto"
+         style="display: none;"
+         aria-labelledby="modal-create-host-title" 
+         role="dialog" 
+         aria-modal="true">
+        <div class="min-h-screen px-4 text-center flex items-center justify-center">
+            {{-- پس‌زمینه مات (بدون امکان بسته شدن تصادفی با کلیک روی پس‌زمینه) --}}
+            <div x-show="showCreateModal" 
+                 x-transition:enter="ease-out duration-300"
+                 x-transition:enter-start="opacity-0"
+                 x-transition:enter-end="opacity-100"
+                 x-transition:leave="ease-in duration-200"
+                 x-transition:leave-start="opacity-100"
+                 x-transition:leave-end="opacity-0"
+                 class="fixed inset-0 bg-gray-950/70 backdrop-blur-sm transition-opacity" 
+                 aria-hidden="true"></div>
+
+            {{-- کانتینر اصلی مودال --}}
+            <div x-show="showCreateModal" 
+                 x-transition:enter="ease-out duration-300"
+                 x-transition:enter-start="opacity-0 scale-95"
+                 x-transition:enter-end="opacity-100 scale-100"
+                 x-transition:leave="ease-in duration-200"
+                 x-transition:leave-start="opacity-100 scale-100"
+                 x-transition:leave-end="opacity-0 scale-95"
+                 class="relative z-10 inline-block w-full max-w-2xl my-8 text-right align-middle transition-all transform bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden font-sans">
+
+                <form action="{{ route('user.properties.hosts.admin.store') }}" method="POST" enctype="multipart/form-data" class="p-6 sm:p-7 space-y-5">
+                    @csrf
+                    <input type="hidden" name="user_mode" :value="userMode">
+                    <input type="hidden" name="user_id" :value="createForm.user_id">
+
+                    {{-- هدر مودال --}}
+                    <div class="flex items-center justify-between pb-4 border-b border-gray-100 dark:border-gray-700/80">
+                        <div class="flex items-center gap-3">
+                            <span class="w-10 h-10 rounded-2xl bg-indigo-50 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-300 flex items-center justify-center font-bold">
+                                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>
+                            </span>
+                            <div>
+                                <h3 class="text-base font-black text-gray-900 dark:text-white" id="modal-create-host-title">
+                                    افزودن میزبان جدید به سیستم
+                                </h3>
+                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">ثبت یکپارچه حساب کاربری، مشخصات کسب‌وکار و پروفایل میزبانی</p>
+                            </div>
+                        </div>
+
+                        <button type="button" @click="showCreateModal = false" class="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition cursor-pointer">
+                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                        </button>
+                    </div>
+
+                    {{-- تب‌بار انتخاب نوع فرآیند --}}
+                    <div class="p-1 rounded-2xl bg-gray-100 dark:bg-gray-900/60 flex items-center gap-1 text-xs font-bold">
+                        <button type="button" 
+                                @click="userMode = 'new'" 
+                                :class="userMode === 'new' ? 'bg-white dark:bg-gray-800 text-indigo-600 dark:text-indigo-300 shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'"
+                                class="flex-1 py-2 rounded-xl text-center transition cursor-pointer flex items-center justify-center gap-1.5">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>
+                            <span>۱. ایجاد کاربر و میزبان جدید</span>
+                        </button>
+                        <button type="button" 
+                                @click="userMode = 'existing'" 
+                                :class="userMode === 'existing' ? 'bg-white dark:bg-gray-800 text-indigo-600 dark:text-indigo-300 shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'"
+                                class="flex-1 py-2 rounded-xl text-center transition cursor-pointer flex items-center justify-center gap-1.5">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            <span>۲. تبدیل کاربر موجود به میزبان</span>
+                        </button>
+                    </div>
+
+                    {{-- ۱. بخش اطلاعات کاربری --}}
+                    <div class="space-y-3.5">
+                        <div class="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 flex items-center gap-1.5">
+                            <span>●</span>
+                            <span>اطلاعات حساب کاربری</span>
+                        </div>
+
+                        {{-- حالت اول: کاربر کاملاً جدید --}}
+                        <div x-show="userMode === 'new'" class="space-y-3">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
+                                        نام و نام خانوادگی <span class="text-rose-500">*</span>
+                                    </label>
+                                    <input type="text" 
+                                           name="name" 
+                                           x-model="createForm.name" 
+                                           @input="syncDisplayName()"
+                                           :required="userMode === 'new'"
+                                           placeholder="مثال: محمد رضایی" 
+                                           class="w-full rounded-2xl border-gray-200 bg-gray-50/70 p-3 text-xs text-gray-900 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 transition-all dark:border-gray-700 dark:bg-gray-800/90 dark:text-gray-100 font-sans">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
+                                        شماره موبایل (نام کاربری ورود) <span class="text-rose-500">*</span>
+                                    </label>
+                                    <input type="text" 
+                                           name="mobile" 
+                                           x-model="createForm.mobile" 
+                                           :required="userMode === 'new'"
+                                           placeholder="۰۹۱۲۳۴۵۶۷۸۹" 
+                                           class="w-full rounded-2xl border-gray-200 bg-gray-50/70 p-3 text-xs text-gray-900 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 transition-all dark:border-gray-700 dark:bg-gray-800/90 dark:text-gray-100 font-sans dir-ltr text-right">
+                                </div>
+                            </div>
+                        </div>
+
+                        {{-- حالت دوم: جستجو و انتخاب کاربر موجود --}}
+                        <div x-show="userMode === 'existing'" class="space-y-3">
+                            <div class="relative">
+                                <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
+                                    جستجو و انتخاب کاربر از سامانه <span class="text-rose-500">*</span>
+                                </label>
+                                <div class="relative">
+                                    <input type="text" 
+                                           x-model="searchUserQuery" 
+                                           @input.debounce.300ms="searchAvailableUsers()" 
+                                           placeholder="نام، شماره موبایل یا ایمیل کاربر را تایپ کنید..." 
+                                           class="w-full rounded-2xl border-gray-200 bg-gray-50/70 p-3 pr-10 text-xs text-gray-900 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 transition-all dark:border-gray-700 dark:bg-gray-800/90 dark:text-gray-100 font-sans">
+                                    <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-slate-400">
+                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                                    </div>
+                                    <div x-show="isSearchingUser" class="absolute inset-y-0 left-0 flex items-center pl-3">
+                                        <span class="w-3.5 h-3.5 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin"></span>
+                                    </div>
+                                </div>
+
+                                {{-- لیست نتایج سرچ کاربر --}}
+                                <div x-show="searchUserResults.length > 0" 
+                                     @click.outside="searchUserResults = []"
+                                     class="absolute z-20 w-full mt-1.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-xl max-h-48 overflow-y-auto divide-y divide-gray-100 dark:divide-gray-700 text-xs">
+                                    <template x-for="user in searchUserResults" :key="user.id">
+                                        <div @click="selectUser(user)" 
+                                             class="p-3 hover:bg-indigo-50/70 dark:hover:bg-indigo-950/40 cursor-pointer flex items-center justify-between transition">
+                                            <div>
+                                                <strong class="font-bold text-gray-900 dark:text-white" x-text="user.name"></strong>
+                                                <span class="text-gray-400 mr-2 text-[11px]" x-text="user.email"></span>
+                                            </div>
+                                            <span class="font-sans text-indigo-600 dark:text-indigo-400 dir-ltr text-[11px]" x-text="user.mobile"></span>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+
+                            {{-- نمایش کاربر انتخاب شده --}}
+                            <div x-show="selectedExistingUser" class="p-3.5 rounded-2xl bg-indigo-50/70 dark:bg-indigo-950/30 border border-indigo-200/60 dark:border-indigo-800/40 flex items-center justify-between text-xs">
+                                <div class="flex items-center gap-2.5">
+                                    <span class="w-8 h-8 rounded-full bg-indigo-600 text-white font-bold flex items-center justify-center text-xs">✓</span>
+                                    <div>
+                                        <strong class="text-gray-900 dark:text-white" x-text="selectedExistingUser?.name"></strong>
+                                        <span class="text-gray-500 block text-[11px]" x-text="selectedExistingUser?.mobile ? 'موبایل: ' + selectedExistingUser.mobile : selectedExistingUser?.email"></span>
+                                    </div>
+                                </div>
+                                <button type="button" @click="clearSelectedUser()" class="text-rose-500 hover:text-rose-700 text-xs font-bold cursor-pointer">
+                                    تغییر کاربر
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- ۲. بخش مشخصات میزبانی و کسب‌وکار --}}
+                    <div class="space-y-3.5 pt-3 border-t border-gray-100 dark:border-gray-700/80">
+                        <div class="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 flex items-center gap-1.5">
+                            <span>●</span>
+                            <span>مشخصات کسب‌وکار و پروفایل میزبانی</span>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
+                                    نام نمایشی میزبان <span class="text-rose-500">*</span>
+                                </label>
+                                <input type="text" 
+                                       name="display_name" 
+                                       x-model="createForm.display_name" 
+                                       required
+                                       placeholder="مثال: ویلاداران لفور یا نام میزبان" 
+                                       class="w-full rounded-2xl border-gray-200 bg-gray-50/70 p-3 text-xs text-gray-900 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 transition-all dark:border-gray-700 dark:bg-gray-800/90 dark:text-gray-100 font-sans">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
+                                    تلفن هماهنگی و تماس
+                                </label>
+                                <input type="text" 
+                                       name="phone" 
+                                       x-model="createForm.phone" 
+                                       placeholder="در صورت خالی بودن شماره موبایل ثبت می‌شود" 
+                                       class="w-full rounded-2xl border-gray-200 bg-gray-50/70 p-3 text-xs text-gray-900 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 transition-all dark:border-gray-700 dark:bg-gray-800/90 dark:text-gray-100 font-sans dir-ltr text-right">
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
+                                    درصد کارمزد پلتفرم از رزروها
+                                </label>
+                                <input type="number" 
+                                       name="commission_rate" 
+                                       x-model="createForm.commission_rate" 
+                                       step="0.5" 
+                                       min="0" 
+                                       max="100" 
+                                       placeholder="خالی = پیش‌فرض سامانه ({{ \Modules\Properties\Entities\PropertySetting::get('rental_default_commission', 10) }}٪)" 
+                                       class="w-full rounded-2xl border-gray-200 bg-gray-50/70 p-3 text-xs text-gray-900 focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 transition-all dark:border-gray-700 dark:bg-gray-800/90 dark:text-gray-100 font-sans">
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
+                                    آواتار و تصویر نمایه میزبان
+                                </label>
+                                <input type="file" 
+                                       name="avatar" 
+                                       accept="image/*"
+                                       class="w-full text-xs text-slate-500 file:mr-0 file:ml-3 file:py-2 file:px-3.5 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-indigo-50 file:text-indigo-700 dark:file:bg-indigo-900/30 dark:file:text-indigo-300 hover:file:bg-indigo-100 font-sans cursor-pointer">
+                            </div>
+                        </div>
+
+                        {{-- ۳. تنظیمات شفاف و یکپارچه وضعیت فعال‌سازی و مدارک هویتی --}}
+                        <div class="space-y-2 pt-1">
+                            <label class="block text-xs font-bold text-gray-800 dark:text-gray-200">
+                                وضعیت فعال‌سازی و مدارک هویتی:
+                            </label>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                                <label class="flex items-center gap-2.5 p-3 rounded-2xl border cursor-pointer transition"
+                                       :class="createForm.verification_mode === 'instant' ? 'bg-indigo-50/70 border-indigo-300 dark:bg-indigo-950/40 dark:border-indigo-600 text-indigo-950 dark:text-indigo-200 shadow-2xs' : 'bg-gray-50/70 border-gray-200/70 dark:bg-gray-800/80 dark:border-gray-700 text-gray-700 dark:text-gray-300'">
+                                    <input type="radio" name="verification_mode" value="instant" x-model="createForm.verification_mode" class="text-indigo-600 focus:ring-indigo-500">
+                                    <div>
+                                        <strong class="block text-xs font-bold">تأیید فوری و فعال‌سازی کامل</strong>
+                                        <span class="text-[11px] text-gray-500 dark:text-gray-400">حساب فعال و مدارک تأیید شده است</span>
+                                    </div>
+                                </label>
+
+                                <label class="flex items-center gap-2.5 p-3 rounded-2xl border cursor-pointer transition"
+                                       :class="createForm.verification_mode === 'delegate' ? 'bg-indigo-50/70 border-indigo-300 dark:bg-indigo-950/40 dark:border-indigo-600 text-indigo-950 dark:text-indigo-200 shadow-2xs' : 'bg-gray-50/70 border-gray-200/70 dark:bg-gray-800/80 dark:border-gray-700 text-gray-700 dark:text-gray-300'">
+                                    <input type="radio" name="verification_mode" value="delegate" x-model="createForm.verification_mode" class="text-indigo-600 focus:ring-indigo-500">
+                                    <div>
+                                        <strong class="block text-xs font-bold">واگذاری تکمیل مدارک به خود میزبان</strong>
+                                        <span class="text-[11px] text-gray-500 dark:text-gray-400">میزبان پس از ورود مدارک را بارگذاری می‌کند</span>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+
+                        {{-- ۴. فیلدهای احراز هویت سفارشی تعریف‌شده در سامانه (در صورت انتخاب تأیید فوری) --}}
+                        @if(isset($verificationFieldDefs) && count($verificationFieldDefs) > 0)
+                            <div x-show="createForm.verification_mode === 'instant'" class="space-y-3 pt-3 border-t border-gray-100 dark:border-gray-700/80">
+                                <div class="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 flex items-center gap-1.5">
+                                    <span>●</span>
+                                    <span>فیلدها و مدارک احراز هویت میزبان (مدیریت فیلدهای سفارشی)</span>
+                                </div>
+                                
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    @foreach($verificationFieldDefs as $f)
+                                        @php
+                                            $fType = strtolower($f->field_type ?? 'text');
+                                            $fMeta = is_array($f->meta ?? null) ? $f->meta : (is_string($f->meta ?? null) ? json_decode($f->meta, true) : []);
+                                            $fMeta = $fMeta ?: [];
+                                            $fOptions = $fMeta['options'] ?? [];
+                                        @endphp
+                                        <div class="space-y-1.5 p-3 rounded-2xl bg-gray-50/80 dark:bg-gray-900/60 border border-gray-200/60 dark:border-gray-700/60">
+                                            <div class="flex items-center justify-between">
+                                                <label class="text-xs font-bold text-gray-800 dark:text-gray-200">
+                                                    {{ $f->label ?: $f->field_name }}
+                                                </label>
+                                            </div>
+
+                                            @if($fType === 'file')
+                                                <input type="file" 
+                                                       name="custom[{{ $f->field_name }}]" 
+                                                       class="w-full text-xs text-slate-500 file:mr-0 file:ml-3 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-indigo-50 file:text-indigo-700 dark:file:bg-indigo-900/30 dark:file:text-indigo-300 hover:file:bg-indigo-100 font-sans cursor-pointer">
+                                            @elseif($fType === 'textarea')
+                                                <textarea name="custom[{{ $f->field_name }}]" 
+                                                          rows="2" 
+                                                          class="w-full rounded-xl border-gray-200 bg-white p-2.5 text-xs text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 font-sans resize-none"></textarea>
+                                            @elseif($fType === 'select')
+                                                <select name="custom[{{ $f->field_name }}]" 
+                                                        class="w-full rounded-xl border-gray-200 bg-white p-2.5 text-xs text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 font-sans cursor-pointer">
+                                                    <option value="">انتخاب کنید...</option>
+                                                    @foreach($fOptions as $optKey => $optVal)
+                                                        <option value="{{ $optKey }}">{{ $optVal }}</option>
+                                                    @endforeach
+                                                </select>
+                                            @else
+                                                <input type="{{ $fType === 'number' ? 'number' : 'text' }}" 
+                                                       name="custom[{{ $f->field_name }}]" 
+                                                       placeholder="{{ $f->label ?: $f->field_name }}"
+                                                       class="w-full rounded-xl border-gray-200 bg-white p-2.5 text-xs text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 font-sans {{ $fType === 'number' || str_contains($f->field_name, 'code') ? 'dir-ltr text-right' : '' }}">
+                                            @endif
+                                        </div>
+                                    @endforeach
+                                </div>
+                            </div>
+                        @endif
+                    </div>
+
+                    {{-- دکمه‌های عملیات ثبت یا انصراف --}}
+                    <div class="flex items-center justify-end gap-3 pt-4 border-t border-gray-100 dark:border-gray-700/80">
+                        <button type="button" 
+                                @click="showCreateModal = false" 
+                                class="px-5 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 text-slate-700 dark:text-slate-300 text-xs font-bold hover:bg-gray-100 dark:hover:bg-gray-800 transition cursor-pointer">
+                            انصراف
+                        </button>
+                        <button type="submit" 
+                                class="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-md shadow-indigo-600/20 transition flex items-center gap-2 cursor-pointer">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+                            <span>ثبت و ایجاد میزبان</span>
+                        </button>
+                    </div>
+                </form>
+
+            </div>
+        </div>
+    </div>
+
 </div>
 
 <script>
@@ -1049,10 +1433,70 @@
             showDetailsModal: false,
             showRejectModal: false,
             showEditModal: false,
+            showCreateModal: false,
             selectedHost: null,
             targetHost: null,
             editingHost: null,
             rejectionReason: '',
+            userMode: 'new',
+            createForm: {
+                name: '',
+                mobile: '',
+                display_name: '',
+                phone: '',
+                commission_rate: '',
+                verification_mode: 'instant',
+                user_id: ''
+            },
+            searchUserQuery: '',
+            searchUserResults: [],
+            isSearchingUser: false,
+            selectedExistingUser: null,
+
+            syncDisplayName() {
+                if (this.userMode === 'new' && (!this.createForm.display_name || this.createForm.display_name === this.createForm.name.slice(0, -1))) {
+                    this.createForm.display_name = this.createForm.name;
+                }
+            },
+
+            async searchAvailableUsers() {
+                if (!this.searchUserQuery || this.searchUserQuery.trim().length < 2) {
+                    this.searchUserResults = [];
+                    return;
+                }
+                this.isSearchingUser = true;
+                try {
+                    const response = await fetch(`{{ route('user.properties.hosts.admin.available-users') }}?q=${encodeURIComponent(this.searchUserQuery.trim())}`);
+                    if (response.ok) {
+                        this.searchUserResults = await response.json();
+                    }
+                } catch (e) {
+                    console.error('Error fetching users:', e);
+                } finally {
+                    this.isSearchingUser = false;
+                }
+            },
+
+            selectUser(user) {
+                this.selectedExistingUser = user;
+                this.createForm.user_id = user.id;
+                if (!this.createForm.display_name) {
+                    this.createForm.display_name = user.name;
+                }
+                if (!this.createForm.phone && user.mobile) {
+                    this.createForm.phone = user.mobile;
+                }
+                this.searchUserResults = [];
+                this.searchUserQuery = user.name + (user.mobile ? ' (' + user.mobile + ')' : '');
+            },
+
+            clearSelectedUser() {
+                this.selectedExistingUser = null;
+                this.createForm.user_id = '';
+                this.searchUserQuery = '';
+                this.searchUserResults = [];
+            },
+
             editForm: {
                 display_name: '',
                 phone: '',

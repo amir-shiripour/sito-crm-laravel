@@ -187,13 +187,19 @@ class PropertyController extends Controller
         return view('properties::user.index', compact('properties', 'statuses', 'agents', 'hosts', 'categories', 'buildings', 'propertyAttributes', 'pendingReviewCount', 'rentalBuildingEnabled', 'rentalModeEnabled', 'rentalMultiHostEnabled'));
     }
 
-    public function create()
+    public function create(Request $request)
     {
         $user = auth()->user();
         $isAdmin = $user->hasRole(['super-admin', 'admin']) || $user->can('properties.manage');
         $userRoles = $user->getRoleNames();
         $isOnlyHost = $userRoles->contains('property_host') && $userRoles->count() === 1;
         $currentUserHost = \Modules\Properties\Entities\PropertyHost::where('user_id', $user->id)->first();
+
+        // میزبان پیش‌انتخاب‌شده در صورت ارسال از صفحه مدیریت میزبانان
+        $preselectedHost = null;
+        if ($request->filled('host_id') && ($isAdmin || $user->can('properties.hosts.manage') || $user->can('properties.manage'))) {
+            $preselectedHost = \Modules\Properties\Entities\PropertyHost::find($request->host_id);
+        }
 
         // بررسی محدودیت میزبان در وضعیت در انتظار تایید یا معلق (صرفاً برای کاربران تک‌نقشی میزبان)
         if (!$isAdmin && $isOnlyHost && $currentUserHost && $currentUserHost->status !== 'active') {
@@ -222,7 +228,7 @@ class PropertyController extends Controller
         $rentalPropertyTypes = Property::getRentalPropertyTypes(true);
         $provincesData = \App\Helpers\ProvinceCity::getAll();
 
-        return view('properties::user.create', compact('maxGalleryImages', 'maxFileSize', 'allowedFileTypes', 'maxVideoSize', 'allowedVideoTypes', 'statuses', 'agents', 'owners', 'hosts', 'currentUserHost', 'rentalVideoEnabled', 'rentalBuildingEnabled', 'rentalPropertyTypes', 'rentalMultiHostEnabled', 'provincesData'));
+        return view('properties::user.create', compact('maxGalleryImages', 'maxFileSize', 'allowedFileTypes', 'maxVideoSize', 'allowedVideoTypes', 'statuses', 'agents', 'owners', 'hosts', 'currentUserHost', 'preselectedHost', 'rentalVideoEnabled', 'rentalBuildingEnabled', 'rentalPropertyTypes', 'rentalMultiHostEnabled', 'provincesData'));
     }
 
     public function store(Request $request)

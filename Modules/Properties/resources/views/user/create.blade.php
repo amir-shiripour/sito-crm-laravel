@@ -1229,9 +1229,12 @@
                 canChangeAgent: {{ $canChangeAgent ? 'true' : 'false' }},
 
                 // Host Management
-                selectedHostId: '{{ $currentUserHost ? $currentUserHost->id : "" }}',
-                selectedHost: {!! json_encode($currentUserHost ? ['id' => $currentUserHost->id, 'display_name' => $currentUserHost->display_name, 'phone' => $currentUserHost->phone, 'status' => $currentUserHost->status, 'kyc_status' => $currentUserHost->kyc_status] : null) !!},
-                searchHostQuery: '',
+                @php
+                    $initialHost = $preselectedHost ?? $currentUserHost ?? null;
+                @endphp
+                selectedHostId: '{{ $initialHost ? $initialHost->id : "" }}',
+                selectedHost: {!! json_encode($initialHost ? ['id' => $initialHost->id, 'display_name' => $initialHost->display_name, 'phone' => $initialHost->phone, 'status' => $initialHost->status, 'kyc_status' => $initialHost->kyc_status] : null) !!},
+                searchHostQuery: '{{ $initialHost ? $initialHost->display_name : "" }}',
                 searchHostResults: [],
                 showHostResults: false,
                 isSearchingHost: false,

@@ -858,16 +858,53 @@ class InvoiceController extends Controller
                     $debtIds = array_merge($debtIds, $itemDebtIds);
                 }
             }
-            $debtIds = array_values(array_filter(array_unique($debtIds)));
+            $debtIds = array_values(array_filter(array_unique(array_map('intval', $debtIds))));
 
+            $currentMeta = is_array($invoice->meta) ? $invoice->meta : (json_decode($invoice->meta, true) ?? []);
+            $previousMergedIds = $currentMeta['merged_from_invoice_ids'] ?? [];
+            if (!is_array($previousMergedIds)) {
+                $previousMergedIds = [];
+            }
+            $previousMergedIds = array_values(array_filter(array_unique(array_map('intval', $previousMergedIds))));
+
+            // 1. Unmerge invoices that were previously merged but are now removed
+            $removedInvoiceIds = array_values(array_diff($previousMergedIds, $debtIds));
+            if (!empty($removedInvoiceIds)) {
+                $defaultInvoiceStatus = Status::where('type', 'invoice')->where('is_default', 1)->first()
+                    ?? Status::where('type', 'invoice')->first();
+                $paidStatus = Status::where('name', 'پرداخت شده')->first()
+                    ?? Status::where('name', 'LIKE', '%پرداخت شده%')->first();
+
+                $removedInvoices = Invoice::whereIn('id', $removedInvoiceIds)->get();
+                foreach ($removedInvoices as $rInv) {
+                    $rMeta = is_array($rInv->meta) ? $rInv->meta : (json_decode($rInv->meta, true) ?? []);
+                    if (isset($rMeta['was_merged_into']) && (int)$rMeta['was_merged_into'] === (int)$invoice->id) {
+                        unset($rMeta['was_merged_into']);
+                    }
+                    if (!empty($rMeta['merged_order_ids']) && is_array($rMeta['merged_order_ids'])) {
+                        Order::whereIn('id', $rMeta['merged_order_ids'])->update(['invoice_id' => $rInv->id]);
+                    }
+
+                    $calcPaid = $rInv->calculatePaidAmount();
+                    $targetStatusId = ($calcPaid >= (int)$rInv->total && $paidStatus)
+                        ? $paidStatus->id
+                        : ($defaultInvoiceStatus?->id ?? $rInv->status_id);
+
+                    $rInv->update([
+                        'status_id' => $targetStatusId,
+                        'meta' => $rMeta,
+                    ]);
+                    $rInv->updatePaymentStatus(true);
+                }
+            }
+
+            // 2. Process active merged invoices
             if (!empty($debtIds) && $invoice->invoice_number) {
-                $sourceInvoiceIds = array_values(array_unique($debtIds));
+                $sourceInvoiceIds = $debtIds;
                 $sourceInvoices = Invoice::whereIn('id', $sourceInvoiceIds)->get();
 
                 $mergedOrderIdsByInvoice = [];
-                $currentMeta = is_array($invoice->meta) ? $invoice->meta : (json_decode($invoice->meta, true) ?? []);
-                $allMergedOrderIds = $currentMeta['merged_order_ids'] ?? [];
-                if (!is_array($allMergedOrderIds)) $allMergedOrderIds = [];
+                $allMergedOrderIds = [];
 
                 foreach ($sourceInvoices as $sourceInv) {
                     $invOrderIds = Order::where('invoice_id', $sourceInv->id)->pluck('id')->all();
@@ -897,10 +934,13 @@ class InvoiceController extends Controller
                 }
 
                 $currentMeta['is_merged_invoice'] = true;
-                $existingMergedIds = $currentMeta['merged_from_invoice_ids'] ?? [];
-                if (!is_array($existingMergedIds)) $existingMergedIds = [];
-                $currentMeta['merged_from_invoice_ids'] = array_values(array_unique(array_merge($existingMergedIds, $sourceInvoiceIds)));
+                $currentMeta['merged_from_invoice_ids'] = $sourceInvoiceIds;
                 $currentMeta['merged_order_ids'] = $allMergedOrderIds;
+                $invoice->update(['meta' => $currentMeta]);
+            } else {
+                $currentMeta['is_merged_invoice'] = false;
+                $currentMeta['merged_from_invoice_ids'] = [];
+                unset($currentMeta['merged_order_ids']);
                 $invoice->update(['meta' => $currentMeta]);
             }
 
@@ -1716,6 +1756,37 @@ class InvoiceController extends Controller
             $invoice->paid_amount = 0;
             $invoice->save();
             $this->syncOrdersForInvoice($invoice);
+
+            $invMeta = is_array($invoice->meta) ? $invoice->meta : (json_decode($invoice->meta, true) ?? []);
+            if (!empty($invMeta['merged_from_invoice_ids']) && is_array($invMeta['merged_from_invoice_ids'])) {
+                $mergedFromIds = array_values(array_filter(array_unique(array_map('intval', $invMeta['merged_from_invoice_ids']))));
+                $defaultInvoiceStatus = Status::where('type', 'invoice')->where('is_default', 1)->first()
+                    ?? Status::where('type', 'invoice')->first();
+                $paidStatus = Status::where('name', 'پرداخت شده')->first()
+                    ?? Status::where('name', 'LIKE', '%پرداخت شده%')->first();
+
+                $mergedInvoices = Invoice::whereIn('id', $mergedFromIds)->get();
+                foreach ($mergedInvoices as $mInv) {
+                    $mMeta = is_array($mInv->meta) ? $mInv->meta : (json_decode($mInv->meta, true) ?? []);
+                    if (isset($mMeta['was_merged_into']) && (int)$mMeta['was_merged_into'] === (int)$invoice->id) {
+                        unset($mMeta['was_merged_into']);
+                    }
+                    if (!empty($mMeta['merged_order_ids']) && is_array($mMeta['merged_order_ids'])) {
+                        Order::whereIn('id', $mMeta['merged_order_ids'])->update(['invoice_id' => $mInv->id]);
+                    }
+
+                    $calcPaid = $mInv->calculatePaidAmount();
+                    $targetStatusId = ($calcPaid >= (int)$mInv->total && $paidStatus)
+                        ? $paidStatus->id
+                        : ($defaultInvoiceStatus?->id ?? $mInv->status_id);
+
+                    $mInv->update([
+                        'status_id' => $targetStatusId,
+                        'meta' => $mMeta,
+                    ]);
+                    $mInv->updatePaymentStatus(true);
+                }
+            }
         });
 
         if (class_exists(WorkflowEngine::class)) {

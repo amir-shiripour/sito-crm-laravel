@@ -197,4 +197,12 @@ class User extends Authenticatable
     {
         return $this->hasMany(DoctorMedia::class, 'user_id', 'id');
     }
+
+    /**
+     * همگام‌سازی شماره تماس کاربر (جهت سازگاری با متغیر phone)
+     */
+    public function getPhoneAttribute()
+    {
+        return $this->attributes['mobile'] ?? null;
+    }
 }

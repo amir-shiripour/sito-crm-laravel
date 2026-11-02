@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\User\DashboardController as UserDashboardController;
 use Modules\Properties\Entities\PropertyAttribute;
 use App\Http\Controllers\Auth\RegisteredUserController;
+use App\Http\Controllers\Auth\OtpLoginController;
 
 /*
 |--------------------------------------------------------------------------
@@ -85,6 +86,13 @@ Route::middleware(['web', 'guest'])->group(function () {
     Route::post('/register', [RegisteredUserController::class, 'store']);
     Route::post('/register/send-otp', [RegisteredUserController::class, 'sendOtp'])->name('register.send-otp');
     Route::post('/register/verify-otp', [RegisteredUserController::class, 'verifyOtp'])->name('register.verify-otp');
+});
+
+// 2-Step & OTP Login routes
+Route::middleware(['web', 'guest'])->prefix('login')->name('login.')->group(function () {
+    Route::post('/check-identity', [OtpLoginController::class, 'checkIdentity'])->name('check-identity');
+    Route::post('/send-otp', [OtpLoginController::class, 'sendOtp'])->name('send-otp');
+    Route::post('/verify-otp', [OtpLoginController::class, 'verifyOtp'])->name('verify-otp');
 });
 
 Route::get('/ping', function() { return 'pong-crm'; });

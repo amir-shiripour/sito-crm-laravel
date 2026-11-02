@@ -44,6 +44,14 @@ class FortifyServiceProvider extends ServiceProvider
 
         // Allow login with email or mobile
         Fortify::authenticateUsing(function (Request $request) {
+            $smsEnabled = function_exists('get_setting') && get_setting('auth_sms_enabled', '0') === '1';
+            $passwordEnabled = function_exists('get_setting') && get_setting('auth_password_enabled', '1') === '1';
+
+            // اگر ورود پیامکی فعال بوده و ورود با رمز عبور توسط مدیریت غیرفعال شده باشد
+            if ($smsEnabled && !$passwordEnabled) {
+                return null;
+            }
+
             $user = User::where('email', $request->email)
                 ->orWhere('mobile', 'like', '%' . $request->email)
                 ->first();

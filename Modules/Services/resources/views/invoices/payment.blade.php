@@ -931,7 +931,12 @@
                         }
 
                         this.isSubmitting = true;
-                        this.$el.submit();
+                        const form = document.getElementById('paymentForm') || (event && event.target && event.target.tagName === 'FORM' ? event.target : (this.$el ? this.$el.querySelector('form') : null));
+                        if (form) {
+                            HTMLFormElement.prototype.submit.call(form);
+                        } else {
+                            this.isSubmitting = false;
+                        }
                     },
 
                     getNumericAmount(val) {
