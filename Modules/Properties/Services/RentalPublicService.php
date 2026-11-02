@@ -108,6 +108,13 @@ class RentalPublicService
                     }
                 }
 
+                $originalPrice = $effectivePrice;
+                $discountAmount = 0;
+                if ($config && $config->has_discount) {
+                    $discountAmount = $config->calculateDiscountAmount($effectivePrice);
+                    $effectivePrice = max(0, $effectivePrice - $discountAmount);
+                }
+
                 // بررسی مسدود بودن روز
                 $isBlocked = $blocks->contains(function ($b) use ($dateStr) {
                     return $dateStr >= $b->start_date->format('Y-m-d') && $dateStr <= $b->end_date->format('Y-m-d');
@@ -115,10 +122,24 @@ class RentalPublicService
 
                 $isPast = $cDate->isPast() && !$cDate->isToday();
 
+                $toFaDigits = function ($str) {
+                    $fa = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
+                    return preg_replace_callback('/\d/', fn($m) => $fa[$m[0]], (string)$str);
+                };
+
+                $jalaliFormatted = $toFaDigits($jDate->format('%d %B'));
+                $jalaliFull = $toFaDigits($jDate->format('%A %d %B'));
+                $jalaliWithYear = $toFaDigits($jDate->format('%d %B %Y'));
+                $jalaliDateFa = $toFaDigits($jalaliStr);
+
                 $dayData = [
                     'day' => $day,
-                    'jalali_date' => $jalaliStr,
+                    'jalali_date' => $jalaliDateFa,
+                    'jalali_raw' => $jalaliStr,
                     'carbon_date' => $dateStr,
+                    'human_jalali' => $jalaliFormatted,
+                    'human_jalali_full' => $jalaliFull,
+                    'human_jalali_with_year' => $jalaliWithYear,
                     'day_of_week' => $rateInfo['day_of_week'],
                     'is_weekend' => $rateInfo['is_weekend'],
                     'is_holiday' => $rateInfo['is_holiday_or_peak'],
@@ -126,6 +147,8 @@ class RentalPublicService
                     'holiday_title' => !empty($rateInfo['holiday_title']) ? trim(preg_replace('/\[.*?\]/', '', $rateInfo['holiday_title'])) : null,
                     'is_blocked' => $isBlocked,
                     'price' => $effectivePrice,
+                    'original_price' => $originalPrice,
+                    'discount_amount' => $discountAmount,
                     'price_type' => $priceType,
                     'custom_title' => $customPrice ? $customPrice->title : null,
                     'is_past' => $isPast,
@@ -133,6 +156,7 @@ class RentalPublicService
 
                 $monthDays[] = $dayData;
                 $flatDates[$jalaliStr] = $dayData;
+                $flatDates[$jalaliDateFa] = $dayData;
                 $flatDates[$dateStr] = $dayData;
             }
 

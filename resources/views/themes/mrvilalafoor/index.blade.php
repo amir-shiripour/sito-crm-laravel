@@ -21,6 +21,13 @@
         }
     } catch (\Throwable $e) {}
 
+    $rentalTypes = [];
+    try {
+        if (class_exists(\Modules\Properties\Entities\Property::class)) {
+            $rentalTypes = \Modules\Properties\Entities\Property::getRentalPropertyTypes(true);
+        }
+    } catch (\Throwable $e) {}
+
     $isHostRegistered = false;
     if (auth()->check()) {
         try {
@@ -494,40 +501,43 @@
                 </div>
             </section>
 
-            <!-- 4-BOX FLAT CATEGORY GRID (Responsive Mobile & Desktop) -->
+            <!-- DYNAMIC FLAT CATEGORY GRID (Responsive Mobile & Desktop) -->
             <section class="max-w-[1360px] mx-auto px-4 sm:px-8 pt-4 sm:pt-2 pb-2">
-                <div class="grid grid-cols-4 gap-2.5 sm:gap-4">
+                <div class="flex items-center gap-2.5 sm:gap-4 overflow-x-auto no-scrollbar pb-1">
                     <!-- Box 1: All -->
-                    <button type="button" onclick="filterByCategory('all')" data-cat="all" class="cat-box flex flex-col items-center justify-center gap-2 py-3.5 sm:py-5 px-2 rounded-2xl border border-[#007A5E] bg-[#ECFDF5]/70 dark:bg-emerald-950/30 text-[#007A5E] dark:text-emerald-400 transition-all active:scale-[0.98]">
+                    <button type="button" onclick="filterByCategory('all')" data-cat="all" class="cat-box shrink-0 min-w-[76px] sm:min-w-[110px] flex-1 flex flex-col items-center justify-center gap-1.5 sm:gap-2 py-3 sm:py-4 px-2 rounded-2xl border border-[#007A5E] bg-[#ECFDF5]/70 dark:bg-emerald-950/30 text-[#007A5E] dark:text-emerald-400 transition-all active:scale-[0.98]">
                         <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z"/>
                         </svg>
                         <span class="text-[11px] sm:text-xs font-bold truncate">همه</span>
                     </button>
 
-                    <!-- Box 2: Wooden Cabin -->
-                    <button type="button" onclick="filterByCategory('cabin')" data-cat="cabin" class="cat-box flex flex-col items-center justify-center gap-2 py-3.5 sm:py-5 px-2 rounded-2xl border border-[#ECECEE] dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:border-zinc-300 dark:hover:border-zinc-700 text-zinc-600 dark:text-zinc-400 transition-all active:scale-[0.98]">
+                    @foreach($rentalTypes as $typeKey => $typeItem)
+                    <button type="button" onclick="filterByCategory('{{ $typeKey }}')" data-cat="{{ $typeKey }}" class="cat-box shrink-0 min-w-[76px] sm:min-w-[110px] flex-1 flex flex-col items-center justify-center gap-1.5 sm:gap-2 py-3 sm:py-4 px-2 rounded-2xl border border-[#ECECEE] dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:border-zinc-300 dark:hover:border-zinc-700 text-zinc-600 dark:text-zinc-400 transition-all active:scale-[0.98]">
+                        @if($typeKey === 'cottage')
                         <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M3 12l9-9 9 9M5 10v10a1 1 0 001 1h12a1 1 0 001-1V10M9 21v-6a3 3 0 016 0v6"/>
                         </svg>
-                        <span class="text-[11px] sm:text-xs font-medium truncate">کلبه چوبی</span>
-                    </button>
-
-                    <!-- Box 3: Pool Villa -->
-                    <button type="button" onclick="filterByCategory('pool')" data-cat="pool" class="cat-box flex flex-col items-center justify-center gap-2 py-3.5 sm:py-5 px-2 rounded-2xl border border-[#ECECEE] dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:border-zinc-300 dark:hover:border-zinc-700 text-zinc-600 dark:text-zinc-400 transition-all active:scale-[0.98]">
+                        @elseif($typeKey === 'villa')
                         <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5c2.25 0 2.25-1.5 4.5-1.5s2.25 1.5 4.5 1.5 2.25-1.5 4.5-1.5M3 20.25c2.25 0 2.25-1.5 4.5-1.5s2.25 1.5 4.5 1.5M7.5 11.25V5.25a2.25 2.25 0 014.5 0v6m4.5 0V6.75a2.25 2.25 0 00-4.5 0"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25"/>
                         </svg>
-                        <span class="text-[11px] sm:text-xs font-medium truncate">استخردار</span>
-                    </button>
-
-                    <!-- Box 4: Beach & Forest -->
-                    <button type="button" onclick="filterByCategory('beach')" data-cat="beach" class="cat-box flex flex-col items-center justify-center gap-2 py-3.5 sm:py-5 px-2 rounded-2xl border border-[#ECECEE] dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:border-zinc-300 dark:hover:border-zinc-700 text-zinc-600 dark:text-zinc-400 transition-all active:scale-[0.98]">
+                        @elseif($typeKey === 'apartment')
                         <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21"/>
                         </svg>
-                        <span class="text-[11px] sm:text-xs font-medium truncate">ساحلی</span>
+                        @elseif($typeKey === 'ecolodge')
+                        <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 017.843 4.582M12 3a8.997 8.997 0 00-7.843 4.582"/>
+                        </svg>
+                        @else
+                        <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 21v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21m0 0h4.5V3.75H6v17.25h2.25z"/>
+                        </svg>
+                        @endif
+                        <span class="text-[11px] sm:text-xs font-medium truncate">{{ $typeItem['label'] ?? $typeKey }}</span>
                     </button>
+                    @endforeach
                 </div>
             </section>
 
@@ -1240,26 +1250,83 @@
         $dbListings = [];
         $propertyList = $properties ?? $latestProperties ?? [];
         if (count($propertyList) > 0) {
-            $sectionsCycle = ['premium', 'unique', 'newest'];
-            $idx = 0;
             foreach ($propertyList as $prop) {
-                $categorySlug = 'cabin';
-                $titleLower = mb_strtolower($prop->title);
-                if (str_contains($titleLower, 'استخر')) $categorySlug = 'pool';
-                elseif (str_contains($titleLower, 'ساحل') || str_contains($titleLower, 'دریا')) $categorySlug = 'beach';
-
-                $price = $prop->rentalConfig->price_per_night ?? $prop->rentalConfig->daily_rate ?? $prop->rent_price ?? $prop->price ?? 2000000;
-                $oldPrice = $prop->rentalConfig->old_daily_rate ?? ($prop->meta['old_daily_rate'] ?? null);
-                if (!$oldPrice && !empty($prop->meta['discount_percent']) && (int)$prop->meta['discount_percent'] > 0) {
-                    $oldPrice = round($price / (1 - ((int)$prop->meta['discount_percent'] / 100)));
+                // اعتبارسنجی قطعی وضعیت انتشار و تایید اقامتگاه
+                if (($prop->publication_status ?? 'published') !== 'published') {
+                    continue;
                 }
-                $discount = ($oldPrice && $oldPrice > $price) ? round((($oldPrice - $price) / $oldPrice) * 100) : null;
+                if (($prop->approval_status ?? 'approved') !== 'approved') {
+                    continue;
+                }
+                if (($prop->listing_type ?? 'daily_rental') !== 'daily_rental') {
+                    continue;
+                }
 
-                // تعیین دقیق سکشن: فقط اگر واقعاً تخفیف دارد به lastminute تخصیص می‌یابد
-                $assignedSection = ($discount && $discount > 0) ? 'lastminute' : $sectionsCycle[$idx % 3];
+                $rentalConfig = $prop->rentalConfig;
+                $baseDailyPrice = (float) ($rentalConfig?->price_per_night ?? $prop->rent_price ?? $prop->price ?? 2000000);
+
+                // محاسبه تخفیف واقعی بر اساس تنظیمات اجاره اقامتگاه
+                $hasDiscount = !empty($rentalConfig?->has_discount) ||
+                               (!empty($rentalConfig?->discount_percent) && $rentalConfig->discount_percent > 0) ||
+                               (!empty($prop->meta['discount_percent']) && (int)$prop->meta['discount_percent'] > 0);
+
+                $price = $baseDailyPrice;
+                $oldPrice = null;
+                $discount = null;
+
+                if ($hasDiscount && $rentalConfig) {
+                    $discountAmount = $rentalConfig->calculateDiscountAmount($baseDailyPrice);
+                    if ($discountAmount > 0) {
+                        $price = max(0, $baseDailyPrice - $discountAmount);
+                        $oldPrice = $baseDailyPrice;
+                        if ($rentalConfig->discount_type === 'percent' && $rentalConfig->discount_value > 0) {
+                            $discount = (int) $rentalConfig->discount_value;
+                        } else {
+                            $discount = round(($discountAmount / $baseDailyPrice) * 100);
+                        }
+                    } else {
+                        $hasDiscount = false;
+                    }
+                } elseif ($hasDiscount && !empty($prop->meta['discount_percent'])) {
+                    $pct = (int) $prop->meta['discount_percent'];
+                    if ($pct > 0 && $pct < 100) {
+                        $discountAmount = round(($baseDailyPrice * $pct) / 100);
+                        $price = max(0, $baseDailyPrice - $discountAmount);
+                        $oldPrice = $baseDailyPrice;
+                        $discount = $pct;
+                    }
+                }
+
+                // بررسی مستقیم تیک «آگهی ویژه» برای سکشن «اقامتگاه‌های خاص»
+                $isSpecial = !empty($prop->meta['is_special']);
 
                 $hostName = $prop->host?->display_name ?: ($prop->host?->user?->name ?: null);
                 $isVerified = (bool) ($prop->host?->kyc_status === 'approved' || $prop->host?->is_verified);
+
+                // تخصیص منطقی و هماهنگ با ماژول املاک به سکشن‌ها
+                $assignedSections = [];
+
+                // ۱. تخفیف لحظه آخری: فقط اگر تخفیف واقعی در تنظیمات اجاره فعال باشد
+                if ($hasDiscount && $price < $baseDailyPrice) {
+                    $assignedSections[] = 'lastminute';
+                }
+
+                // ۲. اقامتگاه‌های خاص: بررسی مستقیم بر اساس تیک «آگهی ویژه» (is_special)
+                if ($isSpecial) {
+                    $assignedSections[] = 'unique';
+                }
+
+                // ۳. اقامتگاه‌های ممتاز: اقامتگاه‌های دارای رزرو آنی، میزبان تایید شده یا ویژه
+                if ($isVerified || !empty($rentalConfig?->instant_booking) || $isSpecial) {
+                    $assignedSections[] = 'premium';
+                }
+
+                // ۴. جدیدترین‌ها: شامل کلیه اقامتگاه‌های منتشر شده
+                $assignedSections[] = 'newest';
+
+                if (empty($assignedSections)) {
+                    $assignedSections[] = 'premium';
+                }
 
                 $slugOrId = $prop->slug ?: $prop->id;
                 $detailUrl = route('properties.show', $slugOrId);
@@ -1274,27 +1341,31 @@
                     $coverUrl = asset('images/property-placeholder.svg');
                 }
 
+                // استخراج دسته‌بندی اقامتگاه بر اساس نوع واقعی در ماژول املاک
+                $categorySlug = $prop->property_type ?? 'villa';
+
                 $dbListings[] = [
                     'id' => $prop->id,
-                    'section' => $assignedSection,
+                    'section' => $assignedSections[0],
+                    'sections' => $assignedSections,
+                    'isSpecial' => $isSpecial,
                     'title' => $prop->title,
                     'province' => $prop->province ?? 'مازندران',
                     'city' => $prop->city ?? 'لفور',
                     'category' => $categorySlug,
                     'rooms' => $prop->rooms ?? 2,
-                    'maxGuests' => $prop->rentalConfig->max_guests ?? 4,
+                    'maxGuests' => $rentalConfig?->max_guests ?? 4,
                     'rating' => '۴.۹',
                     'price' => (int)$price,
                     'oldPrice' => $oldPrice ? (int)$oldPrice : null,
-                    'discountPercent' => $discount,
-                    'instant' => (bool) ($prop->rentalConfig->instant_booking ?? true),
+                    'discountPercent' => $discount ? (int)$discount : null,
+                    'instant' => (bool) ($rentalConfig?->instant_booking ?? true),
                     'image' => $coverUrl,
                     'url' => $detailUrl,
                     'checkoutUrl' => $checkoutUrl,
                     'hostName' => $hostName,
                     'isVerifiedHost' => $isVerified,
                 ];
-                $idx++;
             }
         }
     @endphp
@@ -1493,11 +1564,11 @@
     function buildVillaCardHTML(item) {
         const isFav = state.favorites.includes(item.id);
         const discountBadge = item.discountPercent
-            ? `<span class="absolute top-2.5 right-2.5 px-2 py-0.5 rounded-lg bg-[#007A5E] text-white text-[10px] sm:text-[11px] font-bold shadow-sm">${toPersianNum(item.discountPercent)}٪ تخفیف</span>`
-            : '';
+            ? `<span class="absolute top-2.5 right-2.5 px-2 py-0.5 rounded-lg bg-[#007A5E] text-white text-[10px] sm:text-[11px] font-bold shadow-sm font-sans">${toPersianNum(item.discountPercent)}٪ تخفیف</span>`
+            : (item.isSpecial ? `<span class="absolute top-2.5 right-2.5 px-2 py-0.5 rounded-lg bg-amber-500 text-white text-[10px] sm:text-[11px] font-bold shadow-sm font-sans">ویژه</span>` : '');
 
         const oldPriceMarkup = item.oldPrice
-            ? `<span class="text-[10px] sm:text-xs text-zinc-400 line-through font-normal ml-1.5">${formatToman(item.oldPrice)}</span>`
+            ? `<span class="text-[10px] sm:text-xs text-zinc-400 line-through font-normal ml-1.5 font-sans">${formatToman(item.oldPrice)}</span>`
             : '';
 
         const targetUrl = item.url || ('{{ url("/properties") }}/' + item.id);
@@ -1523,11 +1594,11 @@
                     </span>
                 </div>
 
-                <p class="text-[11px] sm:text-xs text-zinc-400 mt-0.5 sm:mt-1 truncate px-0.5">${item.city} • تا ${toPersianNum(item.maxGuests)} نفر</p>
+                <p class="text-[11px] sm:text-xs text-zinc-400 mt-0.5 sm:mt-1 truncate px-0.5 font-sans">${item.city} • تا ${toPersianNum(item.maxGuests)} نفر</p>
             </div>
 
-            <div class="mt-2.5 pt-2 border-t border-[#ECECEE]/70 dark:border-zinc-800/70 text-xs sm:text-sm font-extrabold text-[#18181B] dark:text-zinc-100 truncate px-0.5">
-                ${oldPriceMarkup}${formatToman(item.price)} <span class="text-[10px] sm:text-xs font-normal text-zinc-400">تومان / شب</span>
+            <div class="mt-2.5 pt-2 border-t border-[#ECECEE]/70 dark:border-zinc-800/70 text-xs sm:text-sm font-extrabold text-[#18181B] dark:text-zinc-100 truncate px-0.5 font-sans">
+                ${oldPriceMarkup}${formatToman(item.price)} <span class="text-[10px] sm:text-xs font-normal text-zinc-400 font-sans">تومان / شب</span>
             </div>
         </article>`;
     }
@@ -1606,7 +1677,12 @@
         } else {
             emptyState.classList.add('hidden');
             const renderedSections = SECTIONS_META.map(sec => {
-                let secItems = filtered.filter(item => item.section === sec.key);
+                let secItems = filtered.filter(item => {
+                    if (Array.isArray(item.sections)) {
+                        return item.sections.includes(sec.key);
+                    }
+                    return item.section === sec.key;
+                });
 
                 // قانون قطعی: وقتی تخفیفی نیست سکشن تخفیف لحظه آخری به هیچ وجه نباید نمایش داده شود
                 if (sec.key === 'lastminute') {
@@ -1624,16 +1700,16 @@
                                 <p class="text-[11px] sm:text-xs text-[#007A5E]/80 dark:text-emerald-400/80 mt-1">${sec.subtitle}</p>
                             </div>
                             <div class="flex items-center gap-3">
-                                <div class="flex items-center gap-1.5 bg-white dark:bg-zinc-900 border border-[#D1FAE5] dark:border-emerald-900/50 px-2.5 py-1.5 rounded-xl text-[#007A5E] dark:text-emerald-400 shadow-sm">
+                                <div class="flex items-center gap-1.5 bg-white dark:bg-zinc-900 border border-[#D1FAE5] dark:border-emerald-900/50 px-2.5 py-1.5 rounded-xl text-[#007A5E] dark:text-emerald-400 shadow-sm font-sans">
                                     <svg class="w-3.5 h-3.5 text-[#007A5E] dark:text-emerald-400 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"/>
                                     </svg>
                                     <div class="flex items-center gap-1 text-xs font-extrabold tracking-wider" dir="ltr">
-                                        <span id="lm-timer-h" class="bg-[#ECFDF5] dark:bg-emerald-950/50 px-1.5 py-0.5 rounded-md min-w-[24px] text-center">۰۴</span>
+                                        <span id="lm-timer-h" class="bg-[#ECFDF5] dark:bg-emerald-950/50 px-1.5 py-0.5 rounded-md min-w-[24px] text-center font-sans">۰۴</span>
                                         <span>:</span>
-                                        <span id="lm-timer-m" class="bg-[#ECFDF5] dark:bg-emerald-950/50 px-1.5 py-0.5 rounded-md min-w-[24px] text-center">۳۸</span>
+                                        <span id="lm-timer-m" class="bg-[#ECFDF5] dark:bg-emerald-950/50 px-1.5 py-0.5 rounded-md min-w-[24px] text-center font-sans">۳۸</span>
                                         <span>:</span>
-                                        <span id="lm-timer-s" class="bg-[#ECFDF5] dark:bg-emerald-950/50 px-1.5 py-0.5 rounded-md min-w-[24px] text-center">۱۹</span>
+                                        <span id="lm-timer-s" class="bg-[#ECFDF5] dark:bg-emerald-950/50 px-1.5 py-0.5 rounded-md min-w-[24px] text-center font-sans">۱۹</span>
                                     </div>
                                 </div>
                                 <div class="hidden md:flex items-center gap-1">
@@ -1650,6 +1726,12 @@
                             ${secItems.map(buildLastMinuteCardHTML).join('')}
                         </div>
                     </section>`;
+                }
+
+                // اقامتگاه‌های خاص: بررسی مستقیم بر اساس تیک «آگهی ویژه» (is_special)
+                if (sec.key === 'unique') {
+                    secItems = secItems.filter(item => item.isSpecial);
+                    if (secItems.length === 0) return '';
                 }
 
                 // سایر سکشن‌های استاندارد (کاروسل ۳تایی در دسکتاپ و ۲تایی کامل + بعدی در موبایل)

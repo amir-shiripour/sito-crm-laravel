@@ -154,7 +154,7 @@ class RentalController extends Controller
         $this->checkAccess($property);
 
         // تمیز کردن مقادیر عددی قیمت
-        $priceFields = ['price_per_night', 'price_weekend', 'price_holiday', 'extra_guest_fee', 'cleaning_fee'];
+        $priceFields = ['price_per_night', 'price_weekend', 'price_holiday', 'discount_value', 'extra_guest_fee', 'cleaning_fee'];
         foreach ($priceFields as $field) {
             if ($request->has($field)) {
                 $val = $request->input($field);
@@ -172,6 +172,9 @@ class RentalController extends Controller
             'price_per_night' => 'required|numeric|min:0',
             'price_weekend' => 'nullable|numeric|min:0',
             'price_holiday' => 'nullable|numeric|min:0',
+            'has_discount' => 'nullable|boolean',
+            'discount_type' => 'nullable|in:percent,fixed',
+            'discount_value' => 'nullable|numeric|min:1',
             'extra_guest_fee' => 'nullable|numeric|min:0',
             'cleaning_fee' => 'nullable|numeric|min:0',
             'check_in_time' => 'nullable|string',
@@ -185,6 +188,33 @@ class RentalController extends Controller
         ]);
 
         $validated['instant_booking'] = $request->has('instant_booking');
+        $validated['has_discount'] = $request->has('has_discount');
+
+        if (!$validated['has_discount']) {
+            $validated['discount_type'] = 'percent';
+            $validated['discount_value'] = null;
+            $validated['discount_percent'] = null;
+            $validated['old_daily_rate'] = null;
+        } else {
+            $discountType = $validated['discount_type'] ?? 'percent';
+            $discountValue = !empty($validated['discount_value']) ? (float) $validated['discount_value'] : 0;
+            $basePrice = (float) $validated['price_per_night'];
+
+            if ($discountType === 'percent') {
+                $discountPercent = (int) min(99, max(1, $discountValue));
+                $validated['discount_percent'] = $discountPercent;
+                $validated['discount_value'] = $discountPercent;
+                $validated['old_daily_rate'] = $basePrice;
+            } else { // fixed
+                if ($basePrice > 1000) {
+                    $discountValue = min($basePrice - 1000, max(1000, $discountValue));
+                }
+                $validated['discount_value'] = $discountValue;
+                $validated['discount_percent'] = ($basePrice > 0) ? round(($discountValue / $basePrice) * 100) : 0;
+                $validated['old_daily_rate'] = $basePrice;
+            }
+            $validated['discount_type'] = $discountType;
+        }
         $validated['weekend_days'] = $request->input('weekend_days', ['4', '5']);
 
         // ادغام قوانین پیش‌فرض تیک‌خورده با قوانین سفارشی ثبت‌شده

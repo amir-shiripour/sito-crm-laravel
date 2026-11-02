@@ -160,10 +160,19 @@ class RentalBookingService
                 }
             }
 
+            $originalNightPrice = $nightPrice;
+            $discountAmount = 0;
+            if ($config && $config->has_discount) {
+                $discountAmount = $config->calculateDiscountAmount($nightPrice);
+                $nightPrice = max(0, $nightPrice - $discountAmount);
+            }
+
             $nightsTotal += $nightPrice;
             $nightsBreakdown[] = [
                 'date' => $dateStr,
                 'jalali_date' => $jalaliStr,
+                'original_price' => $originalNightPrice,
+                'discount_amount' => $discountAmount,
                 'price' => $nightPrice,
                 'rate_type' => $rateType,
                 'title' => $title,
@@ -171,6 +180,9 @@ class RentalBookingService
 
             $curr->addDay();
         }
+
+        // مجموع کل تخفیف اعمال‌شده
+        $discountTotal = array_sum(array_column($nightsBreakdown, 'discount_amount'));
 
         // محاسبه نفرات اضافه
         $extraGuestsCount = max(0, $guestsCount - $baseGuests);
@@ -211,6 +223,7 @@ class RentalBookingService
             'nights_total'         => $nightsTotal,
             'extra_guests_fee'     => $extraGuestsFeeTotal,
             'cleaning_fee'         => $cleaningFee,
+            'discount_amount'      => $discountTotal,
             'grand_total'          => $grandTotal,
             'prepayment_amount'    => $prepaymentAmount,
             'commission_percent'   => $commissionPercent,
@@ -262,7 +275,7 @@ class RentalBookingService
                 'nights_total'        => $quote['nights_total'],
                 'extra_guests_fee'    => $quote['extra_guests_fee'],
                 'cleaning_fee'        => $quote['cleaning_fee'],
-                'discount_amount'     => 0,
+                'discount_amount'     => $quote['discount_amount'] ?? 0,
                 'grand_total'         => $quote['grand_total'],
                 'prepayment_amount'   => $quote['prepayment_amount'],
                 'paid_amount'         => 0,

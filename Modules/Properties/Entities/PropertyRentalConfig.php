@@ -19,6 +19,11 @@ class PropertyRentalConfig extends Model
         'price_per_night',
         'price_weekend',
         'price_holiday',
+        'has_discount',
+        'discount_type',
+        'discount_value',
+        'discount_percent',
+        'old_daily_rate',
         'extra_guest_fee',
         'cleaning_fee',
         'check_in_time',
@@ -36,6 +41,11 @@ class PropertyRentalConfig extends Model
         'price_per_night' => 'decimal:0',
         'price_weekend' => 'decimal:0',
         'price_holiday' => 'decimal:0',
+        'has_discount' => 'boolean',
+        'discount_type' => 'string',
+        'discount_value' => 'decimal:0',
+        'discount_percent' => 'integer',
+        'old_daily_rate' => 'decimal:0',
         'extra_guest_fee' => 'decimal:0',
         'cleaning_fee' => 'decimal:0',
         'house_rules' => 'array',
@@ -207,6 +217,33 @@ class PropertyRentalConfig extends Model
             $formatted[] = $defaultMap[$r] ?? $r;
         }
         return $formatted;
+    }
+
+    /**
+     * محاسبه مبلغ تخفیف برای یک نرخ مشخص
+     */
+    public function calculateDiscountAmount(float $originalPrice): float
+    {
+        if (!$this->has_discount || empty($this->discount_value) || (float)$this->discount_value <= 0) {
+            return 0;
+        }
+
+        if ($this->discount_type === 'fixed') {
+            return min($originalPrice, (float) $this->discount_value);
+        }
+
+        // درصدی (پیش‌فرض)
+        $percent = min(100, max(0, (float) $this->discount_value));
+        return round($originalPrice * ($percent / 100));
+    }
+
+    /**
+     * محاسبه قیمت نهایی پس از کسر تخفیف
+     */
+    public function getDiscountedPrice(float $originalPrice): float
+    {
+        $discountAmount = $this->calculateDiscountAmount($originalPrice);
+        return max(0, $originalPrice - $discountAmount);
     }
 }
 
