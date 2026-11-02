@@ -23,7 +23,7 @@
                 </span>
                     مدیریت ویژگی‌ها و امکانات
                 </h1>
-                <p class="text-sm text-gray-500 dark:text-gray-400 mt-1 mr-10">تعریف فیلدها و امکانات رفاهی قابل انتخاب برای املاک</p>
+                <p class="text-sm text-gray-500 dark:text-gray-400 mt-1 mr-10">تعریف فیلدها و امکانات رفاهی با پشتیبانی از آیکون‌های تصویری و ایموجی برای اقامتگاه‌ها</p>
             </div>
 
             <a href="{{ route('user.settings.properties.index') }}" class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-white">
@@ -41,12 +41,14 @@
                         :class="activeTab === 'details' ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400 bg-white dark:bg-gray-800' : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700/50'">
                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                     اطلاعات تکمیلی
+                    <span class="px-2 py-0.5 rounded-full text-xs font-sans font-bold bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300">{{ $detailsAttributes->count() }}</span>
                 </button>
                 <button @click="activeTab = 'features'"
                         class="flex-1 py-4 px-6 text-center border-b-2 font-bold text-sm transition-all whitespace-nowrap outline-none focus:outline-none flex items-center justify-center gap-2"
-                        :class="activeTab === 'features' ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400 bg-white dark:bg-gray-800' : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700/50'">
+                        :class="activeTab === 'features' ? 'border-emerald-500 text-emerald-600 dark:text-emerald-400 bg-white dark:bg-gray-800' : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700/50'">
                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" /></svg>
                     امکانات رفاهی
+                    <span class="px-2 py-0.5 rounded-full text-xs font-sans font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">{{ $featuresAttributes->count() }}</span>
                 </button>
             </div>
 
@@ -56,18 +58,18 @@
                 <div x-show="activeTab === 'details'" x-transition:enter.duration.300ms x-transition:enter.opacity>
 
                     {{-- فرم افزودن --}}
-                    <div class="bg-indigo-50/50 dark:bg-indigo-900/10 border border-indigo-100 dark:border-indigo-800 rounded-xl p-5 mb-8">
+                    <div class="bg-indigo-50/50 dark:bg-indigo-900/10 border border-indigo-100 dark:border-indigo-800 rounded-xl p-5 mb-8" x-data="{ detailIcon: '' }">
                         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
                             <h3 class="text-sm font-bold text-indigo-900 dark:text-indigo-100 flex items-center gap-2">
                                 <span class="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
                                 افزودن ویژگی جدید
                             </h3>
-                            <form action="{{ route('user.settings.properties.attributes.load-defaults') }}" method="POST" onsubmit="return confirm('آیا می‌خواهید ویژگی‌های پیش‌فرض و استاندارد (مانند تعداد خواب، تخت‌ها، سیستم گرمایش و...) به این بخش اضافه شوند؟')">
+                            <form action="{{ route('user.settings.properties.attributes.load-defaults') }}" method="POST" onsubmit="return confirm('آیا می‌خواهید ویژگی‌های پیش‌فرض و استاندارد (همراه با آیکون‌های استاندارد) به این بخش اضافه یا بروزرسانی شوند؟')">
                                 @csrf
                                 <input type="hidden" name="section" value="details">
                                 <button type="submit" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg border border-indigo-200 dark:border-indigo-800/80 bg-white dark:bg-gray-800 text-indigo-600 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 shadow-sm transition-all">
                                     <svg class="w-4 h-4 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
-                                    بارگذاری الگو پیش‌فرض
+                                    بارگذاری / به‌روزرسانی الگو پیش‌فرض و آیکون‌ها
                                 </button>
                             </form>
                         </div>
@@ -78,7 +80,14 @@
                             <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-start">
                                 <div class="md:col-span-3">
                                     <label class="{{ $labelClass }}">عنوان ویژگی</label>
-                                    <input type="text" name="name" class="{{ $inputClass }}" required placeholder="مثلاً: سال ساخت، طبقه">
+                                    <input type="text" name="name" class="{{ $inputClass }}" required placeholder="مثلاً: سال ساخت، طبقه، متراژ">
+                                </div>
+
+                                <div class="md:col-span-2">
+                                    <label class="{{ $labelClass }}">آیکون (ایموجی یا نماد)</label>
+                                    <div class="relative">
+                                        <input type="text" name="icon" x-model="detailIcon" class="{{ $inputClass }} text-center text-base" placeholder="مثلاً 📐">
+                                    </div>
                                 </div>
 
                                 <div class="md:col-span-3">
@@ -96,12 +105,25 @@
                                     </div>
                                 </div>
 
-                                <div class="md:col-span-3">
+                                <div class="md:col-span-4">
                                     <label class="{{ $labelClass }}" :class="{'opacity-50': newType !== 'select'}">گزینه‌ها (جداکننده کاما)</label>
                                     <input type="text" name="options" class="{{ $inputClass }}" :disabled="newType !== 'select'" placeholder="گزینه ۱، گزینه ۲" x-transition>
                                 </div>
 
-                                <div class="md:col-span-3 flex flex-col gap-2 pt-6">
+                                {{-- چیپ‌های سریع آیکون پیشنهادی --}}
+                                <div class="md:col-span-8 flex flex-wrap items-center gap-1.5 pt-1">
+                                    <span class="text-[11px] text-gray-500 dark:text-gray-400 ml-1">پیشنهاد سریع آیکون:</span>
+                                    @php
+                                        $detailQuickIcons = ['📐', '🏡', '📏', '🚪', '🛏️', '🛋️', '🚿', '🚽', '🗓️', '🏢', '🏬', '🔢', '🧭', '🪵', '❄️', '🔥', '♨️', '🔑'];
+                                    @endphp
+                                    @foreach($detailQuickIcons as $qIcon)
+                                        <button type="button" @click="detailIcon = '{{ $qIcon }}'" class="w-7 h-7 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-indigo-500 hover:scale-110 flex items-center justify-center text-sm transition-transform shadow-2xs">
+                                            {{ $qIcon }}
+                                        </button>
+                                    @endforeach
+                                </div>
+
+                                <div class="md:col-span-4 flex flex-col gap-2 pt-1">
                                     <label class="flex items-center gap-2 cursor-pointer">
                                         <input type="checkbox" name="is_filterable" value="1" class="{{ $checkboxClass }}" x-model="isFilterable">
                                         <span class="text-xs text-gray-700 dark:text-gray-300">قابل فیلتر در جستجو</span>
@@ -126,15 +148,17 @@
                     {{-- لیست ویژگی‌ها --}}
                     <div class="space-y-3">
                         @forelse($detailsAttributes as $attr)
-                            <div class="group flex items-center justify-between p-4 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-indigo-300 dark:hover:border-indigo-700 hover:shadow-sm transition-all" x-data="{ editing: false, name: '{{ $attr->name }}', type: '{{ $attr->type }}', isFilterable: {{ $attr->is_filterable ? 'true' : 'false' }}, isRangeFilter: {{ $attr->is_range_filter ? 'true' : 'false' }} }">
-                                <div class="flex items-center gap-4 flex-1">
-                                    <div class="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-gray-500 dark:text-gray-400">
-                                        <span class="text-xs font-sans font-bold">{{ $loop->iteration }}</span>
+                            <div class="group flex items-center justify-between p-4 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-indigo-300 dark:hover:border-indigo-700 hover:shadow-sm transition-all" x-data="{ editing: false, name: '{{ addslashes($attr->name) }}', icon: '{{ addslashes($attr->icon ?? '') }}', type: '{{ $attr->type }}', isFilterable: {{ $attr->is_filterable ? 'true' : 'false' }}, isRangeFilter: {{ $attr->is_range_filter ? 'true' : 'false' }} }">
+                                <div class="flex items-center gap-3.5 flex-1 min-w-0">
+                                    {{-- آیکون ویژگی --}}
+                                    <div class="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/60 flex items-center justify-center text-lg flex-shrink-0 shadow-2xs">
+                                        <span>{{ $attr->icon ?: '📐' }}</span>
                                     </div>
-                                    <div class="flex-1">
+
+                                    <div class="flex-1 min-w-0">
                                         <div x-show="!editing">
-                                            <h4 class="text-sm font-bold text-gray-800 dark:text-gray-200 flex items-center gap-2">
-                                                {{ $attr->name }}
+                                            <h4 class="text-sm font-bold text-gray-800 dark:text-gray-200 flex items-center gap-2 truncate">
+                                                <span>{{ $attr->name }}</span>
                                                 @if($attr->is_filterable)
                                                     <span class="px-1.5 py-0.5 rounded text-[10px] bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-300" title="قابل فیلتر">
                                                         <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
@@ -147,13 +171,13 @@
                                                 @endif
                                             </h4>
                                             <div class="flex items-center gap-2 mt-1">
-                                            <span class="text-[10px] px-2 py-0.5 rounded bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300">
-                                                {{ match($attr->type) { 'text' => 'متن', 'number' => 'عدد', 'select' => 'لیست', 'checkbox' => 'چک‌باکس', default => $attr->type } }}
-                                            </span>
+                                                <span class="text-[10px] px-2 py-0.5 rounded bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300">
+                                                    {{ match($attr->type) { 'text' => 'متن', 'number' => 'عدد', 'select' => 'لیست', 'checkbox' => 'چک‌باکس', default => $attr->type } }}
+                                                </span>
                                                 @if($attr->type === 'select')
                                                     <span class="text-[10px] text-gray-400 dark:text-gray-500 truncate max-w-[200px]" title="{{ implode(', ', $attr->options ?? []) }}">
-                                                    {{ implode(', ', $attr->options ?? []) }}
-                                                </span>
+                                                        {{ implode(', ', $attr->options ?? []) }}
+                                                    </span>
                                                 @endif
                                             </div>
                                         </div>
@@ -163,19 +187,20 @@
                                             @csrf
                                             @method('PUT')
 
-                                            <div class="flex gap-2">
-                                                <input type="text" name="name" x-model="name" class="{{ $inputClass }} py-1.5 text-xs" required>
+                                            <div class="flex flex-wrap gap-2 items-center">
+                                                <input type="text" name="icon" x-model="icon" class="{{ $inputClass }} py-1.5 text-xs w-16 text-center text-sm" placeholder="آیکون" title="آیکون">
+                                                <input type="text" name="name" x-model="name" class="{{ $inputClass }} py-1.5 text-xs flex-1 min-w-[140px]" required placeholder="عنوان ویژگی">
 
-                                                <select name="type" x-model="type" class="{{ $selectClass }} py-1.5 text-xs w-32">
+                                                <select name="type" x-model="type" class="{{ $selectClass }} py-1.5 text-xs w-28">
                                                     <option value="text">متن</option>
                                                     <option value="number">عدد</option>
                                                     <option value="select">لیست</option>
                                                     <option value="checkbox">چک‌باکس</option>
                                                 </select>
 
-                                                <input type="text" name="options" value="{{ implode(',', $attr->options ?? []) }}" class="{{ $inputClass }} py-1.5 text-xs" placeholder="گزینه‌ها" x-show="type === 'select'">
+                                                <input type="text" name="options" value="{{ implode(',', $attr->options ?? []) }}" class="{{ $inputClass }} py-1.5 text-xs flex-1 min-w-[160px]" placeholder="گزینه‌ها" x-show="type === 'select'">
                                             </div>
-                                            <div class="flex gap-4">
+                                            <div class="flex flex-wrap items-center gap-4">
                                                 <label class="flex items-center gap-2 cursor-pointer">
                                                     <input type="checkbox" name="is_filterable" value="1" class="{{ $checkboxClass }}" x-model="isFilterable">
                                                     <span class="text-xs text-gray-700 dark:text-gray-300">قابل فیلتر</span>
@@ -187,14 +212,14 @@
                                                 </label>
                                             </div>
                                             <div class="flex gap-2">
-                                                <button type="submit" class="px-3 py-1 bg-indigo-600 text-white text-xs rounded hover:bg-indigo-700">ذخیره</button>
-                                                <button type="button" @click="editing = false" class="px-3 py-1 bg-gray-200 text-gray-700 text-xs rounded hover:bg-gray-300">انصراف</button>
+                                                <button type="submit" class="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg transition-colors">ذخیره تغییرات</button>
+                                                <button type="button" @click="editing = false" class="px-3.5 py-1.5 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 text-xs font-bold rounded-lg transition-colors">انصراف</button>
                                             </div>
                                         </form>
                                     </div>
                                 </div>
 
-                                <div class="flex items-center gap-2" x-show="!editing">
+                                <div class="flex items-center gap-2 flex-shrink-0" x-show="!editing">
                                     <button @click="editing = true" class="p-2 text-gray-400 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg transition-colors" title="ویرایش">
                                         <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                                     </button>
@@ -216,7 +241,7 @@
                                     <input type="hidden" name="section" value="details">
                                     <button type="submit" class="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:hover:bg-indigo-900/50 dark:text-indigo-300 transition-colors">
                                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
-                                        بارگذاری الگوی پیش‌فرض اطلاعات تکمیلی
+                                        بارگذاری الگوی پیش‌فرض اطلاعات تکمیلی (با آیکون)
                                     </button>
                                 </form>
                             </div>
@@ -227,45 +252,62 @@
                 {{-- Tab 2: Features Attributes --}}
                 <div x-show="activeTab === 'features'" x-transition:enter.duration.300ms x-transition:enter.opacity style="display: none;">
 
-                    {{-- فرم افزودن --}}
-                    <div class="bg-emerald-50/50 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-800 rounded-xl p-5 mb-8" x-data="{ isFilterable: true }">
+                    {{-- فرم افزودن امکانات --}}
+                    <div class="bg-emerald-50/50 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-800 rounded-xl p-5 mb-8" x-data="{ isFilterable: true, featureIcon: '✨' }">
                         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
                             <h3 class="text-sm font-bold text-emerald-900 dark:text-emerald-100 flex items-center gap-2">
                                 <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
                                 افزودن امکانات رفاهی جدید
                             </h3>
-                            <form action="{{ route('user.settings.properties.attributes.load-defaults') }}" method="POST" onsubmit="return confirm('آیا می‌خواهید امکانات رفاهی استاندارد (مانند استخر، جکوزی، اینترنت، باربیکیو و...) به این بخش اضافه شوند؟')">
+                            <form action="{{ route('user.settings.properties.attributes.load-defaults') }}" method="POST" onsubmit="return confirm('آیا می‌خواهید امکانات رفاهی استاندارد (مانند استخر، جکوزی، اینترنت، باربیکیو و...) همراه با آیکون‌های استاندارد به این بخش اضافه یا بروزرسانی شوند؟')">
                                 @csrf
                                 <input type="hidden" name="section" value="features">
                                 <button type="submit" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg border border-emerald-200 dark:border-emerald-800/80 bg-white dark:bg-gray-800 text-emerald-600 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 shadow-sm transition-all">
                                     <svg class="w-4 h-4 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
-                                    بارگذاری الگو پیش‌فرض
+                                    بارگذاری / به‌روزرسانی الگو پیش‌فرض و آیکون‌ها
                                 </button>
                             </form>
                         </div>
                         <form action="{{ route('user.settings.properties.attributes.store') }}" method="POST">
                             @csrf
                             <input type="hidden" name="section" value="features">
-                            {{-- Features are always checkbox/boolean in logic, but stored as attribute --}}
                             <input type="hidden" name="type" value="checkbox">
 
-                            <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
-                                <div class="md:col-span-6">
+                            <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-start">
+                                <div class="md:col-span-5">
                                     <label class="{{ $labelClass }}">عنوان امکانات</label>
-                                    <input type="text" name="name" class="{{ $inputClass }}" required placeholder="مثلاً: استخر، سونا، روف گاردن، لابی من">
+                                    <input type="text" name="name" class="{{ $inputClass }}" required placeholder="مثلاً: استخر سرپوشیده، سونا، جکوزی، باربیکیو">
                                 </div>
 
-                                <div class="md:col-span-3 pb-3">
+                                <div class="md:col-span-3">
+                                    <label class="{{ $labelClass }}">آیکون (ایموجی یا نماد)</label>
+                                    <input type="text" name="icon" x-model="featureIcon" class="{{ $inputClass }} text-center text-base" placeholder="مثلاً 🏊">
+                                </div>
+
+                                <div class="md:col-span-4 pt-6">
                                     <label class="flex items-center gap-2 cursor-pointer">
                                         <input type="checkbox" name="is_filterable" value="1" class="{{ $checkboxClass }}" x-model="isFilterable">
                                         <span class="text-xs text-gray-700 dark:text-gray-300">قابل فیلتر در جستجو</span>
                                     </label>
                                 </div>
 
-                                <div class="md:col-span-3">
-                                    <button type="submit" class="w-full px-4 py-2.5 rounded-xl bg-emerald-600 text-white font-bold text-sm shadow-lg shadow-emerald-500/30 hover:bg-emerald-700 transition-all active:scale-95 flex items-center justify-center gap-2">
+                                {{-- چیپ‌های سریع آیکون امکانات رفاهی --}}
+                                <div class="md:col-span-12 flex flex-wrap items-center gap-1.5 pt-1">
+                                    <span class="text-[11px] text-gray-500 dark:text-gray-400 ml-1">پیشنهاد سریع آیکون:</span>
+                                    @php
+                                        $featureQuickIcons = ['🏊', '🏊‍♂️', '🛁', '🧖', '📶', '🚗', '🥩', '❄️', '🔥', '🍳', '📺', '🎱', '⚽', '🌳', '🌲', '🌅', '🌿', '🧺', '🛗', '☕', '🎮', '🔐', '🛡️', '📦'];
+                                    @endphp
+                                    @foreach($featureQuickIcons as $qIcon)
+                                        <button type="button" @click="featureIcon = '{{ $qIcon }}'" class="w-7 h-7 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-emerald-500 hover:scale-110 flex items-center justify-center text-sm transition-transform shadow-2xs">
+                                            {{ $qIcon }}
+                                        </button>
+                                    @endforeach
+                                </div>
+
+                                <div class="md:col-span-12 mt-2">
+                                    <button type="submit" class="w-full md:w-auto px-6 py-2.5 rounded-xl bg-emerald-600 text-white font-bold text-sm shadow-lg shadow-emerald-500/30 hover:bg-emerald-700 transition-all active:scale-95 flex items-center justify-center gap-2">
                                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
-                                        افزودن
+                                        افزودن امکانات رفاهی
                                     </button>
                                 </div>
                             </div>
@@ -275,31 +317,33 @@
                     {{-- لیست امکانات --}}
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                         @forelse($featuresAttributes as $attr)
-                            <div class="group flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-emerald-300 dark:hover:border-emerald-700 hover:shadow-sm transition-all" x-data="{ editing: false, name: '{{ $attr->name }}', type: '{{ $attr->type }}', isFilterable: {{ $attr->is_filterable ? 'true' : 'false' }} }">
-                                <div class="flex items-center gap-3 flex-1">
-                                    <div class="w-2 h-2 rounded-full bg-emerald-400" x-show="!editing"></div>
-                                    <div class="flex-1">
+                            <div class="group flex items-center justify-between p-3.5 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-emerald-300 dark:hover:border-emerald-700 hover:shadow-sm transition-all" x-data="{ editing: false, name: '{{ addslashes($attr->name) }}', icon: '{{ addslashes($attr->icon ?? '') }}', type: '{{ $attr->type }}', isFilterable: {{ $attr->is_filterable ? 'true' : 'false' }} }">
+                                <div class="flex items-center gap-3 flex-1 min-w-0">
+                                    {{-- آیکون امکانات --}}
+                                    <div class="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-100 dark:border-emerald-900/60 flex items-center justify-center text-base flex-shrink-0 shadow-2xs">
+                                        <span>{{ $attr->icon ?: '✨' }}</span>
+                                    </div>
+
+                                    <div class="flex-1 min-w-0">
                                         <div x-show="!editing" class="flex items-center gap-2">
-                                            <h4 class="text-sm font-bold text-gray-800 dark:text-gray-200">{{ $attr->name }}</h4>
+                                            <h4 class="text-sm font-bold text-gray-800 dark:text-gray-200 truncate">{{ $attr->name }}</h4>
                                             @if($attr->is_filterable)
-                                                <span class="px-1.5 py-0.5 rounded text-[10px] bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-300" title="قابل فیلتر">
+                                                <span class="px-1.5 py-0.5 rounded text-[10px] bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-300 flex-shrink-0" title="قابل فیلتر">
                                                     <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
                                                 </span>
                                             @endif
-                                            <span class="text-[10px] px-2 py-0.5 rounded bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300">
-                                                {{ match($attr->type) { 'text' => 'متن', 'number' => 'عدد', 'select' => 'لیست', 'checkbox' => 'چک‌باکس', default => $attr->type } }}
-                                            </span>
                                         </div>
 
                                         {{-- فرم ویرایش --}}
-                                        <form x-show="editing" action="{{ route('user.settings.properties.attributes.update', $attr) }}" method="POST" class="flex flex-col gap-3 mt-2 w-full">
+                                        <form x-show="editing" action="{{ route('user.settings.properties.attributes.update', $attr) }}" method="POST" class="flex flex-col gap-2.5 mt-2 w-full">
                                             @csrf
                                             @method('PUT')
 
-                                            <div class="flex gap-2 w-full">
-                                                <input type="text" name="name" x-model="name" class="{{ $inputClass }} py-1.5 text-xs flex-1" required>
+                                            <div class="flex gap-2 w-full items-center">
+                                                <input type="text" name="icon" x-model="icon" class="{{ $inputClass }} py-1 text-xs w-16 text-center text-sm" placeholder="آیکون" title="آیکون">
+                                                <input type="text" name="name" x-model="name" class="{{ $inputClass }} py-1 text-xs flex-1" required placeholder="عنوان امکانات">
 
-                                                <select name="type" x-model="type" class="{{ $selectClass }} py-1.5 text-xs w-28">
+                                                <select name="type" x-model="type" class="{{ $selectClass }} py-1 text-xs w-24">
                                                     <option value="checkbox">چک‌باکس</option>
                                                     <option value="text">متن</option>
                                                     <option value="number">عدد</option>
@@ -308,24 +352,24 @@
                                             </div>
 
                                             <div x-show="type === 'select'" class="w-full">
-                                                <input type="text" name="options" value="{{ implode(',', $attr->options ?? []) }}" class="{{ $inputClass }} py-1.5 text-xs w-full" placeholder="گزینه‌ها (با کاما جدا کنید)">
+                                                <input type="text" name="options" value="{{ implode(',', $attr->options ?? []) }}" class="{{ $inputClass }} py-1 text-xs w-full" placeholder="گزینه‌ها (با کاما جدا کنید)">
                                             </div>
 
-                                            <div class="flex gap-4">
-                                                <label class="flex items-center gap-2 cursor-pointer">
+                                            <div class="flex items-center justify-between gap-2">
+                                                <label class="flex items-center gap-1.5 cursor-pointer">
                                                     <input type="checkbox" name="is_filterable" value="1" class="{{ $checkboxClass }}" x-model="isFilterable">
                                                     <span class="text-xs text-gray-700 dark:text-gray-300">قابل فیلتر</span>
                                                 </label>
-                                            </div>
-                                            <div class="flex gap-2">
-                                                <button type="submit" class="px-3 py-1 bg-emerald-600 text-white text-xs rounded hover:bg-emerald-700">ذخیره</button>
-                                                <button type="button" @click="editing = false" class="px-3 py-1 bg-gray-200 text-gray-700 text-xs rounded hover:bg-gray-300">انصراف</button>
+                                                <div class="flex gap-1.5">
+                                                    <button type="submit" class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg transition-colors">ذخیره</button>
+                                                    <button type="button" @click="editing = false" class="px-2.5 py-1 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 text-xs font-bold rounded-lg transition-colors">انصراف</button>
+                                                </div>
                                             </div>
                                         </form>
                                     </div>
                                 </div>
 
-                                <div class="flex items-center gap-2" x-show="!editing">
+                                <div class="flex items-center gap-1.5 flex-shrink-0" x-show="!editing">
                                     <button @click="editing = true" class="p-1.5 text-gray-400 hover:text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg transition-colors" title="ویرایش">
                                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                                     </button>
@@ -347,7 +391,7 @@
                                     <input type="hidden" name="section" value="features">
                                     <button type="submit" class="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:hover:bg-emerald-900/50 dark:text-emerald-300 transition-colors">
                                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
-                                        بارگذاری الگوی پیش‌فرض امکانات رفاهی
+                                        بارگذاری الگوی پیش‌فرض امکانات رفاهی (با آیکون)
                                     </button>
                                 </form>
                             </div>

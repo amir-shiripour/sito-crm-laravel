@@ -27,6 +27,17 @@
         body { font-size: 14px;}
         jdp-container { z-index: 9999 !important; }
         [x-cloak] { display: none !important; }
+
+        /* Sleek scrollbars for both Light and Dark mode */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(156, 163, 175, 0.4); border-radius: 9999px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(99, 102, 241, 0.6); }
+        .dark ::-webkit-scrollbar-track { background: transparent; }
+        .dark ::-webkit-scrollbar-thumb { background: rgba(75, 85, 99, 0.6); border-radius: 9999px; }
+        .dark ::-webkit-scrollbar-thumb:hover { background: rgba(129, 140, 248, 0.7); }
+        * { scrollbar-width: thin; scrollbar-color: rgba(156, 163, 175, 0.4) transparent; }
+        .dark * { scrollbar-color: rgba(75, 85, 99, 0.6) transparent; }
     </style>
     <meta name="csrf-token" content="{{ csrf_token() }}">
     @stack('styles')

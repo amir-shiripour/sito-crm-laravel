@@ -990,7 +990,7 @@
                 }
 
                 $rentalConfig = $prop->rentalConfig;
-                $baseDailyPrice = (float) ($rentalConfig?->price_per_night ?? $prop->rent_price ?? $prop->price ?? 2000000);
+                $baseDailyPrice = (float) ($rentalConfig?->price_per_night ?? $prop->rent_price ?? $prop->price ?? 0);
 
                 // محاسبه تخفیف واقعی بر اساس تنظیمات اجاره اقامتگاه
                 $hasDiscount = !empty($rentalConfig?->has_discount) ||
@@ -1080,13 +1080,13 @@
                     'province' => $prop->province ?? 'مازندران',
                     'city' => $prop->city ?? 'لفور',
                     'category' => $categorySlug,
-                    'rooms' => $prop->rooms ?? 2,
-                    'maxGuests' => $rentalConfig?->max_guests ?? 4,
-                    'rating' => '۴.۹',
-                    'price' => (int)$price,
-                    'oldPrice' => $oldPrice ? (int)$oldPrice : null,
+                    'rooms' => $prop->bedrooms ?? $prop->rooms ?? null,
+                    'maxGuests' => $rentalConfig?->max_guests ?? $prop->max_guests ?? null,
+                    'rating' => !empty($prop->rating) ? number_format($prop->rating, 1) : null,
+                    'price' => $price > 0 ? (int)$price : null,
+                    'oldPrice' => ($oldPrice && $oldPrice > 0) ? (int)$oldPrice : null,
                     'discountPercent' => $discount ? (int)$discount : null,
-                    'instant' => (bool) ($rentalConfig?->instant_booking ?? true),
+                    'instant' => (bool) ($rentalConfig?->instant_booking ?? false),
                     'image' => $coverUrl,
                     'url' => $detailUrl,
                     'checkoutUrl' => $checkoutUrl,
@@ -1315,18 +1315,23 @@
 
                 <div class="flex items-start justify-between gap-1.5 px-0.5">
                     <h3 class="card-title-fixed-height text-xs sm:text-sm font-bold text-[#18181B] dark:text-zinc-100 flex-1">${item.title}</h3>
+                    ${item.rating ? `
                     <span class="inline-flex items-center gap-1 text-[11px] sm:text-xs font-bold text-[#18181B] dark:text-zinc-200 shrink-0 mt-0.5">
                         <span class="text-amber-400 dark:text-amber-400 text-xs">★</span>
                         <span>${item.rating}</span>
-                    </span>
+                    </span>` : ''}
                 </div>
 
-                <p class="text-[11px] sm:text-xs text-zinc-400 mt-0.5 sm:mt-1 truncate px-0.5 font-sans">${item.city} • تا ${toPersianNum(item.maxGuests)} نفر</p>
+                <p class="text-[11px] sm:text-xs text-zinc-400 mt-0.5 sm:mt-1 truncate px-0.5 font-sans">${item.city}${item.maxGuests ? ` • تا ${toPersianNum(item.maxGuests)} نفر` : ''}</p>
             </div>
 
+            ${(item.price && item.price > 0) ? `
             <div class="mt-2.5 pt-2 border-t border-[#ECECEE]/70 dark:border-zinc-800/70 text-xs sm:text-sm font-extrabold text-[#18181B] dark:text-zinc-100 truncate px-0.5 font-sans">
                 ${oldPriceMarkup}${formatToman(item.price)} <span class="text-[10px] sm:text-xs font-normal text-zinc-400 font-sans">تومان / شب</span>
-            </div>
+            </div>` : `
+            <div class="mt-2.5 pt-2 border-t border-[#ECECEE]/70 dark:border-zinc-800/70 text-xs sm:text-sm font-bold text-zinc-500 truncate px-0.5 font-sans">
+                استعلام قیمت
+            </div>`}
         </article>`;
     }
 
@@ -1342,9 +1347,10 @@
                 <div class="relative aspect-[4/3] w-full rounded-xl overflow-hidden bg-[#F7F8F9] dark:bg-zinc-800 mb-2.5">
                     <img src="${item.image}" alt="${item.title}" onerror="this.onerror=null; this.src='{{ asset('images/property-placeholder.svg') }}';" class="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-300" loading="lazy">
                     
+                    ${item.discountPercent ? `
                     <span class="absolute top-2 right-2 px-2 py-0.5 rounded-lg bg-[#007A5E] text-white text-[10px] sm:text-[11px] font-extrabold shadow-sm">
-                        ${toPersianNum(item.discountPercent || 15)}٪ تخفیف
-                    </span>
+                        ${toPersianNum(item.discountPercent)}٪ تخفیف
+                    </span>` : ''}
 
                     <button type="button" onclick="toggleFavorite(${item.id}, event)" aria-label="ذخیره" class="absolute top-2 left-2 w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white/95 dark:bg-zinc-900/95 flex items-center justify-center active:scale-90 transition-transform shadow-sm">
                         <svg class="w-3.5 h-3.5 sm:w-4 sm:h-4 ${isFav ? 'text-rose-500 fill-rose-500' : 'text-[#18181B] dark:text-zinc-200'}" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -1355,20 +1361,21 @@
 
                 <div class="flex items-start justify-between gap-1.5 px-0.5">
                     <h3 class="card-title-fixed-height text-xs sm:text-sm font-bold text-[#18181B] dark:text-zinc-100 flex-1">${item.title}</h3>
+                    ${item.rating ? `
                     <span class="inline-flex items-center gap-1 text-[11px] sm:text-xs font-bold text-[#18181B] dark:text-zinc-200 shrink-0 mt-0.5">
                         <span class="text-amber-400 dark:text-amber-400 text-xs">★</span>
                         <span>${item.rating}</span>
-                    </span>
+                    </span>` : ''}
                 </div>
 
-                <p class="text-[11px] sm:text-xs text-zinc-400 mt-0.5 truncate px-0.5">${item.city} • تا ${toPersianNum(item.maxGuests)} نفر</p>
+                <p class="text-[11px] sm:text-xs text-zinc-400 mt-0.5 truncate px-0.5">${item.city}${item.maxGuests ? ` • تا ${toPersianNum(item.maxGuests)} نفر` : ''}</p>
             </div>
 
             <div class="mt-2 pt-2 border-t border-[#ECECEE] dark:border-zinc-800 flex items-end justify-between gap-1">
                 <div>
-                    <span class="block text-[10px] sm:text-[11px] text-zinc-400 line-through">${formatToman(item.oldPrice || Math.round(item.price * 1.2))}</span>
+                    ${item.oldPrice ? `<span class="block text-[10px] sm:text-[11px] text-zinc-400 line-through">${formatToman(item.oldPrice)}</span>` : ''}
                     <div class="text-xs sm:text-sm font-extrabold text-[#007A5E] dark:text-emerald-400">
-                        ${formatToman(item.price)} <span class="text-[10px] font-normal text-zinc-500">تومان</span>
+                        ${(item.price && item.price > 0) ? `${formatToman(item.price)} <span class="text-[10px] font-normal text-zinc-500">تومان</span>` : 'استعلام قیمت'}
                     </div>
                 </div>
                 ${savedAmount > 0 ? `<span class="hidden sm:inline-block px-1.5 py-0.5 rounded-lg bg-[#ECFDF5] dark:bg-emerald-950/40 text-[#007A5E] dark:text-emerald-400 text-[10px] font-bold">${formatToman(savedAmount)} سود</span>` : ''}

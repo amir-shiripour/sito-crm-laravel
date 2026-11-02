@@ -138,14 +138,16 @@
                             <h3 class="card-title-fixed-height text-xs sm:text-sm font-bold text-[#18181B] dark:text-zinc-100 group-hover:text-[#007A5E] dark:group-hover:text-emerald-400 transition-colors flex-1">
                                 {{ $property->title }}
                             </h3>
-                            <span class="inline-flex items-center gap-1 text-[11px] sm:text-xs font-bold text-[#18181B] dark:text-zinc-100 shrink-0 mt-0.5">
-                                <span class="text-amber-400 dark:text-amber-400 text-xs">★</span>
-                                <span>۴.۹</span>
-                            </span>
+                            @if(!empty($property->rating))
+                                <span class="inline-flex items-center gap-1 text-[11px] sm:text-xs font-bold text-[#18181B] dark:text-zinc-100 shrink-0 mt-0.5">
+                                    <span class="text-amber-400 dark:text-amber-400 text-xs">★</span>
+                                    <span>{{ number_format($property->rating, 1) }}</span>
+                                </span>
+                            @endif
                         </div>
 
                         <p class="text-[11px] sm:text-xs text-zinc-400 dark:text-zinc-400 mt-0.5 sm:mt-1 truncate px-0.5">
-                            {{ $property->city ?? 'لفور' }} • تا {{ $rentalConfig?->max_guests ?? ($property->max_guests ?? 4) }} نفر
+                            {{ $property->city ?? 'لفور' }}@if(!empty($rentalConfig?->max_guests) || !empty($property->max_guests)) • تا {{ $rentalConfig?->max_guests ?? $property->max_guests }} نفر@endif
                         </p>
                     </div>
 

@@ -13,6 +13,7 @@ class PropertyAttribute extends Model
         'name',
         'type',
         'section',
+        'icon',
         'options',
         'sort_order',
         'is_active',
@@ -30,5 +31,16 @@ class PropertyAttribute extends Model
     public function values()
     {
         return $this->hasMany(PropertyAttributeValue::class, 'attribute_id');
+    }
+
+    /**
+     * Helper to render the attribute icon
+     *
+     * @param string $fallback
+     * @return string
+     */
+    public function renderIcon(string $fallback = '✨'): string
+    {
+        return !empty($this->icon) ? (string) $this->icon : $fallback;
     }
 }
