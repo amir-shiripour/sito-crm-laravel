@@ -913,21 +913,6 @@
         </div>
     </div>
 
-    <!-- AUTH SIMPLE DIALOG MODAL -->
-    <div id="simple-dialog-modal" class="hidden fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
-        <div class="bg-white dark:bg-zinc-900 w-full max-w-sm rounded-3xl p-6 border border-[#ECECEE] dark:border-zinc-800 shadow-xl">
-            <div class="flex items-center justify-between mb-4">
-                <h3 class="text-sm font-extrabold text-[#18181B] dark:text-zinc-100">ورود به بوم‌گرد</h3>
-                <button type="button" onclick="closeSimpleDialog()" class="w-7 h-7 rounded-full bg-[#F7F8F9] dark:bg-zinc-800 text-xs text-zinc-500">✕</button>
-            </div>
-            <p class="text-xs text-zinc-400 mb-4 leading-relaxed">شماره موبایل خود را وارد کنید تا کد تایید پیامک شود.</p>
-            <input type="tel" placeholder="۰۹۱۲..." class="w-full bg-[#F7F8F9] dark:bg-zinc-800 border border-[#ECECEE] dark:border-zinc-700 text-[#18181B] dark:text-zinc-100 rounded-xl px-4 py-3 text-sm font-bold text-center tracking-widest outline-none mb-4 focus:border-[#007A5E]">
-            <button type="button" onclick="submitSimpleDialog()" class="w-full bg-[#007A5E] text-white font-bold py-3 rounded-xl text-xs">
-                دریافت کد تایید
-            </button>
-        </div>
-    </div>
-
 </div>
 
 <!-- SCRIPT ENGINE -->
@@ -1952,16 +1937,7 @@
     }
 
     function openAuthModal() {
-        document.getElementById('simple-dialog-modal').classList.remove('hidden');
-    }
-
-    function closeSimpleDialog() {
-        document.getElementById('simple-dialog-modal').classList.add('hidden');
-    }
-
-    function submitSimpleDialog() {
-        closeSimpleDialog();
-        showToast('کد تایید ارسال شد');
+        window.location.href = '{{ route("login") }}';
     }
 
     // Live Countdown Timer for Last-Minute Section
