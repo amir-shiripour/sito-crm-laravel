@@ -383,7 +383,7 @@ class PropertyController extends Controller
         if ($property->listing_type === 'daily_rental') {
             $property->loadMissing(['host.user', 'rentalConfig', 'seasonalPrices', 'rentalBlocks']);
             $rentalPublicService = app(\Modules\Properties\Services\RentalPublicService::class);
-            $calendarData = $rentalPublicService->getCalendarData($property, 2);
+            $calendarData = $rentalPublicService->getCalendarData($property, 6);
             $currency = PropertySetting::get('currency', 'toman');
 
             // وضعیت احراز رزرو تأیید شده مسافر یا مدیریت
@@ -403,7 +403,16 @@ class PropertyController extends Controller
                 'show_direct_call_btn' => PropertySetting::get('rental_show_direct_call_btn', 'all'),
             ];
 
-            return view('properties::rental.show', compact('property', 'visibilitySettings', 'rentalDisplaySettings', 'hasConfirmedBooking', 'calendarData', 'currency'));
+            $similarProperties = Property::with(['rentalConfig', 'host'])
+                ->where('listing_type', 'daily_rental')
+                ->where('publication_status', 'published')
+                ->where('approval_status', 'approved')
+                ->where('id', '!=', $property->id)
+                ->latest()
+                ->take(4)
+                ->get();
+
+            return view('properties::rental.show', compact('property', 'visibilitySettings', 'rentalDisplaySettings', 'hasConfirmedBooking', 'calendarData', 'currency', 'similarProperties'));
         }
 
         return view('properties::show', compact('property', 'visibilitySettings'));

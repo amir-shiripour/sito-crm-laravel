@@ -884,10 +884,29 @@
                     <div class="mb-5 pb-5 border-b border-gray-100 dark:border-gray-800">
                         <div class="flex items-baseline justify-between">
                             <div>
-                                <span class="text-2xl sm:text-3xl font-black text-indigo-600 dark:text-indigo-400" x-text="formatNumber(basePrice)">
-                                    {{ number_format($config ? $config->price_per_night : 0) }}
-                                </span>
-                                <span class="text-xs font-bold text-gray-500 dark:text-gray-400 mr-1">{{ $currencyLabel }} / هر شب (پایه)</span>
+                                @if($config && $config->has_discount && $config->discount_value > 0)
+                                    @php
+                                        $origBase = (float) $config->price_per_night;
+                                        $discBase = $config->getDiscountedPrice($origBase);
+                                    @endphp
+                                    <div class="flex items-center gap-2 mb-1">
+                                        <span class="text-sm text-gray-400 line-through font-sans">{{ number_format($origBase) }}</span>
+                                        <span class="px-2 py-0.5 text-[11px] font-bold rounded-lg bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 font-sans">
+                                            {{ $config->discount_type === 'percent' ? $config->discount_value . '٪ تخفیف' : 'تخفیف ویژه' }}
+                                        </span>
+                                    </div>
+                                    <div class="flex items-baseline">
+                                        <span class="text-2xl sm:text-3xl font-black text-emerald-600 dark:text-emerald-400 font-sans">
+                                            {{ number_format($discBase) }}
+                                        </span>
+                                        <span class="text-xs font-bold text-gray-500 dark:text-gray-400 mr-1.5 font-sans">{{ $currencyLabel }} / هر شب (پایه)</span>
+                                    </div>
+                                @else
+                                    <span class="text-2xl sm:text-3xl font-black text-indigo-600 dark:text-indigo-400 font-sans" x-text="formatNumber(basePrice)">
+                                        {{ number_format($config ? $config->price_per_night : 0) }}
+                                    </span>
+                                    <span class="text-xs font-bold text-gray-500 dark:text-gray-400 mr-1.5 font-sans">{{ $currencyLabel }} / هر شب (پایه)</span>
+                                @endif
                             </div>
                         </div>
                     </div>

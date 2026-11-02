@@ -372,6 +372,28 @@ class Property extends Model
     }
 
     /**
+     * Scope to filter only published properties.
+     *
+     * @param Builder $query
+     * @return Builder
+     */
+    public function scopePublished(Builder $query)
+    {
+        return $query->where('publication_status', 'published');
+    }
+
+    /**
+     * Scope to filter only approved properties.
+     *
+     * @param Builder $query
+     * @return Builder
+     */
+    public function scopeApproved(Builder $query)
+    {
+        return $query->where('approval_status', 'approved');
+    }
+
+    /**
      * Scope to filter properties visible to the current user.
      *
      * @param Builder $query

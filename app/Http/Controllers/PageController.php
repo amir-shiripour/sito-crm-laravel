@@ -114,8 +114,23 @@ class PageController extends Controller
         // [Architecture Note]: واکشی دیتای واقعی برای تم املاک (Properties) و تم اختصاصی مستر ویلا لفور (MrVilaLafoor)
         if (in_array($appThemeLower, ['properties', 'mrvilalafoor'])) {
             if (class_exists(\Modules\Properties\Entities\Property::class)) {
-                // دریافت املاک و اقامتگاه‌ها برای نمایش در صفحه اصلی با تمام روابط اجاره روزانه و چندمیزبانی
-                $data['latestProperties'] = \Modules\Properties\Entities\Property::query()
+                // دریافت املاک و اقامتگاه‌ها برای نمایش در صفحه اصلی با بررسی وضعیت انتشار، تایید و میزبان فعال
+                $propertiesQuery = \Modules\Properties\Entities\Property::query()
+                    ->where('publication_status', 'published')
+                    ->where('approval_status', 'approved')
+                    ->where(function($q) {
+                        $q->whereNull('host_id')
+                          ->orWhereHas('host', function($hq) {
+                              $hq->where('status', 'active');
+                          });
+                    });
+
+                // برای تم اختصاصی لفور، فقط اقامتگاه‌های اجاره روزانه واکشی شوند
+                if ($appThemeLower === 'mrvilalafoor') {
+                    $propertiesQuery->where('listing_type', 'daily_rental');
+                }
+
+                $data['latestProperties'] = $propertiesQuery
                     ->with(['status', 'category', 'attributeValues.attribute', 'rentalConfig', 'host.user', 'images'])
                     ->latest()
                     ->take(16)
@@ -144,7 +159,14 @@ class PageController extends Controller
                 // مقاصد در دسترس (استان‌ها و شهرهایی که اقامتگاه فعال و قابل رزرو دارند)
                 $data['availableDestinations'] = \Modules\Properties\Entities\Property::query()
                     ->where('publication_status', 'published')
+                    ->where('approval_status', 'approved')
                     ->where('listing_type', 'daily_rental')
+                    ->where(function($q) {
+                        $q->whereNull('host_id')
+                          ->orWhereHas('host', function($hq) {
+                              $hq->where('status', 'active');
+                          });
+                    })
                     ->whereNotNull('province')
                     ->select('province', 'city')
                     ->distinct()

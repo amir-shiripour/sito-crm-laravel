@@ -31,11 +31,19 @@
 
             {{-- لینک سریع به مدیریت تنظیمات ثبت‌نام --}}
             <div class="flex items-center gap-2.5">
+                @if(\Illuminate\Support\Facades\Route::has('user.fieldservice.technicians.index'))
                 <a href="{{ route('user.fieldservice.technicians.index') }}"
                    class="px-4 py-2.5 rounded-2xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 text-xs font-bold transition flex items-center gap-2">
                     <span>🔧</span>
                     <span>ناوگان متخصصین فنی</span>
                 </a>
+                @elseif(\Illuminate\Support\Facades\Route::has('admin.users.index'))
+                <a href="{{ route('admin.users.index') }}"
+                   class="px-4 py-2.5 rounded-2xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 text-xs font-bold transition flex items-center gap-2">
+                    <span>👥</span>
+                    <span>مدیریت کاربران</span>
+                </a>
+                @endif
                 <a href="{{ url('/settings#registration') }}"
                    class="px-4 py-2.5 rounded-2xl bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-500/15 dark:hover:bg-indigo-500/25 text-indigo-700 dark:text-indigo-300 text-xs font-bold transition flex items-center gap-2 border border-indigo-200 dark:border-indigo-500/30">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><circle cx="12" cy="12" r="3"/></svg>

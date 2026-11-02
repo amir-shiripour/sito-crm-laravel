@@ -343,6 +343,11 @@ class PropertyRevisionService
             'price_per_night' => 'قیمت هر شب وسط هفته / پایه',
             'price_weekend' => 'قیمت هر شب آخر هفته',
             'price_holiday' => 'قیمت ایام پیک و تعطیلات',
+            'has_discount' => 'تخفیف لحظه آخری',
+            'discount_type' => 'نوع تخفیف لحظه آخری',
+            'discount_value' => 'مقدار تخفیف لحظه آخری',
+            'discount_percent' => 'درصد تخفیف لحظه آخری',
+            'old_daily_rate' => 'قیمت قبل از تخفیف (خط‌خورده)',
             'base_guests' => 'ظرفیت مهمان پایه',
             'max_guests' => 'حداکثر ظرفیت مهمان',
             'extra_guest_fee' => 'هزینه هر نفر اضافه',
@@ -450,9 +455,21 @@ class PropertyRevisionService
             $label = $labels[$key] ?? $key;
 
             // فرمت‌بندی خوانا برای مدیر پلتفرم
-            if (in_array($key, ['price_per_night', 'price_weekend', 'price_holiday', 'base_price_per_night', 'weekend_price_per_night', 'peak_price_per_night', 'extra_guest_fee', 'cleaning_fee'])) {
+            if (in_array($key, ['price_per_night', 'price_weekend', 'price_holiday', 'old_daily_rate', 'base_price_per_night', 'weekend_price_per_night', 'peak_price_per_night', 'extra_guest_fee', 'cleaning_fee'])) {
                 $oldFormatted = ($oldValue && (float)$oldValue > 0) ? (number_format((float)$oldValue) . ' ' . $currency) : '—';
                 $newFormatted = ($newValue && (float)$newValue > 0) ? (number_format((float)$newValue) . ' ' . $currency) : '—';
+            } elseif ($key === 'discount_type') {
+                $oldFormatted = $oldValue === 'fixed' ? 'مبلغ ثابت' : 'درصدی';
+                $newFormatted = $newValue === 'fixed' ? 'مبلغ ثابت' : 'درصدی';
+            } elseif ($key === 'discount_value') {
+                $oldFormatted = ($oldValue !== null && $oldValue !== '') ? (number_format((float)$oldValue)) : '—';
+                $newFormatted = ($newValue !== null && $newValue !== '') ? (number_format((float)$newValue)) : '—';
+            } elseif ($key === 'discount_percent') {
+                $oldFormatted = $oldValue ? ($oldValue . '٪') : '—';
+                $newFormatted = $newValue ? ($newValue . '٪') : '—';
+            } elseif ($key === 'has_discount') {
+                $oldFormatted = $oldValue ? 'فعال' : 'غیرفعال';
+                $newFormatted = $newValue ? 'فعال' : 'غیرفعال';
             } elseif (in_array($key, ['base_guests', 'max_guests'])) {
                 $oldFormatted = $oldValue ? ($oldValue . ' نفر') : '—';
                 $newFormatted = $newValue ? ($newValue . ' نفر') : '—';
@@ -546,7 +563,8 @@ class PropertyRevisionService
                 $configData = [];
                 $validConfigKeys = [
                     'base_guests', 'max_guests', 'weekend_days', 'price_per_night',
-                    'price_weekend', 'price_holiday', 'extra_guest_fee', 'cleaning_fee',
+                    'price_weekend', 'price_holiday', 'has_discount', 'discount_type', 'discount_value', 'discount_percent', 'old_daily_rate',
+                    'extra_guest_fee', 'cleaning_fee',
                     'check_in_time', 'check_out_time', 'min_stay_nights', 'instant_booking',
                     'house_rules'
                 ];

@@ -264,7 +264,116 @@
                             </div>
                         </div>
 
-                        {{-- ۴. سایر مبالغ و حداقل مدت اقامت --}}
+                        {{-- ۴. تخفیف لحظه آخری و قیمت ویژه --}}
+                        <div class="p-5 rounded-2xl bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/30 space-y-4">
+                            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                <div>
+                                    <div class="flex items-center gap-2">
+                                        <span class="w-2.5 h-2.5 rounded-full bg-emerald-600 dark:bg-emerald-400 animate-pulse"></span>
+                                        <label class="{{ $labelClass }} mb-0 text-emerald-900 dark:text-emerald-200 font-bold">تخفیف لحظه آخری (پیشنهاد ویژه)</label>
+                                    </div>
+                                    <p class="text-xs text-emerald-700/80 dark:text-emerald-400/80 font-sans mt-0.5">با فعال‌سازی، تخفیف مورد نظر از نرخ هر روز اقامتگاه کسر شده و در بخش «تخفیف لحظه آخری» با نشان تخفیف و قیمت خط‌خورده نمایش داده می‌شود.</p>
+                                </div>
+                                <label class="relative inline-flex items-center cursor-pointer select-none">
+                                    <input type="checkbox" name="has_discount" value="1" x-model="hasDiscount" class="sr-only peer">
+                                    <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-emerald-600"></div>
+                                    <span class="ms-3 text-xs font-bold text-gray-700 dark:text-gray-300 font-sans" x-text="hasDiscount ? 'فعال' : 'غیرفعال'"></span>
+                                </label>
+                            </div>
+
+                            <div x-show="hasDiscount" x-transition class="space-y-4 pt-4 border-t border-emerald-100 dark:border-emerald-900/40">
+                                {{-- انتخاب نوع تخفیف و ورود مقدار --}}
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="{{ $labelClass }}">نوع محاسبه تخفیف</label>
+                                        <div class="grid grid-cols-2 gap-2 bg-gray-100 dark:bg-gray-800/80 p-1 rounded-xl border border-gray-200 dark:border-gray-700">
+                                            <button type="button" 
+                                                    @click="onDiscountTypeChange('percent')"
+                                                    :class="discountType === 'percent' ? 'bg-white dark:bg-gray-700 text-emerald-600 dark:text-emerald-400 shadow-sm font-bold' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'"
+                                                    class="py-2 text-xs rounded-lg transition-all flex items-center justify-center gap-1.5 font-sans">
+                                                <span>درصدی</span>
+                                                <span class="text-[11px] font-sans opacity-70">(٪)</span>
+                                            </button>
+                                            <button type="button" 
+                                                    @click="onDiscountTypeChange('fixed')"
+                                                    :class="discountType === 'fixed' ? 'bg-white dark:bg-gray-700 text-emerald-600 dark:text-emerald-400 shadow-sm font-bold' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'"
+                                                    class="py-2 text-xs rounded-lg transition-all flex items-center justify-center gap-1.5 font-sans">
+                                                <span>مبلغ ثابت</span>
+                                                <span class="text-[11px] font-sans opacity-70">({{ $currencyLabel }})</span>
+                                            </button>
+                                        </div>
+                                        <input type="hidden" name="discount_type" :value="discountType">
+                                        <p class="text-[11px] text-gray-500 dark:text-gray-400 mt-1.5 font-sans">
+                                            <span x-show="discountType === 'percent'">تخفیف به صورت درصدی از نرخ هر شب (عادی، آخر هفته یا تعطیلات) کسر می‌شود.</span>
+                                            <span x-show="discountType === 'fixed'">مبلغ ثابت مشخص‌شده از قیمت هر شب کسر می‌گردد.</span>
+                                        </p>
+                                    </div>
+
+                                    <div>
+                                        <label class="{{ $labelClass }}">
+                                            <span x-show="discountType === 'percent'">درصد تخفیف (٪)</span>
+                                            <span x-show="discountType === 'fixed'">مبلغ کسر از قیمت هر شب ({{ $currencyLabel }})</span>
+                                        </label>
+                                        <div class="relative">
+                                            <input type="text" 
+                                                   name="discount_value" 
+                                                   x-model="discountValue" 
+                                                   @input="onDiscountValueInput()" 
+                                                   :placeholder="discountType === 'percent' ? 'مثلاً ۲۰' : 'مثلاً ۲۰۰,۰۰۰'" 
+                                                   class="{{ $inputClass }} font-sans"
+                                                   :class="discountType === 'percent' ? 'text-center' : 'text-left dir-ltr pl-14'">
+                                            <span class="absolute inset-y-0 left-3 flex items-center text-xs text-gray-400 font-sans" 
+                                                  x-text="discountType === 'percent' ? '٪' : '{{ $currencyLabel }}'"></span>
+                                        </div>
+                                        <p class="text-[11px] text-gray-500 dark:text-gray-400 mt-1.5 font-sans">
+                                            این مقدار به طور خودکار از نرخ روزهای عادی، آخر هفته یا تعطیلات کسر می‌گردد.
+                                        </p>
+                                    </div>
+                                </div>
+
+                                {{-- پیش‌نمایش زنده محاسبه قیمت‌ها --}}
+                                <div x-show="getRawPrice(discountValue) > 0" class="mt-3 p-3.5 bg-white/80 dark:bg-gray-800/80 rounded-xl border border-emerald-200/60 dark:border-emerald-800/40 space-y-2">
+                                    <div class="flex items-center justify-between text-xs font-bold text-emerald-800 dark:text-emerald-300">
+                                        <span class="flex items-center gap-1.5">
+                                            <svg class="w-4 h-4 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                            </svg>
+                                            پیش‌نمایش زنده قیمت‌ها پس از اعمال تخفیف:
+                                        </span>
+                                    </div>
+                                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1 text-xs">
+                                        {{-- نرخ عادی --}}
+                                        <div class="p-2.5 rounded-lg bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700/50 flex flex-col justify-between">
+                                            <span class="text-gray-500 dark:text-gray-400 text-[11px]">نرخ روزهای عادی:</span>
+                                            <div class="mt-1 flex items-baseline gap-1.5 flex-wrap">
+                                                <span class="text-gray-400 line-through text-[11px]" x-text="pricePerNight ? pricePerNight : '---'"></span>
+                                                <span class="font-bold text-emerald-600 dark:text-emerald-400 font-sans text-sm" x-text="pricePerNight ? formatNumber(getDiscountedPrice(pricePerNight)) + ' {{ $currencyLabel }}' : '---'"></span>
+                                            </div>
+                                        </div>
+
+                                        {{-- نرخ آخر هفته --}}
+                                        <div class="p-2.5 rounded-lg bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700/50 flex flex-col justify-between">
+                                            <span class="text-gray-500 dark:text-gray-400 text-[11px]">نرخ آخر هفته:</span>
+                                            <div class="mt-1 flex items-baseline gap-1.5 flex-wrap">
+                                                <span class="text-gray-400 line-through text-[11px]" x-text="priceWeekend ? priceWeekend : (pricePerNight ? pricePerNight : '---')"></span>
+                                                <span class="font-bold text-emerald-600 dark:text-emerald-400 font-sans text-sm" x-text="(priceWeekend || pricePerNight) ? formatNumber(getDiscountedPrice(priceWeekend || pricePerNight)) + ' {{ $currencyLabel }}' : '---'"></span>
+                                            </div>
+                                        </div>
+
+                                        {{-- نرخ ایام پیک --}}
+                                        <div class="p-2.5 rounded-lg bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700/50 flex flex-col justify-between">
+                                            <span class="text-gray-500 dark:text-gray-400 text-[11px]">نرخ ایام پیک و تعطیلات:</span>
+                                            <div class="mt-1 flex items-baseline gap-1.5 flex-wrap">
+                                                <span class="text-gray-400 line-through text-[11px]" x-text="priceHoliday ? priceHoliday : (priceWeekend ? priceWeekend : (pricePerNight ? pricePerNight : '---'))"></span>
+                                                <span class="font-bold text-emerald-600 dark:text-emerald-400 font-sans text-sm" x-text="(priceHoliday || priceWeekend || pricePerNight) ? formatNumber(getDiscountedPrice(priceHoliday || priceWeekend || pricePerNight)) + ' {{ $currencyLabel }}' : '---'"></span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {{-- ۵. سایر مبالغ و حداقل مدت اقامت --}}
                         <div class="grid grid-cols-1 sm:grid-cols-3 gap-5">
                             <div>
                                 <label class="{{ $labelClass }}">هزینه نفر اضافه (هر شب)</label>
@@ -661,6 +770,9 @@
             pricePerNight: '{{ old('price_per_night', $rentalConfig->price_per_night ? number_format($rentalConfig->price_per_night) : '') }}',
             priceWeekend: '{{ old('price_weekend', $rentalConfig->price_weekend ? number_format($rentalConfig->price_weekend) : '') }}',
             priceHoliday: '{{ old('price_holiday', $rentalConfig->price_holiday ? number_format($rentalConfig->price_holiday) : '') }}',
+            hasDiscount: {{ old('has_discount', $rentalConfig->has_discount ?? false) ? 'true' : 'false' }},
+            discountType: '{{ old('discount_type', $rentalConfig->discount_type ?? 'percent') }}',
+            discountValue: '{{ old('discount_value', $rentalConfig->discount_value ? ($rentalConfig->discount_type === 'fixed' ? number_format($rentalConfig->discount_value) : $rentalConfig->discount_value) : ($rentalConfig->discount_percent ?? '')) }}',
             extraGuestFee: '{{ old('extra_guest_fee', $rentalConfig->extra_guest_fee ? number_format($rentalConfig->extra_guest_fee) : '') }}',
             cleaningFee: '{{ old('cleaning_fee', $rentalConfig->cleaning_fee ? number_format($rentalConfig->cleaning_fee) : '') }}',
             selectedWeekendDays: @json(old('weekend_days', $rentalConfig->weekend_days ?? ['4', '5'])),
@@ -758,6 +870,57 @@
                     this[field] = parseInt(val).toLocaleString('en-US');
                 } else {
                     this[field] = '';
+                }
+            },
+
+            getRawPrice(val) {
+                if (!val) return 0;
+                let n = parseInt(String(val).replace(/,/g, '').replace(/[^\d]/g, ''), 10);
+                return isNaN(n) ? 0 : n;
+            },
+
+            getDiscountAmount(price) {
+                let p = this.getRawPrice(price);
+                if (p <= 0 || !this.hasDiscount) return 0;
+                let val = this.getRawPrice(this.discountValue);
+                if (val <= 0) return 0;
+
+                if (this.discountType === 'percent') {
+                    let pct = Math.min(99, Math.max(1, val));
+                    return Math.round((p * pct) / 100);
+                } else {
+                    return Math.min(p, val);
+                }
+            },
+
+            getDiscountedPrice(price) {
+                let p = this.getRawPrice(price);
+                if (p <= 0) return 0;
+                let discount = this.getDiscountAmount(p);
+                return Math.max(0, p - discount);
+            },
+
+            formatNumber(n) {
+                return Number(n).toLocaleString('en-US');
+            },
+
+            onDiscountTypeChange(newType) {
+                this.discountType = newType;
+                this.discountValue = '';
+            },
+
+            onDiscountValueInput() {
+                if (this.discountType === 'fixed') {
+                    this.formatPrice('discountValue');
+                } else {
+                    let val = String(this.discountValue).replace(/[^\d]/g, '');
+                    if (val !== '') {
+                        let num = parseInt(val, 10);
+                        if (num > 99) num = 99;
+                        this.discountValue = num > 0 ? num : '';
+                    } else {
+                        this.discountValue = '';
+                    }
                 }
             }
         }

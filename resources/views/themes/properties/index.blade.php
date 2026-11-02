@@ -79,6 +79,9 @@
 
                     @if(isset($latestProperties) && $latestProperties->count() > 0)
                         @foreach($latestProperties as $property)
+                            @if(($property->publication_status ?? 'published') !== 'published' || ($property->approval_status ?? 'approved') !== 'approved')
+                                @continue
+                            @endif
                             @php
                                 $isMyProperty = auth()->check() && ($property->created_by === auth()->id() || $property->agent_id === auth()->id());
                                 $cardClass = $isMyProperty
