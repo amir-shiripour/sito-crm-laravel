@@ -225,6 +225,16 @@ class SettingsController extends Controller
             }
         }
 
+        if ($activeTab === 'registration') {
+            if (!$request->has('auth_sms_enabled')) {
+                $data['auth_sms_enabled'] = '0';
+            }
+            if (!$request->has('auth_password_enabled')) {
+                // اگر ورود پیامکی غیرفعال باشد، ورود با رمز عبور اجباراً فعال باقی می‌ماند
+                $data['auth_password_enabled'] = ($data['auth_sms_enabled'] === '1') ? '0' : '1';
+            }
+        }
+
         // Validate installment types before processing
         if (isset($data['installment_types']) && is_array($data['installment_types'])) {
             $errors = $this->validateInstallmentTypes($data['installment_types']);

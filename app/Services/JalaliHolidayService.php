@@ -9,6 +9,7 @@ use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use Morilog\Jalali\Jalalian;
 use Modules\Settings\Entities\Setting;
 
@@ -27,6 +28,11 @@ final class JalaliHolidayService
      */
     public function syncYear(int $jYear): int
     {
+        if (!Schema::hasTable('holiday_events')) {
+            Log::warning("JalaliHolidayService: Table holiday_events does not exist.");
+            return 0;
+        }
+
         $eventsData = $this->getEventsForYearFromDataset($jYear);
 
         if (empty($eventsData)) {
@@ -180,6 +186,10 @@ final class JalaliHolidayService
      */
     public function getHolidaysForRange(Carbon $from, Carbon $to): Collection
     {
+        if (!Schema::hasTable('holiday_events')) {
+            return collect();
+        }
+
         $appTz   = config('app.timezone', 'Asia/Tehran');
         $fromStr = $from->copy()->setTimezone($appTz)->format('Y-m-d');
         $toStr   = $to->copy()->setTimezone($appTz)->format('Y-m-d');
@@ -207,6 +217,14 @@ final class JalaliHolidayService
      */
     public function getStoredStats(): array
     {
+        if (!Schema::hasTable('holiday_events')) {
+            return [
+                'total_count' => 0,
+                'years'       => [],
+                'last_sync'   => $this->getLastSyncTime(),
+            ];
+        }
+
         $years = HolidayEvent::query()
             ->selectRaw('jalali_year, COUNT(*) as count')
             ->groupBy('jalali_year')

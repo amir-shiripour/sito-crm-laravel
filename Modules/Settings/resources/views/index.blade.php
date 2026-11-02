@@ -761,6 +761,133 @@
                          x-transition:enter="transition ease-out duration-300"
                          x-transition:enter-start="opacity-0 translate-y-4"
                          x-transition:enter-end="opacity-100 translate-y-0" class="space-y-8">
+
+                        {{-- کارت تنظیمات ورود و احراز هویت --}}
+                        <div class="{{ $cardClass }}" x-data="{
+                            smsEnabled: {{ ($settings['auth_sms_enabled'] ?? '0') === '1' ? 'true' : 'false' }},
+                            passwordEnabled: {{ ($settings['auth_password_enabled'] ?? '1') === '1' ? 'true' : 'false' }},
+                            priorityMethod: '{{ $settings['auth_priority_method'] ?? 'password' }}'
+                        }">
+                            <div class="{{ $headerClass }}">
+                                <div class="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+                                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                              d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h2 class="text-base font-bold text-gray-900 dark:text-white">تنظیمات ورود و احراز هویت</h2>
+                                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">پیکربندی ورود پیامکی (OTP)، ورود با رمز عبور و اولویت روش‌ها</p>
+                                </div>
+                            </div>
+                            <div class="p-6 space-y-6">
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    {{-- فعالسازی ورود پیامکی --}}
+                                    <div class="p-4 rounded-xl border border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/40">
+                                        <div class="flex items-center justify-between">
+                                            <div>
+                                                <span class="block text-sm font-bold text-gray-800 dark:text-gray-200">فعال‌سازی ورود با پیامک (OTP)</span>
+                                                <span class="block text-xs text-gray-500 dark:text-gray-400 mt-1">ارسال کد یکبار مصرف به شماره موبایل کاربر جهت ورود به سیستم</span>
+                                            </div>
+                                            <label class="relative inline-flex items-center cursor-pointer">
+                                                <input type="checkbox" name="auth_sms_enabled" value="1" x-model="smsEnabled" class="sr-only peer">
+                                                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-indigo-600"></div>
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    {{-- فعال بودن ورود با رمز عبور --}}
+                                    <div class="p-4 rounded-xl border border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/40">
+                                        <div class="flex items-center justify-between">
+                                            <div>
+                                                <span class="block text-sm font-bold text-gray-800 dark:text-gray-200">فعال بودن ورود با رمز عبور</span>
+                                                <span class="block text-xs text-gray-500 dark:text-gray-400 mt-1" x-show="smsEnabled">امکان ورود کاربران با استفاده از رمز عبور ثابت</span>
+                                                <span class="block text-xs text-amber-600 dark:text-amber-400 mt-1" x-show="!smsEnabled">به دلیل غیرفعال بودن ورود پیامکی، ورود با رمز عبور الزامی و فعال است</span>
+                                            </div>
+                                            <label class="relative inline-flex items-center" :class="smsEnabled ? 'cursor-pointer' : 'opacity-60 cursor-not-allowed'">
+                                                <input type="checkbox" name="auth_password_enabled" value="1" x-model="passwordEnabled" :disabled="!smsEnabled" class="sr-only peer">
+                                                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-indigo-600"></div>
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {{-- تنظیمات وابسته به پیامک --}}
+                                <div x-show="smsEnabled" x-transition class="space-y-6 pt-4 border-t border-gray-100 dark:border-gray-700">
+                                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                        {{-- اولویت روش ورود --}}
+                                        <div x-show="passwordEnabled">
+                                            <label for="auth_priority_method" class="{{ $labelClass }}">اولویت روش ورود</label>
+                                            <div class="select-wrapper relative">
+                                                <select name="auth_priority_method" id="auth_priority_method" class="{{ $selectClass }} !pl-10">
+                                                    <option value="sms" {{ ($settings['auth_priority_method'] ?? 'password') === 'sms' ? 'selected' : '' }}>
+                                                        ورود پیامکی (OTP) - پیش‌فرض
+                                                    </option>
+                                                    <option value="password" {{ ($settings['auth_priority_method'] ?? 'password') === 'password' ? 'selected' : '' }}>
+                                                        رمز عبور - پیش‌فرض
+                                                    </option>
+                                                </select>
+                                                <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center px-3 text-gray-500 dark:text-gray-400">
+                                                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4"/>
+                                                    </svg>
+                                                </div>
+                                            </div>
+                                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1.5">کدام روش در مرحله دوم فرم ورود به صورت خودکار فعال شود.</p>
+                                        </div>
+
+                                        {{-- مدت اعتبار کد OTP --}}
+                                        <div>
+                                            <label for="auth_otp_ttl" class="{{ $labelClass }}">اعتبار کد یکبار مصرف (دقیقه)</label>
+                                            <input type="number" min="1" max="15" name="auth_otp_ttl" id="auth_otp_ttl"
+                                                   value="{{ $settings['auth_otp_ttl'] ?? '3' }}"
+                                                   class="{{ $inputClass }} dir-ltr text-left">
+                                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1.5">مدت زمانی که کد پیامک شده معتبر است (پیش‌فرض: ۳ دقیقه).</p>
+                                        </div>
+
+                                        {{-- فاصله ارسال مجدد --}}
+                                        <div>
+                                            <label for="auth_otp_resend_interval" class="{{ $labelClass }}">فاصله ارسال مجدد (ثانیه)</label>
+                                            <input type="number" min="15" max="300" name="auth_otp_resend_interval" id="auth_otp_resend_interval"
+                                                   value="{{ $settings['auth_otp_resend_interval'] ?? '60' }}"
+                                                   class="{{ $inputClass }} dir-ltr text-left">
+                                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1.5">مدت انتظار تا امکان درخواست مجدد پیامک (پیش‌فرض: ۶۰ ثانیه).</p>
+                                        </div>
+                                    </div>
+
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        {{-- شناسه پترن پیامک --}}
+                                        <div>
+                                            <label for="auth_sms_pattern" class="{{ $labelClass }}">شناسه پترن پیامک ورود (اختیاری)</label>
+                                            <input type="text" name="auth_sms_pattern" id="auth_sms_pattern"
+                                                   value="{{ $settings['auth_sms_pattern'] ?? '' }}"
+                                                   placeholder="مثال: otp_code یا کد عددی پترن در پنل پیامک"
+                                                   class="{{ $inputClass }} dir-ltr text-left">
+                                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1.5">در صورت استفاده از وب‌سرویس‌های خدماتی/پترنی، شناسه قالب را وارد کنید.</p>
+                                        </div>
+
+                                        {{-- طول کد تایید --}}
+                                        <div>
+                                            <label for="auth_otp_length" class="{{ $labelClass }}">تعداد ارقام کد تایید</label>
+                                            <div class="select-wrapper relative">
+                                                <select name="auth_otp_length" id="auth_otp_length" class="{{ $selectClass }} !pl-10">
+                                                    <option value="4" {{ ($settings['auth_otp_length'] ?? '5') == '4' ? 'selected' : '' }}>۴ رقم</option>
+                                                    <option value="5" {{ ($settings['auth_otp_length'] ?? '5') == '5' ? 'selected' : '' }}>۵ رقم (استاندارد)</option>
+                                                    <option value="6" {{ ($settings['auth_otp_length'] ?? '5') == '6' ? 'selected' : '' }}>۶ رقم</option>
+                                                </select>
+                                                <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center px-3 text-gray-500 dark:text-gray-400">
+                                                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4"/>
+                                                    </svg>
+                                                </div>
+                                            </div>
+                                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1.5">تعداد ارقام کد ارسالی به تلفن همراه کاربر.</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         <div class="{{ $cardClass }}">
                             <div class="{{ $headerClass }}">
                                 <div
