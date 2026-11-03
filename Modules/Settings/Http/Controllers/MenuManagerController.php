@@ -580,6 +580,26 @@ class MenuManagerController extends Controller
         $isTwoStepEnabled = $this->customizationService->isTwoStepMenuEnabled();
         $isGroupCounterEnabled = $this->customizationService->isGroupCounterEnabled();
 
+        $authUser = Auth::user();
+        $authRoleIds = $authUser && method_exists($authUser, 'roles') ? $authUser->roles->pluck('id')->toArray() : [];
+        $authRoleNames = $authUser && method_exists($authUser, 'roles') ? $authUser->roles->pluck('name')->toArray() : [];
+
+        $userSpecificCount = $authUser ? MenuCustomization::where('scope', 'user')->where('scope_id', $authUser->id)->count() : 0;
+        $roleSpecificCount = (!empty($authRoleIds)) ? MenuCustomization::where('scope', 'role')->whereIn('scope_id', $authRoleIds)->count() : 0;
+        $globalCount = MenuCustomization::where('scope', 'global')->count();
+
+        $governingScope = 'global';
+        $governingReason = 'تنظیمات عمومی سراسری سیستم (Global)';
+
+        if ($userSpecificCount > 0) {
+            $governingScope = 'user';
+            $governingReason = "شخصی‌سازی اختصاصی کاربر ({$authUser->name}) - دارای {$userSpecificCount} تنظیم اختصاصی که بر تنظیمات عمومی غلبه کرده است";
+        } elseif ($roleSpecificCount > 0) {
+            $governingScope = 'role';
+            $roleNamesStr = implode('، ', $authRoleNames);
+            $governingReason = "شخصی‌سازی اختصاصی نقش ({$roleNamesStr}) - دارای {$roleSpecificCount} تنظیم اختصاصی که بر تنظیمات عمومی غلبه کرده است";
+        }
+
         return response()->json([
             'success' => true,
             'is_custom_menu_enabled' => $isCustomMenuEnabled,
@@ -592,6 +612,16 @@ class MenuManagerController extends Controller
             'users' => $users,
             'scope' => $scope,
             'scope_id' => $scopeId,
+            'active_governance' => [
+                'user_name' => $authUser ? $authUser->name : null,
+                'user_roles' => $authRoleNames,
+                'governing_scope' => $governingScope,
+                'governing_reason' => $governingReason,
+                'user_overrides_count' => $userSpecificCount,
+                'role_overrides_count' => $roleSpecificCount,
+                'global_overrides_count' => $globalCount,
+                'has_blocking_overrides' => ($governingScope !== 'global'),
+            ],
         ]);
     }
 
@@ -613,18 +643,40 @@ class MenuManagerController extends Controller
             'scope_id' => 'nullable|integer',
             'items' => 'nullable|array',
             'groups' => 'nullable|array',
+            'sync_roles' => 'nullable|boolean',
         ]);
 
         $scope = $request->input('scope', 'global');
         $scopeId = $scope === 'global' ? null : $request->input('scope_id');
         $items = $request->input('items', []);
         $groups = $request->input('groups', []);
+        $syncRoles = (bool)$request->input('sync_roles', false);
 
         DB::beginTransaction();
         try {
+            if ($scope === 'global' && $syncRoles) {
+                // If requested, clean up all role and user overrides so everyone inherits cleanly from Global
+                MenuCustomization::whereIn('scope', ['role', 'user'])->delete();
+            }
+
             // Save item customizations
             foreach ($items as $itemData) {
-                $menuKey = $itemData['menu_key'];
+                $menuKey = $itemData['menu_key'] ?? '';
+                if (empty($menuKey)) continue;
+
+                // When saving for a role or user:
+                // Only save if the item actually has a local override or is marked dirty!
+                $hasLocalOverride = !empty($itemData['has_local_override']) || !empty($itemData['_dirty']);
+                $isInherited = !empty($itemData['is_inherited']) && empty($itemData['_dirty']);
+
+                if ($scope !== 'global' && (!$hasLocalOverride || $isInherited)) {
+                    // This item inherits from global! Remove any local override so it continuously inherits!
+                    MenuCustomization::where('scope', $scope)
+                        ->where('scope_id', $scopeId)
+                        ->where('menu_key', $menuKey)
+                        ->delete();
+                    continue;
+                }
 
                 $overrides = [
                     'title' => $itemData['title'] ?? null,
@@ -655,6 +707,17 @@ class MenuManagerController extends Controller
             foreach ($groups as $groupData) {
                 $gKey = $groupData['key'] ?? '';
                 if (empty($gKey)) continue;
+
+                $hasLocalGroupOverride = !empty($groupData['has_local_override']) || !empty($groupData['_dirty']);
+                $isInheritedGroup = !empty($groupData['is_inherited']) && empty($groupData['_dirty']);
+
+                if ($scope !== 'global' && (!$hasLocalGroupOverride || $isInheritedGroup)) {
+                    MenuCustomization::where('scope', $scope)
+                        ->where('scope_id', $scopeId)
+                        ->where('menu_key', "group:{$gKey}")
+                        ->delete();
+                    continue;
+                }
 
                 $menuKey = "group:{$gKey}";
                 $overrides = [
@@ -801,6 +864,31 @@ class MenuManagerController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'خطا در بازگشت به تنظیمات عمومی: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Synchronize all roles and users to inherit cleanly from global settings.
+     * Removes blocking shadow overrides from role and user scopes.
+     */
+    public function syncAllRolesToGlobal(Request $request): JsonResponse
+    {
+        try {
+            $deletedCount = MenuCustomization::whereIn('scope', ['role', 'user'])->delete();
+            $this->customizationService->clearCache();
+
+            return response()->json([
+                'success' => true,
+                'deleted_count' => $deletedCount,
+                'message' => 'همگام‌سازی کامل انجام شد. تمام نقش‌ها و کاربران اکنون مستقیماً و بدون سایه‌انداز از منوی عمومی ارث‌بری می‌کنند.',
+            ]);
+        } catch (Throwable $e) {
+            Log::error('Error syncing roles to global in menu customizations: ' . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'خطا در همگام‌سازی نقش‌ها: ' . $e->getMessage(),
             ], 500);
         }
     }

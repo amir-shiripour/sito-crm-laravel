@@ -292,6 +292,20 @@
 
             {{-- دکمه‌های عملیات اصلی هدر --}}
             <div class="flex flex-wrap items-center gap-2.5">
+                {{-- دکمه یکسان‌سازی سریع همه با عمومی --}}
+                <button type="button" @click="confirmSyncAllRoles()" :disabled="isSyncingAllRoles"
+                        class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 text-xs font-semibold transition-all shadow-xs disabled:opacity-50"
+                        title="پاک‌سازی رکوردهای سایه‌انداز نقش‌ها و اتصال مستقیم همه به منوی عمومی">
+                    <svg x-show="!isSyncingAllRoles" class="w-4 h-4 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    <svg x-show="isSyncingAllRoles" class="w-4 h-4 animate-spin text-indigo-500" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+                    </svg>
+                    <span>ارث‌بری همه از عمومی</span>
+                </button>
+
                 {{-- دکمه افزودن گروه جدید --}}
                 <button type="button" @click="openGroupModal()"
                         class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-indigo-200 dark:border-indigo-800/60 bg-indigo-50/50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300 text-xs font-bold hover:bg-indigo-100/70 transition-colors">
@@ -319,6 +333,65 @@
                 </button>
             </div>
         </div>
+
+        {{-- نوار وضعیت شفاف‌سازی قانون جاری (Active Governance & Rules Origin) --}}
+        <template x-if="activeGovernance">
+            <div class="p-4 rounded-2xl border transition-all"
+                 :class="activeGovernance.has_blocking_overrides
+                     ? 'bg-amber-50/80 dark:bg-amber-950/40 border-amber-200 dark:border-amber-800/60'
+                     : 'bg-indigo-50/60 dark:bg-indigo-950/40 border-indigo-200/80 dark:border-indigo-800/60'">
+                <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                    <div class="flex items-start gap-3">
+                        <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                             :class="activeGovernance.has_blocking_overrides
+                                 ? 'bg-amber-500 text-white shadow-sm'
+                                 : 'bg-indigo-600 text-white shadow-sm'">
+                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        </div>
+                        <div class="space-y-1">
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <span class="text-xs font-bold text-gray-900 dark:text-white">قانون حاکم بر منوی پنل کاربری شما (/user):</span>
+                                <span class="text-xs px-2.5 py-0.5 rounded-lg font-extrabold"
+                                      :class="activeGovernance.governing_scope === 'global'
+                                          ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300'
+                                          : 'bg-amber-100 text-amber-900 dark:bg-amber-900/60 dark:text-amber-200'"
+                                      x-text="activeGovernance.governing_reason"></span>
+                            </div>
+                            <p class="text-[11px] text-gray-600 dark:text-gray-300 leading-relaxed">
+                                <template x-if="activeGovernance.has_blocking_overrides">
+                                    <span>
+                                        ⚠️ هشدار تداخل لایه‌ها: نقش یا حساب کاربری شما دارای رکوردهای ذخیره‌شده قدیمی است؛ به همین دلیل تغییرات منوی عمومی (Global) در سایدبار شما دیده نمی‌شود و این نقش منوی عمومی را مسدود کرده است.
+                                    </span>
+                                </template>
+                                <template x-if="!activeGovernance.has_blocking_overrides">
+                                    <span>
+                                        ✅ وضعیت مطلوب و هماهنگ: منوی پنل کاربری شما مستقیماً از منوی عمومی (Global) ارث‌بری می‌کند و هر تغییری در منوی عمومی بدهید بلافاصله برای همه اعمال می‌شود.
+                                    </span>
+                                </template>
+                            </p>
+                        </div>
+                    </div>
+
+                    <template x-if="activeGovernance.has_blocking_overrides">
+                        <div class="flex items-center gap-2 shrink-0">
+                            <button type="button" @click="confirmSyncAllRoles()" :disabled="isSyncingAllRoles"
+                                    class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold shadow-sm transition-all disabled:opacity-50">
+                                <svg x-show="!isSyncingAllRoles" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                </svg>
+                                <svg x-show="isSyncingAllRoles" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+                                </svg>
+                                <span>رفع انسداد و اتصال به منوی عمومی</span>
+                            </button>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </template>
 
         {{-- انتخابگر اسکوپ (Scope Switcher) کارتی مدرن و تفکیک‌شده --}}
         <div class="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2">
@@ -1238,6 +1311,8 @@
                 group_key: '',
                 position: 99
             },
+            activeGovernance: null,
+            isSyncingAllRoles: false,
             groupSortableInstance: null,
             itemSortableInstances: [],
 
@@ -1509,6 +1584,7 @@
                         this.customGroups = data.custom_groups || [];
                         this.roles = data.roles || [];
                         this.users = data.users || [];
+                        this.activeGovernance = data.active_governance || null;
 
                         // حفظ کاربر انتخاب شده در کامبوباکس در صورت وجود
                         if (this.scope === 'user' && this.selectedUserId && !this.selectedUserObj) {
@@ -1808,6 +1884,41 @@
                     this.showToast('خطا در ارسال اطلاعات به سرور.', 'error');
                 } finally {
                     this.isSaving = false;
+                }
+            },
+
+            // ================= همگام‌سازی و ارث‌بری سراسری از منوی عمومی =================
+            confirmSyncAllRoles() {
+                this.showConfirm(
+                    'ارث‌بری مستقیم همه از منوی عمومی (رفع انسداد)',
+                    'آیا مطمئن هستید؟ با این کار تمام رکوردهای سایه‌انداز نقش‌ها و کاربران پاک شده و تمام کاربران مستقیماً از منوی عمومی (Global) ارث‌بری خواهند کرد؛ بنابراین هر تغییری در منوی عمومی بدهید فوراً برای همه اعمال می‌شود.',
+                    () => this.syncAllRolesNow(),
+                    'primary',
+                    'همگام‌سازی سراسری'
+                );
+            },
+
+            async syncAllRolesNow() {
+                this.isSyncingAllRoles = true;
+                try {
+                    const res = await fetch('{{ route("settings.menu-manager.sync-all-roles") }}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                        }
+                    });
+                    const data = await res.json();
+                    if (data.success) {
+                        this.showToast(data.message || 'همگام‌سازی با موفقیت انجام شد.', 'success');
+                        await this.loadData();
+                    } else {
+                        this.showToast(data.message || 'خطا در همگام‌سازی.', 'error');
+                    }
+                } catch (e) {
+                    this.showToast('خطا در برقراری ارتباط با سرور.', 'error');
+                } finally {
+                    this.isSyncingAllRoles = false;
                 }
             },
 

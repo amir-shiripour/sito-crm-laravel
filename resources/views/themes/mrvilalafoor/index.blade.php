@@ -977,10 +977,8 @@
                 $rentalConfig = $prop->rentalConfig;
                 $baseDailyPrice = (float) ($rentalConfig?->price_per_night ?? $prop->rent_price ?? $prop->price ?? 0);
 
-                // محاسبه تخفیف واقعی بر اساس تنظیمات اجاره اقامتگاه
-                $hasDiscount = !empty($rentalConfig?->has_discount) ||
-                               (!empty($rentalConfig?->discount_percent) && $rentalConfig->discount_percent > 0) ||
-                               (!empty($prop->meta['discount_percent']) && (int)$prop->meta['discount_percent'] > 0);
+                // محاسبه تخفیف واقعی بر اساس تنظیمات اجاره اقامتگاه (فقط در صورت فعال‌سازی صریح میزبان)
+                $hasDiscount = !empty($rentalConfig?->has_discount) && (float)($rentalConfig?->discount_value ?? $rentalConfig?->discount_percent ?? 0) > 0;
 
                 $price = $baseDailyPrice;
                 $oldPrice = null;
@@ -998,14 +996,6 @@
                         }
                     } else {
                         $hasDiscount = false;
-                    }
-                } elseif ($hasDiscount && !empty($prop->meta['discount_percent'])) {
-                    $pct = (int) $prop->meta['discount_percent'];
-                    if ($pct > 0 && $pct < 100) {
-                        $discountAmount = round(($baseDailyPrice * $pct) / 100);
-                        $price = max(0, $baseDailyPrice - $discountAmount);
-                        $oldPrice = $baseDailyPrice;
-                        $discount = $pct;
                     }
                 }
 

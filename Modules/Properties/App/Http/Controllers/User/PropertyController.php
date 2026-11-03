@@ -471,6 +471,10 @@ class PropertyController extends Controller
                     'check_out_time' => '12:00:00',
                     'min_stay_nights' => 1,
                     'weekend_days' => ['4', '5'],
+                    'has_discount' => false,
+                    'discount_type' => 'percent',
+                    'discount_value' => null,
+                    'discount_percent' => null,
                     'instant_booking' => false,
                 ]
             );

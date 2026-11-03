@@ -226,9 +226,21 @@
                     <span x-text="formatNumber(activeIndex + 1) + ' / ' + formatNumber(total)"></span>
                 </div>
 
-                {{-- دکمه‌های قبلی / بعدی لمسی (اصلاح جهت RTL: فلش راست = قبلی، فلش چپ = بعدی) --}}
-                <button type="button" @click="activeIndex = (activeIndex > 0 ? activeIndex - 1 : total - 1)" class="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/50 hover:bg-black/70 text-white flex items-center justify-center transition shadow z-10" title="تصویر قبلی">❯</button>
-                <button type="button" @click="activeIndex = (activeIndex < total - 1 ? activeIndex + 1 : 0)" class="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/50 hover:bg-black/70 text-white flex items-center justify-center transition shadow z-10" title="تصویر بعدی">❮</button>
+                {{-- دکمه‌های قبلی / بعدی لمسی (فلش راست = بعدی، فلش چپ = قبلی) --}}
+                <button type="button" 
+                        @click="activeIndex = (activeIndex < total - 1 ? activeIndex + 1 : 0)" 
+                        class="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/50 hover:bg-black/70 text-white flex items-center justify-center transition shadow z-10" 
+                        title="تصویر بعدی" 
+                        aria-label="تصویر بعدی">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+                </button>
+                <button type="button" 
+                        @click="activeIndex = (activeIndex > 0 ? activeIndex - 1 : total - 1)" 
+                        class="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/50 hover:bg-black/70 text-white flex items-center justify-center transition shadow z-10" 
+                        title="تصویر قبلی" 
+                        aria-label="تصویر قبلی">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+                </button>
             </div>
 
             {{-- نمایش دسکتاپ (موزاییک ۵ عکسی شبیه جاباما / جاجیگا) --}}
@@ -1213,10 +1225,22 @@
         </div>
 
         <div class="relative w-full max-w-5xl flex items-center justify-center flex-1">
-            {{-- دکمه قبلی (سمت راست در چیدمان راست‌به‌چپ با فلش راست) --}}
-            <button type="button" onclick="prevImage()" class="absolute right-4 text-white w-12 h-12 rounded-full bg-black/50 hover:bg-black/75 flex items-center justify-center transition text-xl font-bold z-10" title="تصویر قبلی">❯</button>
-            {{-- دکمه بعدی (سمت چپ در چیدمان راست‌به‌چپ با فلش چپ) --}}
-            <button type="button" onclick="nextImage()" class="absolute left-4 text-white w-12 h-12 rounded-full bg-black/50 hover:bg-black/75 flex items-center justify-center transition text-xl font-bold z-10" title="تصویر بعدی">❮</button>
+            {{-- دکمه بعدی (سمت راست با فلش راست) --}}
+            <button type="button" 
+                    onclick="nextImage()" 
+                    class="absolute right-4 text-white w-12 h-12 rounded-full bg-black/50 hover:bg-black/75 flex items-center justify-center transition text-xl font-bold z-10" 
+                    title="تصویر بعدی" 
+                    aria-label="تصویر بعدی">
+                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+            </button>
+            {{-- دکمه قبلی (سمت چپ با فلش چپ) --}}
+            <button type="button" 
+                    onclick="prevImage()" 
+                    class="absolute left-4 text-white w-12 h-12 rounded-full bg-black/50 hover:bg-black/75 flex items-center justify-center transition text-xl font-bold z-10" 
+                    title="تصویر قبلی" 
+                    aria-label="تصویر قبلی">
+                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+            </button>
             <img id="lightbox-image" src="" alt="{{ $property->title }}" class="max-h-[75vh] max-w-[90vw] object-contain rounded-2xl shadow-2xl transition-all duration-200">
         </div>
 
@@ -1535,8 +1559,8 @@
             const lb = document.getElementById('lightbox');
             if (!lb || lb.classList.contains('hidden')) return;
             if (e.key === 'Escape') closeLightbox();
-            if (e.key === 'ArrowRight') prevImage();
-            if (e.key === 'ArrowLeft') nextImage();
+            if (e.key === 'ArrowRight') nextImage();
+            if (e.key === 'ArrowLeft') prevImage();
         });
 
         function shareProperty() {
