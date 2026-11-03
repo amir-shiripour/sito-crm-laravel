@@ -11,6 +11,20 @@ class PropertyRentalConfig extends Model
 
     protected $table = 'property_rental_configs';
 
+    protected $attributes = [
+        'base_guests' => 2,
+        'max_guests' => 4,
+        'min_stay_nights' => 1,
+        'check_in_time' => '14:00:00',
+        'check_out_time' => '12:00:00',
+        'has_discount' => false,
+        'discount_type' => 'percent',
+        'discount_value' => null,
+        'discount_percent' => null,
+        'old_daily_rate' => null,
+        'instant_booking' => false,
+    ];
+
     protected $fillable = [
         'property_id',
         'base_guests',

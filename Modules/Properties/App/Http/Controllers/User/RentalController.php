@@ -60,6 +60,10 @@ class RentalController extends Controller
             'check_out_time' => '12:00:00',
             'min_stay_nights' => 1,
             'weekend_days' => ['4', '5'],
+            'has_discount' => false,
+            'discount_type' => 'percent',
+            'discount_value' => null,
+            'discount_percent' => null,
             'instant_booking' => false,
         ]);
 
@@ -187,17 +191,20 @@ class RentalController extends Controller
             'special_prices' => 'nullable|array',
         ]);
 
-        $validated['instant_booking'] = $request->has('instant_booking');
-        $validated['has_discount'] = $request->has('has_discount');
+        $validated['instant_booking'] = $request->boolean('instant_booking');
+        $hasDiscount = $request->boolean('has_discount');
+        $rawDiscountValue = !empty($validated['discount_value']) ? (float) str_replace(',', '', (string)$validated['discount_value']) : 0;
 
-        if (!$validated['has_discount']) {
+        if (!$hasDiscount || $rawDiscountValue <= 0) {
+            $validated['has_discount'] = false;
             $validated['discount_type'] = 'percent';
             $validated['discount_value'] = null;
             $validated['discount_percent'] = null;
             $validated['old_daily_rate'] = null;
         } else {
+            $validated['has_discount'] = true;
             $discountType = $validated['discount_type'] ?? 'percent';
-            $discountValue = !empty($validated['discount_value']) ? (float) $validated['discount_value'] : 0;
+            $discountValue = $rawDiscountValue;
             $basePrice = (float) $validated['price_per_night'];
 
             if ($discountType === 'percent') {
@@ -239,6 +246,8 @@ class RentalController extends Controller
             $config->check_in_time = '14:00:00';
             $config->check_out_time = '12:00:00';
             $config->weekend_days = ['4', '5'];
+            $config->has_discount = false;
+            $config->discount_type = 'percent';
             $config->instant_booking = false;
             $config->save();
         }

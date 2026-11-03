@@ -23,7 +23,7 @@
                 </span>
                 {{ $isWizard ? 'ایجاد اقامتگاه (مرحله ۲): تنظیمات و نرخ‌ها' : 'تنظیمات اقامتگاه: ' . $property->title }}
             </h1>
-            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 mr-13">ظرفیت مهمانان، قیمت‌های شبانه، شرایط اقامت، قوانین ورود و بازه‌های ویژه</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 mr-13 font-sans">تعیین نرخ‌های شبانه، ظرفیت مهمانان، زمان‌بندی و شرایط اقامت</p>
         </div>
 
         <div class="flex items-center gap-3 flex-wrap">
@@ -177,7 +177,7 @@
                         </div>
                         <div>
                             <h2 class="text-base font-bold text-gray-900 dark:text-white">نرخ‌های پایه شبانه</h2>
-                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">تعیین قیمت شب‌های عادی، روزهای آخر هفته، ایام پیک، هزینه مهمان اضافه و نظافت (مبالغ به {{ $currencyLabel }})</p>
+                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5 font-sans">تعیین نرخ مبنا، آخر هفته، ایام پیک و شرایط اقامت (مبالغ به {{ $currencyLabel }})</p>
                         </div>
                     </div>
 
@@ -192,17 +192,13 @@
                                 <input type="text" name="price_per_night" x-model="pricePerNight" @input="formatPrice('pricePerNight')" required class="{{ $inputClass }} text-left dir-ltr pl-14 font-sans">
                                 <span class="absolute inset-y-0 left-3 flex items-center text-xs text-gray-400 font-sans">{{ $currencyLabel }}</span>
                             </div>
-                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 font-sans">این مبلغ نرخ مرجع و پیش‌فرض اقامتگاه است که روی تمامی شب‌های سال اعمال می‌شود مگر با نرخ‌های دیگر بازنویسی شود.</p>
                         </div>
 
                         {{-- ۲. نرخ آخر هفته و روزهای ویژه هفتگی --}}
-                        <div class="p-5 rounded-2xl bg-gray-50/70 dark:bg-gray-900/40 border border-gray-100 dark:border-gray-700/60 space-y-4">
-                            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                                <div class="space-y-0.5">
-                                    <label class="{{ $labelClass }} mb-0">نرخ آخر هفته و روزهای ویژه هفتگی</label>
-                                    <p class="text-xs text-gray-500 dark:text-gray-400 font-sans">روزهای مدنظر برای نرخ آخر هفته را انتخاب و قیمت آن را مشخص کنید (پیش‌فرض: چهارشنبه و پنج‌شنبه).</p>
-                                </div>
-                                <span class="text-xs text-indigo-600 dark:text-indigo-400 font-bold font-sans self-start sm:self-auto bg-indigo-50 dark:bg-indigo-950/40 px-2.5 py-1 rounded-lg">انتخاب روزهای فعال</span>
+                        <div class="p-5 rounded-2xl bg-gray-50/70 dark:bg-gray-900/40 border border-gray-100 dark:border-gray-700/60 space-y-3.5">
+                            <div class="flex items-center justify-between gap-2">
+                                <label class="{{ $labelClass }} mb-0">نرخ آخر هفته و روزهای انتخابی</label>
+                                <span class="text-xs text-indigo-600 dark:text-indigo-400 font-bold font-sans bg-indigo-50 dark:bg-indigo-950/40 px-2.5 py-1 rounded-lg">انتخاب روزهای فعال</span>
                             </div>
                             
                             {{-- سلکتور چندانتخابی روزهای هفته --}}
@@ -226,62 +222,57 @@
                             </template>
                             
                             {{-- فیلد قیمت برای این روزها --}}
-                            <div class="relative pt-1">
+                            <div class="relative pt-0.5">
                                 <input type="text" name="price_weekend" x-model="priceWeekend" @input="formatPrice('priceWeekend')" placeholder="مبلغ برای روزهای انتخاب شده آخر هفته" class="{{ $inputClass }} text-left dir-ltr pl-14 font-sans">
                                 <span class="absolute inset-y-0 left-3 flex items-center text-xs text-gray-400 font-sans">{{ $currencyLabel }}</span>
                             </div>
                         </div>
 
                         {{-- ۳. نرخ ایام پیک و تعطیلات رسمی --}}
-                        <div class="p-5 rounded-2xl bg-amber-50/50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/30 space-y-4">
-                            <div class="flex items-center justify-between">
-                                <div>
+                        <div class="p-5 rounded-2xl bg-amber-50/50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/30 space-y-3.5">
+                            <div class="flex items-center justify-between gap-2">
+                                <div class="flex items-center gap-2">
                                     <label class="{{ $labelClass }} mb-0 text-amber-900 dark:text-amber-200">ایام پیک و تعطیلات رسمی</label>
-                                    <p class="text-xs text-amber-700/80 dark:text-amber-400/80 font-sans mt-0.5">نرخ مخصوص تعطیلات رسمی کشور و شب‌های پیش از تعطیلی</p>
+                                    <button type="button" 
+                                            @click="showHolidayModal = true" 
+                                            class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-bold text-amber-700 bg-amber-100/90 hover:bg-amber-200 dark:bg-amber-500/15 dark:text-amber-300 dark:hover:bg-amber-500/25 border border-amber-300/60 dark:border-amber-500/30 transition-all font-sans cursor-pointer group shadow-2xs" 
+                                            title="مشاهده منطق و الگوریتم محاسبه ایام پیک">
+                                        <svg class="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 group-hover:scale-110 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                        <span>راهنمای الگوریتم</span>
+                                    </button>
                                 </div>
-                                <span class="text-xs text-amber-700 dark:text-amber-300 font-bold bg-amber-100 dark:bg-amber-900/40 px-2.5 py-1 rounded-lg font-sans">تقویم ملی</span>
+                                <span class="text-xs text-amber-700 dark:text-amber-300 font-bold bg-amber-100/80 dark:bg-amber-900/40 px-2.5 py-1 rounded-lg font-sans">تقویم ملی</span>
                             </div>
                             <div class="relative">
                                 <input type="text" name="price_holiday" x-model="priceHoliday" @input="formatPrice('priceHoliday')" placeholder="مبلغ برای تعطیلات و پیک" class="{{ $inputClass }} text-left dir-ltr pl-14 font-sans">
                                 <span class="absolute inset-y-0 left-3 flex items-center text-xs text-gray-400 font-sans">{{ $currencyLabel }}</span>
                             </div>
-
-                            {{-- باکس تشریح الگوریتم هوشمند محاسبه ایام پیک --}}
-                            <div class="p-4 rounded-xl bg-white dark:bg-gray-800 border border-amber-200/80 dark:border-amber-800/40 space-y-2.5 text-xs">
-                                <div class="flex items-center gap-2 font-bold text-amber-800 dark:text-amber-300">
-                                    <svg class="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                    </svg>
-                                    <span>الگوریتم هوشمند محاسبه ایام پیک و تعطیلات:</span>
-                                </div>
-                                <ul class="space-y-1.5 text-gray-600 dark:text-gray-300 pr-5 list-disc text-xs leading-relaxed font-sans">
-                                    <li><strong>بانک اطلاعاتی تقویم ملی:</strong> روزهای تعطیل رسمی تقویم شمسی کشور مستقیماً بر اساس «بانک اطلاعاتی مناسبت‌ها و تعطیلات ملی» ثبت‌شده در تنظیمات سیستم استعلام و محاسبه می‌شوند.</li>
-                                    <li><strong>محاسبه هوشمند شب تعطیل (Eve of Holiday):</strong> از آنجا که مسافران عصر/شب قبل از روز تعطیل حرکت و اقامت می‌کنند، «شبِ قبل از هر تعطیلی رسمی تقویم» به عنوان شب پیک شناسایی شده و این نرخ روی آن اعمال می‌شود.</li>
-                                    <li><strong>وضعیت روزهای جمعه:</strong> جمعه شب به صورت پیش‌فرض مشمول نرخ پایه و عادی است (زیرا شنبه روز کاری است و مسافران جمعه عصر بازمی‌گردند)؛ اما چنانچه روز «شنبه» تعطیل رسمی باشد، جمعه شب به عنوان «شبِ قبل از تعطیل رسمی» به صورت هوشمند مشمول نرخ ایام پیک خواهد شد.</li>
-                                    <li><strong>روزهای آخر هفته:</strong> چهارشنبه و پنج‌شنبه (یا روزهای انتخابی شما در بالا) تحت پوشش «نرخ آخر هفته» هستند، مگر اینکه با تعطیلات رسمی تقویمی پیوسته شوند که نرخ پیک اولویت پیدا می‌کند.</li>
-                                    <li><strong>اولویت خودکار:</strong> این نرخ برای تمامی شب‌های مشمول تعطیلات رسمی تقویم به صورت خودکار در فاکتور و تقویم رزرو مسافر جایگزین نرخ‌های پایه می‌شود.</li>
-                                </ul>
-                            </div>
                         </div>
 
                         {{-- ۴. تخفیف لحظه آخری و قیمت ویژه --}}
-                        <div class="p-5 rounded-2xl bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/30 space-y-4">
-                            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                                <div>
-                                    <div class="flex items-center gap-2">
-                                        <span class="w-2.5 h-2.5 rounded-full bg-emerald-600 dark:bg-emerald-400 animate-pulse"></span>
-                                        <label class="{{ $labelClass }} mb-0 text-emerald-900 dark:text-emerald-200 font-bold">تخفیف لحظه آخری (پیشنهاد ویژه)</label>
-                                    </div>
-                                    <p class="text-xs text-emerald-700/80 dark:text-emerald-400/80 font-sans mt-0.5">با فعال‌سازی، تخفیف مورد نظر از نرخ هر روز اقامتگاه کسر شده و در بخش «تخفیف لحظه آخری» با نشان تخفیف و قیمت خط‌خورده نمایش داده می‌شود.</p>
+                        <div class="p-5 rounded-2xl border transition-all duration-300 space-y-4"
+                             :class="hasDiscount ? 'bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-200/80 dark:border-emerald-900/40' : 'bg-gray-50/70 dark:bg-gray-900/40 border-gray-100 dark:border-gray-700/60'">
+                            <div class="flex items-center justify-between gap-3">
+                                <div class="flex items-center gap-2">
+                                    <span class="w-2.5 h-2.5 rounded-full transition-colors"
+                                          :class="hasDiscount ? 'bg-emerald-600 dark:bg-emerald-400 animate-pulse' : 'bg-gray-400 dark:bg-gray-600'"></span>
+                                    <label class="{{ $labelClass }} mb-0 font-bold transition-colors"
+                                           :class="hasDiscount ? 'text-emerald-900 dark:text-emerald-200' : 'text-gray-900 dark:text-gray-200'">
+                                        تخفیف لحظه آخری (پیشنهاد ویژه)
+                                    </label>
                                 </div>
                                 <label class="relative inline-flex items-center cursor-pointer select-none">
-                                    <input type="checkbox" name="has_discount" value="1" x-model="hasDiscount" class="sr-only peer">
+                                    <input type="checkbox" name="has_discount" value="1" x-model="hasDiscount" {{ old('has_discount', $rentalConfig->has_discount ?? false) ? 'checked' : '' }} class="sr-only peer">
                                     <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-emerald-600"></div>
-                                    <span class="ms-3 text-xs font-bold text-gray-700 dark:text-gray-300 font-sans" x-text="hasDiscount ? 'فعال' : 'غیرفعال'"></span>
+                                    <span class="ms-3 text-xs font-bold font-sans transition-colors"
+                                          :class="hasDiscount ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-500 dark:text-gray-400'"
+                                          x-text="hasDiscount ? 'فعال' : 'غیرفعال'">{{ old('has_discount', $rentalConfig->has_discount ?? false) ? 'فعال' : 'غیرفعال' }}</span>
                                 </label>
                             </div>
 
-                            <div x-show="hasDiscount" x-transition class="space-y-4 pt-4 border-t border-emerald-100 dark:border-emerald-900/40">
+                            <div x-show="hasDiscount" x-cloak x-transition class="space-y-4 pt-4 border-t border-emerald-100 dark:border-emerald-900/40">
                                 {{-- انتخاب نوع تخفیف و ورود مقدار --}}
                                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <div>
@@ -303,16 +294,12 @@
                                             </button>
                                         </div>
                                         <input type="hidden" name="discount_type" :value="discountType">
-                                        <p class="text-[11px] text-gray-500 dark:text-gray-400 mt-1.5 font-sans">
-                                            <span x-show="discountType === 'percent'">تخفیف به صورت درصدی از نرخ هر شب (عادی، آخر هفته یا تعطیلات) کسر می‌شود.</span>
-                                            <span x-show="discountType === 'fixed'">مبلغ ثابت مشخص‌شده از قیمت هر شب کسر می‌گردد.</span>
-                                        </p>
                                     </div>
 
                                     <div>
                                         <label class="{{ $labelClass }}">
                                             <span x-show="discountType === 'percent'">درصد تخفیف (٪)</span>
-                                            <span x-show="discountType === 'fixed'">مبلغ کسر از قیمت هر شب ({{ $currencyLabel }})</span>
+                                            <span x-show="discountType === 'fixed'">مبلغ کسر از هر شب ({{ $currencyLabel }})</span>
                                         </label>
                                         <div class="relative">
                                             <input type="text" 
@@ -325,9 +312,6 @@
                                             <span class="absolute inset-y-0 left-3 flex items-center text-xs text-gray-400 font-sans" 
                                                   x-text="discountType === 'percent' ? '٪' : '{{ $currencyLabel }}'"></span>
                                         </div>
-                                        <p class="text-[11px] text-gray-500 dark:text-gray-400 mt-1.5 font-sans">
-                                            این مقدار به طور خودکار از نرخ روزهای عادی، آخر هفته یا تعطیلات کسر می‌گردد.
-                                        </p>
                                     </div>
                                 </div>
 
@@ -338,13 +322,13 @@
                                             <svg class="w-4 h-4 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                                             </svg>
-                                            پیش‌نمایش زنده قیمت‌ها پس از اعمال تخفیف:
+                                            پیش‌نمایش قیمت‌ها با احتساب تخفیف:
                                         </span>
                                     </div>
                                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1 text-xs">
                                         {{-- نرخ عادی --}}
                                         <div class="p-2.5 rounded-lg bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700/50 flex flex-col justify-between">
-                                            <span class="text-gray-500 dark:text-gray-400 text-[11px]">نرخ روزهای عادی:</span>
+                                            <span class="text-gray-500 dark:text-gray-400 text-[11px]">نرخ عادی:</span>
                                             <div class="mt-1 flex items-baseline gap-1.5 flex-wrap">
                                                 <span class="text-gray-400 line-through text-[11px]" x-text="pricePerNight ? pricePerNight : '---'"></span>
                                                 <span class="font-bold text-emerald-600 dark:text-emerald-400 font-sans text-sm" x-text="pricePerNight ? formatNumber(getDiscountedPrice(pricePerNight)) + ' {{ $currencyLabel }}' : '---'"></span>
@@ -353,7 +337,7 @@
 
                                         {{-- نرخ آخر هفته --}}
                                         <div class="p-2.5 rounded-lg bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700/50 flex flex-col justify-between">
-                                            <span class="text-gray-500 dark:text-gray-400 text-[11px]">نرخ آخر هفته:</span>
+                                            <span class="text-gray-500 dark:text-gray-400 text-[11px]">آخر هفته:</span>
                                             <div class="mt-1 flex items-baseline gap-1.5 flex-wrap">
                                                 <span class="text-gray-400 line-through text-[11px]" x-text="priceWeekend ? priceWeekend : (pricePerNight ? pricePerNight : '---')"></span>
                                                 <span class="font-bold text-emerald-600 dark:text-emerald-400 font-sans text-sm" x-text="(priceWeekend || pricePerNight) ? formatNumber(getDiscountedPrice(priceWeekend || pricePerNight)) + ' {{ $currencyLabel }}' : '---'"></span>
@@ -362,7 +346,7 @@
 
                                         {{-- نرخ ایام پیک --}}
                                         <div class="p-2.5 rounded-lg bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700/50 flex flex-col justify-between">
-                                            <span class="text-gray-500 dark:text-gray-400 text-[11px]">نرخ ایام پیک و تعطیلات:</span>
+                                            <span class="text-gray-500 dark:text-gray-400 text-[11px]">ایام پیک:</span>
                                             <div class="mt-1 flex items-baseline gap-1.5 flex-wrap">
                                                 <span class="text-gray-400 line-through text-[11px]" x-text="priceHoliday ? priceHoliday : (priceWeekend ? priceWeekend : (pricePerNight ? pricePerNight : '---'))"></span>
                                                 <span class="font-bold text-emerald-600 dark:text-emerald-400 font-sans text-sm" x-text="(priceHoliday || priceWeekend || pricePerNight) ? formatNumber(getDiscountedPrice(priceHoliday || priceWeekend || pricePerNight)) + ' {{ $currencyLabel }}' : '---'"></span>
@@ -410,8 +394,11 @@
                                 <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
                             </div>
                             <div>
-                                <h2 class="text-base font-bold text-gray-900 dark:text-white">قیمت‌گذاری ویژه تاریخ‌های خاص (تکی و بازه‌ای)</h2>
-                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">تعیین نرخ اختصاصی برای مناسبت‌ها یا بازه‌های زمانی دلخواه (دارای بالاترین اولویت نسبت به سایر نرخ‌ها).</p>
+                                <div class="flex items-center gap-2">
+                                    <h2 class="text-base font-bold text-gray-900 dark:text-white">قیمت‌گذاری ویژه تاریخ‌های خاص</h2>
+                                    <span class="text-[10px] text-purple-700 dark:text-purple-300 font-bold bg-purple-100/70 dark:bg-purple-900/40 px-2 py-0.5 rounded-md font-sans">بالاترین اولویت</span>
+                                </div>
+                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5 font-sans">تعیین نرخ اختصاصی برای مناسبت‌ها یا بازه‌های تقویمی دلخواه</p>
                             </div>
                         </div>
 
@@ -546,14 +533,11 @@
 
                     {{-- ۲. قوانین اختصاصی و سفارشی اقامتگاه --}}
                     <div class="pt-4 border-t border-gray-100 dark:border-gray-700/60 space-y-4">
-                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                            <div>
-                                <h3 class="text-xs font-bold text-gray-900 dark:text-white flex items-center gap-1.5">
-                                    <span class="w-2 h-2 rounded-full bg-indigo-500"></span>
-                                    قوانین اختصاصی و سفارشی اقامتگاه
-                                </h3>
-                                <p class="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">هرگونه شرط، محدودیت یا قانون خاص ملک خود را به صورت دلخواه اضافه کنید.</p>
-                            </div>
+                        <div class="flex items-center justify-between gap-2">
+                            <h3 class="text-xs font-bold text-gray-900 dark:text-white flex items-center gap-1.5">
+                                <span class="w-2 h-2 rounded-full bg-indigo-500"></span>
+                                قوانین اختصاصی اقامتگاه
+                            </h3>
                             <span class="text-[11px] text-indigo-600 dark:text-indigo-400 font-bold font-sans self-start sm:self-auto bg-indigo-50 dark:bg-indigo-950/40 px-2.5 py-1 rounded-lg" x-text="`${customRules.length} قانون اختصاصی`"></span>
                         </div>
 
@@ -563,7 +547,7 @@
                                 <input type="text" 
                                        x-model="newRuleText" 
                                        @keydown.enter.prevent="addCustomRule()"
-                                       placeholder="متن قانون سفارشی را بنویسید (مثلاً: استفاده از استخر بعد از ساعت ۲۳ ممنوع است)..." 
+                                       placeholder="متن قانون اختصاصی اقامتگاه..." 
                                        class="{{ $inputClass }} text-xs py-2.5 pl-4 font-sans">
                             </div>
                             <button type="button" 
@@ -593,9 +577,9 @@
                             </template>
                         </div>
 
-                        {{-- پیام راهنما در صورت نبود قانون سفارشی --}}
-                        <div x-show="customRules.length === 0" class="text-center py-3.5 px-4 rounded-2xl border border-dashed border-gray-200 dark:border-gray-700/80 text-[11px] text-gray-400 dark:text-gray-500 font-sans">
-                            هنوز قانون سفارشی ثبت نشده است. می‌توانید قوانین اختصاصی اقامتگاه را از کادر بالا اضافه نمایید.
+                        {{-- پیام در صورت نبود قانون سفارشی --}}
+                        <div x-show="customRules.length === 0" class="text-center py-3 px-4 rounded-xl border border-dashed border-gray-200 dark:border-gray-700/80 text-[11px] text-gray-400 dark:text-gray-500 font-sans">
+                            قانون اختصاصی ثبت نشده است. در صورت تمایل از کادر بالا اضافه نمایید.
                         </div>
                     </div>
                 </div>
@@ -635,34 +619,11 @@
                         </div>
                     </div>
 
-                    {{-- راهنمای اتصال به مراحل بعد یا ویرایش امکانات --}}
+                    {{-- راهنمای اتصال به مراحل بعد (در حالت ویزارد) --}}
                     @if($isWizard)
-                        <div class="p-4 rounded-2xl bg-indigo-50/70 border border-indigo-100 dark:bg-indigo-950/20 dark:border-indigo-900/40 space-y-2">
-                            <div class="flex items-start gap-2.5">
-                                <span class="w-6 h-6 rounded-lg bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-300 flex items-center justify-center flex-shrink-0 mt-0.5">
-                                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                </span>
-                                <div class="space-y-1">
-                                    <p class="text-xs font-bold text-indigo-950 dark:text-indigo-200">مشخصات اتاق‌ها، تخت‌ها و امکانات</p>
-                                    <p class="text-[11px] text-indigo-700 dark:text-indigo-300 leading-relaxed font-sans">
-                                        تعداد اتاق‌ها، سرویس‌های خواب، استخر، سیستم‌های سرمایش/گرمایش و کلیه امکانات پس از ذخیره این فرم، در مراحل بعدی (اطلاعات تکمیلی و امکانات) تکمیل خواهند شد.
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-                    @else
-                        <div class="p-4 rounded-2xl bg-gray-50/80 border border-gray-200/80 dark:bg-gray-900/40 dark:border-gray-700/60 space-y-2">
-                            <div class="flex items-start justify-between gap-3">
-                                <div class="space-y-1">
-                                    <p class="text-xs font-bold text-gray-900 dark:text-white">مشخصات اتاق‌ها و امکانات</p>
-                                    <p class="text-[11px] text-gray-500 dark:text-gray-400 font-sans leading-relaxed">
-                                        جهت به‌روزرسانی مشخصات اتاق‌ها، امکانات تفریحی، استخر یا مشخصات عمومی ملک:
-                                    </p>
-                                </div>
-                                <a href="{{ route('user.properties.edit', $property) }}" class="px-3 py-1.5 rounded-xl bg-white dark:bg-gray-800 text-indigo-600 dark:text-indigo-300 border border-gray-200 dark:border-gray-700 text-xs font-bold hover:bg-indigo-50 dark:hover:bg-indigo-950/40 transition whitespace-nowrap flex-shrink-0">
-                                    ویرایش مشخصات
-                                </a>
-                            </div>
+                        <div class="p-3.5 rounded-2xl bg-indigo-50/70 border border-indigo-100 dark:bg-indigo-950/20 dark:border-indigo-900/40 flex items-center gap-2 text-xs text-indigo-900 dark:text-indigo-200 font-sans">
+                            <svg class="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                            <span>مشخصات اتاق‌ها، تخت‌ها و امکانات در گام‌های بعدی تکمیل می‌شوند.</span>
                         </div>
                     @endif
                 </div>
@@ -761,11 +722,110 @@
         </div>
 
     </form>
+
+    {{-- مودال راهنمای الگوریتم هوشمند محاسبه ایام پیک و تعطیلات --}}
+    <div x-show="showHolidayModal"
+         x-cloak
+         class="fixed inset-0 z-50 overflow-y-auto"
+         style="display: none;">
+
+        {{-- Backdrop --}}
+        <div class="fixed inset-0 bg-slate-900/60 dark:bg-black/80 backdrop-blur-xs transition-opacity"
+             @click="showHolidayModal = false"></div>
+
+        <div class="flex min-h-full items-center justify-center p-4 text-center sm:p-6">
+            <div class="relative transform overflow-hidden rounded-3xl bg-white dark:bg-gray-800 text-right shadow-2xl transition-all sm:w-full sm:max-w-xl border border-gray-200 dark:border-gray-700/80 font-sans p-6 sm:p-7 space-y-5"
+                 @click.away="showHolidayModal = false"
+                 @keydown.escape.window="showHolidayModal = false">
+
+                {{-- Header --}}
+                <div class="flex items-center justify-between border-b border-gray-100 dark:border-gray-700/60 pb-4">
+                    <div class="flex items-center gap-3">
+                        <span class="w-10 h-10 rounded-2xl bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 flex items-center justify-center shadow-xs">
+                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        </span>
+                        <div>
+                            <h3 class="text-base font-bold text-gray-900 dark:text-white">
+                                الگوریتم هوشمند محاسبه ایام پیک و تعطیلات
+                            </h3>
+                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                                نحوه استعلام تقویم، تشخیص شب‌های تعطیل و اولویت‌بندی نرخ‌ها
+                            </p>
+                        </div>
+                    </div>
+
+                    <button type="button" 
+                            @click="showHolidayModal = false" 
+                            class="w-9 h-9 rounded-xl text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 dark:hover:text-gray-200 flex items-center justify-center transition">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+
+                {{-- Items List --}}
+                <div class="space-y-3 text-xs">
+                    <div class="p-3.5 rounded-2xl bg-gray-50/80 dark:bg-gray-900/40 border border-gray-100 dark:border-gray-700/60 flex items-start gap-3">
+                        <span class="w-2 h-2 rounded-full bg-amber-500 mt-1.5 shrink-0"></span>
+                        <div class="space-y-0.5">
+                            <strong class="text-gray-900 dark:text-white font-bold block">بانک اطلاعاتی تقویم ملی</strong>
+                            <p class="text-gray-600 dark:text-gray-300 leading-relaxed font-sans">روزهای تعطیل رسمی تقویم شمسی کشور مستقیماً بر اساس «بانک اطلاعاتی مناسبت‌ها و تعطیلات ملی» ثبت‌شده در سامانه استعلام و محاسبه می‌شوند.</p>
+                        </div>
+                    </div>
+
+                    <div class="p-3.5 rounded-2xl bg-gray-50/80 dark:bg-gray-900/40 border border-gray-100 dark:border-gray-700/60 flex items-start gap-3">
+                        <span class="w-2 h-2 rounded-full bg-amber-500 mt-1.5 shrink-0"></span>
+                        <div class="space-y-0.5">
+                            <strong class="text-gray-900 dark:text-white font-bold block">محاسبه هوشمند شب تعطیل (Eve of Holiday)</strong>
+                            <p class="text-gray-600 dark:text-gray-300 leading-relaxed font-sans">از آنجا که مسافران عصر/شب قبل از روز تعطیل حرکت و اقامت می‌کنند، «شبِ قبل از هر تعطیلی رسمی تقویم» به عنوان شب پیک شناسایی شده و این نرخ روی آن اعمال می‌شود.</p>
+                        </div>
+                    </div>
+
+                    <div class="p-3.5 rounded-2xl bg-gray-50/80 dark:bg-gray-900/40 border border-gray-100 dark:border-gray-700/60 flex items-start gap-3">
+                        <span class="w-2 h-2 rounded-full bg-amber-500 mt-1.5 shrink-0"></span>
+                        <div class="space-y-0.5">
+                            <strong class="text-gray-900 dark:text-white font-bold block">وضعیت روزهای جمعه</strong>
+                            <p class="text-gray-600 dark:text-gray-300 leading-relaxed font-sans">جمعه‌شب به صورت پیش‌فرض مشمول نرخ پایه و عادی است (به دلیل روز کاری شنبه)؛ اما چنانچه روز «شنبه» تعطیل رسمی باشد، جمعه‌شب به عنوان «شبِ قبل از تعطیل رسمی» به صورت هوشمند مشمول نرخ ایام پیک خواهد شد.</p>
+                        </div>
+                    </div>
+
+                    <div class="p-3.5 rounded-2xl bg-gray-50/80 dark:bg-gray-900/40 border border-gray-100 dark:border-gray-700/60 flex items-start gap-3">
+                        <span class="w-2 h-2 rounded-full bg-amber-500 mt-1.5 shrink-0"></span>
+                        <div class="space-y-0.5">
+                            <strong class="text-gray-900 dark:text-white font-bold block">روزهای آخر هفته</strong>
+                            <p class="text-gray-600 dark:text-gray-300 leading-relaxed font-sans">چهارشنبه و پنج‌شنبه (یا روزهای انتخابی شما در تنظیمات) تحت پوشش «نرخ آخر هفته» هستند، مگر اینکه با تعطیلات رسمی تقویمی پیوسته شوند که نرخ پیک اولویت پیدا می‌کند.</p>
+                        </div>
+                    </div>
+
+                    <div class="p-3.5 rounded-2xl bg-gray-50/80 dark:bg-gray-900/40 border border-gray-100 dark:border-gray-700/60 flex items-start gap-3">
+                        <span class="w-2 h-2 rounded-full bg-amber-500 mt-1.5 shrink-0"></span>
+                        <div class="space-y-0.5">
+                            <strong class="text-gray-900 dark:text-white font-bold block">اولویت خودکار</strong>
+                            <p class="text-gray-600 dark:text-gray-300 leading-relaxed font-sans">این نرخ برای تمامی شب‌های مشمول تعطیلات رسمی تقویم به صورت خودکار در فاکتور و تقویم رزرو مسافر جایگزین نرخ‌های پایه می‌شود.</p>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Footer --}}
+                <div class="pt-2 flex justify-end">
+                    <button type="button" 
+                            @click="showHolidayModal = false" 
+                            class="px-5 py-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 text-xs font-bold transition font-sans">
+                        متوجه شدم
+                    </button>
+                </div>
+
+            </div>
+        </div>
+    </div>
 </div>
 
 <script>
     function rentalConfigForm() {
         return {
+            showHolidayModal: false,
             isSubmitting: false,
             pricePerNight: '{{ old('price_per_night', $rentalConfig->price_per_night ? number_format($rentalConfig->price_per_night) : '') }}',
             priceWeekend: '{{ old('price_weekend', $rentalConfig->price_weekend ? number_format($rentalConfig->price_weekend) : '') }}',
