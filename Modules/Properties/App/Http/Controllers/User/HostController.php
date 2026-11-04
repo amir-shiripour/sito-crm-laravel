@@ -237,6 +237,8 @@ class HostController extends Controller
             ];
         }
 
+        $currencyLabel = PropertySetting::getCurrencyLabel();
+
         return view('properties::user.hosts.dashboard', compact(
             'host',
             'properties',
@@ -253,7 +255,8 @@ class HostController extends Controller
             'showOnboardingStepper',
             'hostTipsEnabled',
             'hostTipsTitle',
-            'hostTips'
+            'hostTips',
+            'currencyLabel'
         ));
     }
 

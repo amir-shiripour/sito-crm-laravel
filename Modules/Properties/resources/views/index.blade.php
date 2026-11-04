@@ -13,6 +13,7 @@
          @speech-status.window="isVoiceTyping = $event.detail; if(isVoiceTyping) aiQueryBeforeSpeech = aiQuery || ''">
 
         @php
+            $currencyLabel = $currencyLabel ?? \Modules\Properties\Entities\PropertySetting::getCurrencyLabel();
             $aiSearchEnabled = \Modules\Properties\Entities\PropertySetting::get('ai_property_search', 0);
 
             // Helper function to decode visibility settings safely outside the loop
@@ -204,11 +205,11 @@
                     {{-- Price Range (Sale) --}}
                     <div id="sale_price_inputs" class="grid grid-cols-1 md:grid-cols-2 gap-4 {{ request('listing_type') == 'rent' ? 'hidden' : '' }}">
                         <div>
-                            <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">حداقل قیمت خرید (تومان)</label>
+                            <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">حداقل قیمت خرید ({{ $currencyLabel }})</label>
                             <input type="text" name="min_price" value="{{ request('min_price') }}" placeholder="مثلا: 10,000,000" class="price-input w-full h-12 rounded-xl border-gray-200 bg-gray-50 px-4 text-sm text-gray-900 focus:border-indigo-500 transition-all dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 shadow-sm dir-ltr text-left">
                         </div>
                         <div>
-                            <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">حداکثر قیمت خرید (تومان)</label>
+                            <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">حداکثر قیمت خرید ({{ $currencyLabel }})</label>
                             <input type="text" name="max_price" value="{{ request('max_price') }}" placeholder="مثلا: 5,000,000,000" class="price-input w-full h-12 rounded-xl border-gray-200 bg-gray-50 px-4 text-sm text-gray-900 focus:border-indigo-500 transition-all dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 shadow-sm dir-ltr text-left">
                         </div>
                     </div>
@@ -217,22 +218,22 @@
                     <div id="rent_price_inputs" class="grid grid-cols-1 lg:grid-cols-2 gap-6 {{ request('listing_type') == 'rent' ? '' : 'hidden' }}">
                         <div class="grid grid-cols-2 gap-4">
                             <div>
-                                <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">حداقل رهن</label>
-                                <input type="text" name="min_deposit_price" value="{{ request('min_deposit_price') }}" placeholder="تومان" class="price-input w-full h-12 rounded-xl border-gray-200 bg-gray-50 px-4 text-sm text-gray-900 focus:border-indigo-500 transition-all dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 shadow-sm dir-ltr text-left">
+                                <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">حداقل رهن ({{ $currencyLabel }})</label>
+                                <input type="text" name="min_deposit_price" value="{{ request('min_deposit_price') }}" placeholder="{{ $currencyLabel }}" class="price-input w-full h-12 rounded-xl border-gray-200 bg-gray-50 px-4 text-sm text-gray-900 focus:border-indigo-500 transition-all dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 shadow-sm dir-ltr text-left">
                             </div>
                             <div>
-                                <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">حداکثر رهن</label>
-                                <input type="text" name="max_deposit_price" value="{{ request('max_deposit_price') }}" placeholder="تومان" class="price-input w-full h-12 rounded-xl border-gray-200 bg-gray-50 px-4 text-sm text-gray-900 focus:border-indigo-500 transition-all dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 shadow-sm dir-ltr text-left">
+                                <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">حداکثر رهن ({{ $currencyLabel }})</label>
+                                <input type="text" name="max_deposit_price" value="{{ request('max_deposit_price') }}" placeholder="{{ $currencyLabel }}" class="price-input w-full h-12 rounded-xl border-gray-200 bg-gray-50 px-4 text-sm text-gray-900 focus:border-indigo-500 transition-all dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 shadow-sm dir-ltr text-left">
                             </div>
                         </div>
                         <div class="grid grid-cols-2 gap-4">
                             <div>
-                                <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">حداقل اجاره</label>
-                                <input type="text" name="min_rent_price" value="{{ request('min_rent_price') }}" placeholder="تومان" class="price-input w-full h-12 rounded-xl border-gray-200 bg-gray-50 px-4 text-sm text-gray-900 focus:border-indigo-500 transition-all dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 shadow-sm dir-ltr text-left">
+                                <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">حداقل اجاره ({{ $currencyLabel }})</label>
+                                <input type="text" name="min_rent_price" value="{{ request('min_rent_price') }}" placeholder="{{ $currencyLabel }}" class="price-input w-full h-12 rounded-xl border-gray-200 bg-gray-50 px-4 text-sm text-gray-900 focus:border-indigo-500 transition-all dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 shadow-sm dir-ltr text-left">
                             </div>
                             <div>
-                                <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">حداکثر اجاره</label>
-                                <input type="text" name="max_rent_price" value="{{ request('max_rent_price') }}" placeholder="تومان" class="price-input w-full h-12 rounded-xl border-gray-200 bg-gray-50 px-4 text-sm text-gray-900 focus:border-indigo-500 transition-all dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 shadow-sm dir-ltr text-left">
+                                <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">حداکثر اجاره ({{ $currencyLabel }})</label>
+                                <input type="text" name="max_rent_price" value="{{ request('max_rent_price') }}" placeholder="{{ $currencyLabel }}" class="price-input w-full h-12 rounded-xl border-gray-200 bg-gray-50 px-4 text-sm text-gray-900 focus:border-indigo-500 transition-all dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 shadow-sm dir-ltr text-left">
                             </div>
                         </div>
                     </div>
@@ -368,15 +369,15 @@
                                     @if($property->listing_type == 'rent')
                                         <div class="flex items-center justify-between">
                                             <span class="text-xs text-gray-500 dark:text-gray-400">رهن:</span>
-                                            <span class="text-sm font-black text-gray-900 dark:text-white">{{ $property->deposit_price > 0 ? number_format($property->deposit_price).' تومان' : 'توافقی' }}</span>
+                                            <span class="text-sm font-black text-gray-900 dark:text-white">{{ $property->deposit_price > 0 ? number_format($property->deposit_price) . ' ' . $currencyLabel : 'توافقی' }}</span>
                                         </div>
                                         <div class="flex items-center justify-between">
                                             <span class="text-xs text-gray-500 dark:text-gray-400">اجاره:</span>
-                                            <span class="text-sm font-black text-gray-900 dark:text-white">{{ $property->rent_price > 0 ? number_format($property->rent_price).' تومان' : 'توافقی' }}</span>
+                                            <span class="text-sm font-black text-gray-900 dark:text-white">{{ $property->rent_price > 0 ? number_format($property->rent_price) . ' ' . $currencyLabel : 'توافقی' }}</span>
                                         </div>
                                     @else
                                         <div class="text-2xl font-black text-indigo-600 dark:text-indigo-400">
-                                            {{ $property->price > 0 ? number_format($property->price) : 'توافقی' }} <span class="text-xs font-normal text-gray-500">{{ $property->price > 0 ? 'تومان' : '' }}</span>
+                                            {{ $property->price > 0 ? number_format($property->price) : 'توافقی' }} <span class="text-xs font-normal text-gray-500">{{ $property->price > 0 ? $currencyLabel : '' }}</span>
                                         </div>
                                     @endif
                                 @else

@@ -106,14 +106,15 @@
                 } else {
                     $coverUrl = asset('images/property-placeholder.svg');
                 }
+                $currLabel = $currencyLabel ?? (\Modules\Properties\Entities\PropertySetting::getCurrencyLabel() ?? 'تومان');
                 $priceDisplay = '';
                 if ($property->listing_type === 'daily_rental') {
                     $rate = $rentalConfig?->price_per_night ?: ($property->rent_price ?: $property->price);
-                    $priceDisplay = ($rate > 0 ? number_format($rate) : 'توافقی') . ' تومان / شب';
+                    $priceDisplay = ($rate > 0 ? number_format($rate) : 'توافقی') . ' ' . $currLabel . ' / شب';
                 } elseif ($property->listing_type === 'rent') {
-                    $priceDisplay = 'رهن: ' . ($property->deposit_price > 0 ? number_format($property->deposit_price) : 'توافقی') . ' تومان';
+                    $priceDisplay = 'رهن: ' . ($property->deposit_price > 0 ? number_format($property->deposit_price) : 'توافقی') . ' ' . $currLabel;
                 } else {
-                    $priceDisplay = ($property->price > 0 ? number_format($property->price) : 'توافقی') . ' تومان';
+                    $priceDisplay = ($property->price > 0 ? number_format($property->price) : 'توافقی') . ' ' . $currLabel;
                 }
             @endphp
 

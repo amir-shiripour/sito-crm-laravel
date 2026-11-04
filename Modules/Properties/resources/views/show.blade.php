@@ -32,6 +32,7 @@
 
 @section('content')
     @php
+        $currencyLabel = $currencyLabel ?? \Modules\Properties\Entities\PropertySetting::getCurrencyLabel();
         $checkVisibility = function($key, $isRestrictedByDefault = false) use ($property, $visibilitySettings) {
             $allowedRoles = $visibilitySettings[$key] ?? [];
             if (empty($allowedRoles)) {
@@ -320,28 +321,28 @@
                             @if($property->listing_type === 'rent')
                                 <div class="flex justify-between items-center mb-4">
                                     <span class="text-sm font-bold text-gray-500 dark:text-gray-400">مبلغ رهن:</span>
-                                    <span class="text-xl font-black text-indigo-600 dark:text-indigo-400">{{ $property->deposit_price > 0 ? number_format($property->deposit_price) . ' تومان' : 'توافقی' }}</span>
+                                    <span class="text-xl font-black text-indigo-600 dark:text-indigo-400">{{ $property->deposit_price > 0 ? number_format($property->deposit_price) . ' ' . $currencyLabel : 'توافقی' }}</span>
                                 </div>
                                 <div class="border-t border-gray-200/60 dark:border-gray-700/60 mb-4"></div>
                                 <div class="flex justify-between items-center">
                                     <span class="text-sm font-bold text-gray-500 dark:text-gray-400">مبلغ اجاره:</span>
-                                    <span class="text-xl font-black text-indigo-600 dark:text-indigo-400">{{ $property->rent_price > 0 ? number_format($property->rent_price) . ' تومان' : 'توافقی' }}</span>
+                                    <span class="text-xl font-black text-indigo-600 dark:text-indigo-400">{{ $property->rent_price > 0 ? number_format($property->rent_price) . ' ' . $currencyLabel : 'توافقی' }}</span>
                                 </div>
                             @elseif($property->listing_type === 'presale')
                                 <div class="flex justify-between items-center mb-4">
                                     <span class="text-sm font-bold text-gray-500 dark:text-gray-400">پیش‌پرداخت:</span>
-                                    <span class="text-xl font-black text-indigo-600 dark:text-indigo-400">{{ $property->advance_price > 0 ? number_format($property->advance_price) . ' تومان' : 'توافقی' }}</span>
+                                    <span class="text-xl font-black text-indigo-600 dark:text-indigo-400">{{ $property->advance_price > 0 ? number_format($property->advance_price) . ' ' . $currencyLabel : 'توافقی' }}</span>
                                 </div>
                                 <div class="border-t border-gray-200/60 dark:border-gray-700/60 mb-4"></div>
                                 <div class="flex justify-between items-center">
                                     <span class="text-sm font-bold text-gray-500 dark:text-gray-400">قیمت کل:</span>
-                                    <span class="text-xl font-black text-indigo-600 dark:text-indigo-400">{{ $property->price > 0 ? number_format($property->price) . ' تومان' : 'توافقی' }}</span>
+                                    <span class="text-xl font-black text-indigo-600 dark:text-indigo-400">{{ $property->price > 0 ? number_format($property->price) . ' ' . $currencyLabel : 'توافقی' }}</span>
                                 </div>
                                 @if($canViewMinPrice && $property->min_price > 0)
                                     <div class="border-t border-gray-200/60 dark:border-gray-700/60 my-4"></div>
                                     <div class="flex justify-between items-center">
                                         <span class="text-sm font-bold text-gray-500 dark:text-gray-400">قیمت کف:</span>
-                                        <span class="text-xl font-black text-indigo-600 dark:text-indigo-400">{{ number_format($property->min_price) }} تومان</span>
+                                        <span class="text-xl font-black text-indigo-600 dark:text-indigo-400">{{ number_format($property->min_price) }} {{ $currencyLabel }}</span>
                                     </div>
                                 @endif
                             @else
@@ -350,7 +351,7 @@
                                     <div class="text-right">
                                         <div class="text-3xl font-black text-indigo-600 dark:text-indigo-400">{{ $property->price > 0 ? number_format($property->price) : 'توافقی' }}</div>
                                         @if($property->price > 0)
-                                            <div class="text-xs text-gray-400 font-bold mt-1">تومان</div>
+                                            <div class="text-xs text-gray-400 font-bold mt-1">{{ $currencyLabel }}</div>
                                         @endif
                                     </div>
                                 </div>
@@ -358,7 +359,7 @@
                                     <div class="border-t border-gray-200/60 dark:border-gray-700/60 my-4"></div>
                                     <div class="flex justify-between items-center">
                                         <span class="text-sm font-bold text-gray-500 dark:text-gray-400">قیمت کف:</span>
-                                        <span class="text-xl font-black text-indigo-600 dark:text-indigo-400">{{ number_format($property->min_price) }} تومان</span>
+                                        <span class="text-xl font-black text-indigo-600 dark:text-indigo-400">{{ number_format($property->min_price) }} {{ $currencyLabel }}</span>
                                     </div>
                                 @endif
                             @endif

@@ -184,7 +184,10 @@ class PropertyController extends Controller
         // وضعیت فعال بودن ساختمان در حالت اجاره روزانه
         $rentalBuildingEnabled = (bool) PropertySetting::get('rental_building_enabled', 1);
 
-        return view('properties::user.index', compact('properties', 'statuses', 'agents', 'hosts', 'categories', 'buildings', 'propertyAttributes', 'pendingReviewCount', 'rentalBuildingEnabled', 'rentalModeEnabled', 'rentalMultiHostEnabled'));
+        $currency = PropertySetting::getCurrency();
+        $currencyLabel = PropertySetting::getCurrencyLabel();
+
+        return view('properties::user.index', compact('properties', 'statuses', 'agents', 'hosts', 'categories', 'buildings', 'propertyAttributes', 'pendingReviewCount', 'rentalBuildingEnabled', 'rentalModeEnabled', 'rentalMultiHostEnabled', 'currency', 'currencyLabel'));
     }
 
     public function create(Request $request)
@@ -513,8 +516,9 @@ class PropertyController extends Controller
                 ->with('info', 'نرخ‌گذاری و شرایط مالی این اقامتگاه از طریق بخش تنظیمات و تقویم اقامتگاه مدیریت می‌شود.');
         }
 
-        $currency = PropertySetting::get('currency', 'toman');
-        return view('properties::user.pricing', compact('property', 'currency'));
+        $currency = PropertySetting::getCurrency();
+        $currencyLabel = PropertySetting::getCurrencyLabel();
+        return view('properties::user.pricing', compact('property', 'currency', 'currencyLabel'));
     }
 
     public function updatePricing(Request $request, Property $property)
@@ -793,8 +797,10 @@ class PropertyController extends Controller
             }
         }
         $provincesData = \App\Helpers\ProvinceCity::getAll();
+        $currency = PropertySetting::getCurrency();
+        $currencyLabel = PropertySetting::getCurrencyLabel();
 
-        return view('properties::user.edit', compact('property', 'maxGalleryImages', 'maxFileSize', 'allowedFileTypes', 'maxVideoSize', 'allowedVideoTypes', 'customDetails', 'customFeatures', 'owners', 'statuses', 'agents', 'hosts', 'currentUserHost', 'rentalVideoEnabled', 'rentalBuildingEnabled', 'rentalPropertyTypes', 'rentalMultiHostEnabled', 'provincesData'));
+        return view('properties::user.edit', compact('property', 'maxGalleryImages', 'maxFileSize', 'allowedFileTypes', 'maxVideoSize', 'allowedVideoTypes', 'customDetails', 'customFeatures', 'owners', 'statuses', 'agents', 'hosts', 'currentUserHost', 'rentalVideoEnabled', 'rentalBuildingEnabled', 'rentalPropertyTypes', 'rentalMultiHostEnabled', 'provincesData', 'currency', 'currencyLabel'));
     }
 
     public function update(Request $request, Property $property)

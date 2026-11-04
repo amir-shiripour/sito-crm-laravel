@@ -104,7 +104,7 @@
         $host = $property->host;
         $hostPhone = $host && $host->phone ? $host->phone : ($displayAgent->mobile ?? $displayAgent->phone ?? null);
         $config = $property->rentalConfig;
-        $currencyLabel = $currency === 'toman' ? 'تومان' : 'ریال';
+        $currencyLabel = $currencyLabel ?? ($currency === 'toman' ? 'تومان' : 'ریال');
         $images = $property->images;
 
         $mapService = \Modules\Properties\Entities\PropertySetting::get('map_service', 'leaflet');

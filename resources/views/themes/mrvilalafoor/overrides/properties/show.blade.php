@@ -21,6 +21,7 @@
     $canViewPrice = $checkVisibility('price_info', false);
     $canViewCover = $checkVisibility('cover_image', false);
     $canViewGallery = $checkVisibility('gallery_images', false);
+    $currLabel = $currencyLabel ?? (\Modules\Properties\Entities\PropertySetting::getCurrencyLabel() ?? 'تومان');
 
     $coverUrl = ($canViewCover && $property->cover_image) 
         ? (str_starts_with($property->cover_image, 'http') ? $property->cover_image : asset('storage/' . $property->cover_image))
@@ -69,11 +70,11 @@
         <div class="text-left">
             @if($canViewPrice)
                 @if($property->listing_type === 'rent')
-                    <div class="text-sm font-bold text-zinc-500">رهن: {{ $property->deposit_price > 0 ? number_format($property->deposit_price) . ' تومان' : 'توافقی' }}</div>
-                    <div class="text-base font-black text-[#007A5E] dark:text-emerald-400">اجاره: {{ $property->rent_price > 0 ? number_format($property->rent_price) . ' تومان' : 'توافقی' }}</div>
+                    <div class="text-sm font-bold text-zinc-500">رهن: {{ $property->deposit_price > 0 ? number_format($property->deposit_price) . ' ' . $currLabel : 'توافقی' }}</div>
+                    <div class="text-base font-black text-[#007A5E] dark:text-emerald-400">اجاره: {{ $property->rent_price > 0 ? number_format($property->rent_price) . ' ' . $currLabel : 'توافقی' }}</div>
                 @else
                     <div class="text-xl font-black text-[#007A5E] dark:text-emerald-400">
-                        {{ $property->price > 0 ? number_format($property->price) . ' تومان' : 'قیمت توافقی' }}
+                        {{ $property->price > 0 ? number_format($property->price) . ' ' . $currLabel : 'قیمت توافقی' }}
                     </div>
                 @endif
             @else

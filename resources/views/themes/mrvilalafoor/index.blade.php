@@ -21,6 +21,8 @@
         }
     } catch (\Throwable $e) {}
 
+    $currencyLabel = $currencyLabel ?? (\Modules\Properties\Entities\PropertySetting::getCurrencyLabel() ?? 'تومان');
+
     $rentalTypes = [];
     try {
         if (class_exists(\Modules\Properties\Entities\Property::class)) {
@@ -587,7 +589,7 @@
                                 <div>
                                     <h3 class="text-sm font-bold text-[#18181B] dark:text-zinc-100">{{ $bk->property?->title ?? 'اقامتگاه بوم‌گردی' }}</h3>
                                     <p class="text-xs text-zinc-400 mt-1">{{ $bk->checkin_date }} تا {{ $bk->checkout_date }} ({{ $bk->nights }} شب)</p>
-                                    <span class="inline-block mt-2 text-xs font-bold text-[#007A5E] dark:text-emerald-400">{{ number_format($bk->total_amount) }} تومان</span>
+                                    <span class="inline-block mt-2 text-xs font-bold text-[#007A5E] dark:text-emerald-400">{{ number_format($bk->total_amount) }} {{ $currencyLabel }}</span>
                                 </div>
                             </div>
                         </div>
@@ -919,6 +921,7 @@
 <script>
     const rentalMultiHostEnabled = {{ $rentalMultiHostEnabled ? 'true' : 'false' }};
     const rentalModeEnabled = {{ $rentalModeEnabled ? 'true' : 'false' }};
+    const currencyLabel = '{{ $currencyLabel }}';
 
     function toPersianNum(num) {
         if (num === null || num === undefined) return '';
@@ -1302,7 +1305,7 @@
 
             ${(item.price && item.price > 0) ? `
             <div class="mt-2.5 pt-2 border-t border-[#ECECEE]/70 dark:border-zinc-800/70 text-xs sm:text-sm font-extrabold text-[#18181B] dark:text-zinc-100 truncate px-0.5 font-sans">
-                ${oldPriceMarkup}${formatToman(item.price)} <span class="text-[10px] sm:text-xs font-normal text-zinc-400 font-sans">تومان / شب</span>
+                ${oldPriceMarkup}${formatToman(item.price)} <span class="text-[10px] sm:text-xs font-normal text-zinc-400 font-sans">${currencyLabel} / شب</span>
             </div>` : `
             <div class="mt-2.5 pt-2 border-t border-[#ECECEE]/70 dark:border-zinc-800/70 text-xs sm:text-sm font-bold text-zinc-500 truncate px-0.5 font-sans">
                 استعلام قیمت
@@ -1350,7 +1353,7 @@
                 <div>
                     ${item.oldPrice ? `<span class="block text-[10px] sm:text-[11px] text-zinc-400 line-through">${formatToman(item.oldPrice)}</span>` : ''}
                     <div class="text-xs sm:text-sm font-extrabold text-[#007A5E] dark:text-emerald-400">
-                        ${(item.price && item.price > 0) ? `${formatToman(item.price)} <span class="text-[10px] font-normal text-zinc-500">تومان</span>` : 'استعلام قیمت'}
+                        ${(item.price && item.price > 0) ? `${formatToman(item.price)} <span class="text-[10px] font-normal text-zinc-500">${currencyLabel}</span>` : 'استعلام قیمت'}
                     </div>
                 </div>
                 ${savedAmount > 0 ? `<span class="hidden sm:inline-block px-1.5 py-0.5 rounded-lg bg-[#ECFDF5] dark:bg-emerald-950/40 text-[#007A5E] dark:text-emerald-400 text-[10px] font-bold">${formatToman(savedAmount)} سود</span>` : ''}

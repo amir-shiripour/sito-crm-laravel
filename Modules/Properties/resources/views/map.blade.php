@@ -2,6 +2,7 @@
     // دریافت تنظیمات نقشه
     $mapService = \Modules\Properties\Entities\PropertySetting::get('map_service', 'leaflet');
     $mapIrApiKey = \Modules\Properties\Entities\PropertySetting::get('map_ir_api_key', '');
+    $currencyLabel = $currencyLabel ?? \Modules\Properties\Entities\PropertySetting::getCurrencyLabel();
 @endphp
     <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}" dir="rtl">
@@ -196,7 +197,7 @@
 
                 <!-- Price Range -->
                 <div id="sale_price_inputs" class="{{ request('listing_type') == 'rent' ? 'hidden' : '' }}">
-                    <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">محدوده قیمت (تومان)</label>
+                    <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">محدوده قیمت ({{ $currencyLabel }})</label>
                     <div class="grid grid-cols-2 gap-2">
                         <input type="number" name="min_price" value="{{ request('min_price') }}" placeholder="حداقل" class="w-full rounded-xl border-gray-200 bg-gray-50 px-3 py-2.5 text-sm focus:border-indigo-500 focus:bg-white transition-all dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100">
                         <input type="number" name="max_price" value="{{ request('max_price') }}" placeholder="حداکثر" class="w-full rounded-xl border-gray-200 bg-gray-50 px-3 py-2.5 text-sm focus:border-indigo-500 focus:bg-white transition-all dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100">
@@ -205,7 +206,7 @@
 
                 <div id="rent_price_inputs" class="{{ request('listing_type') == 'rent' ? '' : 'hidden' }} space-y-3">
                     <div>
-                        <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">محدوده رهن</label>
+                        <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">محدوده رهن ({{ $currencyLabel }})</label>
                         <div class="grid grid-cols-2 gap-2">
                             <input type="number" name="min_deposit_price" value="{{ request('min_deposit_price') }}" placeholder="حداقل" class="w-full rounded-xl border-gray-200 bg-gray-50 px-3 py-2.5 text-sm focus:border-indigo-500 focus:bg-white transition-all dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100">
                             <input type="number" name="max_deposit_price" value="{{ request('max_deposit_price') }}" placeholder="حداکثر" class="w-full rounded-xl border-gray-200 bg-gray-50 px-3 py-2.5 text-sm focus:border-indigo-500 focus:bg-white transition-all dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100">
@@ -485,7 +486,7 @@
                 @endphp
 
                 const image = "{{ $canViewCover && $property->cover_image ? asset('storage/' . $property->cover_image) : '' }}";
-                const price = "{{ $canViewPrice ? ($property->listing_type == 'rent' ? 'رهن: ' . number_format($property->deposit_price) : number_format($property->price) . ' تومان') : 'تماس بگیرید' }}";
+                const price = "{{ $canViewPrice ? ($property->listing_type == 'rent' ? 'رهن: ' . number_format($property->deposit_price) . ' ' . $currencyLabel : number_format($property->price) . ' ' . $currencyLabel) : 'تماس بگیرید' }}";
                 const link = "{{ route('properties.show', $property->slug) }}";
                 const type = "{{ match($property->listing_type) { 'sale' => 'فروش', 'rent' => 'اجاره', 'presale' => 'پیش‌فروش', default => '' } }}";
                 const area = "{{ $property->area ? number_format($property->area) . ' متر' : '' }}";

@@ -599,7 +599,7 @@
                                     <div class="space-y-0.5">
                                         <div class="text-xs font-black text-gray-900 dark:text-white">
                                             {{ CalendarUtils::convertNumbers(number_format($booking->total_price)) }}
-                                            <span class="text-[10px] font-normal text-gray-500">{{ $booking->currency === 'IRR' ? 'ریال' : 'تومان' }}</span>
+                                            <span class="text-[10px] font-normal text-gray-500">{{ $currencyLabel ?? $booking->currency_label }}</span>
                                         </div>
                                         <span class="px-2 py-0.5 rounded-md text-[10px] font-black {{ $payBadge['class'] }}">
                                             {{ $payBadge['label'] }}

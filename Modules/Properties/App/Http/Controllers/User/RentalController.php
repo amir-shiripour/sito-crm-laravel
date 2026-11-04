@@ -51,7 +51,8 @@ class RentalController extends Controller
     {
         $this->checkAccess($property);
 
-        $currency = PropertySetting::get('currency', 'toman');
+        $currency = PropertySetting::getCurrency();
+        $currencyLabel = PropertySetting::getCurrencyLabel();
         $rentalConfig = $property->rentalConfig ?? new PropertyRentalConfig([
             'property_id' => $property->id,
             'base_guests' => 2,
@@ -140,6 +141,7 @@ class RentalController extends Controller
             'property',
             'rentalConfig',
             'currency',
+            'currencyLabel',
             'defaultRules',
             'selectedDefaultRules',
             'existingCustomRules',
