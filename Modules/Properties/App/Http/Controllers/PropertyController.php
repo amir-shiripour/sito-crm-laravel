@@ -98,7 +98,10 @@ class PropertyController extends Controller
             'convertible_with' => json_decode(PropertySetting::get('visibility_convertible_with', '[]'), true),
         ];
 
-        return view('properties::index', compact('properties', 'showFeatures', 'filterableAttributes', 'features', 'categories', 'buildings', 'visibilitySettings', 'availableDestinations'));
+        $currency = PropertySetting::getCurrency();
+        $currencyLabel = PropertySetting::getCurrencyLabel();
+
+        return view('properties::index', compact('properties', 'showFeatures', 'filterableAttributes', 'features', 'categories', 'buildings', 'visibilitySettings', 'availableDestinations', 'currency', 'currencyLabel'));
     }
 
     public function map(Request $request)
@@ -384,7 +387,8 @@ class PropertyController extends Controller
             $property->loadMissing(['host.user', 'rentalConfig', 'seasonalPrices', 'rentalBlocks']);
             $rentalPublicService = app(\Modules\Properties\Services\RentalPublicService::class);
             $calendarData = $rentalPublicService->getCalendarData($property, 6);
-            $currency = PropertySetting::get('currency', 'toman');
+            $currency = PropertySetting::getCurrency();
+            $currencyLabel = PropertySetting::getCurrencyLabel();
 
             // وضعیت احراز رزرو تأیید شده مسافر یا مدیریت
             $hasConfirmedBooking = $rentalPublicService->hasConfirmedBooking($property, $user);
@@ -412,10 +416,13 @@ class PropertyController extends Controller
                 ->take(4)
                 ->get();
 
-            return view('properties::rental.show', compact('property', 'visibilitySettings', 'rentalDisplaySettings', 'hasConfirmedBooking', 'calendarData', 'currency', 'similarProperties'));
+            return view('properties::rental.show', compact('property', 'visibilitySettings', 'rentalDisplaySettings', 'hasConfirmedBooking', 'calendarData', 'currency', 'currencyLabel', 'similarProperties'));
         }
 
-        return view('properties::show', compact('property', 'visibilitySettings'));
+        $currency = PropertySetting::getCurrency();
+        $currencyLabel = PropertySetting::getCurrencyLabel();
+
+        return view('properties::show', compact('property', 'visibilitySettings', 'currency', 'currencyLabel'));
     }
 
     public function aiSearch(Request $request, GapGPTService $gapGPT)

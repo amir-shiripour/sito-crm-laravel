@@ -2,9 +2,8 @@
 
 @php
     $title = 'قیمت‌گذاری ملک';
-    // فرض بر وجود کلاس PropertySetting یا دریافت از کنترلر
-    $currency = \Modules\Properties\Entities\PropertySetting::get('currency', 'toman');
-    $currencyLabel = $currency == 'toman' ? 'تومان' : 'ریال';
+    $currency = $currency ?? \Modules\Properties\Entities\PropertySetting::getCurrency();
+    $currencyLabel = $currencyLabel ?? \Modules\Properties\Entities\PropertySetting::getCurrencyLabel();
 
     // استایل‌های مشترک
     $cardClass = "bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm transition-all duration-200";
@@ -62,7 +61,7 @@
                                 <input type="text" name="price" x-model="price" @input="formatInput('price')" class="{{ $inputClass }}" required placeholder="0">
                                 <div class="absolute inset-y-0 left-3 flex items-center pointer-events-none text-xs text-gray-400">{{ $currencyLabel }}</div>
                             </div>
-                            <p x-show="price" class="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 mt-2 text-right tracking-tight" x-text="numberToWords(price) + ' تومان'"></p>
+                            <p x-show="price" class="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 mt-2 text-right tracking-tight" x-text="numberToWords(price) + ' ' + '{{ $currencyLabel }}'"></p>
                         </div>
                         <div>
                             <label class="{{ $labelClass }}">قیمت کف (حداقل)</label>
@@ -70,7 +69,7 @@
                                 <input type="text" name="min_price" x-model="min_price" @input="formatInput('min_price')" class="{{ $inputClass }}" placeholder="0">
                                 <div class="absolute inset-y-0 left-3 flex items-center pointer-events-none text-xs text-gray-400">{{ $currencyLabel }}</div>
                             </div>
-                            <p x-show="min_price" class="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 mt-2 text-right tracking-tight" x-text="numberToWords(min_price) + ' تومان'"></p>
+                            <p x-show="min_price" class="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 mt-2 text-right tracking-tight" x-text="numberToWords(min_price) + ' ' + '{{ $currencyLabel }}'"></p>
                             <p class="text-[10px] text-gray-400 mt-1 text-right">این قیمت محرمانه است و فقط برای شما نمایش داده می‌شود.</p>
                         </div>
 
@@ -82,7 +81,7 @@
                                 <input type="text" name="deposit_price" x-model="deposit_price" @input="formatInput('deposit_price')" class="{{ $inputClass }}" required placeholder="0">
                                 <div class="absolute inset-y-0 left-3 flex items-center pointer-events-none text-xs text-gray-400">{{ $currencyLabel }}</div>
                             </div>
-                            <p x-show="deposit_price" class="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 mt-2 text-right tracking-tight" x-text="numberToWords(deposit_price) + ' تومان'"></p>
+                            <p x-show="deposit_price" class="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 mt-2 text-right tracking-tight" x-text="numberToWords(deposit_price) + ' ' + '{{ $currencyLabel }}'"></p>
                         </div>
                         <div>
                             <label class="{{ $labelClass }}">اجاره ماهیانه</label>
@@ -90,7 +89,7 @@
                                 <input type="text" name="rent_price" x-model="rent_price" @input="formatInput('rent_price')" class="{{ $inputClass }}" required placeholder="0">
                                 <div class="absolute inset-y-0 left-3 flex items-center pointer-events-none text-xs text-gray-400">{{ $currencyLabel }}</div>
                             </div>
-                            <p x-show="rent_price" class="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 mt-2 text-right tracking-tight" x-text="numberToWords(rent_price) + ' تومان'"></p>
+                            <p x-show="rent_price" class="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 mt-2 text-right tracking-tight" x-text="numberToWords(rent_price) + ' ' + '{{ $currencyLabel }}'"></p>
                         </div>
 
                     @elseif($property->listing_type == 'presale')
@@ -101,7 +100,7 @@
                                 <input type="text" name="price" x-model="price" @input="formatInput('price')" class="{{ $inputClass }}" required placeholder="0">
                                 <div class="absolute inset-y-0 left-3 flex items-center pointer-events-none text-xs text-gray-400">{{ $currencyLabel }}</div>
                             </div>
-                            <p x-show="price" class="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 mt-2 text-right tracking-tight" x-text="numberToWords(price) + ' تومان'"></p>
+                            <p x-show="price" class="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 mt-2 text-right tracking-tight" x-text="numberToWords(price) + ' ' + '{{ $currencyLabel }}'"></p>
                         </div>
                         <div>
                             <label class="{{ $labelClass }}">مبلغ پیش‌پرداخت</label>
@@ -109,7 +108,7 @@
                                 <input type="text" name="advance_price" x-model="advance_price" @input="formatInput('advance_price')" class="{{ $inputClass }}" required placeholder="0">
                                 <div class="absolute inset-y-0 left-3 flex items-center pointer-events-none text-xs text-gray-400">{{ $currencyLabel }}</div>
                             </div>
-                            <p x-show="advance_price" class="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 mt-2 text-right tracking-tight" x-text="numberToWords(advance_price) + ' تومان'"></p>
+                            <p x-show="advance_price" class="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 mt-2 text-right tracking-tight" x-text="numberToWords(advance_price) + ' ' + '{{ $currencyLabel }}'"></p>
                         </div>
                         <div>
                             <label class="{{ $labelClass }}">قیمت کف (حداقل)</label>
@@ -117,7 +116,7 @@
                                 <input type="text" name="min_price" x-model="min_price" @input="formatInput('min_price')" class="{{ $inputClass }}" placeholder="0">
                                 <div class="absolute inset-y-0 left-3 flex items-center pointer-events-none text-xs text-gray-400">{{ $currencyLabel }}</div>
                             </div>
-                            <p x-show="min_price" class="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 mt-2 text-right tracking-tight" x-text="numberToWords(min_price) + ' تومان'"></p>
+                            <p x-show="min_price" class="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 mt-2 text-right tracking-tight" x-text="numberToWords(min_price) + ' ' + '{{ $currencyLabel }}'"></p>
                             <p class="text-[10px] text-gray-400 mt-1 text-right">این قیمت محرمانه است و فقط برای شما نمایش داده می‌شود.</p>
                         </div>
                     @endif

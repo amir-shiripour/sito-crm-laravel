@@ -40,26 +40,29 @@
     </td>
 
     {{-- Price --}}
+    @php
+        $currLabel = $currencyLabel ?? \Modules\Properties\Entities\PropertySetting::getCurrencyLabel();
+    @endphp
     <td class="px-6 py-4">
         <div class="flex flex-col gap-1 font-sans">
             @if($property->listing_type == 'sale' || $property->listing_type == 'presale')
                 <span class="text-gray-900 dark:text-gray-100 font-medium">
-                    {{ $property->price > 0 ? number_format($property->price) . ' تومان' : 'توافقی' }}
+                    {{ $property->price > 0 ? number_format($property->price) . ' ' . $currLabel : 'توافقی' }}
                 </span>
                 @if($property->min_price > 0)
                     <span class="text-xs text-gray-500 dark:text-gray-400">
-                        (کف: {{ number_format($property->min_price) }} تومان)
+                        (کف: {{ number_format($property->min_price) }} {{ $currLabel }})
                     </span>
                 @endif
             @elseif($property->listing_type == 'rent')
                 <div class="text-xs text-gray-500">
-                    <div>رهن: <span class="text-gray-900 dark:text-gray-100 font-medium">{{ $property->deposit_price > 0 ? number_format($property->deposit_price) : 'توافقی' }}</span></div>
-                    <div>اجاره: <span class="text-gray-900 dark:text-gray-100 font-medium">{{ $property->rent_price > 0 ? number_format($property->rent_price) : 'توافقی' }}</span></div>
+                    <div>رهن: <span class="text-gray-900 dark:text-gray-100 font-medium">{{ $property->deposit_price > 0 ? number_format($property->deposit_price) . ' ' . $currLabel : 'توافقی' }}</span></div>
+                    <div>اجاره: <span class="text-gray-900 dark:text-gray-100 font-medium">{{ $property->rent_price > 0 ? number_format($property->rent_price) . ' ' . $currLabel : 'توافقی' }}</span></div>
                 </div>
             @elseif($property->listing_type == 'daily_rental')
                 <div class="flex flex-col gap-0.5">
                     <span class="text-gray-900 dark:text-gray-100 font-bold">
-                        {{ $property->price > 0 ? number_format($property->price) . ' تومان' : 'توافقی' }}
+                        {{ $property->price > 0 ? number_format($property->price) . ' ' . $currLabel : 'توافقی' }}
                     </span>
                     <span class="text-[11px] text-teal-600 dark:text-teal-400">به ازای هر شب</span>
                 </div>

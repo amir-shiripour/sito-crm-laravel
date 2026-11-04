@@ -225,7 +225,12 @@ class PropertyRentalBooking extends Model
 
     public function getCurrencyAttribute(): string
     {
-        return PropertySetting::get('rental_currency', 'IRT');
+        return PropertySetting::getCurrency();
+    }
+
+    public function getCurrencyLabelAttribute(): string
+    {
+        return PropertySetting::getCurrencyLabel();
     }
 
     // متدهای کمکی منطق کسب‌وکار

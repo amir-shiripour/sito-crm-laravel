@@ -40,4 +40,14 @@ class PropertySetting extends Model
             return null;
         }
     }
+
+    public static function getCurrency(): string
+    {
+        return self::get('currency', 'toman');
+    }
+
+    public static function getCurrencyLabel(): string
+    {
+        return self::getCurrency() === 'rial' ? 'ریال' : 'تومان';
+    }
 }

@@ -49,7 +49,8 @@ class RentalCalendarController extends Controller
         $this->checkAccess($property);
 
         $property->load('rentalConfig', 'seasonalPrices', 'rentalBlocks');
-        $currency = PropertySetting::get('currency', 'toman');
+        $currency = PropertySetting::getCurrency();
+        $currencyLabel = PropertySetting::getCurrencyLabel();
 
         // بازه پیش‌فرض: ماه جاری شمسی و ماه بعد
         $nowJalali = Jalalian::now();
@@ -160,6 +161,7 @@ class RentalCalendarController extends Controller
             'currentMonth',
             'monthNames',
             'currency',
+            'currencyLabel',
             'startOfMonthJalali'
         ));
     }

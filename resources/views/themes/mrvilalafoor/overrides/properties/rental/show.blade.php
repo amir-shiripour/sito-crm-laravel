@@ -87,7 +87,7 @@
         $host = $property->host;
         $hostPhone = $host && $host->phone ? $host->phone : ($displayAgent->mobile ?? $displayAgent->phone ?? null);
         $config = $property->rentalConfig;
-        $currencyLabel = $currency === 'toman' ? 'تومان' : 'ریال';
+        $currencyLabel = $currencyLabel ?? ($currency === 'toman' ? 'تومان' : 'ریال');
         $images = $property->images;
 
         $formatTimeOnly = function($time, $default = '14:00') {
@@ -952,7 +952,7 @@
                             </div>
 
                             <span class="text-[11px] text-gray-400 font-medium">
-                                * مبالغ داخل تقویم بر حسب هزار تومان است.
+                                * مبالغ داخل تقویم بر حسب هزار {{ $currencyLabel }} است.
                             </span>
                         </div>
                     @endif

@@ -258,7 +258,7 @@
                     @endif
                     <div class="pt-3 border-t border-gray-100 dark:border-gray-700/60 flex justify-between text-sm font-black text-indigo-600 dark:text-indigo-400">
                         <span>مبلغ کل:</span>
-                        <span>{{ CalendarUtils::convertNumbers(number_format($booking->total_price)) }} {{ $booking->currency === 'IRR' ? 'ریال' : 'تومان' }}</span>
+                        <span>{{ CalendarUtils::convertNumbers(number_format($booking->total_price)) }} {{ $currencyLabel ?? $booking->currency_label }}</span>
                     </div>
                 </div>
             </div>

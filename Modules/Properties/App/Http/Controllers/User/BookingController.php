@@ -176,6 +176,8 @@ class BookingController extends Controller
         if (!empty($selectedDateTo)) $activeFiltersCount++;
         if ($request->filled('search')) $activeFiltersCount++;
 
+        $currencyLabel = PropertySetting::getCurrencyLabel();
+
         return view('properties::user.bookings.index', compact(
             'bookings',
             'counts',
@@ -189,7 +191,8 @@ class BookingController extends Controller
             'selectedPaymentStatus',
             'selectedDateFrom',
             'selectedDateTo',
-            'activeFiltersCount'
+            'activeFiltersCount',
+            'currencyLabel'
         ));
     }
 
@@ -206,8 +209,8 @@ class BookingController extends Controller
 
         $booking->load(['property.primaryImage', 'host', 'client']);
 
-        $currency = PropertySetting::get('rental_currency', 'IRT');
-        $currencyLabel = $currency === 'IRR' ? 'ریال' : 'تومان';
+        $currency = PropertySetting::getCurrency();
+        $currencyLabel = PropertySetting::getCurrencyLabel();
 
         return view('properties::user.bookings.show', compact('booking', 'currencyLabel', 'canManageAll', 'host'));
     }

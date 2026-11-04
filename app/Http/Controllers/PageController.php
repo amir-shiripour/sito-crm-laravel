@@ -151,6 +151,8 @@ class PageController extends Controller
 
                 // تنظیمات جستجوی هوشمند را برای ویو ارسال می‌کنیم
                 $data['aiSearchEnabled'] = \Modules\Properties\Entities\PropertySetting::get('ai_property_search', 0);
+                $data['currency'] = \Modules\Properties\Entities\PropertySetting::getCurrency();
+                $data['currencyLabel'] = \Modules\Properties\Entities\PropertySetting::getCurrencyLabel();
 
                 // تنظیمات اختصاصی اجاره روزانه و بازار چندمیزبانی
                 $data['rentalModeEnabled'] = (bool) \Modules\Properties\Entities\PropertySetting::get('rental_mode_enabled', 1);
@@ -203,6 +205,8 @@ class PageController extends Controller
                 $data['rentalModeEnabled'] = true;
                 $data['rentalMultiHostEnabled'] = false;
                 $data['rentalDisplaySettings'] = [];
+                $data['currency'] = 'toman';
+                $data['currencyLabel'] = 'تومان';
             }
         }
 

@@ -116,6 +116,9 @@
                         </a>
                     </div>
                     <div class="flex flex-wrap gap-2">
+                        @php
+                            $currLabel = $currencyLabel ?? \Modules\Properties\Entities\PropertySetting::getCurrencyLabel();
+                        @endphp
                         @foreach(request()->all() as $key => $value)
                             @if(!in_array($key, ['ai_search', 'page']) && !empty($value))
                                 @php
@@ -126,12 +129,12 @@
                                         case 'listing_type': $label = 'نوع معامله'; $displayValue = match($value) {'sale' => 'فروش', 'rent' => 'رهن/اجاره', 'presale' => 'پیش‌فروش', default => $value}; break;
                                         case 'property_type': $label = 'نوع ملک'; $displayValue = match($value) {'apartment' => 'آپارتمان', 'villa' => 'ویلا', 'land' => 'زمین', 'office' => 'اداری', default => $value}; break;
                                         case 'category_id': $label = 'دسته‌بندی'; $displayValue = $categories->find($value)?->name ?? $value; break;
-                                        case 'price_min': $label = 'حداقل قیمت'; $displayValue = number_format((float)$value) . ' تومان'; break;
-                                        case 'price_max': $label = 'حداکثر قیمت'; $displayValue = number_format((float)$value) . ' تومان'; break;
-                                        case 'deposit_min': $label = 'حداقل رهن'; $displayValue = number_format((float)$value) . ' تومان'; break;
-                                        case 'deposit_max': $label = 'حداکثر رهن'; $displayValue = number_format((float)$value) . ' تومان'; break;
-                                        case 'rent_min': $label = 'حداقل اجاره'; $displayValue = number_format((float)$value) . ' تومان'; break;
-                                        case 'rent_max': $label = 'حداکثر اجاره'; $displayValue = number_format((float)$value) . ' تومان'; break;
+                                        case 'price_min': $label = 'حداقل قیمت'; $displayValue = number_format((float)$value) . ' ' . $currLabel; break;
+                                        case 'price_max': $label = 'حداکثر قیمت'; $displayValue = number_format((float)$value) . ' ' . $currLabel; break;
+                                        case 'deposit_min': $label = 'حداقل رهن'; $displayValue = number_format((float)$value) . ' ' . $currLabel; break;
+                                        case 'deposit_max': $label = 'حداکثر رهن'; $displayValue = number_format((float)$value) . ' ' . $currLabel; break;
+                                        case 'rent_min': $label = 'حداقل اجاره'; $displayValue = number_format((float)$value) . ' ' . $currLabel; break;
+                                        case 'rent_max': $label = 'حداکثر اجاره'; $displayValue = number_format((float)$value) . ' ' . $currLabel; break;
                                         case 'details':
                                             if (is_array($value)) {
                                                 $label = 'جزئیات';

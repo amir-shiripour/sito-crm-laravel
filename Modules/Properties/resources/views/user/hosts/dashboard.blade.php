@@ -2,6 +2,7 @@
 
 @php
     $title = 'پروفایل میزبانی';
+    $currLabel = $currencyLabel ?? \Modules\Properties\Entities\PropertySetting::getCurrencyLabel();
     $cardClass = "bg-white dark:bg-gray-800/90 backdrop-blur-md rounded-3xl border border-gray-200/80 dark:border-gray-700/80 shadow-sm overflow-hidden transition-all duration-300";
     $badgeClass = "inline-flex items-center px-2.5 py-1 rounded-xl text-xs font-bold font-sans";
 
@@ -628,7 +629,7 @@
                                             <span class="text-gray-500 dark:text-gray-400">نرخ وسط هفته:</span>
                                             <div>
                                                 <strong class="text-sm font-black text-gray-900 dark:text-white">{{ number_format($cfg->price_per_night) }}</strong>
-                                                <span class="text-[11px] text-gray-400">تومان</span>
+                                                <span class="text-[11px] text-gray-400">{{ $currLabel }}</span>
                                             </div>
                                         </div>
                                         <div class="flex items-center justify-between text-xs">
@@ -637,7 +638,7 @@
                                                 <strong class="text-sm font-black text-indigo-600 dark:text-indigo-400">
                                                     {{ number_format($cfg->price_weekend > 0 ? $cfg->price_weekend : $cfg->price_per_night) }}
                                                 </strong>
-                                                <span class="text-[11px] text-gray-400">تومان</span>
+                                                <span class="text-[11px] text-gray-400">{{ $currLabel }}</span>
                                             </div>
                                         </div>
                                     @else
@@ -729,10 +730,10 @@
                                 <td class="px-6 py-4 font-sans">
                                     @if($cfg && $cfg->price_per_night > 0)
                                         <div class="text-xs font-bold text-gray-900 dark:text-white">
-                                            {{ number_format($cfg->price_per_night) }} <span class="text-[11px] font-normal text-gray-400">تومان (وسط هفته)</span>
+                                            {{ number_format($cfg->price_per_night) }} <span class="text-[11px] font-normal text-gray-400">{{ $currLabel }} (وسط هفته)</span>
                                         </div>
                                         <div class="text-xs font-bold text-indigo-600 dark:text-indigo-400 mt-0.5">
-                                            {{ number_format($cfg->price_weekend > 0 ? $cfg->price_weekend : $cfg->price_per_night) }} <span class="text-[11px] font-normal text-gray-400">تومان (آخر هفته)</span>
+                                            {{ number_format($cfg->price_weekend > 0 ? $cfg->price_weekend : $cfg->price_per_night) }} <span class="text-[11px] font-normal text-gray-400">{{ $currLabel }} (آخر هفته)</span>
                                         </div>
                                     @else
                                         <span class="text-xs text-amber-600 dark:text-amber-400 font-bold">تنظیم نشده</span>
