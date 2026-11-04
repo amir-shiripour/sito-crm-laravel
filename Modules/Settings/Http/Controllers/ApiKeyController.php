@@ -28,7 +28,7 @@ class ApiKeyController extends Controller
         if ($module === 'properties') {
             $isPropertiesActive = \Nwidart\Modules\Facades\Module::has('Properties') && \Nwidart\Modules\Facades\Module::isEnabled('Properties');
             if (!$isPropertiesActive) {
-                abort(403, 'امکان ثبت کلید API برای ماژول املاک وجود ندارد.');
+                return redirect()->back()->with('error', 'امکان ثبت کلید API برای ماژول املاک وجود ندارد زیرا این ماژول غیرفعال یا نصب نیست.');
             }
 
             $request->validate([
@@ -61,7 +61,7 @@ class ApiKeyController extends Controller
         } else {
             $isBookingActive = \Nwidart\Modules\Facades\Module::has('Booking') && \Nwidart\Modules\Facades\Module::isEnabled('Booking');
             if (!$isBookingActive) {
-                abort(403, 'امکان ثبت کلید API برای ماژول نوبت‌دهی وجود ندارد.');
+                return redirect()->back()->with('error', 'امکان ثبت کلید API برای ماژول نوبت‌دهی وجود ندارد زیرا این ماژول غیرفعال یا نصب نیست.');
             }
 
             $request->validate([
@@ -112,6 +112,18 @@ class ApiKeyController extends Controller
      */
     public function toggleActive(ApiKey $apiKey)
     {
+        $isModuleActive = false;
+        if ($apiKey->module === 'booking') {
+            $isModuleActive = \Nwidart\Modules\Facades\Module::has('Booking') && \Nwidart\Modules\Facades\Module::isEnabled('Booking');
+        } elseif ($apiKey->module === 'properties') {
+            $isModuleActive = \Nwidart\Modules\Facades\Module::has('Properties') && \Nwidart\Modules\Facades\Module::isEnabled('Properties');
+        }
+
+        // اگر کلید در حال حاضر غیرفعال است و قصد فعال‌سازی دارند، اما ماژول غیرفعال است
+        if (!$apiKey->is_active && !$isModuleActive) {
+            return redirect()->back()->with('error', 'امکان فعال‌سازی این کلید وجود ندارد زیرا ماژول مربوط به آن در سامانه غیرفعال یا نصب نیست.');
+        }
+
         $apiKey->update([
             'is_active' => !$apiKey->is_active
         ]);
@@ -137,7 +149,16 @@ class ApiKeyController extends Controller
         $request->merge(['authenticated_api_key' => $apiKey]);
         
         if ($apiKey->module === 'booking') {
+            $isBookingActive = \Nwidart\Modules\Facades\Module::has('Booking') && \Nwidart\Modules\Facades\Module::isEnabled('Booking');
+            if (!$isBookingActive) {
+                abort(404, 'ماژول نوبت‌دهی در سامانه فعال یا نصب نیست.');
+            }
             return app(\Modules\Settings\Http\Controllers\Api\BookingApiController::class)->index($request);
+        }
+
+        $isPropertiesActive = \Nwidart\Modules\Facades\Module::has('Properties') && \Nwidart\Modules\Facades\Module::isEnabled('Properties');
+        if (!$isPropertiesActive) {
+            abort(404, 'ماژول املاک در سامانه فعال یا نصب نیست.');
         }
 
         return app(\Modules\Settings\Http\Controllers\Api\PropertyApiController::class)->index($request);

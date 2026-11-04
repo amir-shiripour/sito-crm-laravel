@@ -85,7 +85,7 @@
                     <!-- فیلد توکن -->
                     <div class="space-y-2">
                         <label class="text-xs text-slate-400 block">توکن اتصال (Bearer Token)</label>
-                        <div class="flex items-center gap-2 bg-slate-950 p-3 rounded-xl border border-slate-800 font-mono text-xs">
+                        <div class="flex items-center gap-2 bg-slate-950 p-3 rounded-xl border border-slate-800 font-sans text-xs">
                             <input type="text" readonly id="api-key-raw" value="{{ $apiKey->key }}"
                                    class="bg-transparent border-none text-left dir-ltr w-full text-indigo-300 focus:outline-none">
                             <button onclick="copyToClipboard('api-key-raw', 'copy-key-btn')" id="copy-key-btn" class="text-slate-400 hover:text-white transition-colors" title="کپی توکن">
@@ -268,15 +268,15 @@
                     <div class="bg-slate-950 p-4 rounded-xl border border-slate-850 space-y-2 text-xs">
                         <div class="flex items-center gap-3">
                             <span class="text-slate-400 w-24">روش اول (هدر):</span>
-                            <span class="font-mono text-indigo-400">Authorization: Bearer <span class="text-white">{{ $apiKey->key }}</span></span>
+                            <span class="font-sans text-indigo-400">Authorization: Bearer <span class="text-white">{{ $apiKey->key }}</span></span>
                         </div>
                         <div class="flex items-center gap-3">
                             <span class="text-slate-400 w-24">روش دوم (URL):</span>
-                            <span class="font-mono text-indigo-400"><span class="text-slate-450">{{ url('/external-api/' . ($apiKey->module === 'booking' ? 'services' : 'properties')) }}</span>?api=<span class="text-white">{{ $apiKey->key }}</span></span>
+                            <span class="font-sans text-indigo-400"><span class="text-slate-450">{{ url('/external-api/' . ($apiKey->module === 'booking' ? 'services' : 'properties')) }}</span>?api=<span class="text-white">{{ $apiKey->key }}</span></span>
                         </div>
                         <div class="flex items-center gap-3">
                             <span class="text-slate-400 w-24">فرمت خروجی:</span>
-                            <span class="font-mono text-white">application/json</span>
+                            <span class="font-sans text-white">application/json</span>
                         </div>
                     </div>
                 </div>
@@ -285,7 +285,7 @@
                 <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
                     <div class="p-6 border-b border-slate-800 flex items-center justify-between flex-wrap gap-4">
                         <div>
-                            <span class="px-2.5 py-1 bg-emerald-950 border border-emerald-800 text-emerald-400 text-xs font-bold rounded-lg font-mono">GET</span>
+                            <span class="px-2.5 py-1 bg-emerald-950 border border-emerald-800 text-emerald-400 text-xs font-bold rounded-lg font-sans">GET</span>
                             <h2 class="inline-block text-base font-bold text-white mr-3">
                                 @if($apiKey->module === 'booking')
                                     لیست سرویس‌های نوبت‌دهی
@@ -294,7 +294,7 @@
                                 @endif
                             </h2>
                         </div>
-                        <span class="font-mono text-xs text-indigo-400 bg-slate-950 px-3 py-1.5 rounded-lg select-all">
+                        <span class="font-sans text-xs text-indigo-400 bg-slate-950 px-3 py-1.5 rounded-lg select-all">
                             {{ url('/external-api/' . ($apiKey->module === 'booking' ? 'services' : 'properties')) }}
                         </span>
                     </div>
@@ -323,83 +323,83 @@
                                     <tbody class="divide-y divide-slate-850 text-slate-400">
                                         @if($apiKey->module === 'booking')
                                             <tr>
-                                                <td class="px-4 py-3 font-mono text-indigo-400">per_page</td>
+                                                <td class="px-4 py-3 font-sans text-indigo-400">per_page</td>
                                                 <td class="px-4 py-3">integer</td>
                                                 <td class="px-4 py-3">تعداد آیتم‌ها در صفحه (حداکثر {{ $apiKey->filters['per_page_max'] ?? 100 }})</td>
                                             </tr>
                                             <tr>
-                                                <td class="px-4 py-3 font-mono text-indigo-400">page</td>
+                                                <td class="px-4 py-3 font-sans text-indigo-400">page</td>
                                                 <td class="px-4 py-3">integer</td>
                                                 <td class="px-4 py-3">شماره صفحه جاری برای صفحه‌بندی</td>
                                             </tr>
                                             <tr>
-                                                <td class="px-4 py-3 font-mono text-indigo-400">search</td>
+                                                <td class="px-4 py-3 font-sans text-indigo-400">search</td>
                                                 <td class="px-4 py-3">string</td>
                                                 <td class="px-4 py-3">جستجو در نام و اسلاگ سرویس نوبت‌دهی</td>
                                             </tr>
                                             <tr>
-                                                <td class="px-4 py-3 font-mono text-indigo-400">category_id</td>
+                                                <td class="px-4 py-3 font-sans text-indigo-400">category_id</td>
                                                 <td class="px-4 py-3">integer</td>
                                                 <td class="px-4 py-3">فیلتر بر اساس شناسه دسته‌بندی سرویس نوبت‌دهی</td>
                                             </tr>
                                             <tr>
-                                                <td class="px-4 py-3 font-mono text-indigo-400">status</td>
+                                                <td class="px-4 py-3 font-sans text-indigo-400">status</td>
                                                 <td class="px-4 py-3">string</td>
                                                 <td class="px-4 py-3">فیلتر بر اساس وضعیت سرویس: <code class="text-slate-300">ACTIVE</code> یا <code class="text-slate-300">INACTIVE</code></td>
                                             </tr>
                                         @else
                                             <tr>
-                                                <td class="px-4 py-3 font-mono text-indigo-400">per_page</td>
+                                                <td class="px-4 py-3 font-sans text-indigo-400">per_page</td>
                                                 <td class="px-4 py-3">integer</td>
                                                 <td class="px-4 py-3">تعداد آیتم‌ها در صفحه (حداکثر {{ $apiKey->filters['per_page_max'] ?? 100 }})</td>
                                             </tr>
                                             <tr>
-                                                <td class="px-4 py-3 font-mono text-indigo-400">page</td>
+                                                <td class="px-4 py-3 font-sans text-indigo-400">page</td>
                                                 <td class="px-4 py-3">integer</td>
                                                 <td class="px-4 py-3">شماره صفحه جاری برای صفحه‌بندی</td>
                                             </tr>
                                             <tr>
-                                                <td class="px-4 py-3 font-mono text-indigo-400">search</td>
+                                                <td class="px-4 py-3 font-sans text-indigo-400">search</td>
                                                 <td class="px-4 py-3">string</td>
                                                 <td class="px-4 py-3">جستجو در عنوان، کد ملک، آدرس و توضیحات ملک</td>
                                             </tr>
                                             <tr>
-                                                <td class="px-4 py-3 font-mono text-indigo-400">listing_type</td>
+                                                <td class="px-4 py-3 font-sans text-indigo-400">listing_type</td>
                                                 <td class="px-4 py-3">string</td>
                                                 <td class="px-4 py-3">نوع معامله: <code class="text-slate-300">sale</code> (فروش)، <code class="text-slate-300">rent</code> (رهن و اجاره)، <code class="text-slate-300">presale</code> (پیش فروش)</td>
                                             </tr>
                                             <tr>
-                                                <td class="px-4 py-3 font-mono text-indigo-400">property_type</td>
+                                                <td class="px-4 py-3 font-sans text-indigo-400">property_type</td>
                                                 <td class="px-4 py-3">string</td>
                                                 <td class="px-4 py-3">نوع ملک: <code class="text-slate-300">apartment</code> (آپارتمان)، <code class="text-slate-300">villa</code> (ویلا)، <code class="text-slate-300">land</code> (زمین)، <code class="text-slate-300">office</code> (اداری/تجاری)</td>
                                             </tr>
                                             <tr>
-                                                <td class="px-4 py-3 font-mono text-indigo-400">category_id</td>
+                                                <td class="px-4 py-3 font-sans text-indigo-400">category_id</td>
                                                 <td class="px-4 py-3">integer</td>
                                                 <td class="px-4 py-3">فیلتر بر اساس شناسه دسته‌بندی ملک</td>
                                             </tr>
                                             <tr>
-                                                <td class="px-4 py-3 font-mono text-indigo-400">status_id</td>
+                                                <td class="px-4 py-3 font-sans text-indigo-400">status_id</td>
                                                 <td class="px-4 py-3">integer</td>
                                                 <td class="px-4 py-3">فیلتر بر اساس شناسه وضعیت ملک</td>
                                             </tr>
                                             <tr>
-                                                <td class="px-4 py-3 font-mono text-indigo-400">min_price / max_price</td>
+                                                <td class="px-4 py-3 font-sans text-indigo-400">min_price / max_price</td>
                                                 <td class="px-4 py-3">number</td>
                                                 <td class="px-4 py-3">حداقل/حداکثر قیمت کل خرید (تومان)</td>
                                             </tr>
                                             <tr>
-                                                <td class="px-4 py-3 font-mono text-indigo-400">min_deposit_price / max_deposit_price</td>
+                                                <td class="px-4 py-3 font-sans text-indigo-400">min_deposit_price / max_deposit_price</td>
                                                 <td class="px-4 py-3">number</td>
                                                 <td class="px-4 py-3">حداقل/حداکثر مبلغ رهن (تومان)</td>
                                             </tr>
                                             <tr>
-                                                <td class="px-4 py-3 font-mono text-indigo-400">min_rent_price / max_rent_price</td>
+                                                <td class="px-4 py-3 font-sans text-indigo-400">min_rent_price / max_rent_price</td>
                                                 <td class="px-4 py-3">number</td>
                                                 <td class="px-4 py-3">حداقل/حداکثر مبلغ اجاره ماهیانه (تومان)</td>
                                             </tr>
                                             <tr>
-                                                <td class="px-4 py-3 font-mono text-indigo-400">min_area / max_area</td>
+                                                <td class="px-4 py-3 font-sans text-indigo-400">min_area / max_area</td>
                                                 <td class="px-4 py-3">integer</td>
                                                 <td class="px-4 py-3">حداقل/حداکثر متراژ (متر مربع)</td>
                                             </tr>
@@ -421,7 +421,7 @@
                             </div>
  
                             <!-- محتوای تب‌ها -->
-                            <div class="code-container p-4 rounded-xl border border-slate-800 text-left dir-ltr font-mono text-xs overflow-x-auto relative">
+                            <div class="code-container p-4 rounded-xl border border-slate-800 text-left dir-ltr font-sans text-xs overflow-x-auto relative">
                                 <button onclick="copyCodeContent()" class="absolute top-3 right-3 text-slate-400 hover:text-white transition-colors" title="کپی کد">
                                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/>
@@ -493,7 +493,7 @@ if (isset($result['success']) && $result['success'] === true) {
                 <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
                     <div class="p-6 border-b border-slate-800 flex items-center justify-between flex-wrap gap-4">
                         <div>
-                            <span class="px-2.5 py-1 bg-emerald-950 border border-emerald-800 text-emerald-400 text-xs font-bold rounded-lg font-mono">GET</span>
+                            <span class="px-2.5 py-1 bg-emerald-950 border border-emerald-800 text-emerald-400 text-xs font-bold rounded-lg font-sans">GET</span>
                             <h2 class="inline-block text-base font-bold text-white mr-3">
                                 @if($apiKey->module === 'booking')
                                     جزئیات کامل یک سرویس نوبت‌دهی
@@ -502,7 +502,7 @@ if (isset($result['success']) && $result['success'] === true) {
                                 @endif
                             </h2>
                         </div>
-                        <span class="font-mono text-xs text-indigo-400 bg-slate-950 px-3 py-1.5 rounded-lg select-all">
+                        <span class="font-sans text-xs text-indigo-400 bg-slate-950 px-3 py-1.5 rounded-lg select-all">
                             {{ url('/external-api/' . ($apiKey->module === 'booking' ? 'services/{id_or_slug}' : 'properties/{id_or_code_or_slug}')) }}
                         </span>
                     </div>
@@ -516,7 +516,7 @@ if (isset($result['success']) && $result['success'] === true) {
                             @endif
                         </p>
                         
-                        <div class="bg-slate-950 p-4 rounded-xl border border-slate-850 space-y-2 text-xs font-mono">
+                        <div class="bg-slate-950 p-4 rounded-xl border border-slate-850 space-y-2 text-xs font-sans">
                             @if($apiKey->module === 'booking')
                                 <div>مثال با شناسه: <span class="text-indigo-400">{{ url('/external-api/services/1') }}</span></div>
                                 <div>مثال با اسلاگ: <span class="text-indigo-400">{{ url('/external-api/services/dental-implant') }}</span></div>
@@ -536,7 +536,7 @@ if (isset($result['success']) && $result['success'] === true) {
                         در صورت ارسال درخواست موفق، داده‌ها در شیء `data` بازگردانده می‌شوند.
                     </p>
                     
-                    <div class="code-container p-4 rounded-xl border border-slate-800 text-left dir-ltr font-mono text-xs overflow-x-auto">
+                    <div class="code-container p-4 rounded-xl border border-slate-800 text-left dir-ltr font-sans text-xs overflow-x-auto">
                         @if($apiKey->module === 'booking')
                             <pre>{
   "success": true,
