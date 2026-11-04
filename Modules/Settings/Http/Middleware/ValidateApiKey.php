@@ -46,6 +46,25 @@ class ValidateApiKey
             ], 401);
         }
 
+        // Check module active status in CRM system
+        if ($apiKey->module === 'booking') {
+            $isBookingActive = \Nwidart\Modules\Facades\Module::has('Booking') && \Nwidart\Modules\Facades\Module::isEnabled('Booking');
+            if (!$isBookingActive) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'The Booking module is currently disabled or not installed.'
+                ], 503);
+            }
+        } elseif ($apiKey->module === 'properties') {
+            $isPropertiesActive = \Nwidart\Modules\Facades\Module::has('Properties') && \Nwidart\Modules\Facades\Module::isEnabled('Properties');
+            if (!$isPropertiesActive) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'The Properties module is currently disabled or not installed.'
+                ], 503);
+            }
+        }
+
         // Check module restriction if specified in middleware parameters
         if ($module && strtolower($apiKey->module) !== strtolower($module)) {
             return response()->json([
