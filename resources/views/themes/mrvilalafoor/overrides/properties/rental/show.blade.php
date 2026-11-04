@@ -342,7 +342,12 @@
                                 @php
                                     $hostMeta = [];
                                     if (!empty($host->created_at)) {
-                                        $hostMeta[] = 'عضویت از سال ' . verta($host->created_at)->format('Y');
+                                        try {
+                                            $yearVal = function_exists('jdate') ? jdate($host->created_at)->format('Y') : \Morilog\Jalali\Jalalian::fromCarbon(\Carbon\Carbon::parse($host->created_at))->format('Y');
+                                            $hostMeta[] = 'عضویت از سال ' . \Morilog\Jalali\CalendarUtils::convertNumbers($yearVal);
+                                        } catch (\Throwable $e) {
+                                            $hostMeta[] = 'عضویت از سال ' . date('Y', strtotime($host->created_at));
+                                        }
                                     }
                                     if (!empty($host->response_rate)) {
                                         $hostMeta[] = 'نرخ پاسخگویی ' . $host->response_rate . '٪';
