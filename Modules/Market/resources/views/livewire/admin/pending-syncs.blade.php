@@ -45,7 +45,7 @@
                                 <td class="px-6 py-4">{{ $log->field_key }}</td>
                                 <td class="px-6 py-4 text-gray-400">{{ $log->old_value ?: '-' }}</td>
                                 <td class="px-6 py-4 font-bold text-green-500">{{ $log->new_value }}</td>
-                                <td class="px-6 py-4">{{ verta($log->created_at)->formatDifference() }}</td>
+                                <td class="px-6 py-4">{{ function_exists('jdate') ? jdate($log->created_at)->ago() : $log->created_at->diffForHumans() }}</td>
                                 <td class="px-6 py-4 flex items-center gap-2">
                                     <button wire:click="approve({{ $log->id }})" class="text-green-500 hover:text-green-700">تایید</button>
                                     <button wire:click="reject({{ $log->id }})" class="text-red-500 hover:text-red-700">رد</button>
