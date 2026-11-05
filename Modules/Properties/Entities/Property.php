@@ -95,26 +95,36 @@ class Property extends Model
         'villa' => [
             'key' => 'villa',
             'label' => 'ویلا',
+            'icon' => 'villa',
+            'image' => '',
             'is_active' => true,
         ],
         'apartment' => [
             'key' => 'apartment',
             'label' => 'آپارتمان و سوئیت',
+            'icon' => 'apartment',
+            'image' => '',
             'is_active' => true,
         ],
         'cottage' => [
             'key' => 'cottage',
             'label' => 'کلبه و اقامتگاه چوبی',
+            'icon' => 'cottage',
+            'image' => '',
             'is_active' => true,
         ],
         'ecolodge' => [
             'key' => 'ecolodge',
             'label' => 'بوم‌گردی و سنتی',
+            'icon' => 'ecolodge',
+            'image' => '',
             'is_active' => true,
         ],
         'resort' => [
             'key' => 'resort',
             'label' => 'مجتمع اقامتی و هتل‌آپارتمان',
+            'icon' => 'resort',
+            'image' => '',
             'is_active' => true,
         ],
     ];
@@ -140,6 +150,13 @@ class Property extends Model
         if ($types === null) {
             $types = self::DEFAULT_RENTAL_PROPERTY_TYPES;
         }
+
+        foreach ($types as $k => &$item) {
+            if (empty($item['icon'])) {
+                $item['icon'] = $item['key'] ?? $k;
+            }
+        }
+        unset($item);
 
         if ($onlyActive) {
             $types = array_filter($types, function ($item) {

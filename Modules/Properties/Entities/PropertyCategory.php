@@ -17,6 +17,8 @@ class PropertyCategory extends Model
         'name',
         'slug',
         'color',
+        'icon',
+        'image',
         'user_id',
     ];
 

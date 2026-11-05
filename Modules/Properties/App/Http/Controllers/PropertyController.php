@@ -341,6 +341,15 @@ class PropertyController extends Controller
         // 9. Category
         if ($request->filled('category_id')) {
             $query->where('category_id', $request->category_id);
+        } elseif ($request->filled('category') && $request->category !== 'all') {
+            $catVal = $request->category;
+            $query->where(function ($q) use ($catVal) {
+                $q->where('category_id', $catVal)
+                  ->orWhereHas('category', function ($cq) use ($catVal) {
+                      $cq->where('slug', $catVal)
+                         ->orWhere('name', $catVal);
+                  });
+            });
         }
 
         // 10. Building
