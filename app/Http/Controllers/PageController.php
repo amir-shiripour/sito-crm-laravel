@@ -130,10 +130,11 @@ class PageController extends Controller
                     $propertiesQuery->where('listing_type', 'daily_rental');
                 }
 
+                $propertiesLimit = $appThemeLower === 'mrvilalafoor' ? 100 : 16;
                 $data['latestProperties'] = $propertiesQuery
                     ->with(['status', 'category', 'attributeValues.attribute', 'rentalConfig', 'host.user', 'images'])
                     ->latest()
-                    ->take(16)
+                    ->take($propertiesLimit)
                     ->get();
 
                 $data['properties'] = $data['latestProperties'];

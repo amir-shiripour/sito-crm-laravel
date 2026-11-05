@@ -208,12 +208,26 @@ class PropertyController extends Controller
     {
         // 1. جستجوی متنی
         if ($request->filled('search')) {
-            $search = $request->search;
-            $query->where(function ($q) use ($search) {
+            $search = trim($request->search);
+            $persianDigits = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
+            $englishDigits = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
+            $enSearch = str_replace($persianDigits, $englishDigits, $search);
+
+            $query->where(function ($q) use ($search, $enSearch) {
                 $q->where('title', 'like', "%{$search}%")
                   ->orWhere('code', 'like', "%{$search}%")
+                  ->orWhere('code', 'like', "%{$enSearch}%")
+                  ->orWhere('id', $search)
+                  ->orWhere('id', $enSearch)
                   ->orWhere('description', 'like', "%{$search}%")
                   ->orWhere('address', 'like', "%{$search}%");
+            });
+        }
+
+        // فیلتر رزرو آنی
+        if ($request->filled('instant_booking') && ($request->instant_booking == '1' || $request->instant_booking === 'true')) {
+            $query->whereHas('rentalConfig', function ($rq) {
+                $rq->where('instant_booking', true);
             });
         }
 
