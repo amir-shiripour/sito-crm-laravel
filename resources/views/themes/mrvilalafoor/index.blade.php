@@ -205,7 +205,7 @@
                         <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/>
                     </svg>
                     <div class="truncate">
-                        <div id="mobile-pill-dest" class="text-xs font-bold text-[#18181B] dark:text-zinc-100 truncate">جستجو در استان و شهر مقصد...</div>
+                        <div id="mobile-pill-dest" class="text-xs font-bold text-[#18181B] dark:text-zinc-100 truncate">جستجو بر اساس مقصد، عنوان یا کد اقامتگاه...</div>
                         <div id="mobile-pill-sub" class="text-[11px] text-zinc-400 font-normal truncate mt-0.5">انتخاب تاریخ و نفرات</div>
                     </div>
                 </div>
@@ -248,6 +248,38 @@
                     $currentJalaliMonthName = $jalaliNow ? $jalaliNow->format('%B') : 'آبان';
                     $currentJalaliDay = $jalaliNow ? $jalaliNow->getDay() : 9;
                     $currentMonthDays = $jalaliNow ? $jalaliNow->getMonthDays() : 30;
+                    $firstDayOfWeek = $jalaliNow ? (new \Morilog\Jalali\Jalalian($currentJalaliYear, $currentJalaliMonth, 1))->getDayOfWeek() : 0;
+
+                    $calendarMonths = [];
+                    if ($jalaliNow) {
+                        $baseMonth = new \Morilog\Jalali\Jalalian($currentJalaliYear, $currentJalaliMonth, 1);
+                        for ($m = 0; $m < 12; $m++) {
+                            $mDate = ($m === 0) ? $baseMonth : $baseMonth->addMonths($m);
+                            $y = $mDate->getYear();
+                            $mNum = $mDate->getMonth();
+                            $calendarMonths[] = [
+                                'index' => $m,
+                                'year' => $y,
+                                'month' => $mNum,
+                                'name' => $mDate->format('%B'),
+                                'daysCount' => $mDate->getMonthDays(),
+                                'firstDayOfWeek' => (new \Morilog\Jalali\Jalalian($y, $mNum, 1))->getDayOfWeek(),
+                                'isCurrentMonth' => ($m === 0),
+                                'currentDay' => ($m === 0 ? $currentJalaliDay : 0),
+                            ];
+                        }
+                    } else {
+                        $calendarMonths[] = [
+                            'index' => 0,
+                            'year' => 1405,
+                            'month' => 8,
+                            'name' => 'آبان',
+                            'daysCount' => 30,
+                            'firstDayOfWeek' => 6,
+                            'isCurrentMonth' => true,
+                            'currentDay' => 9,
+                        ];
+                    }
 
                     $defaultStartDay = $currentJalaliDay;
                     $defaultEndDay = min($currentMonthDays, $defaultStartDay + 3);
@@ -259,7 +291,7 @@
                 <div class="col-span-4 relative" id="desktop-dest-wrapper">
                     <button type="button" onclick="toggleDesktopPopup('dest', event)" class="w-full px-4 py-2.5 rounded-xl hover:bg-[#F7F8F9] dark:hover:bg-zinc-800 transition-colors text-right flex items-center justify-between gap-2 group">
                         <div class="min-w-0">
-                            <span class="block text-[11px] text-zinc-400 font-medium">استان و شهر مقصد</span>
+                            <span class="block text-[11px] text-zinc-400 font-medium">مقصد، عنوان یا کد اقامتگاه</span>
                             <span id="desktop-dest-label" class="block text-xs font-bold text-[#18181B] dark:text-zinc-100 mt-0.5 truncate">همه مقاصد</span>
                         </div>
                         <svg class="w-4 h-4 text-zinc-400 group-hover:text-zinc-600 dark:group-hover:text-zinc-200 transition-colors shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -280,7 +312,8 @@
                             <input type="text"
                                    id="dest-search-input"
                                    oninput="filterDestinationsLive(this.value, 'desktop')"
-                                   placeholder="جستجوی نام شهر یا استان..."
+                                   onkeydown="handleSearchInputKey(event, 'desktop')"
+                                   placeholder="جستجوی شهر، استان، نام یا کد اقامتگاه (مثلاً ۱۰۲)..."
                                    class="w-full bg-[#F7F8F9] dark:bg-zinc-800/80 border border-[#ECECEE] dark:border-zinc-700/80 rounded-xl pr-9 pl-8 py-2 text-xs font-bold text-[#18181B] dark:text-zinc-100 placeholder-zinc-400 outline-none focus:border-[#007A5E] dark:focus:border-emerald-500 transition-colors">
                             <button type="button"
                                     id="dest-search-clear"
@@ -311,7 +344,7 @@
                         </div>
 
                         <!-- 3. Fixed Height Content Area (No endless scroll!) -->
-                        <div class="h-64 overflow-y-auto no-scrollbar" id="desktop-dest-content-area">
+                        <div class="max-h-64 overflow-y-auto no-scrollbar" id="desktop-dest-content-area">
 
                             <!-- Live Search Results (shown on search) -->
                             <div id="desktop-search-results" class="hidden">
@@ -440,8 +473,27 @@
                                     </button>
                                 </div>
 
+                                <!-- Month Navigation Bar (Desktop) -->
+                                <div class="flex items-center justify-between p-1 bg-zinc-50 dark:bg-zinc-800/60 rounded-xl mb-2.5 font-sans border border-zinc-200/60 dark:border-zinc-700/60">
+                                    <button type="button" onclick="changeCalendarMonth(-1)"
+                                            class="cal-prev-btn w-7 h-7 rounded-lg flex items-center justify-center text-zinc-600 dark:text-zinc-300 hover:bg-white dark:hover:bg-zinc-700 disabled:opacity-20 disabled:cursor-not-allowed transition-all font-sans"
+                                            title="ماه قبل">
+                                        <svg class="w-3.5 h-3.5 rtl:rotate-180" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+                                    </button>
+                                    <div class="flex items-center gap-1.5 font-sans">
+                                        <span class="cal-month-title text-xs font-black text-[#18181B] dark:text-zinc-100 font-sans">
+                                            {{ $currentJalaliMonthName }} {{ $currentJalaliYear }}
+                                        </span>
+                                    </div>
+                                    <button type="button" onclick="changeCalendarMonth(1)"
+                                            class="cal-next-btn w-7 h-7 rounded-lg flex items-center justify-center text-zinc-600 dark:text-zinc-300 hover:bg-white dark:hover:bg-zinc-700 disabled:opacity-20 disabled:cursor-not-allowed transition-all font-sans"
+                                            title="ماه بعد">
+                                        <svg class="w-3.5 h-3.5 rtl:rotate-180" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+                                    </button>
+                                </div>
+
                                 <div class="grid grid-cols-7 gap-1 text-center text-[10px] font-bold text-zinc-400 mb-1.5">
-                                    <span>ش</span><span>ی</span><span>د</span><span>س</span><span>چ</span><span>پ</span><span>ج</span>
+                                    <span>ش</span><span>ی</span><span>د</span><span>س</span><span>چ</span><span>پ</span><span class="text-rose-500 font-black">ج</span>
                                 </div>
                                 <div id="desktop-jalali-grid" class="grid grid-cols-7 gap-1 text-center text-xs"></div>
                                 <div class="mt-3 pt-2.5 border-t border-[#ECECEE] dark:border-zinc-800 flex items-center justify-between text-[11px]">
@@ -457,7 +509,7 @@
                             </div>
                         </div>
 
-                        <!-- 3. Guests & Search Button -->
+                        <!-- 3. Guests & Instant Booking & Search Button -->
                         <div class="col-span-4 flex items-center justify-between pl-1">
                             <div class="flex items-center gap-2">
                                 <button type="button" onclick="updateSearchGuests(-1)" class="w-7 h-7 rounded-lg bg-[#F7F8F9] dark:bg-zinc-800 hover:bg-[#ECECEE] dark:hover:bg-zinc-700 flex items-center justify-center text-xs font-bold transition-colors">−</button>
@@ -468,16 +520,34 @@
                                 <button type="button" onclick="updateSearchGuests(1)" class="w-7 h-7 rounded-lg bg-[#F7F8F9] dark:bg-zinc-800 hover:bg-[#ECECEE] dark:hover:bg-zinc-700 flex items-center justify-center text-xs font-bold transition-colors">+</button>
                             </div>
 
-                            <button type="button" onclick="triggerLivewireSearch()" class="bg-[#007A5E] hover:bg-[#005F48] text-white p-3 rounded-xl transition-colors shadow-sm">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/>
-                                </svg>
-                            </button>
+                            <div class="flex items-center gap-1.5 sm:gap-2">
+                                <button type="button" 
+                                        id="desktop-instant-btn" 
+                                        onclick="toggleInstantFilter(event)"
+                                        title="فیلتر فقط اقامتگاه‌های رزرو قطعی آنی"
+                                        class="px-2.5 py-2.5 rounded-xl text-xs font-bold transition-all border border-[#ECECEE] dark:border-zinc-800 bg-[#F7F8F9] dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 hover:border-[#007A5E] hover:text-[#007A5E] dark:hover:text-emerald-400 flex items-center gap-1 shadow-2xs">
+                                    <span class="text-xs text-amber-500">⚡</span>
+                                    <span class="text-[11px] hidden lg:inline">رزرو آنی</span>
+                                </button>
+                                <button type="button" onclick="triggerLivewireSearch()" class="bg-[#007A5E] hover:bg-[#005F48] text-white p-3 rounded-xl transition-colors shadow-sm" title="جستجو">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/>
+                                    </svg>
+                                </button>
+                            </div>
                         </div>
                     </div>
 
-                    <!-- Quick Zone Filter Pills -->
+                    <!-- Quick Zone & Instant Filter Pills -->
                     <div class="flex items-center justify-center flex-wrap gap-2 mt-5">
+                        <button type="button" 
+                                id="instant-pill-btn"
+                                onclick="toggleInstantFilter(event)"
+                                class="px-4 py-2 rounded-full text-xs font-bold transition-all border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 hover:border-[#007A5E] hover:text-[#007A5E] dark:hover:text-emerald-400 shadow-xs flex items-center gap-1.5 active:scale-95">
+                            <span class="text-amber-500 text-xs">⚡</span>
+                            <span>رزرو آنی</span>
+                        </button>
+
                         <button type="button" onclick="applyQuickZoneFilter('all', 'همه مقاصد', event)" data-zone-pill="all" class="zone-quick-pill px-4 py-2 rounded-full text-xs font-bold bg-[#007A5E] text-white border border-[#007A5E] shadow-sm transition-all active:scale-95">
                             همه مقاصد
                         </button>
@@ -535,6 +605,9 @@
 
             <!-- LISTINGS SECTION CONTAINER (Dynamic Carousels) -->
             <main class="max-w-[1360px] mx-auto px-4 sm:px-8 py-6 sm:py-10">
+                <!-- Active Filters Notification Bar -->
+                <div id="active-filters-bar" class="hidden mb-6 font-sans"></div>
+
                 <!-- Dynamic Sections Carousel Container -->
                 <div id="sections-wrapper" class="space-y-12 sm:space-y-16"></div>
 
@@ -712,207 +785,288 @@
     </div>
 
     <!-- ===================================================================== -->
-    <!-- MOBILE FULLSCREEN SEARCH MODAL                                        -->
+    <!-- MOBILE FULLSCREEN SEARCH MODAL (Airbnb-Style Minimal Progressive Disclosure) -->
     <!-- ===================================================================== -->
-    <div id="mobile-search-sheet" class="hidden fixed inset-0 z-50 bg-white dark:bg-zinc-950 flex flex-col h-full w-full overflow-hidden">
+    <div id="mobile-search-sheet" class="hidden fixed inset-0 z-50 bg-[#F8F9FA] dark:bg-zinc-950 flex flex-col h-full w-full overflow-hidden font-sans">
+        
         <!-- Top App Bar -->
-        <div class="flex items-center justify-between px-5 py-3.5 border-b border-[#ECECEE] dark:border-zinc-800 shrink-0 bg-white dark:bg-zinc-950">
-            <div class="flex items-center gap-2.5">
-                <button type="button" onclick="closeMobileSheets()" aria-label="بستن" class="w-8 h-8 rounded-full bg-[#F7F8F9] dark:bg-zinc-900 border border-[#ECECEE] dark:border-zinc-800 text-xs text-zinc-600 dark:text-zinc-300 flex items-center justify-center active:scale-95 transition-transform shadow-2xs">
-                    ✕
-                </button>
-                <h3 class="text-sm font-black text-[#18181B] dark:text-zinc-100">جستجو و فیلتر اقامتگاه</h3>
-            </div>
-            <button type="button" onclick="resetAllFilters()" class="text-xs font-bold text-zinc-500 hover:text-rose-500 transition-colors">
-                پاکسازی همه
+        <div class="flex items-center justify-between px-4 py-3 bg-white dark:bg-zinc-900 border-b border-[#ECECEE] dark:border-zinc-800 shrink-0 font-sans">
+            <button type="button" onclick="closeMobileSheets()" aria-label="بستن" class="w-8 h-8 rounded-full bg-[#F7F8F9] dark:bg-zinc-800 border border-[#ECECEE] dark:border-zinc-700 text-xs text-zinc-600 dark:text-zinc-300 flex items-center justify-center active:scale-95 transition-transform shadow-2xs font-sans">
+                ✕
             </button>
+            <h3 class="text-xs font-black text-[#18181B] dark:text-zinc-100 font-sans">فیلتر و جستجوی اقامتگاه</h3>
+            <div class="w-8"></div>
         </div>
 
-        <!-- Scrollable Modal Content (Takes Full Screen!) -->
-        <div class="flex-1 overflow-y-auto px-5 py-5 space-y-6 no-scrollbar">
-            <!-- Section 1: Destination -->
-            <div>
-                <div class="flex items-center justify-between mb-2.5">
-                    <span class="text-xs font-black text-[#18181B] dark:text-zinc-100">استان و شهر مقصد</span>
-                    <span class="text-[11px] text-zinc-400">انتخاب مقصد سفر</span>
-                </div>
+        <!-- Scrollable Modal Content (3 Progressive Accordion Cards) -->
+        <div class="flex-1 overflow-y-auto p-4 space-y-3 no-scrollbar font-sans">
 
-                <!-- 1. Mobile Live Search Input -->
-                <div class="relative mb-2.5">
-                    <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-zinc-400">
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/>
-                        </svg>
+            <!-- ================= CARD 1: DESTINATION ================= -->
+            <div id="m-card-dest" class="transition-all duration-200 font-sans">
+                <!-- Collapsed State -->
+                <div id="m-section-dest-collapsed" onclick="setMobileSearchSection('dest')" class="hidden cursor-pointer bg-white dark:bg-zinc-900 border border-[#ECECEE] dark:border-zinc-800 rounded-2xl px-4 py-3.5 flex items-center justify-between shadow-2xs active:scale-[0.99] transition-all font-sans">
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs text-zinc-400">📍</span>
+                        <span class="text-xs font-bold text-zinc-500 dark:text-zinc-400">کجا؟</span>
                     </div>
-                    <input type="text"
-                           id="mobile-dest-search-input"
-                           oninput="filterDestinationsLive(this.value, 'mobile')"
-                           placeholder="جستجوی نام شهر یا استان..."
-                           class="w-full bg-[#F7F8F9] dark:bg-zinc-800/80 border border-[#ECECEE] dark:border-zinc-700/80 rounded-xl pr-9 pl-8 py-2.5 text-xs font-bold text-[#18181B] dark:text-zinc-100 placeholder-zinc-400 outline-none focus:border-[#007A5E] dark:focus:border-emerald-500 transition-colors">
-                    <button type="button"
-                            id="mobile-dest-search-clear"
-                            onclick="clearDestSearch('mobile')"
-                            class="hidden absolute inset-y-0 left-0 pl-2.5 flex items-center text-xs text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200">
-                        ✕
-                    </button>
+                    <span id="m-summary-dest-val" class="text-xs font-black text-[#18181B] dark:text-zinc-100 font-sans">همه مقاصد</span>
                 </div>
 
-                <!-- 2. Mobile Province Tabs Bar -->
-                <div id="mobile-dest-tabs" class="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-2 mb-2.5 border-b border-[#ECECEE] dark:border-zinc-800">
-                    <button type="button"
-                            onclick="switchDestTab('all', 'mobile')"
-                            data-context="mobile"
-                            data-dest-tab="all"
-                            class="dest-tab-btn shrink-0 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all bg-[#007A5E] text-white shadow-xs is-active">
-                        همه مقاصد
-                    </button>
-                    @foreach($availableDests as $destGroup)
+                <!-- Expanded State -->
+                <div id="m-section-dest-expanded" class="bg-white dark:bg-zinc-900 border border-[#ECECEE] dark:border-zinc-800 rounded-3xl p-4.5 sm:p-5 shadow-xs space-y-3.5 font-sans">
+                    <div class="flex items-center justify-between">
+                        <h4 class="text-base font-black text-[#18181B] dark:text-zinc-100 font-sans">کجا می‌روید؟</h4>
+                        <span class="text-[11px] text-zinc-400 font-medium font-sans">مقصد، نام یا کد</span>
+                    </div>
+
+                    <!-- Search Input -->
+                    <div class="relative">
+                        <div class="absolute inset-y-0 right-0 pr-3.5 flex items-center pointer-events-none text-zinc-400">
+                            <svg class="w-4 h-4 text-[#007A5E]" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/>
+                            </svg>
+                        </div>
+                        <input type="text"
+                               id="mobile-dest-search-input"
+                               oninput="filterDestinationsLive(this.value, 'mobile')"
+                               onkeydown="handleSearchInputKey(event, 'mobile')"
+                               placeholder="جستجوی شهر، استان، نام یا کد ویلا..."
+                               class="w-full bg-[#F7F8F9] dark:bg-zinc-800/80 border border-[#ECECEE] dark:border-zinc-700/80 rounded-2xl pr-10 pl-8 py-3 text-xs font-bold text-[#18181B] dark:text-zinc-100 placeholder-zinc-400 outline-none focus:border-[#007A5E] focus:bg-white dark:focus:bg-zinc-900 transition-all font-sans">
                         <button type="button"
-                                onclick="switchDestTab('{{ $destGroup['province'] }}', 'mobile')"
-                                data-context="mobile"
-                                data-dest-tab="{{ $destGroup['province'] }}"
-                                class="dest-tab-btn shrink-0 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all bg-[#F7F8F9] dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 hover:text-[#18181B] dark:hover:text-white border border-[#ECECEE] dark:border-zinc-700/70">
-                            {{ $destGroup['province'] }} ({{ count($destGroup['cities']) }})
+                                id="mobile-dest-search-clear"
+                                onclick="clearDestSearch('mobile')"
+                                class="hidden absolute inset-y-0 left-0 pl-3 flex items-center text-xs text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200">
+                            ✕
                         </button>
-                    @endforeach
-                </div>
+                    </div>
 
-                <!-- 3. Mobile Content Area -->
-                <div class="h-64 overflow-y-auto no-scrollbar" id="mobile-dest-content-area">
-
-                    <!-- Live Search Results -->
-                    <div id="mobile-search-results" class="hidden">
-                        <div class="text-[11px] font-bold text-zinc-400 mb-2 px-1">نتایج جستجو:</div>
-                        <div id="mobile-search-items" class="grid grid-cols-2 gap-1.5"></div>
-                        <div id="mobile-search-empty" class="hidden py-10 text-center text-xs text-zinc-400">
-                            مقصدی با این نام یافت نشد.
+                    <!-- Live Search Results (Shows only when typing) -->
+                    <div id="mobile-search-results" class="hidden pt-1 max-h-56 overflow-y-auto no-scrollbar font-sans">
+                        <div class="text-[11px] font-bold text-zinc-400 mb-2 px-1 font-sans">نتایج جستجو:</div>
+                        <div id="mobile-search-items" class="space-y-1.5 font-sans"></div>
+                        <div id="mobile-search-empty" class="hidden py-8 text-center text-xs text-zinc-400 font-sans">
+                            موردی با این مشخصات یافت نشد.
                         </div>
                     </div>
 
-                    <!-- Panel: All -->
-                    <div id="mobile-panel-all" class="mobile-province-panel space-y-2.5">
-                        <button type="button" onclick="selectDestination('all', 'همه مقاصد', event)" data-dest-key="all" class="w-full flex items-center justify-between p-3 rounded-2xl bg-[#F7F8F9] dark:bg-zinc-800/80 border border-[#ECECEE] dark:border-zinc-700 text-right active:scale-98 transition-all shadow-xs">
-                            <div class="flex items-center gap-2.5">
-                                <span class="w-7 h-7 rounded-lg bg-emerald-100 dark:bg-emerald-900/50 text-[#007A5E] dark:text-emerald-400 flex items-center justify-center shrink-0">
-                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 017.843 4.582M12 3a8.997 8.997 0 00-7.843 4.582m15.686 0A11.953 11.953 0 0112 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0121 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0112 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 013 12c0-1.605.42-3.113 1.157-4.418"/>
-                                    </svg>
-                                </span>
-                                <span class="text-xs font-bold text-[#18181B] dark:text-zinc-100">همه مقاصد (کل کشور)</span>
-                            </div>
-                            <span class="text-xs font-bold text-[#007A5E] dark:text-emerald-400">انتخاب</span>
-                        </button>
-
-                        @if(!empty($allDestCities))
-                            <div class="grid grid-cols-2 gap-1.5">
-                                @foreach($allDestCities as $item)
-                                    <button type="button" onclick="selectDestination('{{ $item['city'] }}', '{{ $item['city'] }}', event)" data-dest-key="{{ $item['city'] }}"
-                                            class="p-2.5 rounded-xl bg-white dark:bg-zinc-900 border border-[#ECECEE] dark:border-zinc-700/80 active:scale-95 shadow-xs transition-all text-right">
-                                        <div class="text-xs font-bold text-zinc-700 dark:text-zinc-200 truncate">{{ $item['city'] }}</div>
-                                        <div class="text-[10px] text-zinc-400 truncate">استان {{ $item['province'] }}</div>
-                                    </button>
-                                @endforeach
-                            </div>
-                        @endif
-                    </div>
-
-                    <!-- Panel: Per Province -->
-                    @foreach($availableDests as $destGroup)
-                        <div id="mobile-panel-{{ $destGroup['province'] }}" class="mobile-province-panel hidden space-y-2.5">
-                            <button type="button" onclick="selectDestination('prov:{{ $destGroup['province'] }}', 'استان {{ $destGroup['province'] }}', event)" data-dest-key="prov:{{ $destGroup['province'] }}"
-                                    class="w-full flex items-center justify-between p-2.5 rounded-xl bg-white dark:bg-zinc-800 border border-[#007A5E]/40 dark:border-emerald-700/50 active:scale-95 transition-all text-right shadow-xs">
-                                <div class="flex items-center gap-1.5">
-                                    <span class="w-2 h-2 rounded-full bg-[#007A5E]"></span>
-                                    <span class="text-xs font-extrabold text-[#007A5E] dark:text-emerald-400">همه شهرهای {{ $destGroup['province'] }}</span>
-                                </div>
-                                <span class="text-[11px] font-bold text-[#007A5E] dark:text-emerald-400">انتخاب کل استان</span>
+                    <!-- Popular Destination Chips (Default when not searching) -->
+                    <div id="mobile-popular-dest-container" class="space-y-2 pt-1 font-sans">
+                        <div class="text-[11px] font-bold text-zinc-400 px-0.5 font-sans">مقاصد پرطرفدار:</div>
+                        <div class="flex items-center flex-wrap gap-2">
+                            <button type="button"
+                                    onclick="selectDestination('all', 'همه مقاصد', event); setMobileSearchSection('date');"
+                                    data-dest-key="all"
+                                    class="px-3.5 py-2 rounded-xl text-xs font-bold border border-zinc-200 dark:border-zinc-700 bg-[#F7F8F9] dark:bg-zinc-800 text-zinc-700 dark:text-zinc-200 hover:border-[#007A5E] hover:text-[#007A5E] active:scale-95 transition-all flex items-center gap-1.5 font-sans">
+                                <span>🗺️</span>
+                                <span>همه مقاصد</span>
                             </button>
+                            @foreach($allDestCities as $item)
+                                <button type="button"
+                                        onclick="selectDestination('{{ $item['city'] }}', '{{ $item['city'] }}', event); setMobileSearchSection('date');"
+                                        data-dest-key="{{ $item['city'] }}"
+                                        class="px-3.5 py-2 rounded-xl text-xs font-bold border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800/80 text-zinc-700 dark:text-zinc-200 hover:border-[#007A5E] hover:text-[#007A5E] active:scale-95 transition-all flex items-center gap-1.5 font-sans">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                    <span>{{ $item['city'] }}</span>
+                                    <span class="text-[10px] text-zinc-400 font-normal font-sans">({{ $item['province'] }})</span>
+                                </button>
+                            @endforeach
+                        </div>
+                    </div>
+                </div>
+            </div>
 
-                            <div class="grid grid-cols-3 gap-1.5 text-xs">
-                                @foreach($destGroup['cities'] as $cityName)
-                                    <button type="button" onclick="selectDestination('{{ $cityName }}', '{{ $cityName }}', event)" data-dest-key="{{ $cityName }}"
-                                            class="py-2.5 px-2 rounded-xl bg-white dark:bg-zinc-900 font-bold text-zinc-700 dark:text-zinc-200 text-center truncate border border-[#ECECEE] dark:border-zinc-700/80 active:scale-95 shadow-xs transition-all hover:border-[#007A5E] hover:text-[#007A5E]">
-                                        {{ $cityName }}
-                                    </button>
-                                @endforeach
+            <!-- ================= CARD 2: DATE ================= -->
+            <div id="m-card-date" class="transition-all duration-200 font-sans">
+                <!-- Collapsed State -->
+                <div id="m-section-date-collapsed" onclick="setMobileSearchSection('date')" class="cursor-pointer bg-white dark:bg-zinc-900 border border-[#ECECEE] dark:border-zinc-800 rounded-2xl px-4 py-3.5 flex items-center justify-between shadow-2xs active:scale-[0.99] transition-all font-sans">
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs text-emerald-600 dark:text-emerald-400">📅</span>
+                        <span class="text-xs font-bold text-zinc-600 dark:text-zinc-300">تاریخ سفر</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span id="m-summary-date-val" class="text-xs font-black text-[#18181B] dark:text-zinc-100 font-sans">{{ $defaultStartDay }} تا {{ $defaultEndDay }} {{ $currentJalaliMonthName }}</span>
+                        <span class="text-xs text-zinc-400 font-sans">✎</span>
+                    </div>
+                </div>
+
+                <!-- Expanded State -->
+                <div id="m-section-date-expanded" class="hidden bg-white dark:bg-zinc-900 border border-[#ECECEE] dark:border-zinc-800 rounded-3xl p-4 sm:p-5 shadow-xs space-y-4 font-sans">
+                    <!-- Header -->
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h4 class="text-sm font-black text-[#18181B] dark:text-zinc-100 font-sans">چه زمانی سفر می‌کنید؟</h4>
+                            <div class="flex items-center gap-1.5 mt-0.5 text-xs text-zinc-500 dark:text-zinc-400 font-sans">
+                                <span>مدت اقامت:</span>
+                                <span class="inline-flex items-center gap-1 font-black text-[#007A5E] dark:text-emerald-400 font-sans">
+                                    <span>🌙</span>
+                                    <span id="mobile-nights-count">{{ $defaultNights }}</span>
+                                    <span>شب</span>
+                                </span>
                             </div>
                         </div>
-                    @endforeach
+                        <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 text-[#007A5E] dark:text-emerald-300 text-xs font-black border border-emerald-200/60 dark:border-emerald-800/60 font-sans">
+                            <span>🗓️</span>
+                            <span>{{ $currentJalaliMonthName }} {{ $currentJalaliYear }}</span>
+                        </span>
+                    </div>
 
+                    <!-- Check-in & Check-out Dual Buttons (Side-by-Side, Zero Overlap) -->
+                    <div class="grid grid-cols-2 gap-2.5 font-sans">
+                        <!-- Check-in -->
+                        <button type="button" id="mobile-checkin-tab-btn" onclick="setDateSelectionStep('start', event)"
+                                class="p-3 rounded-2xl text-right transition-all bg-white dark:bg-zinc-900 border-2 border-[#007A5E] dark:border-emerald-500 shadow-xs font-sans">
+                            <div class="flex items-center justify-between">
+                                <span id="mobile-checkin-status" class="text-[10px] text-[#007A5E] dark:text-emerald-400 font-bold font-sans">تاریخ ورود</span>
+                                <span id="mobile-checkin-dot" class="w-2 h-2 rounded-full bg-[#007A5E] dark:text-emerald-400"></span>
+                            </div>
+                            <span id="mobile-checkin-val" class="block text-xs font-black text-[#18181B] dark:text-zinc-100 mt-1 tracking-tight font-sans">{{ $defaultStartDay }} {{ $currentJalaliMonthName }}</span>
+                        </button>
+
+                        <!-- Check-out -->
+                        <button type="button" id="mobile-checkout-tab-btn" onclick="setDateSelectionStep('end', event)"
+                                class="p-3 rounded-2xl text-right transition-all bg-[#F7F8F9] dark:bg-zinc-800/60 border border-zinc-200/80 dark:border-zinc-700/80 hover:border-zinc-300 font-sans">
+                            <div class="flex items-center justify-between">
+                                <span id="mobile-checkout-status" class="text-[10px] text-zinc-500 dark:text-zinc-400 font-medium font-sans">تاریخ خروج</span>
+                                <span id="mobile-checkout-dot" class="hidden w-2 h-2 rounded-full bg-[#007A5E] dark:text-emerald-400"></span>
+                            </div>
+                            <span id="mobile-checkout-val" class="block text-xs font-bold text-zinc-700 dark:text-zinc-300 mt-1 tracking-tight font-sans">{{ $defaultEndDay }} {{ $currentJalaliMonthName }}</span>
+                        </button>
+                    </div>
+
+                    <!-- Quick Stay Duration Chips -->
+                    <div class="space-y-1.5 font-sans">
+                        <span class="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 block px-0.5">مدت اقامت سریع:</span>
+                        <div class="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar text-xs font-sans">
+                            <button type="button" onclick="setQuickDaysRange(1)" class="quick-stay-chip px-3 py-1.5 rounded-xl border border-zinc-200 dark:border-zinc-700/80 bg-[#F7F8F9] dark:bg-zinc-800/80 text-zinc-700 dark:text-zinc-300 text-[11px] font-bold shrink-0 hover:border-[#007A5E] hover:text-[#007A5E] active:scale-95 transition-all font-sans" data-nights="1">
+                                ⚡ ۱ شب
+                            </button>
+                            <button type="button" onclick="setQuickDaysRange(2)" class="quick-stay-chip px-3 py-1.5 rounded-xl border border-zinc-200 dark:border-zinc-700/80 bg-[#F7F8F9] dark:bg-zinc-800/80 text-zinc-700 dark:text-zinc-300 text-[11px] font-bold shrink-0 hover:border-[#007A5E] hover:text-[#007A5E] active:scale-95 transition-all font-sans" data-nights="2">
+                                🌿 ۲ شب (آخر هفته)
+                            </button>
+                            <button type="button" onclick="setQuickDaysRange(3)" class="quick-stay-chip px-3 py-1.5 rounded-xl border border-zinc-200 dark:border-zinc-700/80 bg-[#F7F8F9] dark:bg-zinc-800/80 text-zinc-700 dark:text-zinc-300 text-[11px] font-bold shrink-0 hover:border-[#007A5E] hover:text-[#007A5E] active:scale-95 transition-all font-sans" data-nights="3">
+                                ✨ ۳ شب
+                            </button>
+                            <button type="button" onclick="setQuickDaysRange(7)" class="quick-stay-chip px-3 py-1.5 rounded-xl border border-zinc-200 dark:border-zinc-700/80 bg-[#F7F8F9] dark:bg-zinc-800/80 text-zinc-700 dark:text-zinc-300 text-[11px] font-bold shrink-0 hover:border-[#007A5E] hover:text-[#007A5E] active:scale-95 transition-all font-sans" data-nights="7">
+                                🏡 ۱ هفته کامل
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Calendar Grid Frame -->
+                    <div class="p-3.5 bg-[#F7F8F9] dark:bg-zinc-800/40 rounded-2xl border border-zinc-200/70 dark:border-zinc-800/70 font-sans">
+                        <!-- Month Navigation Bar (Mobile) -->
+                        <div class="flex items-center justify-between p-1 bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800 rounded-2xl mb-3 font-sans shadow-2xs">
+                            <button type="button" onclick="changeCalendarMonth(-1)"
+                                    class="cal-prev-btn w-9 h-9 rounded-xl flex items-center justify-center text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 disabled:opacity-20 disabled:cursor-not-allowed transition-all active:scale-90 font-sans"
+                                    title="ماه قبل">
+                                <svg class="w-4 h-4 rtl:rotate-180" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+                            </button>
+                            <div class="flex items-center gap-2 font-sans">
+                                <span class="cal-month-title text-sm font-black text-[#18181B] dark:text-zinc-100 font-sans">
+                                    {{ $currentJalaliMonthName }} {{ $currentJalaliYear }}
+                                </span>
+                                <span class="cal-month-badge px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-[#007A5E] dark:text-emerald-400 text-[10px] font-bold font-sans">
+                                    ماه جاری
+                                </span>
+                            </div>
+                            <button type="button" onclick="changeCalendarMonth(1)"
+                                    class="cal-next-btn w-9 h-9 rounded-xl flex items-center justify-center text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 disabled:opacity-20 disabled:cursor-not-allowed transition-all active:scale-90 font-sans"
+                                    title="ماه بعد">
+                                <svg class="w-4 h-4 rtl:rotate-180" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+                            </button>
+                        </div>
+
+                        <div class="grid grid-cols-7 gap-1 text-center py-1.5 px-0.5 bg-zinc-200/50 dark:bg-zinc-800/80 rounded-xl mb-2.5 font-sans">
+                            <span class="text-zinc-500 dark:text-zinc-400 text-[11px] font-bold font-sans">ش</span>
+                            <span class="text-zinc-500 dark:text-zinc-400 text-[11px] font-bold font-sans">ی</span>
+                            <span class="text-zinc-500 dark:text-zinc-400 text-[11px] font-bold font-sans">د</span>
+                            <span class="text-zinc-500 dark:text-zinc-400 text-[11px] font-bold font-sans">س</span>
+                            <span class="text-zinc-500 dark:text-zinc-400 text-[11px] font-bold font-sans">چ</span>
+                            <span class="text-zinc-500 dark:text-zinc-400 text-[11px] font-bold font-sans">پ</span>
+                            <span class="text-rose-500 dark:text-rose-400 text-[11px] font-black font-sans">ج</span>
+                        </div>
+                        <div id="mobile-jalali-grid" class="grid grid-cols-7 gap-1 text-center text-xs font-sans"></div>
+                    </div>
+
+                    <!-- Footer of Date Card: Status Indicator -->
+                    <div class="flex items-center justify-between pt-1 text-xs font-sans">
+                        <div class="flex items-center gap-1.5 text-[11px] text-zinc-600 dark:text-zinc-300 font-sans">
+                            <span class="w-2 h-2 rounded-full bg-emerald-500 inline-block animate-pulse"></span>
+                            <span id="mobile-calendar-summary" class="font-bold">{{ $defaultStartDay }} تا {{ $defaultEndDay }} {{ $currentJalaliMonthName }} ({{ $defaultNights }} شب)</span>
+                        </div>
+                        <button type="button" onclick="setMobileSearchSection('dest')" class="text-[11px] font-bold text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 font-sans">
+                            بستن تقویم ↑
+                        </button>
+                    </div>
                 </div>
             </div>
 
-            <!-- Section 2: Date Picker -->
-            <div class="pt-4 border-t border-[#ECECEE] dark:border-zinc-800">
-                <div class="flex items-center justify-between text-xs mb-3">
-                    <span class="font-black text-[#18181B] dark:text-zinc-100">تاریخ اقامت ({{ $currentJalaliMonthName }} {{ $currentJalaliYear }})</span>
-                    <span id="mobile-calendar-summary" class="font-bold text-[#007A5E] dark:text-emerald-400">{{ $defaultStartDay }} تا {{ $defaultEndDay }} {{ $currentJalaliMonthName }}</span>
-                </div>
-
-                <!-- Check-in & Check-out Tabs (Generous vertical spacing & refined theme harmony) -->
-                <div class="grid grid-cols-2 gap-2.5 mb-3.5">
-                    <button type="button" id="mobile-checkin-tab-btn" onclick="setDateSelectionStep('start', event)"
-                            class="p-3 rounded-2xl border-2 border-[#007A5E] dark:border-emerald-500 bg-white dark:bg-zinc-800/90 text-right transition-all flex flex-col justify-between min-h-[72px]">
-                        <div class="flex items-center justify-between w-full">
-                            <span class="text-[11px] font-bold text-[#007A5E] dark:text-emerald-400 flex items-center gap-1.5">
-                                <span id="mobile-checkin-dot" class="w-1.5 h-1.5 rounded-full bg-[#007A5E] dark:bg-emerald-400"></span>
-                                <span id="mobile-checkin-status">تاریخ ورود</span>
-                            </span>
-                            <span id="mobile-checkin-badge" class="text-[9px] font-bold text-[#007A5E] dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-1.5 py-0.5 rounded-md">انتخاب</span>
-                        </div>
-                        <span id="mobile-checkin-val" class="text-sm font-black text-[#18181B] dark:text-zinc-100 mt-2.5 block tracking-tight">
-                            {{ $defaultStartDay }} {{ $currentJalaliMonthName }}
-                        </span>
-                    </button>
-                    <button type="button" id="mobile-checkout-tab-btn" onclick="setDateSelectionStep('end', event)"
-                            class="p-3 rounded-2xl border border-[#ECECEE] dark:border-zinc-800 bg-[#F7F8F9] dark:bg-zinc-900/60 text-right hover:border-zinc-300 dark:hover:border-zinc-700 transition-all flex flex-col justify-between min-h-[72px]">
-                        <div class="flex items-center justify-between w-full">
-                            <span class="text-[11px] font-medium text-zinc-500 dark:text-zinc-400 flex items-center gap-1.5">
-                                <span id="mobile-checkout-dot" class="hidden w-1.5 h-1.5 rounded-full bg-[#007A5E] dark:bg-emerald-400"></span>
-                                <span id="mobile-checkout-status">تاریخ خروج</span>
-                            </span>
-                            <span id="mobile-checkout-badge" class="hidden text-[9px] font-bold text-[#007A5E] dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-1.5 py-0.5 rounded-md">انتخاب</span>
-                        </div>
-                        <span id="mobile-checkout-val" class="text-sm font-bold text-zinc-700 dark:text-zinc-300 mt-2.5 block tracking-tight">
-                            {{ $defaultEndDay }} {{ $currentJalaliMonthName }}
-                        </span>
-                    </button>
-                </div>
-
-                <div class="bg-[#F7F8F9] dark:bg-zinc-800/50 p-3.5 rounded-2xl border border-[#ECECEE] dark:border-zinc-800">
-                    <div class="grid grid-cols-7 gap-1 text-center text-[10px] font-bold text-zinc-400 mb-2">
-                        <span>ش</span><span>ی</span><span>د</span><span>س</span><span>چ</span><span>پ</span><span>ج</span>
-                    </div>
-                    <div id="mobile-jalali-grid" class="grid grid-cols-7 gap-1 text-center text-xs"></div>
-                    <div class="mt-2.5 pt-2 border-t border-[#ECECEE] dark:border-zinc-700/60 flex items-center justify-between text-[10px] text-zinc-400">
-                        <span>امروز: {{ $currentJalaliDay }} {{ $currentJalaliMonthName }}</span>
-                        <span>مدت: <strong id="mobile-nights-count" class="text-[#007A5E] dark:text-emerald-400 font-bold">{{ $defaultNights }}</strong> شب</span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Section 3: Guests -->
-            <div class="pt-4 border-t border-[#ECECEE] dark:border-zinc-800">
-                <div class="flex items-center justify-between bg-[#F7F8F9] dark:bg-zinc-800/70 border border-[#ECECEE] dark:border-zinc-800 rounded-2xl px-4 py-3 text-xs">
-                    <div>
-                        <span class="block font-bold text-zinc-700 dark:text-zinc-200">تعداد نفرات</span>
-                        <span class="block text-[10px] text-zinc-400">شامل بزرگسال و کودک</span>
-                    </div>
+            <!-- ================= STANDALONE OPTIONS: GUESTS & INSTANT ================= -->
+            <div class="bg-white dark:bg-zinc-900 border border-[#ECECEE] dark:border-zinc-800 rounded-3xl p-4 sm:p-5 shadow-xs space-y-4 font-sans">
+                <!-- Guests Counter Row -->
+                <div class="flex items-center justify-between font-sans">
                     <div class="flex items-center gap-3">
-                        <button type="button" onclick="updateSearchGuests(1)" class="w-8 h-8 rounded-xl bg-white dark:bg-zinc-700 border border-[#ECECEE] dark:border-zinc-600 font-black text-sm text-[#18181B] dark:text-zinc-100 shadow-xs active:scale-90 transition-transform">+</button>
-                        <span id="mobile-sheet-guests" class="font-black w-6 text-center text-sm text-[#18181B] dark:text-zinc-100">۲</span>
-                        <button type="button" onclick="updateSearchGuests(-1)" class="w-8 h-8 rounded-xl bg-white dark:bg-zinc-700 border border-[#ECECEE] dark:border-zinc-600 font-black text-sm text-[#18181B] dark:text-zinc-100 shadow-xs active:scale-90 transition-transform">−</button>
+                        <div class="w-10 h-10 rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 text-[#007A5E] dark:text-emerald-400 flex items-center justify-center text-lg shrink-0 font-sans shadow-2xs border border-emerald-100 dark:border-emerald-900/40">
+                            👥
+                        </div>
+                        <div>
+                            <span class="block text-xs font-black text-[#18181B] dark:text-zinc-100 font-sans">تعداد نفرات</span>
+                            <span class="block text-[11px] text-zinc-400 mt-0.5 font-sans">همسفران این اقامت</span>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2 bg-[#F7F8F9] dark:bg-zinc-800/80 p-1 rounded-2xl border border-zinc-200/80 dark:border-zinc-700 font-sans">
+                        <button type="button" onclick="updateSearchGuests(-1)" aria-label="کاهش"
+                                class="w-8 h-8 rounded-xl bg-white dark:bg-zinc-700 border border-zinc-200 dark:border-zinc-600 font-black text-sm text-[#18181B] dark:text-zinc-100 flex items-center justify-center active:scale-90 hover:bg-zinc-50 transition-all shadow-2xs font-sans">−</button>
+                        <div class="w-9 text-center font-sans">
+                            <span id="mobile-sheet-guests" class="font-black text-sm text-[#18181B] dark:text-zinc-100 font-sans">۲</span>
+                            <span class="text-[9px] text-zinc-400 block -mt-1 font-sans">نفر</span>
+                        </div>
+                        <button type="button" onclick="updateSearchGuests(1)" aria-label="افزایش"
+                                class="w-8 h-8 rounded-xl bg-white dark:bg-zinc-700 border border-zinc-200 dark:border-zinc-600 font-black text-sm text-[#18181B] dark:text-zinc-100 flex items-center justify-center active:scale-90 hover:bg-zinc-50 transition-all shadow-2xs font-sans">+</button>
                     </div>
                 </div>
+
+                <div class="h-px bg-zinc-100 dark:bg-zinc-800"></div>
+
+                <!-- Instant Booking Row with iOS Toggle Switch -->
+                <label class="flex items-center justify-between cursor-pointer select-none font-sans group">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-2xl bg-amber-50 dark:bg-amber-950/60 text-amber-500 flex items-center justify-center text-lg shrink-0 font-sans shadow-2xs border border-amber-100 dark:border-amber-900/40">
+                            ⚡
+                        </div>
+                        <div>
+                            <span class="block text-xs font-black text-[#18181B] dark:text-zinc-100 font-sans">فقط رزرو قطعی آنی</span>
+                            <span class="block text-[11px] text-zinc-400 mt-0.5 font-sans">رزرو فوری بدون نیاز به تایید میزبان</span>
+                        </div>
+                    </div>
+                    <!-- iOS Toggle Switch -->
+                    <div class="relative">
+                        <input type="checkbox" id="mobile-instant-checkbox" onchange="toggleInstantFilter(event, this.checked)" class="sr-only peer">
+                        <div class="w-11 h-6 bg-zinc-200 dark:bg-zinc-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-zinc-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#007A5E] dark:peer-checked:bg-emerald-600"></div>
+                    </div>
+                </label>
             </div>
+
         </div>
 
-        <!-- Sticky Bottom CTA -->
-        <div class="p-4 bg-white/95 dark:bg-zinc-950/95 backdrop-blur-sm border-t border-[#ECECEE] dark:border-zinc-800 shrink-0">
-            <button type="button" onclick="closeMobileSheets(); triggerLivewireSearch();" class="w-full bg-[#007A5E] hover:bg-[#005F48] text-white font-black py-3.5 rounded-2xl text-xs transition-colors shadow-sm active:scale-98">
-                اعمال فیلتر و جستجو
+        <!-- Sticky Bottom Bar -->
+        <div class="px-4 py-3.5 bg-white dark:bg-zinc-900 border-t border-[#ECECEE] dark:border-zinc-800 flex items-center justify-between shrink-0 font-sans shadow-lg gap-3">
+            <button type="button" onclick="resetAllFilters()"
+                    class="px-4 py-3 rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-xs font-bold text-zinc-600 dark:text-zinc-300 hover:bg-rose-50 hover:border-rose-200 hover:text-rose-600 dark:hover:bg-rose-950/40 dark:hover:border-rose-800 dark:hover:text-rose-400 active:scale-95 transition-all font-sans flex items-center gap-1.5 shadow-2xs no-underline shrink-0">
+                <svg class="w-3.5 h-3.5 text-zinc-400 group-hover:text-rose-500 transition-colors" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"/>
+                </svg>
+                <span>پاکسازی همه</span>
+            </button>
+            <button type="button" onclick="closeMobileSheets(); triggerLivewireSearch();"
+                    class="flex-1 bg-[#007A5E] hover:bg-[#005F48] text-white font-black py-3 px-5 rounded-2xl text-xs transition-all shadow-sm flex items-center justify-center gap-2 active:scale-95 font-sans no-underline">
+                <svg class="w-4 h-4 text-white shrink-0" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/>
+                </svg>
+                <span>مشاهده اقامتگاه‌ها</span>
             </button>
         </div>
+
     </div>
 
 </div>
@@ -927,6 +1081,17 @@
         if (num === null || num === undefined) return '';
         const persianDigits = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
         return num.toString().replace(/\d/g, x => persianDigits[x]);
+    }
+
+    function normalizePersianDigits(str) {
+        if (str === null || str === undefined) return '';
+        const persian = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
+        const arabic = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
+        let res = String(str);
+        for (let i = 0; i < 10; i++) {
+            res = res.replaceAll(persian[i], String(i)).replaceAll(arabic[i], String(i));
+        }
+        return res;
     }
 
     function formatToman(amount) {
@@ -1051,12 +1216,13 @@
 
                 $dbListings[] = [
                     'id' => $prop->id,
+                    'code' => $prop->code,
                     'section' => $assignedSections[0],
                     'sections' => $assignedSections,
                     'isSpecial' => $isSpecial,
                     'title' => $prop->title,
-                    'province' => $prop->province ?? 'مازندران',
-                    'city' => $prop->city ?? 'لفور',
+                    'province' => !empty($prop->province) ? $prop->province : 'مازندران',
+                    'city' => !empty($prop->city) ? $prop->city : 'لفور',
                     'category' => $categorySlug,
                     'rooms' => $prop->bedrooms ?? $prop->rooms ?? null,
                     'maxGuests' => $rentalConfig?->max_guests ?? $prop->max_guests ?? null,
@@ -1077,12 +1243,15 @@
 
     const LISTINGS_DATA = @json($dbListings ?? []);
     const AVAILABLE_DEST_CITIES = @json($allDestCities ?? []);
+    const CALENDAR_MONTHS = @json($calendarMonths ?? []);
+    let activeCalendarMonthIndex = 0;
 
     const currentJalaliYear = {{ $currentJalaliYear }};
     const currentJalaliMonth = {{ $currentJalaliMonth }};
     const currentJalaliMonthName = '{{ $currentJalaliMonthName }}';
     const currentJalaliDay = {{ $currentJalaliDay }};
     const totalMonthDays = {{ $currentMonthDays }};
+    const firstDayOfWeek = {{ $firstDayOfWeek }};
 
     const state = {
         mobileTab: 'explore',
@@ -1090,14 +1259,44 @@
         city: 'all',
         cityLabel: 'همه مقاصد',
         category: 'all',
+        keyword: '',
         guests: 2,
+        startMonthIndex: 0,
         startDay: {{ $defaultStartDay }},
+        endMonthIndex: 0,
         endDay: {{ $defaultEndDay }},
         instantOnly: false,
         favorites: [],
         activeModalItem: null,
         modalNights: {{ $defaultNights }}
     };
+
+    function getAbsoluteDay(monthIdx, day) {
+        let abs = 0;
+        for (let i = 0; i < monthIdx; i++) {
+            abs += (CALENDAR_MONTHS[i] ? CALENDAR_MONTHS[i].daysCount : 30);
+        }
+        return abs + day;
+    }
+
+    function getDateFromAbsoluteDay(absDay) {
+        let accumulated = 0;
+        for (let i = 0; i < CALENDAR_MONTHS.length; i++) {
+            const days = CALENDAR_MONTHS[i] ? CALENDAR_MONTHS[i].daysCount : 30;
+            if (absDay <= accumulated + days) {
+                return {
+                    monthIndex: i,
+                    day: Math.max(1, absDay - accumulated)
+                };
+            }
+            accumulated += days;
+        }
+        const lastIdx = Math.max(0, CALENDAR_MONTHS.length - 1);
+        return {
+            monthIndex: lastIdx,
+            day: CALENDAR_MONTHS[lastIdx] ? CALENDAR_MONTHS[lastIdx].daysCount : 30
+        };
+    }
 
     function simulateWireLoading(callback) {
         const bar = document.getElementById('wire-loading-bar');
@@ -1300,7 +1499,13 @@
                     </span>` : ''}
                 </div>
 
-                <p class="text-[11px] sm:text-xs text-zinc-400 mt-0.5 sm:mt-1 truncate px-0.5 font-sans">${item.city}${item.maxGuests ? ` • تا ${toPersianNum(item.maxGuests)} نفر` : ''}</p>
+                <div class="flex items-center justify-between gap-1 mt-1 px-0.5">
+                    <p class="text-[11px] sm:text-xs text-zinc-400 truncate font-sans">${item.city}${item.maxGuests ? ` • تا ${toPersianNum(item.maxGuests)} نفر` : ''}</p>
+                    <div class="flex items-center gap-1 shrink-0">
+                        ${item.instant ? `<span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 text-[10px] font-bold border border-amber-200/60 dark:border-amber-800/60 font-sans leading-none">⚡ آنی</span>` : ''}
+                        ${item.code ? `<span class="text-[10px] font-medium text-zinc-500 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded-md font-sans leading-none">کد ${toPersianNum(item.code)}</span>` : ''}
+                    </div>
+                </div>
             </div>
 
             ${(item.price && item.price > 0) ? `
@@ -1346,7 +1551,13 @@
                     </span>` : ''}
                 </div>
 
-                <p class="text-[11px] sm:text-xs text-zinc-400 mt-0.5 truncate px-0.5">${item.city}${item.maxGuests ? ` • تا ${toPersianNum(item.maxGuests)} نفر` : ''}</p>
+                <div class="flex items-center justify-between gap-1 mt-1 px-0.5">
+                    <p class="text-[11px] sm:text-xs text-zinc-400 truncate font-sans">${item.city}${item.maxGuests ? ` • تا ${toPersianNum(item.maxGuests)} نفر` : ''}</p>
+                    <div class="flex items-center gap-1 shrink-0">
+                        ${item.instant ? `<span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 text-[10px] font-bold border border-amber-200/60 dark:border-amber-800/60 font-sans leading-none">⚡ آنی</span>` : ''}
+                        ${item.code ? `<span class="text-[10px] font-medium text-zinc-500 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded-md font-sans leading-none">کد ${toPersianNum(item.code)}</span>` : ''}
+                    </div>
+                </div>
             </div>
 
             <div class="mt-2 pt-2 border-t border-[#ECECEE] dark:border-zinc-800 flex items-end justify-between gap-1">
@@ -1366,13 +1577,80 @@
         const emptyState = document.getElementById('empty-state');
 
         const filtered = LISTINGS_DATA.filter(item => {
-            if (state.city !== 'all' && item.city !== state.city) return false;
-            if (state.province !== 'all' && item.province !== state.province) return false;
+            if (state.keyword) {
+                const normKeyword = normalizePersianDigits(state.keyword).toLowerCase().trim();
+                const normItemCode = normalizePersianDigits(item.code || '').toLowerCase().trim();
+                const normItemId = normalizePersianDigits(item.id || '').toLowerCase().trim();
+                const titleLower = (item.title || '').toLowerCase();
+                const cityLower = (item.city || '').toLowerCase();
+                const provLower = (item.province || '').toLowerCase();
+
+                const matchCode = (normItemCode && normItemCode.includes(normKeyword)) || (normItemId && normItemId === normKeyword);
+                const matchTitle = titleLower.includes(normKeyword) || titleLower.includes(state.keyword.toLowerCase().trim());
+                const matchLocation = cityLower.includes(state.keyword.toLowerCase().trim()) || provLower.includes(state.keyword.toLowerCase().trim());
+
+                if (!matchCode && !matchTitle && !matchLocation) return false;
+            } else {
+                if (state.city !== 'all' && item.city !== state.city) return false;
+                if (state.province !== 'all' && item.province !== state.province) return false;
+            }
             if (state.category !== 'all' && item.category !== state.category) return false;
-            if (state.guests > item.maxGuests) return false;
+            if (item.maxGuests && state.guests > item.maxGuests) return false;
             if (state.instantOnly && !item.instant) return false;
             return true;
         });
+
+        // Sync active filters notification bar
+        const activeFiltersBar = document.getElementById('active-filters-bar');
+        if (activeFiltersBar) {
+            let pillsHtml = '';
+            if (state.keyword) {
+                pillsHtml += `
+                    <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-[#007A5E] dark:text-emerald-400 text-xs font-bold border border-emerald-200/60 dark:border-emerald-800/60 shadow-2xs font-sans">
+                        <span>جستجو: ${toPersianNum(state.keyword)}</span>
+                        <button type="button" onclick="clearKeywordFilter()" class="hover:text-rose-500 font-black cursor-pointer pr-1">✕</button>
+                    </span>
+                `;
+            }
+            if (state.instantOnly) {
+                pillsHtml += `
+                    <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 text-xs font-bold border border-amber-200/60 dark:border-amber-800/60 shadow-2xs font-sans">
+                        <span>⚡ فقط رزرو آنی</span>
+                        <button type="button" onclick="toggleInstantFilter(event, false)" class="hover:text-rose-500 font-black cursor-pointer pr-1">✕</button>
+                    </span>
+                `;
+            }
+            if (state.city !== 'all') {
+                pillsHtml += `
+                    <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-200 text-xs font-bold border border-zinc-200 dark:border-zinc-700 shadow-2xs font-sans">
+                        <span>مقصد: ${state.cityLabel || state.city}</span>
+                        <button type="button" onclick="selectDestination('all', 'همه مقاصد'); triggerLivewireSearch();" class="hover:text-rose-500 font-black cursor-pointer pr-1">✕</button>
+                    </span>
+                `;
+            }
+            if (state.category !== 'all') {
+                pillsHtml += `
+                    <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-200 text-xs font-bold border border-zinc-200 dark:border-zinc-700 shadow-2xs font-sans">
+                        <span>دسته‌بندی خاص</span>
+                        <button type="button" onclick="filterByCategory('all')" class="hover:text-rose-500 font-black cursor-pointer pr-1">✕</button>
+                    </span>
+                `;
+            }
+
+            if (pillsHtml) {
+                activeFiltersBar.innerHTML = `
+                    <div class="flex items-center gap-2 flex-wrap p-2.5 rounded-2xl bg-white dark:bg-zinc-900 border border-[#ECECEE] dark:border-zinc-800 shadow-xs font-sans">
+                        <span class="text-xs text-zinc-400 font-medium font-sans">فیلترهای فعال:</span>
+                        <div class="flex items-center gap-2 flex-wrap">${pillsHtml}</div>
+                        <button type="button" onclick="resetAllFilters()" class="text-xs px-2.5 py-1 rounded-lg bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 hover:bg-rose-100 border border-rose-200/60 dark:border-rose-900 font-bold mr-auto transition-all active:scale-95 font-sans no-underline">پاکسازی همه</button>
+                    </div>
+                `;
+                activeFiltersBar.classList.remove('hidden');
+            } else {
+                activeFiltersBar.innerHTML = '';
+                activeFiltersBar.classList.add('hidden');
+            }
+        }
 
         // Sync zone pills
         document.querySelectorAll('.zone-quick-pill').forEach(btn => {
@@ -1382,6 +1660,8 @@
                 ? 'zone-quick-pill px-4 py-2 rounded-full text-xs font-bold bg-[#007A5E] text-white border border-[#007A5E] shadow-sm transition-all active:scale-95'
                 : 'zone-quick-pill px-4 py-2 rounded-full text-xs font-bold bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-800 hover:border-[#007A5E] dark:hover:border-emerald-500 hover:text-[#007A5E] dark:hover:text-emerald-400 shadow-xs transition-all active:scale-95';
         });
+
+        syncInstantUI();
 
         if (filtered.length === 0) {
             sectionsWrapper.innerHTML = '';
@@ -1395,13 +1675,42 @@
                     if (emptySubtitle) emptySubtitle.textContent = 'به‌زودی اقامتگاه‌های جدید بوم‌گردی و ویلاها به سیستم افزوده خواهند شد.';
                     if (emptyBtn) emptyBtn.style.display = 'none';
                 } else {
-                    emptyTitle.textContent = 'اقامتگاهی با این مشخصات یافت نشد';
-                    if (emptySubtitle) emptySubtitle.textContent = 'می‌توانید فیلترهای جستجو را پاکسازی کرده یا مقاصد دیگر را انتخاب نمایید.';
+                    emptyTitle.textContent = state.keyword 
+                        ? `اقامتگاهی با عنوان یا کد «${toPersianNum(state.keyword)}» یافت نشد`
+                        : 'اقامتگاهی با این مشخصات یافت نشد';
+                    if (emptySubtitle) emptySubtitle.textContent = 'می‌توانید فیلترهای جستجو را پاکسازی کرده یا عبارت جستجو را تغییر دهید.';
                     if (emptyBtn) emptyBtn.style.display = 'inline-block';
                 }
             }
         } else {
             emptyState.classList.add('hidden');
+
+            // When keyword search is active, render a dedicated search results grid so all matches are immediately visible!
+            if (state.keyword) {
+                const searchResultsHtml = `
+                    <section class="pt-2 font-sans">
+                        <div class="flex items-center justify-between mb-4">
+                            <div>
+                                <h2 class="text-base sm:text-lg font-extrabold text-[#18181B] dark:text-zinc-100 font-sans">
+                                    نتایج جستجو برای «${toPersianNum(state.keyword)}»
+                                </h2>
+                                <p class="text-xs text-zinc-400 mt-0.5 font-sans">${toPersianNum(filtered.length)} اقامتگاه یافت شد</p>
+                            </div>
+                            <button type="button" onclick="clearKeywordFilter()"
+                                    class="px-3.5 py-1.5 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-xs font-bold text-zinc-600 dark:text-zinc-300 hover:text-rose-500 transition-colors shadow-2xs font-sans">
+                                نمایش همه اقامتگاه‌ها ✕
+                            </button>
+                        </div>
+                        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-5">
+                            ${filtered.map(buildVillaCardHTML).join('')}
+                        </div>
+                    </section>
+                `;
+                sectionsWrapper.innerHTML = searchResultsHtml;
+                initCarouselDrag();
+                return;
+            }
+
             const renderedSections = SECTIONS_META.map(sec => {
                 let secItems = filtered.filter(item => {
                     if (Array.isArray(item.sections)) {
@@ -1560,7 +1869,10 @@
     }
 
     function filterDestinationsLive(query, context) {
-        const q = (query || '').trim().toLowerCase();
+        const rawQ = (query || '').trim();
+        const q = rawQ.toLowerCase();
+        const normQ = normalizePersianDigits(rawQ).toLowerCase();
+
         const clearBtn = document.getElementById(context === 'desktop' ? 'dest-search-clear' : 'mobile-dest-search-clear');
         const tabsBar = document.getElementById(context === 'desktop' ? 'desktop-dest-tabs' : 'mobile-dest-tabs');
         const resultsContainer = document.getElementById(context === 'desktop' ? 'desktop-search-results' : 'mobile-search-results');
@@ -1568,11 +1880,14 @@
         const emptyEl = document.getElementById(context === 'desktop' ? 'desktop-search-empty' : 'mobile-search-empty');
         const panels = document.querySelectorAll(`.${context}-province-panel`);
 
-        if (clearBtn) clearBtn.classList.toggle('hidden', !q);
+        if (clearBtn) clearBtn.classList.toggle('hidden', !rawQ);
 
-        if (!q) {
+        if (!rawQ) {
             if (resultsContainer) resultsContainer.classList.add('hidden');
             if (tabsBar) tabsBar.classList.remove('opacity-40', 'pointer-events-none');
+            const mobPop = document.getElementById('mobile-popular-dest-container');
+            if (mobPop) mobPop.classList.remove('hidden');
+
             // Restore currently active tab panel
             const activeTab = document.querySelector(`.dest-tab-btn[data-context="${context}"].is-active`);
             const activeKey = activeTab ? activeTab.getAttribute('data-dest-tab') : 'all';
@@ -1586,28 +1901,204 @@
         if (tabsBar) tabsBar.classList.add('opacity-40', 'pointer-events-none');
         panels.forEach(p => p.classList.add('hidden'));
         if (resultsContainer) resultsContainer.classList.remove('hidden');
+        const mobPop = document.getElementById('mobile-popular-dest-container');
+        if (mobPop) mobPop.classList.add('hidden');
 
-        const matches = (typeof AVAILABLE_DEST_CITIES !== 'undefined' ? AVAILABLE_DEST_CITIES : []).filter(item => {
+        // 1. Destination Matches (City / Province)
+        const cityMatches = (typeof AVAILABLE_DEST_CITIES !== 'undefined' ? AVAILABLE_DEST_CITIES : []).filter(item => {
             return item.city.toLowerCase().includes(q) || item.province.toLowerCase().includes(q);
         });
 
-        if (matches.length === 0) {
+        // 2. Property Matches (by title or code)
+        const propertyMatches = (typeof LISTINGS_DATA !== 'undefined' ? LISTINGS_DATA : []).filter(item => {
+            const normCode = normalizePersianDigits(item.code || '').toLowerCase();
+            const normId = normalizePersianDigits(item.id || '').toLowerCase();
+            const titleLower = (item.title || '').toLowerCase();
+
+            const matchCode = (normCode && normCode.includes(normQ)) || (normId && normId === normQ);
+            const matchTitle = titleLower.includes(q) || titleLower.includes(normQ);
+
+            return matchCode || matchTitle;
+        }).slice(0, 8);
+
+        if (cityMatches.length === 0 && propertyMatches.length === 0) {
             if (itemsEl) itemsEl.innerHTML = '';
-            if (emptyEl) emptyEl.classList.remove('hidden');
+            if (emptyEl) {
+                emptyEl.classList.remove('hidden');
+                emptyEl.innerHTML = `موردی با عنوان، کد یا مقصد «${toPersianNum(rawQ)}» یافت نشد.`;
+            }
         } else {
             if (emptyEl) emptyEl.classList.add('hidden');
-            if (itemsEl) {
-                itemsEl.innerHTML = matches.map(m => `
+            let html = '';
+
+            // Search Trigger Button for direct keyword
+            const escapedQ = rawQ.replace(/'/g, "\\'");
+            html += `
+                <div class="col-span-full mb-2">
+                    <button type="button" onclick="applyKeywordSearch('${escapedQ}')"
+                            class="w-full flex items-center justify-between p-3 rounded-2xl bg-[#007A5E] hover:bg-[#005F48] text-white text-right transition-all shadow-sm active:scale-[0.99] font-sans no-underline group">
+                        <div class="flex items-center gap-2.5 truncate">
+                            <div class="w-7 h-7 rounded-lg bg-white/20 flex items-center justify-center shrink-0">
+                                <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/>
+                                </svg>
+                            </div>
+                            <span class="text-xs font-bold truncate">جستجوی عبارت «${toPersianNum(rawQ)}» در همه اقامتگاه‌ها</span>
+                        </div>
+                        <span class="text-xs font-black bg-white/20 group-hover:bg-white/30 text-white px-3 py-1.5 rounded-xl shrink-0 transition-colors shadow-2xs font-sans no-underline">
+                            مشاهده نتایج ↵
+                        </span>
+                    </button>
+                </div>
+            `;
+
+            // Property Matches
+            if (propertyMatches.length > 0) {
+                html += `
+                    <div class="col-span-full text-[11px] font-bold text-zinc-500 dark:text-zinc-400 mt-2 mb-1 px-1 font-sans">
+                        اقامتگاه‌های یافت‌شده بر اساس نام یا کد (${toPersianNum(propertyMatches.length)} مورد):
+                    </div>
+                `;
+                html += propertyMatches.map(p => `
+                    <div onclick="navigateToProperty('${p.url}')"
+                         class="col-span-full flex items-center justify-between p-2 rounded-xl bg-white dark:bg-zinc-900 border border-[#ECECEE] dark:border-zinc-700/80 hover:border-[#007A5E] dark:hover:border-emerald-500 hover:bg-[#ECFDF5] dark:hover:bg-emerald-950/40 text-right cursor-pointer transition-all shadow-xs group font-sans">
+                        <div class="flex items-center gap-2.5 min-w-0">
+                            <img src="${p.image}" alt="${p.title}" onerror="this.onerror=null; this.src='{{ asset('images/property-placeholder.svg') }}';" class="w-11 h-11 rounded-lg object-cover shrink-0 border border-zinc-200 dark:border-zinc-700">
+                            <div class="min-w-0 truncate">
+                                <div class="text-xs font-bold text-zinc-800 dark:text-zinc-100 group-hover:text-[#007A5E] dark:group-hover:text-emerald-400 truncate font-sans">${p.title}</div>
+                                <div class="flex items-center gap-1.5 text-[10px] text-zinc-400 mt-0.5 font-sans">
+                                    <span>${p.city}</span>
+                                    ${p.code ? `<span class="bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 px-1 rounded font-sans">کد: ${toPersianNum(p.code)}</span>` : ''}
+                                    ${p.instant ? `<span class="text-amber-500 font-bold font-sans">⚡ آنی</span>` : ''}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="text-left shrink-0 mr-2 font-sans">
+                            ${p.price ? `<span class="text-[11px] font-extrabold text-[#007A5E] dark:text-emerald-400 block">${formatToman(p.price)}</span><span class="text-[9px] text-zinc-400 block font-sans">${currencyLabel}</span>` : `<span class="text-[10px] text-zinc-400 font-sans">استعلام</span>`}
+                        </div>
+                    </div>
+                `).join('');
+            }
+
+            // Destination / City Matches
+            if (cityMatches.length > 0) {
+                html += `
+                    <div class="col-span-full text-[11px] font-bold text-zinc-500 dark:text-zinc-400 mt-2.5 mb-1 px-1 font-sans">
+                        شهرها و مقاصد (${toPersianNum(cityMatches.length)} مورد):
+                    </div>
+                `;
+                html += cityMatches.map(m => `
                     <button type="button" onclick="selectDestination('${m.city}', '${m.city}', event)" data-dest-key="${m.city}"
-                            class="flex items-center justify-between p-2.5 rounded-xl bg-white dark:bg-zinc-900 border border-[#ECECEE] dark:border-zinc-700/80 hover:border-[#007A5E] dark:hover:border-emerald-500 hover:bg-[#ECFDF5] dark:hover:bg-emerald-950/40 text-right transition-all shadow-xs group active:scale-98">
+                            class="flex items-center justify-between p-2.5 rounded-xl bg-white dark:bg-zinc-900 border border-[#ECECEE] dark:border-zinc-700/80 hover:border-[#007A5E] dark:hover:border-emerald-500 hover:bg-[#ECFDF5] dark:hover:bg-emerald-950/40 text-right transition-all shadow-xs group active:scale-98 font-sans">
                         <div class="truncate">
-                            <div class="text-xs font-bold text-zinc-700 dark:text-zinc-200 group-hover:text-[#007A5E] dark:group-hover:text-emerald-400 truncate">${m.city}</div>
-                            <div class="text-[10px] text-zinc-400 truncate">استان ${m.province}</div>
+                            <div class="text-xs font-bold text-zinc-700 dark:text-zinc-200 group-hover:text-[#007A5E] dark:group-hover:text-emerald-400 truncate font-sans">${m.city}</div>
+                            <div class="text-[10px] text-zinc-400 truncate font-sans">استان ${m.province}</div>
                         </div>
                         <span class="w-1.5 h-1.5 rounded-full bg-zinc-300 dark:bg-zinc-600 group-hover:bg-[#007A5E] dark:group-hover:bg-emerald-400 shrink-0 transition-colors mr-1"></span>
                     </button>
                 `).join('');
             }
+
+            if (itemsEl) itemsEl.innerHTML = html;
+        }
+    }
+
+    function applyKeywordSearch(keyword) {
+        state.keyword = keyword || '';
+        state.city = 'all';
+        state.province = 'all';
+        state.cityLabel = 'همه مقاصد';
+        closeAllPopups();
+        closeMobileSheets();
+
+        const dLabel = document.getElementById('desktop-dest-label');
+        const mPill = document.getElementById('mobile-pill-dest');
+        const mSummaryDest = document.getElementById('m-summary-dest-val');
+        if (state.keyword) {
+            if (dLabel) dLabel.textContent = `جستجو: ${toPersianNum(state.keyword)}`;
+            if (mPill) mPill.textContent = `جستجو: ${toPersianNum(state.keyword)}`;
+            if (mSummaryDest) mSummaryDest.textContent = `جستجو: ${toPersianNum(state.keyword)}`;
+        } else {
+            if (dLabel) dLabel.textContent = 'همه مقاصد';
+            if (mPill) mPill.textContent = 'جستجو بر اساس مقصد، عنوان یا کد اقامتگاه...';
+            if (mSummaryDest) mSummaryDest.textContent = 'همه مقاصد';
+        }
+
+        // Reset visual active styling on all destination buttons
+        document.querySelectorAll('[data-dest-key]').forEach(btn => {
+            const key = btn.getAttribute('data-dest-key');
+            if (key === 'all') {
+                btn.classList.add('border-[#007A5E]', 'dark:border-emerald-500', 'bg-[#ECFDF5]', 'dark:bg-emerald-950/40', 'text-[#007A5E]', 'dark:text-emerald-400');
+            } else {
+                btn.classList.remove('border-[#007A5E]', 'dark:border-emerald-500', 'bg-[#ECFDF5]', 'dark:bg-emerald-950/40', 'text-[#007A5E]', 'dark:text-emerald-400');
+            }
+        });
+
+        simulateWireLoading(() => renderListings());
+    }
+
+    function handleSearchInputKey(event, context) {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            const input = document.getElementById(context === 'desktop' ? 'dest-search-input' : 'mobile-dest-search-input');
+            const val = input ? input.value.trim() : '';
+            applyKeywordSearch(val);
+        }
+    }
+
+    function clearKeywordFilter() {
+        state.keyword = '';
+        const dInput = document.getElementById('dest-search-input');
+        const mInput = document.getElementById('mobile-dest-search-input');
+        if (dInput) dInput.value = '';
+        if (mInput) mInput.value = '';
+        const dLabel = document.getElementById('desktop-dest-label');
+        const mPill = document.getElementById('mobile-pill-dest');
+        if (dLabel) dLabel.textContent = state.cityLabel || 'همه مقاصد';
+        if (mPill) mPill.textContent = state.city === 'all' ? 'جستجو بر اساس مقصد، عنوان یا کد اقامتگاه...' : `مقصد: ${state.cityLabel}`;
+        simulateWireLoading(() => renderListings());
+    }
+
+    function toggleInstantFilter(event, explicitVal) {
+        if (event && event.stopPropagation) event.stopPropagation();
+        if (typeof explicitVal === 'boolean') {
+            state.instantOnly = explicitVal;
+        } else {
+            state.instantOnly = !state.instantOnly;
+        }
+        syncInstantUI();
+        simulateWireLoading(() => renderListings());
+    }
+
+    function syncInstantUI() {
+        const desktopBtn = document.getElementById('desktop-instant-btn');
+        const instantPill = document.getElementById('instant-pill-btn');
+        const mobileCheckbox = document.getElementById('mobile-instant-checkbox');
+
+        if (mobileCheckbox) {
+            mobileCheckbox.checked = state.instantOnly;
+        }
+
+        if (desktopBtn) {
+            if (state.instantOnly) {
+                desktopBtn.className = 'px-2.5 py-2.5 rounded-xl text-xs font-bold transition-all border border-[#007A5E] bg-[#ECFDF5] dark:bg-emerald-950/40 text-[#007A5E] dark:text-emerald-400 flex items-center gap-1 shadow-sm font-sans';
+            } else {
+                desktopBtn.className = 'px-2.5 py-2.5 rounded-xl text-xs font-bold transition-all border border-[#ECECEE] dark:border-zinc-800 bg-[#F7F8F9] dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 hover:border-[#007A5E] hover:text-[#007A5E] dark:hover:text-emerald-400 flex items-center gap-1 shadow-2xs font-sans';
+            }
+        }
+
+        if (instantPill) {
+            if (state.instantOnly) {
+                instantPill.className = 'px-4 py-2 rounded-full text-xs font-bold transition-all border border-[#007A5E] bg-[#007A5E] text-white shadow-sm flex items-center gap-1.5 active:scale-95 font-sans';
+            } else {
+                instantPill.className = 'px-4 py-2 rounded-full text-xs font-bold transition-all border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 hover:border-[#007A5E] hover:text-[#007A5E] dark:hover:text-emerald-400 shadow-xs flex items-center gap-1.5 active:scale-95 font-sans';
+            }
+        }
+
+        const mSummaryGuests = document.getElementById('m-summary-guests-val');
+        if (mSummaryGuests) {
+            const instantPart = state.instantOnly ? ' • ⚡ آنی' : '';
+            mSummaryGuests.textContent = `${toPersianNum(state.guests)} نفر${instantPart}`;
         }
     }
 
@@ -1636,9 +2127,11 @@
         const dLabel = document.getElementById('desktop-dest-label');
         const mPill = document.getElementById('mobile-pill-dest');
         const dHint = document.getElementById('desktop-dest-selected-hint');
+        const mSummaryDest = document.getElementById('m-summary-dest-val');
         if (dLabel) dLabel.textContent = label;
         if (mPill) mPill.textContent = destKey === 'all' ? 'جستجو در استان و شهر مقصد...' : `مقصد: ${label}`;
         if (dHint) dHint.textContent = `مقصد: ${label}`;
+        if (mSummaryDest) mSummaryDest.textContent = label;
 
         // Sync visual active styling on all destination buttons
         document.querySelectorAll('[data-dest-key]').forEach(btn => {
@@ -1667,9 +2160,14 @@
         const dGuests = document.getElementById('desktop-guests-label');
         const mGuests = document.getElementById('mobile-sheet-guests');
         const mSub = document.getElementById('mobile-pill-sub');
+        const mSummaryGuests = document.getElementById('m-summary-guests-val');
         if (dGuests) dGuests.textContent = `${pCount} نفر`;
         if (mGuests) mGuests.textContent = pCount;
         if (mSub) mSub.textContent = `${toPersianNum(state.startDay)} تا ${toPersianNum(state.endDay)} ${currentJalaliMonthName} • ${pCount} نفر`;
+        if (mSummaryGuests) {
+            const instantPart = state.instantOnly ? ' • ⚡ آنی' : '';
+            mSummaryGuests.textContent = `${pCount} نفر${instantPart}`;
+        }
         // Search values do not live-filter without clicking the search button
     }
 
@@ -1682,71 +2180,171 @@
     }
 
     function updateDateLabelsAndSummary() {
-        const nights = Math.max(1, state.endDay - state.startDay);
-        const pStart = toPersianNum(state.startDay);
-        const pEnd = toPersianNum(state.endDay);
+        const absStart = getAbsoluteDay(state.startMonthIndex, state.startDay);
+        const absEnd = getAbsoluteDay(state.endMonthIndex, state.endDay);
+        const nights = Math.max(1, absEnd - absStart);
         const pNights = toPersianNum(nights);
-        const summary = `${pStart} تا ${pEnd} ${currentJalaliMonthName} (${pNights} شب)`;
+
+        const startMonth = CALENDAR_MONTHS[state.startMonthIndex] || CALENDAR_MONTHS[0];
+        const endMonth = CALENDAR_MONTHS[state.endMonthIndex] || CALENDAR_MONTHS[0];
+
+        const startStr = `${toPersianNum(state.startDay)} ${startMonth.name}`;
+        const endStr = `${toPersianNum(state.endDay)} ${endMonth.name}`;
+        const summary = (state.startMonthIndex === state.endMonthIndex)
+            ? `${toPersianNum(state.startDay)} تا ${toPersianNum(state.endDay)} ${startMonth.name} (${pNights} شب)`
+            : `${startStr} تا ${endStr} (${pNights} شب)`;
+        const summaryShort = (state.startMonthIndex === state.endMonthIndex)
+            ? `${toPersianNum(state.startDay)} تا ${toPersianNum(state.endDay)} ${startMonth.name}`
+            : `${startStr} تا ${endStr}`;
 
         const dLabel = document.getElementById('desktop-date-label');
         const mSummary = document.getElementById('mobile-calendar-summary');
+        const mSummaryDate = document.getElementById('m-summary-date-val');
         const mSub = document.getElementById('mobile-pill-sub');
         const dNights = document.getElementById('desktop-nights-count');
         const mNights = document.getElementById('mobile-nights-count');
 
         if (dLabel) dLabel.textContent = summary;
-        if (mSummary) mSummary.textContent = `${pStart} تا ${pEnd} ${currentJalaliMonthName} (${pNights} شب)`;
-        if (mSub) mSub.textContent = `${pStart} تا ${pEnd} ${currentJalaliMonthName} • ${toPersianNum(state.guests)} نفر`;
+        if (mSummary) mSummary.textContent = summary;
+        if (mSummaryDate) mSummaryDate.textContent = summaryShort;
+        if (mSub) mSub.textContent = `${summaryShort} • ${toPersianNum(state.guests)} نفر`;
         if (dNights) dNights.textContent = pNights;
         if (mNights) mNights.textContent = pNights;
 
-        // Update Check-in & Check-out tabs UI in desktop & mobile
-        ['desktop', 'mobile'].forEach(ctx => {
-            const inBtn = document.getElementById(`${ctx}-checkin-tab-btn`);
-            const outBtn = document.getElementById(`${ctx}-checkout-tab-btn`);
-            const inVal = document.getElementById(`${ctx}-checkin-val`);
-            const outVal = document.getElementById(`${ctx}-checkout-val`);
-            const inDot = document.getElementById(`${ctx}-checkin-dot`);
-            const outDot = document.getElementById(`${ctx}-checkout-dot`);
-            const inBadge = document.getElementById(`${ctx}-checkin-badge`);
-            const outBadge = document.getElementById(`${ctx}-checkout-badge`);
-            const inStatus = document.getElementById(`${ctx}-checkin-status`);
-            const outStatus = document.getElementById(`${ctx}-checkout-status`);
+        // Desktop checkin & checkout tabs UI
+        const inBtn = document.getElementById('desktop-checkin-tab-btn');
+        const outBtn = document.getElementById('desktop-checkout-tab-btn');
+        const inVal = document.getElementById('desktop-checkin-val');
+        const outVal = document.getElementById('desktop-checkout-val');
+        const inDot = document.getElementById('desktop-checkin-dot');
+        const outDot = document.getElementById('desktop-checkout-dot');
+        const inBadge = document.getElementById('desktop-checkin-badge');
+        const outBadge = document.getElementById('desktop-checkout-badge');
+        const inStatus = document.getElementById('desktop-checkin-status');
+        const outStatus = document.getElementById('desktop-checkout-status');
 
-            if (inVal) inVal.textContent = `${pStart} ${currentJalaliMonthName}`;
-            if (outVal) outVal.textContent = `${pEnd} ${currentJalaliMonthName}`;
-            if (inStatus) inStatus.textContent = 'تاریخ ورود';
-            if (outStatus) outStatus.textContent = 'تاریخ خروج';
+        if (inVal) inVal.textContent = startStr;
+        if (outVal) outVal.textContent = endStr;
+        if (inStatus) inStatus.textContent = 'تاریخ ورود';
+        if (outStatus) outStatus.textContent = 'تاریخ خروج';
 
-            const activeCls = 'p-3 rounded-2xl border-2 border-[#007A5E] dark:border-emerald-500 bg-white dark:bg-zinc-800/90 text-right transition-all flex flex-col justify-between min-h-[72px]';
-            const inactiveCls = 'p-3 rounded-2xl border border-[#ECECEE] dark:border-zinc-800 bg-[#F7F8F9] dark:bg-zinc-900/60 text-right hover:border-zinc-300 dark:hover:border-zinc-700 transition-all flex flex-col justify-between min-h-[72px]';
+        const activeCls = 'p-3 rounded-2xl border-2 border-[#007A5E] dark:border-emerald-500 bg-white dark:bg-zinc-800/90 text-right transition-all flex flex-col justify-between min-h-[72px]';
+        const inactiveCls = 'p-3 rounded-2xl border border-[#ECECEE] dark:border-zinc-800 bg-[#F7F8F9] dark:bg-zinc-900/60 text-right hover:border-zinc-300 dark:hover:border-zinc-700 transition-all flex flex-col justify-between min-h-[72px]';
 
-            if (inBtn && outBtn) {
-                if (dateSelectionStep === 'start') {
-                    inBtn.className = activeCls;
-                    outBtn.className = inactiveCls;
-                    if (inDot) inDot.classList.remove('hidden');
-                    if (outDot) outDot.classList.add('hidden');
-                    if (inBadge) inBadge.classList.remove('hidden');
-                    if (outBadge) outBadge.classList.add('hidden');
-                    if (inStatus) inStatus.className = 'text-[11px] font-bold text-[#007A5E] dark:text-emerald-400';
-                    if (outStatus) outStatus.className = 'text-[11px] font-medium text-zinc-500 dark:text-zinc-400';
-                    if (inVal) inVal.className = 'text-sm font-black text-[#18181B] dark:text-zinc-100 mt-2.5 block tracking-tight';
-                    if (outVal) outVal.className = 'text-sm font-bold text-zinc-700 dark:text-zinc-300 mt-2.5 block tracking-tight';
-                } else {
-                    inBtn.className = inactiveCls;
-                    outBtn.className = activeCls;
-                    if (inDot) inDot.classList.add('hidden');
-                    if (outDot) outDot.classList.remove('hidden');
-                    if (inBadge) inBadge.classList.add('hidden');
-                    if (outBadge) outBadge.classList.remove('hidden');
-                    if (inStatus) inStatus.className = 'text-[11px] font-medium text-zinc-500 dark:text-zinc-400';
-                    if (outStatus) outStatus.className = 'text-[11px] font-bold text-[#007A5E] dark:text-emerald-400';
-                    if (inVal) inVal.className = 'text-sm font-bold text-zinc-700 dark:text-zinc-300 mt-2.5 block tracking-tight';
-                    if (outVal) outVal.className = 'text-sm font-black text-[#18181B] dark:text-zinc-100 mt-2.5 block tracking-tight';
-                }
+        if (inBtn && outBtn) {
+            if (dateSelectionStep === 'start') {
+                inBtn.className = activeCls;
+                outBtn.className = inactiveCls;
+                if (inDot) inDot.classList.remove('hidden');
+                if (outDot) outDot.classList.add('hidden');
+                if (inBadge) inBadge.classList.remove('hidden');
+                if (outBadge) outBadge.classList.add('hidden');
+                if (inStatus) inStatus.className = 'text-[11px] font-bold text-[#007A5E] dark:text-emerald-400';
+                if (outStatus) outStatus.className = 'text-[11px] font-medium text-zinc-500 dark:text-zinc-400';
+                if (inVal) inVal.className = 'text-sm font-black text-[#18181B] dark:text-zinc-100 mt-2.5 block tracking-tight font-sans';
+                if (outVal) outVal.className = 'text-sm font-bold text-zinc-700 dark:text-zinc-300 mt-2.5 block tracking-tight font-sans';
+            } else {
+                inBtn.className = inactiveCls;
+                outBtn.className = activeCls;
+                if (inDot) inDot.classList.add('hidden');
+                if (outDot) outDot.classList.remove('hidden');
+                if (inBadge) inBadge.classList.add('hidden');
+                if (outBadge) outBadge.classList.remove('hidden');
+                if (inStatus) inStatus.className = 'text-[11px] font-medium text-zinc-500 dark:text-zinc-400';
+                if (outStatus) outStatus.className = 'text-[11px] font-bold text-[#007A5E] dark:text-emerald-400';
+                if (inVal) inVal.className = 'text-sm font-bold text-zinc-700 dark:text-zinc-300 mt-2.5 block tracking-tight font-sans';
+                if (outVal) outVal.className = 'text-sm font-black text-[#18181B] dark:text-zinc-100 mt-2.5 block tracking-tight font-sans';
+            }
+        }
+
+        // Mobile dual switch tabs
+        const mInBtn = document.getElementById('mobile-checkin-tab-btn');
+        const mOutBtn = document.getElementById('mobile-checkout-tab-btn');
+        const mInVal = document.getElementById('mobile-checkin-val');
+        const mOutVal = document.getElementById('mobile-checkout-val');
+        const mInStatus = document.getElementById('mobile-checkin-status');
+        const mOutStatus = document.getElementById('mobile-checkout-status');
+        const mInDot = document.getElementById('mobile-checkin-dot');
+        const mOutDot = document.getElementById('mobile-checkout-dot');
+
+        if (mInVal) mInVal.textContent = startStr;
+        if (mOutVal) mOutVal.textContent = endStr;
+
+        if (mInBtn && mOutBtn) {
+            if (dateSelectionStep === 'start') {
+                mInBtn.className = 'p-3 rounded-2xl text-right transition-all bg-white dark:bg-zinc-900 border-2 border-[#007A5E] dark:border-emerald-500 shadow-xs font-sans';
+                mOutBtn.className = 'p-3 rounded-2xl text-right transition-all bg-[#F7F8F9] dark:bg-zinc-800/60 border border-zinc-200/80 dark:border-zinc-700/80 hover:border-zinc-300 font-sans';
+                if (mInStatus) mInStatus.className = 'text-[10px] text-[#007A5E] dark:text-emerald-400 font-bold font-sans';
+                if (mOutStatus) mOutStatus.className = 'text-[10px] text-zinc-500 dark:text-zinc-400 font-medium font-sans';
+                if (mInDot) mInDot.classList.remove('hidden');
+                if (mOutDot) mOutDot.classList.add('hidden');
+            } else {
+                mInBtn.className = 'p-3 rounded-2xl text-right transition-all bg-[#F7F8F9] dark:bg-zinc-800/60 border border-zinc-200/80 dark:border-zinc-700/80 hover:border-zinc-300 font-sans';
+                mOutBtn.className = 'p-3 rounded-2xl text-right transition-all bg-white dark:bg-zinc-900 border-2 border-[#007A5E] dark:border-emerald-500 shadow-xs font-sans';
+                if (mInStatus) mInStatus.className = 'text-[10px] text-zinc-500 dark:text-zinc-400 font-medium font-sans';
+                if (mOutStatus) mOutStatus.className = 'text-[10px] text-[#007A5E] dark:text-emerald-400 font-bold font-sans';
+                if (mInDot) mInDot.classList.add('hidden');
+                if (mOutDot) mOutDot.classList.remove('hidden');
+            }
+        }
+
+        // Sync quick stay duration chips active state
+        document.querySelectorAll('.quick-stay-chip').forEach(chip => {
+            const chipNights = parseInt(chip.getAttribute('data-nights'), 10);
+            if (chipNights === nights) {
+                chip.className = 'quick-stay-chip px-3 py-1.5 rounded-xl border border-[#007A5E] bg-[#ECFDF5] dark:bg-emerald-950/40 text-[#007A5E] dark:text-emerald-400 text-[11px] font-black shrink-0 active:scale-95 transition-all font-sans';
+            } else {
+                chip.className = 'quick-stay-chip px-3 py-1.5 rounded-xl border border-zinc-200 dark:border-zinc-700/80 bg-[#F7F8F9] dark:bg-zinc-800/80 text-zinc-700 dark:text-zinc-300 text-[11px] font-bold shrink-0 hover:border-[#007A5E] hover:text-[#007A5E] active:scale-95 transition-all font-sans';
             }
         });
+    }
+
+    function changeCalendarMonth(direction) {
+        const newIdx = activeCalendarMonthIndex + direction;
+        if (newIdx < 0 || newIdx >= CALENDAR_MONTHS.length) return;
+        activeCalendarMonthIndex = newIdx;
+        updateMonthNavigationUI();
+        renderJalaliCalendars();
+    }
+
+    function updateMonthNavigationUI() {
+        const curMonth = CALENDAR_MONTHS[activeCalendarMonthIndex] || CALENDAR_MONTHS[0];
+        const monthTitle = `${curMonth.name} ${toPersianNum(curMonth.year)}`;
+
+        document.querySelectorAll('.cal-month-title').forEach(el => {
+            el.textContent = monthTitle;
+        });
+
+        document.querySelectorAll('.cal-prev-btn').forEach(btn => {
+            btn.disabled = activeCalendarMonthIndex <= 0;
+        });
+
+        document.querySelectorAll('.cal-next-btn').forEach(btn => {
+            btn.disabled = activeCalendarMonthIndex >= CALENDAR_MONTHS.length - 1;
+        });
+
+        document.querySelectorAll('.cal-month-badge').forEach(badge => {
+            if (activeCalendarMonthIndex === 0) {
+                badge.classList.remove('hidden');
+                badge.textContent = 'ماه جاری';
+            } else {
+                badge.classList.add('hidden');
+            }
+        });
+    }
+
+    function setQuickDaysRange(nights) {
+        const todayAbs = getAbsoluteDay(0, currentJalaliDay);
+        state.startMonthIndex = 0;
+        state.startDay = currentJalaliDay;
+        const targetEnd = getDateFromAbsoluteDay(todayAbs + nights);
+        state.endMonthIndex = targetEnd.monthIndex;
+        state.endDay = targetEnd.day;
+        dateSelectionStep = 'end';
+        activeCalendarMonthIndex = 0;
+        updateMonthNavigationUI();
+        updateDateLabelsAndSummary();
+        renderJalaliCalendars();
     }
 
     function resetAllFilters() {
@@ -1754,26 +2352,81 @@
         state.city = 'all';
         state.cityLabel = 'همه مقاصد';
         state.category = 'all';
+        state.keyword = '';
         state.guests = 2;
+        state.startMonthIndex = 0;
         state.startDay = currentJalaliDay;
+        state.endMonthIndex = 0;
         state.endDay = Math.min(totalMonthDays, currentJalaliDay + 3);
         state.instantOnly = false;
         dateSelectionStep = 'start';
+        activeCalendarMonthIndex = 0;
+        updateMonthNavigationUI();
+
+        const dInput = document.getElementById('dest-search-input');
+        const mInput = document.getElementById('mobile-dest-search-input');
+        if (dInput) dInput.value = '';
+        if (mInput) mInput.value = '';
 
         const dLabel = document.getElementById('desktop-dest-label');
         const mPill = document.getElementById('mobile-pill-dest');
         const dHint = document.getElementById('desktop-dest-selected-hint');
+        const mSummaryDest = document.getElementById('m-summary-dest-val');
         if (dLabel) dLabel.textContent = 'همه مقاصد';
-        if (mPill) mPill.textContent = 'جستجو در استان و شهر مقصد...';
+        if (mPill) mPill.textContent = 'جستجو بر اساس مقصد، عنوان یا کد اقامتگاه...';
         if (dHint) dHint.textContent = 'مقصد: همه مقاصد';
+        if (mSummaryDest) mSummaryDest.textContent = 'همه مقاصد';
+        setMobileSearchSection('dest');
 
+        // Clear search live results container if open
+        ['desktop', 'mobile'].forEach(ctx => {
+            const clearBtn = document.getElementById(ctx === 'desktop' ? 'dest-search-clear' : 'mobile-dest-search-clear');
+            if (clearBtn) clearBtn.classList.add('hidden');
+            const res = document.getElementById(ctx === 'desktop' ? 'desktop-search-results' : 'mobile-search-results');
+            if (res) res.classList.add('hidden');
+        });
+
+        // Reset visual active styling on all destination buttons
+        document.querySelectorAll('[data-dest-key]').forEach(btn => {
+            const key = btn.getAttribute('data-dest-key');
+            if (key === 'all') {
+                btn.classList.add('border-[#007A5E]', 'dark:border-emerald-500', 'bg-[#ECFDF5]', 'dark:bg-emerald-950/40', 'text-[#007A5E]', 'dark:text-emerald-400');
+            } else {
+                btn.classList.remove('border-[#007A5E]', 'dark:border-emerald-500', 'bg-[#ECFDF5]', 'dark:bg-emerald-950/40', 'text-[#007A5E]', 'dark:text-emerald-400');
+            }
+        });
+
+        // Reset guest count UI in mobile sheet and desktop
+        const mGuests = document.getElementById('mobile-sheet-guests');
+        if (mGuests) mGuests.textContent = toPersianNum(2);
+        const dGuests = document.getElementById('desktop-guests-label');
+        if (dGuests) dGuests.textContent = '۲ نفر';
+
+        syncInstantUI();
         updateDateLabelsAndSummary();
         renderJalaliCalendars();
         filterByCategory('all');
+        simulateWireLoading(() => renderListings());
+        showToast('تمامی فیلترها پاکسازی شدند');
     }
 
     function triggerLivewireSearch() {
         closeAllPopups();
+        closeMobileSheets();
+
+        const dInput = document.getElementById('dest-search-input');
+        const mInput = document.getElementById('mobile-dest-search-input');
+        const keywordVal = (dInput && dInput.value.trim()) || (mInput && mInput.value.trim()) || '';
+        if (keywordVal) {
+            state.keyword = keywordVal;
+            state.city = 'all';
+            state.province = 'all';
+            const dLabel = document.getElementById('desktop-dest-label');
+            const mPill = document.getElementById('mobile-pill-dest');
+            if (dLabel) dLabel.textContent = `جستجو: ${toPersianNum(state.keyword)}`;
+            if (mPill) mPill.textContent = `جستجو: ${toPersianNum(state.keyword)}`;
+        }
+
         simulateWireLoading(() => renderListings());
     }
 
@@ -1793,22 +2446,38 @@
     }
 
     function renderJalaliCalendars() {
+        updateMonthNavigationUI();
+        const curMonth = CALENDAR_MONTHS[activeCalendarMonthIndex] || CALENDAR_MONTHS[0];
+        const monthDaysCount = curMonth.daysCount;
+        const monthFirstDay = curMonth.firstDayOfWeek;
+        const isFirstMonth = activeCalendarMonthIndex === 0;
+
+        const absStart = getAbsoluteDay(state.startMonthIndex, state.startDay);
+        const absEnd = getAbsoluteDay(state.endMonthIndex, state.endDay);
+
         ['desktop-jalali-grid', 'mobile-jalali-grid'].forEach(gridId => {
             const grid = document.getElementById(gridId);
             if (!grid) return;
             let html = '';
-            for (let d = 1; d <= totalMonthDays; d++) {
-                const isPast = d < currentJalaliDay;
-                const isToday = d === currentJalaliDay;
-                const isCheckIn = d === state.startDay;
-                const isCheckOut = d === state.endDay;
-                const inRange = d > state.startDay && d < state.endDay;
+
+            // Add blank cells for correct Jalali weekday offset alignment
+            for (let b = 0; b < monthFirstDay; b++) {
+                html += '<div class="h-9 w-full"></div>';
+            }
+
+            for (let d = 1; d <= monthDaysCount; d++) {
+                const currentDayAbs = getAbsoluteDay(activeCalendarMonthIndex, d);
+                const isPast = isFirstMonth && (d < currentJalaliDay);
+                const isToday = isFirstMonth && (d === currentJalaliDay);
+                const isCheckIn = (currentDayAbs === absStart);
+                const isCheckOut = (currentDayAbs === absEnd);
+                const inRange = (currentDayAbs > absStart && currentDayAbs < absEnd);
 
                 if (isPast) {
                     html += `
                         <button type="button" disabled
                                 title="امکان انتخاب تاریخ در گذشته وجود ندارد"
-                                class="py-2 rounded-lg font-medium text-[11px] text-zinc-300 dark:text-zinc-600 line-through cursor-not-allowed select-none opacity-40">
+                                class="h-9 w-full rounded-xl text-xs font-normal text-zinc-300 dark:text-zinc-600 select-none opacity-30 cursor-not-allowed flex items-center justify-center font-sans">
                             ${toPersianNum(d)}
                         </button>
                     `;
@@ -1816,7 +2485,7 @@
                     html += `
                         <button type="button" onclick="selectCalendarDay(${d})"
                                 title="تاریخ ورود و خروج"
-                                class="py-2 rounded-xl font-black text-xs bg-[#007A5E] text-white shadow-xs transition-transform active:scale-95">
+                                class="h-9 w-full rounded-xl font-black text-xs bg-[#007A5E] text-white shadow-sm flex items-center justify-center transition-transform active:scale-95 font-sans z-10 scale-105">
                             ${toPersianNum(d)}
                         </button>
                     `;
@@ -1824,7 +2493,7 @@
                     html += `
                         <button type="button" onclick="selectCalendarDay(${d})"
                                 title="تاریخ ورود"
-                                class="py-2 rounded-r-xl rounded-l-none font-black text-xs bg-[#007A5E] text-white shadow-xs transition-transform active:scale-95">
+                                class="h-9 w-full rounded-xl font-black text-xs bg-[#007A5E] text-white shadow-sm flex items-center justify-center transition-transform active:scale-95 font-sans z-10 scale-105">
                             ${toPersianNum(d)}
                         </button>
                     `;
@@ -1832,21 +2501,22 @@
                     html += `
                         <button type="button" onclick="selectCalendarDay(${d})"
                                 title="تاریخ خروج"
-                                class="py-2 rounded-l-xl rounded-r-none font-black text-xs bg-[#007A5E] text-white shadow-xs transition-transform active:scale-95">
+                                class="h-9 w-full rounded-xl font-black text-xs bg-[#007A5E] text-white shadow-sm flex items-center justify-center transition-transform active:scale-95 font-sans z-10 scale-105">
                             ${toPersianNum(d)}
                         </button>
                     `;
                 } else if (inRange) {
                     html += `
                         <button type="button" onclick="selectCalendarDay(${d})"
-                                class="py-2 rounded-none font-bold text-xs bg-emerald-50 dark:bg-emerald-950/40 text-[#007A5E] dark:text-emerald-300 transition-colors">
+                                class="h-9 w-full rounded-lg font-bold text-xs bg-emerald-50 dark:bg-emerald-950/50 text-[#007A5E] dark:text-emerald-300 flex items-center justify-center transition-colors font-sans">
                             ${toPersianNum(d)}
                         </button>
                     `;
                 } else {
+                    const todayClass = isToday ? 'ring-1.5 ring-[#007A5E]/40 font-black text-[#007A5E] dark:text-emerald-400' : 'font-medium text-[#18181B] dark:text-zinc-200';
                     html += `
                         <button type="button" onclick="selectCalendarDay(${d})"
-                                class="py-2 rounded-xl text-xs font-medium text-[#18181B] dark:text-zinc-200 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 hover:text-[#007A5E] dark:hover:text-emerald-300 transition-colors">
+                                class="h-9 w-full rounded-xl text-xs ${todayClass} hover:bg-emerald-50 dark:hover:bg-emerald-950/40 hover:text-[#007A5E] dark:hover:text-emerald-300 flex items-center justify-center transition-all active:scale-90 font-sans">
                             ${toPersianNum(d)}
                         </button>
                     `;
@@ -1857,26 +2527,40 @@
     }
 
     function selectCalendarDay(day) {
-        // Strict validation: Reject past dates
-        if (day < currentJalaliDay) {
+        // Strict validation: Reject past dates only if in first month (index 0) and day < currentJalaliDay
+        if (activeCalendarMonthIndex === 0 && day < currentJalaliDay) {
             showToast('امکان انتخاب تاریخ در گذشته وجود ندارد');
             return;
         }
 
+        const clickedAbs = getAbsoluteDay(activeCalendarMonthIndex, day);
+        const startAbs = getAbsoluteDay(state.startMonthIndex, state.startDay);
+
         if (dateSelectionStep === 'start') {
-            // User is setting Check-in date: updates startDay and moves to Check-out for next selection
+            // User is setting Check-in date:
+            state.startMonthIndex = activeCalendarMonthIndex;
             state.startDay = day;
-            if (state.endDay <= day) {
-                state.endDay = Math.min(totalMonthDays, day + 1);
+
+            const currentEndAbs = getAbsoluteDay(state.endMonthIndex, state.endDay);
+            if (currentEndAbs <= clickedAbs) {
+                // Automatically set Check-out to next day
+                const nextDay = getDateFromAbsoluteDay(clickedAbs + 1);
+                state.endMonthIndex = nextDay.monthIndex;
+                state.endDay = nextDay.day;
             }
             dateSelectionStep = 'end';
         } else {
-            // User is setting Check-out date: updates endDay and remains on Check-out
-            if (day > state.startDay) {
+            // User is setting Check-out date:
+            if (clickedAbs > startAbs) {
+                state.endMonthIndex = activeCalendarMonthIndex;
                 state.endDay = day;
             } else {
+                // Clicked before or on check-in: reset check-in to this day and set check-out to +1 day
+                state.startMonthIndex = activeCalendarMonthIndex;
                 state.startDay = day;
-                state.endDay = Math.min(totalMonthDays, day + 1);
+                const nextDay = getDateFromAbsoluteDay(clickedAbs + 1);
+                state.endMonthIndex = nextDay.monthIndex;
+                state.endDay = nextDay.day;
             }
             dateSelectionStep = 'end';
         }
@@ -1921,7 +2605,20 @@
         }
     });
 
+    let currentMobileSearchSection = 'dest';
+
+    function setMobileSearchSection(sec) {
+        currentMobileSearchSection = sec;
+        ['dest', 'date'].forEach(s => {
+            const exp = document.getElementById('m-section-' + s + '-expanded');
+            const col = document.getElementById('m-section-' + s + '-collapsed');
+            if (exp) exp.classList.toggle('hidden', s !== sec);
+            if (col) col.classList.toggle('hidden', s === sec);
+        });
+    }
+
     function openMobileSearchSheet() {
+        setMobileSearchSection('dest');
         document.getElementById('mobile-search-sheet').classList.remove('hidden');
     }
 
@@ -1960,6 +2657,7 @@
     }, 1000);
 
     window.addEventListener('DOMContentLoaded', function () {
+        syncInstantUI();
         updateDateLabelsAndSummary();
         renderJalaliCalendars();
         renderListings();

@@ -32,12 +32,12 @@
 
     {{-- Filters Card --}}
     <form action="{{ route('properties.index') }}" method="GET" class="border border-[#ECECEE] dark:border-zinc-800 bg-white dark:bg-zinc-900 rounded-3xl p-5 sm:p-6 shadow-sm space-y-4">
-        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 text-xs">
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-3 text-xs">
             
             {{-- Text Search --}}
             <div class="lg:col-span-2">
-                <label class="block text-[11px] text-zinc-400 font-medium mb-1">جستجو در عنوان یا محله</label>
-                <input type="text" name="search" value="{{ request('search') }}" placeholder="لفور، کلبه، استخر..." class="w-full bg-[#F7F8F9] dark:bg-zinc-800 border border-[#ECECEE] dark:border-zinc-700 focus:border-[#007A5E] rounded-xl px-3.5 py-2.5 text-xs font-bold text-[#18181B] dark:text-zinc-100 outline-none">
+                <label class="block text-[11px] text-zinc-400 font-medium mb-1">جستجو در عنوان یا کد اقامتگاه</label>
+                <input type="text" name="search" value="{{ request('search') }}" placeholder="کد ملک (مثلاً ۱۰۲)، عنوان ویلا..." class="w-full bg-[#F7F8F9] dark:bg-zinc-800 border border-[#ECECEE] dark:border-zinc-700 focus:border-[#007A5E] rounded-xl px-3.5 py-2.5 text-xs font-bold text-[#18181B] dark:text-zinc-100 outline-none">
             </div>
 
             {{-- Province & City Destination --}}
@@ -55,6 +55,15 @@
                             @endforeach
                         </optgroup>
                     @endforeach
+                </select>
+            </div>
+
+            {{-- Instant Booking Filter --}}
+            <div>
+                <label class="block text-[11px] text-zinc-400 font-medium mb-1">رزرو آنی</label>
+                <select name="instant_booking" class="w-full bg-[#F7F8F9] dark:bg-zinc-800 border border-[#ECECEE] dark:border-zinc-700 focus:border-[#007A5E] rounded-xl px-3 py-2.5 text-xs font-bold text-[#18181B] dark:text-zinc-100 outline-none cursor-pointer">
+                    <option value="">همه</option>
+                    <option value="1" {{ request('instant_booking') == '1' ? 'selected' : '' }}>⚡ رزرو قطعی آنی</option>
                 </select>
             </div>
 
