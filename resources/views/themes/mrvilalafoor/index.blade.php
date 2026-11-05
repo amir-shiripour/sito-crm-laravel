@@ -222,8 +222,281 @@
         <!-- ============================================================= -->
         <div id="app-tab-explore" class="block">
 
+            <!-- ============================================================= -->
+            <!-- HERO PROMOTIONAL BANNER CAROUSEL (بالای عنوان)                 -->
+            <!-- ============================================================= -->
+            <section id="hero-banner-section" class="pt-3 sm:pt-6 pb-2 max-w-[1360px] mx-auto px-3 sm:px-6 md:px-8 font-sans">
+                <style>
+                    #hero-slider-track {
+                        scroll-snap-type: x mandatory;
+                        overscroll-behavior-x: contain;
+                        -webkit-overflow-scrolling: touch;
+                    }
+                    .hero-slide {
+                        scroll-snap-align: center;
+                        scroll-snap-stop: always;
+                    }
+                </style>
+                <div class="relative group">
+                    <!-- Carousel Scroll Track with Peek Effect -->
+                    <div id="hero-slider-track"
+                         class="flex gap-3 sm:gap-4 overflow-x-auto scroll-smooth snap-x snap-mandatory no-scrollbar py-1 px-1 select-none font-sans cursor-grab"
+                         style="scrollbar-width: none; -ms-overflow-style: none;">
+
+                        <!-- SLIDE 1: میزبان شوید — ثبت رایگان اقامتگاه (لینک مستقیم به /register) -->
+                        <div class="hero-slide shrink-0 w-[88%] sm:w-[92%] md:w-[94%] snap-center rounded-2xl sm:rounded-3xl overflow-hidden shadow-lg relative bg-gradient-to-l from-[#9A3412] via-[#EA580C] to-[#F59E0B] text-white p-4 sm:p-6 md:p-8 flex items-center justify-between min-h-[170px] sm:min-h-[200px] md:min-h-[225px] font-sans transition-transform duration-300"
+                             data-slide-index="0">
+                            <div class="absolute inset-0 bg-[radial-gradient(circle_at_25%_50%,rgba(255,255,255,0.22),transparent_65%)] pointer-events-none"></div>
+
+                            <!-- Right Side Copy -->
+                            <div class="relative z-10 flex-1 min-w-0 pr-1 sm:pr-2">
+                                <span class="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-0.5 sm:py-1 rounded-full bg-white/20 backdrop-blur-md text-white text-[10px] sm:text-xs font-bold border border-white/25 shadow-xs mb-1.5 sm:mb-2.5 font-sans">
+                                    <span>🤝</span>
+                                    <span>همکاری با صاحبان اقامتگاه</span>
+                                </span>
+                                <h3 class="text-lg sm:text-2xl md:text-3xl lg:text-4xl font-black text-white tracking-tight leading-tight font-sans drop-shadow-sm">
+                                    میزبان شوید — ثبت رایگان اقامتگاه
+                                </h3>
+                                <p class="text-xs sm:text-sm md:text-base text-white/95 font-bold leading-relaxed mt-1 sm:mt-2 font-sans">
+                                    ویلا و کلبه خود را ثبت کنید و به شبکه سراسری گردشگران بپیوندید
+                                </p>
+                                <p class="text-[11px] sm:text-xs text-white/80 font-medium mt-0.5 sm:mt-1 hidden sm:block font-sans">
+                                    کمیسیون استثنایی، تسویه منظم و سیستم تقویم هوشمند رزرواسیون
+                                </p>
+                                <a href="{{ url('/register') }}"
+                                   class="mt-3 sm:mt-4 px-3.5 sm:px-5 py-1.5 sm:py-2.5 rounded-xl bg-white text-[#EA580C] hover:bg-zinc-50 text-xs sm:text-sm font-black transition-transform active:scale-95 shadow-md inline-flex items-center gap-1.5 font-sans">
+                                    <span>ثبت اقامتگاه و میزبانی</span>
+                                    <svg class="w-3.5 h-3.5 sm:w-4 sm:h-4 rtl:rotate-180" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"/></svg>
+                                </a>
+                            </div>
+
+                            <!-- Left Side Graphic: 3D Host shield & gold coin tokens -->
+                            <div class="relative w-36 sm:w-56 md:w-68 lg:w-76 shrink-0 flex items-center justify-center select-none pointer-events-none mr-2 sm:mr-4">
+                                <svg viewBox="0 0 340 220" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-full h-auto drop-shadow-2xl">
+                                    <defs>
+                                        <linearGradient id="hostGold" x1="0%" y1="0%" x2="100%" y2="100%">
+                                            <stop offset="0%" stop-color="#FDE047"/>
+                                            <stop offset="100%" stop-color="#D97706"/>
+                                        </linearGradient>
+                                        <linearGradient id="houseGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                            <stop offset="0%" stop-color="#FFFBEB"/>
+                                            <stop offset="100%" stop-color="#FDE68A"/>
+                                        </linearGradient>
+                                    </defs>
+
+                                    <!-- House Model -->
+                                    <g transform="translate(100, 35)">
+                                        <path d="M 60 10 L 10 50 L 25 50 L 25 110 L 95 110 L 95 50 L 110 50 Z" fill="url(#houseGrad)" stroke="#FFFFFF" stroke-width="2.5" />
+                                        <rect x="48" y="70" width="24" height="40" rx="3" fill="#B45309" />
+                                        <circle cx="66" cy="90" r="2" fill="#FDE68A" />
+                                        <polygon points="60,10 10,50 18,53 60,18 102,53 110,50" fill="#EA580C" />
+                                        <!-- Superhost Heart Badge -->
+                                        <circle cx="60" cy="40" r="12" fill="#EF4444" />
+                                        <path d="M 60 45 C 60 45, 53 40, 53 37 C 53 34.5, 55 33, 57 33 C 58.5 33, 60 34.5, 60 34.5 C 60 34.5, 61.5 33, 63 33 C 65 33, 67 34.5, 67 37 C 67 40, 60 45, 60 45 Z" fill="#FFFFFF" />
+                                    </g>
+
+                                    <!-- Stacks of Golden Coins -->
+                                    <g transform="translate(60, 125)">
+                                        <ellipse cx="30" cy="45" rx="22" ry="9" fill="url(#hostGold)" stroke="#FFFFFF" stroke-width="1.2" />
+                                        <ellipse cx="30" cy="40" rx="22" ry="9" fill="url(#hostGold)" stroke="#FFFFFF" stroke-width="1.2" />
+                                        <ellipse cx="30" cy="35" rx="22" ry="9" fill="url(#hostGold)" stroke="#FFFFFF" stroke-width="1.2" />
+                                        <ellipse cx="65" cy="50" rx="20" ry="8" fill="url(#hostGold)" stroke="#FFFFFF" stroke-width="1.2" />
+                                        <ellipse cx="65" cy="45" rx="20" ry="8" fill="url(#hostGold)" stroke="#FFFFFF" stroke-width="1.2" />
+                                        <ellipse cx="65" cy="40" rx="20" ry="8" fill="url(#hostGold)" stroke="#FFFFFF" stroke-width="1.2" />
+                                        <ellipse cx="65" cy="35" rx="20" ry="8" fill="url(#hostGold)" stroke="#FFFFFF" stroke-width="1.2" />
+                                        <ellipse cx="65" cy="30" rx="20" ry="8" fill="url(#hostGold)" stroke="#FFFFFF" stroke-width="1.2" />
+                                    </g>
+
+                                    <!-- Growth Trend Arrow -->
+                                    <path d="M 40 120 Q 90 95 150 70 L 150 82 L 158 65 L 140 68 L 147 75" fill="none" stroke="#22C55E" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+                                </svg>
+                            </div>
+                        </div>
+
+                        <!-- SLIDE 2: تا ۳۵٪ تخفیف کلبه‌های جنگلی لفور -->
+                        <div class="hero-slide shrink-0 w-[88%] sm:w-[92%] md:w-[94%] snap-center rounded-2xl sm:rounded-3xl overflow-hidden shadow-lg relative bg-gradient-to-l from-[#064E3B] via-[#007A5E] to-[#0D9488] text-white p-4 sm:p-6 md:p-8 flex items-center justify-between min-h-[170px] sm:min-h-[200px] md:min-h-[225px] font-sans transition-transform duration-300"
+                             data-slide-index="1">
+                            <div class="absolute inset-0 bg-[radial-gradient(circle_at_25%_50%,rgba(255,255,255,0.2),transparent_65%)] pointer-events-none"></div>
+
+                            <!-- Right Side Copy -->
+                            <div class="relative z-10 flex-1 min-w-0 pr-1 sm:pr-2">
+                                <span class="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-0.5 sm:py-1 rounded-full bg-white/20 backdrop-blur-md text-white text-[10px] sm:text-xs font-bold border border-white/25 shadow-xs mb-1.5 sm:mb-2.5 font-sans">
+                                    <span>🌲</span>
+                                    <span>تخفیف ویژه اقامت پاییزی</span>
+                                </span>
+                                <h3 class="text-lg sm:text-2xl md:text-3xl lg:text-4xl font-black text-white tracking-tight leading-tight font-sans drop-shadow-sm">
+                                    تا ۳۵٪ تخفیف کلبه‌های جنگلی
+                                </h3>
+                                <p class="text-xs sm:text-sm md:text-base text-white/95 font-bold leading-relaxed mt-1 sm:mt-2 font-sans">
+                                    اقامت رویایی در دل طبیعت مه‌آلود لفور و سد البرز
+                                </p>
+                                <p class="text-[11px] sm:text-xs text-white/80 font-medium mt-0.5 sm:mt-1 hidden sm:block font-sans">
+                                    کلبه‌های سوئیسی، استخردار و دوبلکس چوبی با ضمانت تمیزی
+                                </p>
+                                <button type="button"
+                                        onclick="filterByCategory('cottage'); document.getElementById('sections-wrapper')?.scrollIntoView({behavior: 'smooth'})"
+                                        class="mt-3 sm:mt-4 px-3.5 sm:px-5 py-1.5 sm:py-2.5 rounded-xl bg-white text-[#007A5E] hover:bg-zinc-50 text-xs sm:text-sm font-black transition-transform active:scale-95 shadow-md inline-flex items-center gap-1.5 font-sans">
+                                    <span>مشاهده کلبه‌های تخفیف‌دار</span>
+                                    <svg class="w-3.5 h-3.5 sm:w-4 sm:h-4 rtl:rotate-180" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"/></svg>
+                                </button>
+                            </div>
+
+                            <!-- Left Side Graphic: 3D Swiss Cottage in Forest -->
+                            <div class="relative w-36 sm:w-56 md:w-68 lg:w-76 shrink-0 flex items-center justify-center select-none pointer-events-none mr-2 sm:mr-4">
+                                <svg viewBox="0 0 340 220" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-full h-auto drop-shadow-2xl">
+                                    <defs>
+                                        <linearGradient id="cabinWood" x1="0%" y1="0%" x2="100%" y2="100%">
+                                            <stop offset="0%" stop-color="#F59E0B"/>
+                                            <stop offset="100%" stop-color="#78350F"/>
+                                        </linearGradient>
+                                        <linearGradient id="pineGrad1" x1="0%" y1="0%" x2="0%" y2="100%">
+                                            <stop offset="0%" stop-color="#10B981"/>
+                                            <stop offset="100%" stop-color="#064E3B"/>
+                                        </linearGradient>
+                                        <linearGradient id="pineGrad2" x1="0%" y1="0%" x2="0%" y2="100%">
+                                            <stop offset="0%" stop-color="#34D399"/>
+                                            <stop offset="100%" stop-color="#047857"/>
+                                        </linearGradient>
+                                        <linearGradient id="windowGlow" x1="0%" y1="0%" x2="0%" y2="100%">
+                                            <stop offset="0%" stop-color="#FEF08A"/>
+                                            <stop offset="100%" stop-color="#F59E0B"/>
+                                        </linearGradient>
+                                    </defs>
+
+                                    <!-- Pine Trees in Background -->
+                                    <path d="M 40 180 L 70 90 L 100 180 Z" fill="url(#pineGrad1)" opacity="0.6" />
+                                    <path d="M 230 180 L 265 80 L 300 180 Z" fill="url(#pineGrad1)" opacity="0.5" />
+                                    <path d="M 25 185 L 55 110 L 85 185 Z" fill="url(#pineGrad2)" opacity="0.8" />
+                                    <path d="M 250 185 L 285 105 L 320 185 Z" fill="url(#pineGrad2)" opacity="0.7" />
+
+                                    <!-- Ground Curve -->
+                                    <ellipse cx="170" cy="195" rx="150" ry="25" fill="#064E3B" opacity="0.4" />
+
+                                    <!-- A-Frame Cottage Structure -->
+                                    <g transform="translate(95, 28)">
+                                        <polygon points="75,8 5,160 145,160" fill="url(#cabinWood)" stroke="#FDE68A" stroke-width="2" />
+                                        <line x1="20" y1="130" x2="130" y2="130" stroke="#78350F" stroke-width="1.5" />
+                                        <line x1="32" y1="100" x2="118" y2="100" stroke="#78350F" stroke-width="1.5" />
+                                        <line x1="48" y1="70" x2="102" y2="70" stroke="#78350F" stroke-width="1.5" />
+
+                                        <!-- Glowing Triangle Window Front -->
+                                        <polygon points="75,32 25,155 125,155" fill="url(#windowGlow)" opacity="0.9" />
+                                        <line x1="75" y1="32" x2="75" y2="155" stroke="#78350F" stroke-width="2.5" />
+                                        <line x1="38" y1="125" x2="112" y2="125" stroke="#78350F" stroke-width="2" />
+                                        <line x1="52" y1="95" x2="98" y2="95" stroke="#78350F" stroke-width="2" />
+
+                                        <rect x="0" y="157" width="150" height="10" rx="3" fill="#92400E" stroke="#FDE68A" stroke-width="1" />
+                                        <!-- Chimney & Smoke -->
+                                        <rect x="98" y="18" width="14" height="35" rx="2" fill="#78350F" />
+                                        <circle cx="105" cy="10" r="5" fill="#FFFFFF" opacity="0.4" />
+                                        <circle cx="112" cy="3" r="7" fill="#FFFFFF" opacity="0.3" />
+                                    </g>
+
+                                    <!-- Campfire Flames -->
+                                    <g transform="translate(58, 160)">
+                                        <ellipse cx="25" cy="22" rx="15" ry="6" fill="#451A03" />
+                                        <path d="M 18 20 Q 25 2 32 20 Z" fill="#F97316" />
+                                        <path d="M 21 20 Q 25 8 29 20 Z" fill="#FDE047" />
+                                    </g>
+                                </svg>
+                            </div>
+                        </div>
+
+                        <!-- SLIDE 3: رزرو آنی و تحویل فوری کلید -->
+                        <div class="hero-slide shrink-0 w-[88%] sm:w-[92%] md:w-[94%] snap-center rounded-2xl sm:rounded-3xl overflow-hidden shadow-lg relative bg-gradient-to-l from-[#3730A3] via-[#4F46E5] to-[#7C3AED] text-white p-4 sm:p-6 md:p-8 flex items-center justify-between min-h-[170px] sm:min-h-[200px] md:min-h-[225px] font-sans transition-transform duration-300"
+                             data-slide-index="2">
+                            <div class="absolute inset-0 bg-[radial-gradient(circle_at_25%_50%,rgba(255,255,255,0.22),transparent_65%)] pointer-events-none"></div>
+
+                            <!-- Right Side Copy -->
+                            <div class="relative z-10 flex-1 min-w-0 pr-1 sm:pr-2">
+                                <span class="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-0.5 sm:py-1 rounded-full bg-white/20 backdrop-blur-md text-white text-[10px] sm:text-xs font-bold border border-white/25 shadow-xs mb-1.5 sm:mb-2.5 font-sans">
+                                    <span>🔑</span>
+                                    <span>تحویل قطعی بدون معطلی</span>
+                                </span>
+                                <h3 class="text-lg sm:text-2xl md:text-3xl lg:text-4xl font-black text-white tracking-tight leading-tight font-sans drop-shadow-sm">
+                                    رزرو آنی بدون نیاز به تایید
+                                </h3>
+                                <p class="text-xs sm:text-sm md:text-base text-white/95 font-bold leading-relaxed mt-1 sm:mt-2 font-sans">
+                                    با یک کلیک رزرو کنید و با خیال آسوده راهی سفر شوید
+                                </p>
+                                <p class="text-[11px] sm:text-xs text-white/80 font-medium mt-0.5 sm:mt-1 hidden sm:block font-sans">
+                                    ضمانت ۱۰۰٪ تحویل و تمیزی به همراه پشتیبانی ۲۴ ساعته سفر
+                                </p>
+                                <button type="button"
+                                        onclick="state.instantOnly = true; syncInstantUI(); simulateWireLoading(() => renderListings()); document.getElementById('sections-wrapper')?.scrollIntoView({behavior: 'smooth'})"
+                                        class="mt-3 sm:mt-4 px-3.5 sm:px-5 py-1.5 sm:py-2.5 rounded-xl bg-white text-[#4F46E5] hover:bg-zinc-50 text-xs sm:text-sm font-black transition-transform active:scale-95 shadow-md inline-flex items-center gap-1.5 font-sans">
+                                    <span>ویلاهای رزرو فوری</span>
+                                    <svg class="w-3.5 h-3.5 sm:w-4 sm:h-4 rtl:rotate-180" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"/></svg>
+                                </button>
+                            </div>
+
+                            <!-- Left Side Graphic: 3D Golden Key & Shield -->
+                            <div class="relative w-36 sm:w-56 md:w-68 lg:w-76 shrink-0 flex items-center justify-center select-none pointer-events-none mr-2 sm:mr-4">
+                                <svg viewBox="0 0 340 220" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-full h-auto drop-shadow-2xl">
+                                    <defs>
+                                        <linearGradient id="goldKeyGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                            <stop offset="0%" stop-color="#FEF08A"/>
+                                            <stop offset="40%" stop-color="#FACC15"/>
+                                            <stop offset="80%" stop-color="#EAB308"/>
+                                            <stop offset="100%" stop-color="#CA8A04"/>
+                                        </linearGradient>
+                                        <linearGradient id="shieldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                            <stop offset="0%" stop-color="#818CF8"/>
+                                            <stop offset="100%" stop-color="#4338CA"/>
+                                        </linearGradient>
+                                        <linearGradient id="boltGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                            <stop offset="0%" stop-color="#FDE047"/>
+                                            <stop offset="100%" stop-color="#F59E0B"/>
+                                        </linearGradient>
+                                    </defs>
+
+                                    <!-- Protection Shield -->
+                                    <g transform="translate(70, 30)">
+                                        <path d="M 80 15 Q 140 10 140 70 C 140 120, 80 150, 80 150 C 80 150, 20 120, 20 70 Q 20 10 80 15 Z" fill="url(#shieldGrad)" stroke="#C7D2FE" stroke-width="3" opacity="0.85" />
+                                        <circle cx="80" cy="70" r="28" fill="#FFFFFF" fill-opacity="0.15" />
+                                        <path d="M 68 70 L 76 78 L 94 60" fill="none" stroke="#FFFFFF" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" />
+                                    </g>
+
+                                    <!-- 3D Golden Key Crossing Shield -->
+                                    <g transform="translate(140, 50) rotate(-28)">
+                                        <circle cx="45" cy="45" r="32" fill="url(#goldKeyGrad)" stroke="#FFFFFF" stroke-width="2" />
+                                        <circle cx="45" cy="45" r="16" fill="#312E81" />
+                                        <rect x="70" y="38" width="105" height="14" rx="4" fill="url(#goldKeyGrad)" stroke="#FFFFFF" stroke-width="1.5" />
+                                        <rect x="145" y="50" width="12" height="18" rx="2" fill="url(#goldKeyGrad)" />
+                                        <rect x="163" y="50" width="10" height="24" rx="2" fill="url(#goldKeyGrad)" />
+                                    </g>
+
+                                    <!-- Lightning Bolt Badge -->
+                                    <g transform="translate(45, 120)">
+                                        <circle cx="28" cy="28" r="26" fill="#1E1B4B" stroke="#FDE047" stroke-width="2" />
+                                        <path d="M 30 12 L 20 28 L 27 28 L 23 44 L 37 25 L 29 25 Z" fill="url(#boltGrad)" />
+                                    </g>
+                                </svg>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Desktop Navigation Arrows (Floating on edges - correctly pointing outwards) -->
+                    <button type="button" onclick="prevHeroSlide()" aria-label="اسلاید قبلی"
+                            class="hidden md:flex absolute top-1/2 -translate-y-1/2 -right-3 lg:-right-5 w-10 h-10 rounded-full bg-white/95 dark:bg-zinc-900/95 text-zinc-700 dark:text-zinc-200 border border-zinc-200/80 dark:border-zinc-700 shadow-xl items-center justify-center hover:bg-white dark:hover:bg-zinc-800 transition-all z-20 opacity-0 group-hover:opacity-100 active:scale-90 font-sans cursor-pointer">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+                    </button>
+                    <button type="button" onclick="nextHeroSlide()" aria-label="اسلاید بعدی"
+                            class="hidden md:flex absolute top-1/2 -translate-y-1/2 -left-3 lg:-left-5 w-10 h-10 rounded-full bg-white/95 dark:bg-zinc-900/95 text-zinc-700 dark:text-zinc-200 border border-zinc-200/80 dark:border-zinc-700 shadow-xl items-center justify-center hover:bg-white dark:hover:bg-zinc-800 transition-all z-20 opacity-0 group-hover:opacity-100 active:scale-90 font-sans cursor-pointer">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+                    </button>
+
+                    <!-- Modern Pagination Indicators (Elongated Active Pill Dot matching reference image) -->
+                    <div id="hero-slider-dots" class="flex items-center justify-center gap-1.5 mt-2.5 sm:mt-3.5 font-sans">
+                        <button type="button" onclick="goToHeroSlide(0)" class="hero-dot w-6 h-2 rounded-full bg-[#EA580C] dark:bg-amber-400 transition-all duration-300 font-sans cursor-pointer" aria-label="اسلاید ۱"></button>
+                        <button type="button" onclick="goToHeroSlide(1)" class="hero-dot w-2 h-2 rounded-full bg-zinc-300 dark:bg-zinc-700 hover:bg-zinc-400 dark:hover:bg-zinc-600 transition-all duration-300 font-sans cursor-pointer" aria-label="اسلاید ۲"></button>
+                        <button type="button" onclick="goToHeroSlide(2)" class="hero-dot w-2 h-2 rounded-full bg-zinc-300 dark:bg-zinc-700 hover:bg-zinc-400 dark:hover:bg-zinc-600 transition-all duration-300 font-sans cursor-pointer" aria-label="اسلاید ۳"></button>
+                    </div>
+                </div>
+            </section>
+
             <!-- DESKTOP ULTRA-MINIMAL HERO & SEARCH BAR -->
-            <section class="hidden md:block pt-12 pb-8">
+            <section class="hidden md:block pt-6 pb-8">
                 <div class="max-w-4xl mx-auto px-8 text-center">
                     <h1 class="text-2xl sm:text-3xl font-extrabold text-[#18181B] dark:text-zinc-100 tracking-tight mb-8">
                         {{ $appName }} . اجاره ویلا، کلبه، بومگردی و انواع اقامتگاه در شمال
@@ -492,10 +765,10 @@
                                     </button>
                                 </div>
 
-                                <div class="grid grid-cols-7 gap-1 text-center text-[10px] font-bold text-zinc-400 mb-1.5">
+                                <div class="grid grid-cols-7 gap-1.5 sm:gap-2 text-center text-[11px] font-bold text-zinc-400 dark:text-zinc-500 mb-2 font-sans">
                                     <span>ش</span><span>ی</span><span>د</span><span>س</span><span>چ</span><span>پ</span><span class="text-rose-500 font-black">ج</span>
                                 </div>
-                                <div id="desktop-jalali-grid" class="grid grid-cols-7 gap-1 text-center text-xs"></div>
+                                <div id="desktop-jalali-grid" class="grid grid-cols-7 gap-1.5 sm:gap-2 text-center text-xs font-sans"></div>
                                 <div class="mt-3 pt-2.5 border-t border-[#ECECEE] dark:border-zinc-800 flex items-center justify-between text-[11px]">
                                     <div class="flex items-center gap-1.5 text-zinc-500 dark:text-zinc-400">
                                         <span>مدت:</span>
@@ -976,16 +1249,16 @@
                             </button>
                         </div>
 
-                        <div class="grid grid-cols-7 gap-1 text-center py-1.5 px-0.5 bg-zinc-200/50 dark:bg-zinc-800/80 rounded-xl mb-2.5 font-sans">
-                            <span class="text-zinc-500 dark:text-zinc-400 text-[11px] font-bold font-sans">ش</span>
-                            <span class="text-zinc-500 dark:text-zinc-400 text-[11px] font-bold font-sans">ی</span>
-                            <span class="text-zinc-500 dark:text-zinc-400 text-[11px] font-bold font-sans">د</span>
-                            <span class="text-zinc-500 dark:text-zinc-400 text-[11px] font-bold font-sans">س</span>
-                            <span class="text-zinc-500 dark:text-zinc-400 text-[11px] font-bold font-sans">چ</span>
-                            <span class="text-zinc-500 dark:text-zinc-400 text-[11px] font-bold font-sans">پ</span>
-                            <span class="text-rose-500 dark:text-rose-400 text-[11px] font-black font-sans">ج</span>
+                        <div class="grid grid-cols-7 gap-1.5 sm:gap-2 text-center text-zinc-400 dark:text-zinc-500 text-[11px] font-bold mb-2 font-sans">
+                            <span>ش</span>
+                            <span>ی</span>
+                            <span>د</span>
+                            <span>س</span>
+                            <span>چ</span>
+                            <span>پ</span>
+                            <span class="text-rose-500 dark:text-rose-400 font-black">ج</span>
                         </div>
-                        <div id="mobile-jalali-grid" class="grid grid-cols-7 gap-1 text-center text-xs font-sans"></div>
+                        <div id="mobile-jalali-grid" class="grid grid-cols-7 gap-1.5 sm:gap-2 text-center text-xs font-sans"></div>
                     </div>
 
                     <!-- Footer of Date Card: Status Indicator -->
@@ -1329,6 +1602,229 @@
             container.classList.add('opacity-0', '-translate-y-2');
             container.classList.remove('opacity-100', 'translate-y-0');
         }, 2000);
+    }
+
+    // =============================================================
+    // HERO BANNER SLIDER CONTROLLER (Peek Effect, Swipe & Autoplay)
+    // =============================================================
+    let currentHeroSlideIndex = 0;
+    let heroAutoplayTimer = null;
+    const HERO_SLIDE_DOT_COLORS = [
+        'bg-[#EA580C] dark:bg-amber-400',       // Slide 0 (Amber Host)
+        'bg-[#007A5E] dark:bg-emerald-400',    // Slide 1 (Emerald Cottages)
+        'bg-[#4F46E5] dark:bg-indigo-400'      // Slide 2 (Purple Instant)
+    ];
+
+    function initHeroSlider() {
+        const track = document.getElementById('hero-slider-track');
+        if (!track) return;
+
+        const slides = track.querySelectorAll('.hero-slide');
+        if (!slides.length) return;
+
+        // Dynamic IntersectionObserver to update active dot when user manually swipes
+        if ('IntersectionObserver' in window) {
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting && entry.intersectionRatio >= 0.5) {
+                        const idx = parseInt(entry.target.getAttribute('data-slide-index'), 10);
+                        if (!isNaN(idx)) {
+                            currentHeroSlideIndex = idx;
+                            updateHeroSliderDots(idx);
+                        }
+                    }
+                });
+            }, {
+                root: track,
+                threshold: 0.5
+            });
+
+            slides.forEach(slide => observer.observe(slide));
+        }
+
+        // =========================================================
+        // Touch (Mobile) and Mouse (Desktop) Bounded Slide-by-Slide
+        // =========================================================
+        let isDragging = false;
+        let startX = 0;
+        let startY = 0;
+        let currentX = 0;
+        let isHorizontalSwipe = false;
+        let originIndex = 0;
+
+        // Mouse Drag (Desktop)
+        track.addEventListener('mousedown', (e) => {
+            isDragging = true;
+            isHorizontalSwipe = false;
+            startX = e.pageX;
+            startY = e.pageY;
+            currentX = e.pageX;
+            originIndex = currentHeroSlideIndex;
+            pauseHeroAutoplay();
+            track.classList.add('cursor-grabbing');
+            track.classList.remove('cursor-grab');
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            currentX = e.pageX;
+            if (Math.abs(currentX - startX) > 10) {
+                isHorizontalSwipe = true;
+            }
+        });
+
+        window.addEventListener('mouseup', (e) => {
+            if (!isDragging) return;
+            isDragging = false;
+            track.classList.remove('cursor-grabbing');
+            track.classList.add('cursor-grab');
+
+            if (isHorizontalSwipe) {
+                const diffX = currentX - startX;
+                if (diffX > 35) {
+                    // Dragged Right -> Next slide (+1, bounded)
+                    goToHeroSlide(Math.min(slides.length - 1, originIndex + 1), false);
+                } else if (diffX < -35) {
+                    // Dragged Left -> Prev slide (-1, bounded)
+                    goToHeroSlide(Math.max(0, originIndex - 1), false);
+                } else {
+                    // Snap back to origin
+                    goToHeroSlide(originIndex, false);
+                }
+            }
+            startHeroAutoplay();
+        });
+
+        // Prevent accidental link / button click if user was dragging
+        track.addEventListener('click', (e) => {
+            if (isHorizontalSwipe) {
+                e.preventDefault();
+                e.stopPropagation();
+                isHorizontalSwipe = false;
+            }
+        }, true);
+
+        // Touch Swipe (Mobile)
+        track.addEventListener('touchstart', (e) => {
+            if (e.touches.length > 1) return;
+            isDragging = true;
+            isHorizontalSwipe = false;
+            startX = e.touches[0].pageX;
+            startY = e.touches[0].pageY;
+            currentX = e.touches[0].pageX;
+            originIndex = currentHeroSlideIndex;
+            pauseHeroAutoplay();
+        }, { passive: true });
+
+        track.addEventListener('touchmove', (e) => {
+            if (!isDragging || e.touches.length > 1) return;
+            currentX = e.touches[0].pageX;
+            const diffX = currentX - startX;
+            const diffY = e.touches[0].pageY - startY;
+
+            if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 12) {
+                isHorizontalSwipe = true;
+            }
+        }, { passive: true });
+
+        track.addEventListener('touchend', () => {
+            if (!isDragging) return;
+            isDragging = false;
+
+            if (isHorizontalSwipe) {
+                const diffX = currentX - startX;
+                if (diffX > 35) {
+                    // Swiped Right -> Next slide (+1, bounded)
+                    goToHeroSlide(Math.min(slides.length - 1, originIndex + 1), false);
+                } else if (diffX < -35) {
+                    // Swiped Left -> Prev slide (-1, bounded)
+                    goToHeroSlide(Math.max(0, originIndex - 1), false);
+                } else {
+                    goToHeroSlide(originIndex, false);
+                }
+            }
+            startHeroAutoplay();
+        }, { passive: true });
+
+        track.addEventListener('touchcancel', () => {
+            isDragging = false;
+            startHeroAutoplay();
+        }, { passive: true });
+
+        // Pause autoplay on mouse hover
+        track.addEventListener('mouseenter', pauseHeroAutoplay);
+        track.addEventListener('mouseleave', () => {
+            if (!isDragging) startHeroAutoplay();
+        });
+
+        startHeroAutoplay();
+    }
+
+    function goToHeroSlide(index, isLoop = false) {
+        const track = document.getElementById('hero-slider-track');
+        if (!track) return;
+        const slides = track.querySelectorAll('.hero-slide');
+        if (!slides.length) return;
+
+        if (isLoop) {
+            if (index < 0) index = slides.length - 1;
+            if (index >= slides.length) index = 0;
+        } else {
+            // Strictly clamp to prevent jumping to end / start on manual gestures
+            if (index < 0) index = 0;
+            if (index >= slides.length) index = slides.length - 1;
+        }
+
+        currentHeroSlideIndex = index;
+        const targetSlide = slides[index];
+        if (targetSlide) {
+            targetSlide.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+            updateHeroSliderDots(index);
+        }
+    }
+
+    function nextHeroSlide() {
+        const track = document.getElementById('hero-slider-track');
+        if (!track) return;
+        const slides = track.querySelectorAll('.hero-slide');
+        if (!slides.length) return;
+        const nextIdx = (currentHeroSlideIndex + 1) % slides.length;
+        goToHeroSlide(nextIdx, true);
+    }
+
+    function prevHeroSlide() {
+        const track = document.getElementById('hero-slider-track');
+        if (!track) return;
+        const slides = track.querySelectorAll('.hero-slide');
+        if (!slides.length) return;
+        const prevIdx = (currentHeroSlideIndex - 1 + slides.length) % slides.length;
+        goToHeroSlide(prevIdx, true);
+    }
+
+    function updateHeroSliderDots(activeIndex) {
+        const dots = document.querySelectorAll('.hero-dot');
+        const activeColor = HERO_SLIDE_DOT_COLORS[activeIndex] || 'bg-[#007A5E] dark:bg-emerald-400';
+        dots.forEach((dot, idx) => {
+            if (idx === activeIndex) {
+                dot.className = `hero-dot w-6 h-2 rounded-full ${activeColor} transition-all duration-300 font-sans cursor-pointer`;
+            } else {
+                dot.className = 'hero-dot w-2 h-2 rounded-full bg-zinc-300 dark:bg-zinc-700 hover:bg-zinc-400 dark:hover:bg-zinc-600 transition-all duration-300 font-sans cursor-pointer';
+            }
+        });
+    }
+
+    function startHeroAutoplay() {
+        pauseHeroAutoplay();
+        heroAutoplayTimer = setInterval(() => {
+            nextHeroSlide();
+        }, 5500);
+    }
+
+    function pauseHeroAutoplay() {
+        if (heroAutoplayTimer) {
+            clearInterval(heroAutoplayTimer);
+            heroAutoplayTimer = null;
+        }
     }
 
     // Carousel Scroll Controller for Desktop and Touch Navigation
@@ -2460,9 +2956,9 @@
             if (!grid) return;
             let html = '';
 
-            // Add blank cells for correct Jalali weekday offset alignment
+            // Add blank cells for correct Jalali weekday offset alignment (matches image ghost slots)
             for (let b = 0; b < monthFirstDay; b++) {
-                html += '<div class="h-9 w-full"></div>';
+                html += '<div class="h-10 sm:h-11 w-full rounded-lg opacity-0 pointer-events-none"></div>';
             }
 
             for (let d = 1; d <= monthDaysCount; d++) {
@@ -2474,49 +2970,55 @@
                 const inRange = (currentDayAbs > absStart && currentDayAbs < absEnd);
 
                 if (isPast) {
+                    // Past Days: Soft muted tile matching sample (days 1 to 13 in image 2)
                     html += `
                         <button type="button" disabled
                                 title="امکان انتخاب تاریخ در گذشته وجود ندارد"
-                                class="h-9 w-full rounded-xl text-xs font-normal text-zinc-300 dark:text-zinc-600 select-none opacity-30 cursor-not-allowed flex items-center justify-center font-sans">
+                                class="h-10 sm:h-11 w-full rounded-lg sm:rounded-xl text-xs sm:text-sm font-medium bg-[#F8F9FA] dark:bg-zinc-800/40 border border-[#F1F3F5] dark:border-zinc-800/60 text-[#ADB5BD] dark:text-zinc-600 select-none cursor-not-allowed flex items-center justify-center font-sans">
                             ${toPersianNum(d)}
                         </button>
                     `;
                 } else if (isCheckIn && isCheckOut) {
+                    // Single day check-in & check-out: Solid deep panel brand color
                     html += `
                         <button type="button" onclick="selectCalendarDay(${d})"
                                 title="تاریخ ورود و خروج"
-                                class="h-9 w-full rounded-xl font-black text-xs bg-[#007A5E] text-white shadow-sm flex items-center justify-center transition-transform active:scale-95 font-sans z-10 scale-105">
+                                class="h-10 sm:h-11 w-full rounded-lg sm:rounded-xl font-black text-xs sm:text-sm bg-[#007A5E] dark:bg-emerald-600 text-white shadow-md flex items-center justify-center transition-transform active:scale-95 font-sans z-10">
                             ${toPersianNum(d)}
                         </button>
                     `;
                 } else if (isCheckIn) {
+                    // Check-in (day 19 in sample): Solid deep panel brand color with white text
                     html += `
                         <button type="button" onclick="selectCalendarDay(${d})"
                                 title="تاریخ ورود"
-                                class="h-9 w-full rounded-xl font-black text-xs bg-[#007A5E] text-white shadow-sm flex items-center justify-center transition-transform active:scale-95 font-sans z-10 scale-105">
+                                class="h-10 sm:h-11 w-full rounded-lg sm:rounded-xl font-black text-xs sm:text-sm bg-[#007A5E] dark:bg-emerald-600 text-white shadow-md flex items-center justify-center transition-transform active:scale-95 font-sans z-10">
                             ${toPersianNum(d)}
                         </button>
                     `;
                 } else if (isCheckOut) {
+                    // Check-out (day 22 in sample): Solid deep panel brand color with white text
                     html += `
                         <button type="button" onclick="selectCalendarDay(${d})"
                                 title="تاریخ خروج"
-                                class="h-9 w-full rounded-xl font-black text-xs bg-[#007A5E] text-white shadow-sm flex items-center justify-center transition-transform active:scale-95 font-sans z-10 scale-105">
+                                class="h-10 sm:h-11 w-full rounded-lg sm:rounded-xl font-black text-xs sm:text-sm bg-[#007A5E] dark:bg-emerald-600 text-white shadow-md flex items-center justify-center transition-transform active:scale-95 font-sans z-10">
                             ${toPersianNum(d)}
                         </button>
                     `;
                 } else if (inRange) {
+                    // In-Range days (days 20 and 21 in sample): Solid medium panel brand tint with white text
                     html += `
                         <button type="button" onclick="selectCalendarDay(${d})"
-                                class="h-9 w-full rounded-lg font-bold text-xs bg-emerald-50 dark:bg-emerald-950/50 text-[#007A5E] dark:text-emerald-300 flex items-center justify-center transition-colors font-sans">
+                                title="بازه انتخابی"
+                                class="h-10 sm:h-11 w-full rounded-lg sm:rounded-xl font-bold text-xs sm:text-sm bg-[#007A5E]/75 dark:bg-emerald-600/75 text-white shadow-2xs flex items-center justify-center transition-colors font-sans">
                             ${toPersianNum(d)}
                         </button>
                     `;
                 } else {
-                    const todayClass = isToday ? 'ring-1.5 ring-[#007A5E]/40 font-black text-[#007A5E] dark:text-emerald-400' : 'font-medium text-[#18181B] dark:text-zinc-200';
+                    // Future Unselected days (days 14-18, 23-30 in sample): Clean white card tile with crisp border (uniform styling, today is not styled differently)
                     html += `
                         <button type="button" onclick="selectCalendarDay(${d})"
-                                class="h-9 w-full rounded-xl text-xs ${todayClass} hover:bg-emerald-50 dark:hover:bg-emerald-950/40 hover:text-[#007A5E] dark:hover:text-emerald-300 flex items-center justify-center transition-all active:scale-90 font-sans">
+                                class="h-10 sm:h-11 w-full rounded-lg sm:rounded-xl text-xs sm:text-sm font-bold bg-white dark:bg-zinc-800 border border-[#E9ECEF] dark:border-zinc-700/80 text-[#212529] dark:text-zinc-100 shadow-2xs hover:border-[#007A5E] hover:text-[#007A5E] dark:hover:border-emerald-400 dark:hover:text-emerald-400 hover:bg-emerald-50/30 dark:hover:bg-zinc-700/60 flex items-center justify-center transition-all active:scale-95 font-sans">
                             ${toPersianNum(d)}
                         </button>
                     `;
@@ -2662,6 +3164,7 @@
         renderJalaliCalendars();
         renderListings();
         updateLastMinuteTimerUI();
+        initHeroSlider();
     });
 </script>
 @endsection
