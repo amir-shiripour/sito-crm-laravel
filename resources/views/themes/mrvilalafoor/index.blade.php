@@ -234,7 +234,6 @@
                     }
                     .hero-slide {
                         scroll-snap-align: center;
-                        scroll-snap-stop: always;
                     }
                 </style>
                 <div class="relative group">
@@ -1609,6 +1608,8 @@
     // =============================================================
     let currentHeroSlideIndex = 0;
     let heroAutoplayTimer = null;
+    let isProgrammaticScrolling = false;
+    let programmaticScrollTimer = null;
     const HERO_SLIDE_DOT_COLORS = [
         'bg-[#EA580C] dark:bg-amber-400',       // Slide 0 (Amber Host)
         'bg-[#007A5E] dark:bg-emerald-400',    // Slide 1 (Emerald Cottages)
@@ -1625,6 +1626,7 @@
         // Dynamic IntersectionObserver to update active dot when user manually swipes
         if ('IntersectionObserver' in window) {
             const observer = new IntersectionObserver((entries) => {
+                if (isProgrammaticScrolling) return;
                 entries.forEach(entry => {
                     if (entry.isIntersecting && entry.intersectionRatio >= 0.5) {
                         const idx = parseInt(entry.target.getAttribute('data-slide-index'), 10);
@@ -1655,6 +1657,9 @@
         // Mouse Drag (Desktop)
         track.addEventListener('mousedown', (e) => {
             isDragging = true;
+            isProgrammaticScrolling = false;
+            clearTimeout(programmaticScrollTimer);
+            track.style.scrollSnapType = 'x mandatory';
             isHorizontalSwipe = false;
             startX = e.pageX;
             startY = e.pageY;
@@ -1708,6 +1713,9 @@
         track.addEventListener('touchstart', (e) => {
             if (e.touches.length > 1) return;
             isDragging = true;
+            isProgrammaticScrolling = false;
+            clearTimeout(programmaticScrollTimer);
+            track.style.scrollSnapType = 'x mandatory';
             isHorizontalSwipe = false;
             startX = e.touches[0].pageX;
             startY = e.touches[0].pageY;
@@ -1757,7 +1765,21 @@
             if (!isDragging) startHeroAutoplay();
         });
 
-        startHeroAutoplay();
+        // Pause autoplay when hero slider is scrolled out of viewport (saves CPU & avoids background churn)
+        if ('IntersectionObserver' in window) {
+            const heroVisibilityObserver = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        startHeroAutoplay();
+                    } else {
+                        pauseHeroAutoplay();
+                    }
+                });
+            }, { threshold: 0.1 });
+            heroVisibilityObserver.observe(track);
+        } else {
+            startHeroAutoplay();
+        }
     }
 
     function goToHeroSlide(index, isLoop = false) {
@@ -1776,10 +1798,31 @@
         }
 
         currentHeroSlideIndex = index;
+        updateHeroSliderDots(index);
+
         const targetSlide = slides[index];
         if (targetSlide) {
-            targetSlide.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
-            updateHeroSliderDots(index);
+            isProgrammaticScrolling = true;
+            clearTimeout(programmaticScrollTimer);
+
+            // Temporarily disable scroll-snap during programmatic slide-to-slide travel so it glides smoothly past any intermediate points
+            track.style.scrollSnapType = 'none';
+
+            if (index === 0) {
+                // In RTL layout, scrolling to left: 0 always returns cleanly to the very first slide at the start
+                track.scrollTo({ left: 0, behavior: 'smooth' });
+            } else {
+                const trackRect = track.getBoundingClientRect();
+                const slideRect = targetSlide.getBoundingClientRect();
+                const deltaX = (slideRect.left + slideRect.width / 2) - (trackRect.left + trackRect.width / 2);
+                track.scrollBy({ left: deltaX, behavior: 'smooth' });
+            }
+
+            // Restore scroll-snap once smooth scroll settles, and re-enable swipe observer
+            programmaticScrollTimer = setTimeout(() => {
+                track.style.scrollSnapType = 'x mandatory';
+                isProgrammaticScrolling = false;
+            }, 600);
         }
     }
 
