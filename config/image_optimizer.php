@@ -2,6 +2,7 @@
 
 return [
     'directories' => [
+        'properties/slides',
         'properties/covers',
         'properties/gallery',
         'properties/hosts/avatars',

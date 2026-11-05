@@ -129,6 +129,13 @@ class SettingsController extends Controller
 
         $rental_show_direct_call_btn = PropertySetting::get('rental_show_direct_call_btn', 'all');
 
+        // Hero Promotional Banners / Slides (اسلایدر و بنرهای تبلیغاتی)
+        $rawHeroSlides = PropertySetting::get('rental_hero_slides');
+        $rental_hero_slides = $rawHeroSlides ? json_decode($rawHeroSlides, true) : [];
+        if (!is_array($rental_hero_slides)) {
+            $rental_hero_slides = [];
+        }
+
         // Host Tips Settings (نکات کلیدی میزبانی موفق)
         $rental_host_tips_enabled = PropertySetting::get('rental_host_tips_enabled', 1);
         $rental_host_tips_title = PropertySetting::get('rental_host_tips_title', 'نکات کلیدی میزبانی موفق');
@@ -225,7 +232,8 @@ class SettingsController extends Controller
             'rental_show_map',
             'rental_map_display_type',
             'rental_map_circle_radius',
-            'rental_show_direct_call_btn'
+            'rental_show_direct_call_btn',
+            'rental_hero_slides'
         ));
     }
 
@@ -288,6 +296,15 @@ class SettingsController extends Controller
             'rental_map_display_type' => 'nullable|in:circle,exact,circle_then_exact',
             'rental_map_circle_radius' => 'nullable|integer|min:50|max:5000',
             'rental_show_direct_call_btn' => 'nullable|in:all,confirmed_booking,none',
+            'rental_hero_slides' => 'nullable|array',
+            'rental_hero_slides.*.id' => 'nullable|string|max:100',
+            'rental_hero_slides.*.title' => 'nullable|string|max:255',
+            'rental_hero_slides.*.link' => 'nullable|string|max:500',
+            'rental_hero_slides.*.target' => 'nullable|in:_self,_blank',
+            'rental_hero_slides.*.is_active' => 'nullable|boolean',
+            'rental_hero_slides.*.order' => 'nullable|integer',
+            'rental_hero_slides.*.image' => 'nullable|string|max:500',
+            'rental_hero_slides.*.image_file' => 'nullable|file|mimes:jpeg,png,jpg,webp,gif,avif|max:15360',
         ]);
 
         $allowedFileTypes = str_replace(' ', '', $request->allowed_file_types);
@@ -418,6 +435,46 @@ class SettingsController extends Controller
         PropertySetting::set('rental_map_circle_radius', (int) $request->input('rental_map_circle_radius', 300));
 
         PropertySetting::set('rental_show_direct_call_btn', $request->input('rental_show_direct_call_btn', 'all'));
+
+        // Save Hero Promotional Banners / Slides (یکپارچه با ImageOptimizerService جهت بهینه‌سازی و تبدیل WebP)
+        if ($request->has('rental_hero_slides') && is_array($request->rental_hero_slides)) {
+            $cleanSlides = [];
+            $optimizer = app(\App\Services\ImageOptimizerService::class);
+
+            foreach ($request->rental_hero_slides as $index => $item) {
+                $imagePath = $item['image'] ?? null;
+
+                // بررسی آپلود فایل تصویر جدید
+                if ($request->hasFile("rental_hero_slides.{$index}.image_file")) {
+                    try {
+                        $uploadedFile = $request->file("rental_hero_slides.{$index}.image_file");
+                        // بهینه‌سازی و تبدیل به webp با حداکثر عرض ۱۴۰۰ پیکسل متناسب با ابعاد ۱۲۰۰×۴۶۵
+                        $optimizedRelPath = $optimizer->uploadAndOptimize($uploadedFile, 'properties/slides', 'public', 1400, 85);
+                        $imagePath = 'storage/' . $optimizedRelPath;
+                    } catch (\Throwable $e) {
+                        \Illuminate\Support\Facades\Log::error("Hero slide image upload failed at index {$index}: " . $e->getMessage());
+                    }
+                }
+
+                // اگر مسیر عکس مشخص بود، اسلاید را ذخیره کن
+                if (!empty($imagePath)) {
+                    $cleanSlides[] = [
+                        'id' => !empty($item['id']) ? trim($item['id']) : 'slide_' . uniqid(),
+                        'image' => $imagePath,
+                        'title' => trim($item['title'] ?? ''),
+                        'link' => trim($item['link'] ?? ''),
+                        'target' => ($item['target'] ?? '_self') === '_blank' ? '_blank' : '_self',
+                        'is_active' => !empty($item['is_active']),
+                        'order' => isset($item['order']) ? (int) $item['order'] : count($cleanSlides),
+                    ];
+                }
+            }
+
+            usort($cleanSlides, fn($a, $b) => ($a['order'] ?? 0) <=> ($b['order'] ?? 0));
+            PropertySetting::set('rental_hero_slides', json_encode($cleanSlides, JSON_UNESCAPED_UNICODE));
+        } elseif ($request->has('rental_hero_slides_submitted')) {
+            PropertySetting::set('rental_hero_slides', json_encode([], JSON_UNESCAPED_UNICODE));
+        }
 
         return back()->with('success', 'تنظیمات با موفقیت ذخیره شد.');
     }

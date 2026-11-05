@@ -25,8 +25,10 @@
     rules: @js($rental_settlement_rules ?? []),
     hostTipsEnabled: {{ ($rental_host_tips_enabled ?? 1) ? 'true' : 'false' }},
     hostTipsTitle: @js($rental_host_tips_title ?? 'نکات کلیدی میزبانی موفق'),
-    hostTips: @js($rental_host_tips ?? [])
-})" class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6 font-sans">
+    hostTips: @js($rental_host_tips ?? []),
+    rentalSubTab: 'slider',
+    heroSlides: @js($rental_hero_slides ?? [])
+})" class="w-full max-w-none px-4 sm:px-6 lg:px-8 py-6 space-y-6 font-sans">
 
     {{-- هدر صفحه با بردکرامب و دکمه ذخیره سریع --}}
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2 border-b border-gray-100 dark:border-gray-800">
@@ -108,7 +110,7 @@
     </div>
 
     {{-- فرم اصلی ارسال تنظیمات --}}
-    <form id="propertySettingsForm" action="{{ route('user.settings.properties.update') }}" method="POST" class="space-y-6">
+    <form id="propertySettingsForm" action="{{ route('user.settings.properties.update') }}" method="POST" enctype="multipart/form-data" class="space-y-6">
         @csrf
 
         {{-- ======================================================== --}}
@@ -245,6 +247,275 @@
         {{-- تب ۲: اقامتگاه‌های روزانه و مدیریت قوانین تسویه حساب --}}
         {{-- ======================================================== --}}
         <div x-show="activeTab === 'rentals'" x-cloak class="space-y-6">
+
+            {{-- ======================================================== --}}
+            {{-- نوار زیر-تب‌های بخش اقامتگاه‌ها (Sub-Tabs)                 --}}
+            {{-- ======================================================== --}}
+            <div class="bg-gray-100/90 dark:bg-gray-800/80 p-1.5 rounded-2xl border border-gray-200/80 dark:border-gray-700/80 shadow-xs flex items-center gap-1.5 overflow-x-auto no-scrollbar font-sans">
+                {{-- زیر-تب ۱: اسلایدر و بنرها --}}
+                <button type="button" 
+                        @click="rentalSubTab = 'slider'"
+                        :class="rentalSubTab === 'slider' ? 'bg-indigo-600 text-white shadow-sm font-bold' : 'text-slate-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-white/60 dark:hover:bg-gray-700/50'"
+                        class="flex items-center gap-2 px-4 py-2 rounded-xl text-xs whitespace-nowrap transition cursor-pointer">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                    <span>اسلایدر و بنرهای تبلیغاتی</span>
+                    <span x-show="heroSlides && heroSlides.length" class="px-1.5 py-0.5 rounded-full text-[10px] bg-white/20 text-white font-bold" x-text="heroSlides.length"></span>
+                </button>
+
+                {{-- زیر-تب ۲: پیکربندی و چندمیزبانی --}}
+                <button type="button" 
+                        @click="rentalSubTab = 'core'"
+                        :class="rentalSubTab === 'core' ? 'bg-indigo-600 text-white shadow-sm font-bold' : 'text-slate-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-white/60 dark:hover:bg-gray-700/50'"
+                        class="flex items-center gap-2 px-4 py-2 rounded-xl text-xs whitespace-nowrap transition cursor-pointer">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+                    <span>پیکربندی و چندمیزبانی</span>
+                </button>
+
+                {{-- زیر-تب ۳: قوانین تسویه و نکات میزبانی --}}
+                <button type="button" 
+                        @click="rentalSubTab = 'rules_tips'"
+                        :class="rentalSubTab === 'rules_tips' ? 'bg-indigo-600 text-white shadow-sm font-bold' : 'text-slate-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-white/60 dark:hover:bg-gray-700/50'"
+                        class="flex items-center gap-2 px-4 py-2 rounded-xl text-xs whitespace-nowrap transition cursor-pointer">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                    <span>قوانین تسویه و نکات میزبانی</span>
+                </button>
+
+                {{-- زیر-تب ۴: حریم خصوصی و نمایش جزئیات --}}
+                <button type="button" 
+                        @click="rentalSubTab = 'display'"
+                        :class="rentalSubTab === 'display' ? 'bg-indigo-600 text-white shadow-sm font-bold' : 'text-slate-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-white/60 dark:hover:bg-gray-700/50'"
+                        class="flex items-center gap-2 px-4 py-2 rounded-xl text-xs whitespace-nowrap transition cursor-pointer">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                    <span>حریم خصوصی و نمایش جزئیات</span>
+                </button>
+            </div>
+
+            {{-- ======================================================== --}}
+            {{-- ۱. بخش اسلایدر و بنرهای تبلیغاتی هیرو                    --}}
+            {{-- ======================================================== --}}
+            <div x-show="rentalSubTab === 'slider'" class="space-y-6">
+                <input type="hidden" name="rental_hero_slides_submitted" value="1">
+
+                <div class="{{ $cardClass }} p-5 sm:p-6 space-y-6 border-indigo-100 dark:border-indigo-900/50">
+                    {{-- هدر کارت اسلایدر --}}
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-gray-100 dark:border-gray-700/60 pb-4">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-2xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-300 flex items-center justify-center font-bold">
+                                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                            </div>
+                            <div>
+                                <h2 class="text-xs font-black text-gray-900 dark:text-white flex items-center gap-2">
+                                    <span>مدیریت اسلایدر و بنرهای تبلیغاتی صفحه اصلی</span>
+                                    <span class="px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 text-[10px] font-bold">هیرو صفحه اصلی</span>
+                                </h2>
+                                <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                                    آپلود تصاویر بنر، تنظیم لینک و ترتیب نمایش در اسلایدر بالای بخش جستجو
+                                </p>
+                            </div>
+                        </div>
+
+                        <button type="button" 
+                                @click="addSlide()"
+                                class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-md shadow-indigo-600/20 transition flex items-center gap-1.5 cursor-pointer shrink-0">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                            <span>افزودن اسلاید جدید</span>
+                        </button>
+                    </div>
+
+                    {{-- راهنمای بصری ابعاد و یکپارچگی بهینه‌ساز هسته --}}
+                    <div class="p-4 rounded-2xl bg-amber-50/70 dark:bg-amber-950/20 border border-amber-200/70 dark:border-amber-800/40 flex flex-col md:flex-row md:items-center justify-between gap-3 font-sans">
+                        <div class="flex items-start gap-3">
+                            <div class="w-8 h-8 rounded-xl bg-amber-100 dark:bg-amber-900/50 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 mt-0.5">
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            </div>
+                            <div class="text-xs text-slate-700 dark:text-slate-300 space-y-1">
+                                <p class="font-bold text-gray-900 dark:text-white">
+                                    ابعاد استاندارد پیشنهادی برای طراحی بنرها (تناسب ۲.۶ به ۱):
+                                </p>
+                                <p class="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">
+                                    ابعاد بهینه: <span class="font-bold text-indigo-600 dark:text-indigo-400">۱۲۰۰ × ۴۶۵ پیکسل</span> (کیفیت بسیار بالا / رتینا)، <span class="font-bold">۱۰۲۴ × ۳۹۶ پیکسل</span>، یا <span class="font-bold">۶۴۰ × ۲۴۸ پیکسل</span>.
+                                    تصاویر به صورت خودکار توسط سرویس بهینه‌ساز هسته به فرمت سبک <span class="font-bold">WebP</span> تبدیل و در گزارش بهینه‌ساز سیستم ثبت می‌شوند.
+                                </p>
+                                <p class="text-[10px] text-amber-700 dark:text-amber-400 font-medium">
+                                    * توجه: در صورت عدم وجود اسلاید، کادر اسلایدر در صفحه اصلی نمایش داده نخواهد شد.
+                                </p>
+                            </div>
+                        </div>
+                        <a href="{{ route('admin.optimizer-report') }}" target="_blank" class="text-[11px] text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1 font-bold shrink-0">
+                            <span>مشاهده گزارش بهینه‌ساز هسته</span>
+                            <svg class="w-3.5 h-3.5 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                        </a>
+                    </div>
+
+                    {{-- حالت خالی بودن اسلایدها --}}
+                    <div x-show="!heroSlides || heroSlides.length === 0" class="text-center py-12 px-4 rounded-2xl border-2 border-dashed border-gray-200 dark:border-gray-700/80 bg-gray-50/50 dark:bg-gray-900/30">
+                        <div class="w-16 h-16 mx-auto rounded-3xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mb-3">
+                            <svg class="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                        </div>
+                        <h3 class="text-xs font-bold text-gray-900 dark:text-white">هیچ اسلایدی ثبت نشده است</h3>
+                        <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-1 max-w-sm mx-auto">
+                            برای نمایش اسلایدر بنر در بالای صفحه اصلی، روی دکمه «افزودن اسلاید جدید» کلیک کنید.
+                        </p>
+                        <button type="button" @click="addSlide()" class="mt-4 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-xs transition">
+                            افزودن اولین اسلاید
+                        </button>
+                    </div>
+
+                    {{-- لیست اسلایدها (Repeater) --}}
+                    <div class="space-y-4" x-show="heroSlides && heroSlides.length > 0">
+                        <template x-for="(slide, sIdx) in heroSlides" :key="slide.id">
+                            <div class="p-4 sm:p-5 rounded-2xl border border-gray-200/80 dark:border-gray-700/80 bg-gray-50/60 dark:bg-gray-900/50 space-y-4 transition hover:border-indigo-300 dark:hover:border-indigo-600/50">
+                                {{-- هدر اسلاید: شماره، ترتیب، فعال بودن و دکمه حذف --}}
+                                <div class="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-gray-200/60 dark:border-gray-700/60">
+                                    <div class="flex items-center gap-2">
+                                        <span class="flex items-center justify-center w-6 h-6 rounded-lg bg-indigo-600 text-white text-[11px] font-bold" x-text="sIdx + 1"></span>
+                                        <span class="text-xs font-bold text-gray-900 dark:text-white">
+                                            اسلاید شماره <span x-text="sIdx + 1"></span>
+                                        </span>
+                                    </div>
+
+                                    <div class="flex items-center gap-2">
+                                        {{-- سوییچ فعال / غیرفعال --}}
+                                        <label class="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-xs cursor-pointer select-none">
+                                            <input type="checkbox" 
+                                                   :name="'rental_hero_slides[' + sIdx + '][is_active]'" 
+                                                   value="1" 
+                                                   x-model="slide.is_active" 
+                                                   class="{{ $checkboxClass }}">
+                                            <span class="text-[11px] font-bold" :class="slide.is_active ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'">
+                                                <span x-show="slide.is_active">فعال</span>
+                                                <span x-show="!slide.is_active">غیرفعال</span>
+                                            </span>
+                                        </label>
+
+                                        {{-- دکمه جابجایی به بالا --}}
+                                        <button type="button" 
+                                                @click="moveSlide(sIdx, -1)" 
+                                                :disabled="sIdx === 0"
+                                                :class="sIdx === 0 ? 'opacity-30 cursor-not-allowed' : 'hover:bg-gray-200 dark:hover:bg-gray-700 cursor-pointer'"
+                                                class="w-7 h-7 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 flex items-center justify-center text-slate-600 dark:text-slate-300 transition"
+                                                title="انتقال به بالا">
+                                            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"/></svg>
+                                        </button>
+
+                                        {{-- دکمه جابجایی به پایین --}}
+                                        <button type="button" 
+                                                @click="moveSlide(sIdx, 1)" 
+                                                :disabled="sIdx === heroSlides.length - 1"
+                                                :class="sIdx === heroSlides.length - 1 ? 'opacity-30 cursor-not-allowed' : 'hover:bg-gray-200 dark:hover:bg-gray-700 cursor-pointer'"
+                                                class="w-7 h-7 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 flex items-center justify-center text-slate-600 dark:text-slate-300 transition"
+                                                title="انتقال به پایین">
+                                            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                                        </button>
+
+                                        {{-- دکمه حذف اسلاید --}}
+                                        <button type="button" 
+                                                @click="removeSlide(sIdx)"
+                                                class="w-7 h-7 rounded-lg bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-900/50 flex items-center justify-center hover:bg-rose-100 dark:hover:bg-rose-900/60 transition cursor-pointer"
+                                                title="حذف اسلاید">
+                                            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {{-- فیلدهای پنهان --}}
+                                <input type="hidden" :name="'rental_hero_slides[' + sIdx + '][id]'" :value="slide.id">
+                                <input type="hidden" :name="'rental_hero_slides[' + sIdx + '][order]'" :value="sIdx">
+                                <input type="hidden" :name="'rental_hero_slides[' + sIdx + '][image]'" :value="slide.image">
+
+                                {{-- گرید محتوای اسلاید: سمت راست آپلود و پیش‌نمایش تصویر، سمت چپ تنظیمات لینک و متن --}}
+                                <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-start">
+                                    {{-- کادر آپلود و پیش‌نمایش تصویر --}}
+                                    <div class="md:col-span-5 space-y-2">
+                                        <label class="{{ $labelClass }}">تصویر بنر (نسبت ۲.۶ به ۱):</label>
+                                        <div class="relative w-full aspect-[2.6/1] rounded-2xl overflow-hidden border-2 border-dashed border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 flex items-center justify-center group hover:border-indigo-500 transition cursor-pointer shadow-xs">
+                                            {{-- عکس پیش‌نمایش یا عکس قبلی --}}
+                                            <template x-if="slide.preview || slide.image">
+                                                <img :src="slide.preview || (slide.image ? (slide.image.startsWith('http') || slide.image.startsWith('/') ? slide.image : '/' + slide.image) : '')"
+                                                     alt="پیش‌نمایش بنر"
+                                                     class="w-full h-full object-cover">
+                                            </template>
+                                            <template x-if="!slide.preview && !slide.image">
+                                                <div class="text-center p-3 text-slate-400 dark:text-slate-500 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition">
+                                                    <svg class="w-8 h-8 mx-auto mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
+                                                    <span class="text-[11px] font-bold block">انتخاب و بارگذاری تصویر بنر</span>
+                                                    <span class="text-[10px] text-slate-400">۱۲۰۰×۴۶۵ یا ۱۰۲۴×۳۹۶</span>
+                                                </div>
+                                            </template>
+
+                                            {{-- لایه تغییر تصویر هنگام وجود عکس قبلی --}}
+                                            <div x-show="slide.preview || slide.image" class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-bold gap-1.5 backdrop-blur-xs">
+                                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                                                <span>تغییر تصویر بنر</span>
+                                            </div>
+
+                                            {{-- ورودی فایل --}}
+                                            <input type="file" 
+                                                   :name="'rental_hero_slides[' + sIdx + '][image_file]'" 
+                                                   accept="image/*" 
+                                                   @change="handleImageSelect($event, sIdx)" 
+                                                   class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10">
+                                        </div>
+                                    </div>
+
+                                    {{-- تنظیمات لینک و اطلاعات بنر --}}
+                                    <div class="md:col-span-7 space-y-3 pt-1">
+                                        {{-- لینک مقصد --}}
+                                        <div>
+                                            <label class="{{ $labelClass }}">لینک مقصد بنر (URL / Route):</label>
+                                            <input type="text" 
+                                                   :name="'rental_hero_slides[' + sIdx + '][link]'" 
+                                                   x-model="slide.link" 
+                                                   class="{{ $inputClass }} font-sans" 
+                                                   placeholder="مثال: /register یا /properties?category=cottage یا لینک اینترنتی">
+                                            {{-- پیشنهادهای سریع لینک --}}
+                                            <div class="flex flex-wrap items-center gap-1.5 mt-1.5 text-[11px] text-slate-500">
+                                                <span class="text-[10px]">پیشنهادها:</span>
+                                                <button type="button" @click="slide.link = '/register'" class="px-2 py-0.5 rounded-lg bg-gray-200/80 dark:bg-gray-800 hover:bg-indigo-100 dark:hover:bg-indigo-950 text-slate-700 dark:text-slate-300 hover:text-indigo-600 transition text-[10px] font-sans">
+                                                    ثبت نام میزبان (/register)
+                                                </button>
+                                                <button type="button" @click="slide.link = '/properties?category=cottage'" class="px-2 py-0.5 rounded-lg bg-gray-200/80 dark:bg-gray-800 hover:bg-indigo-100 dark:hover:bg-indigo-950 text-slate-700 dark:text-slate-300 hover:text-indigo-600 transition text-[10px] font-sans">
+                                                    کلبه‌ها
+                                                </button>
+                                                <button type="button" @click="slide.link = '/properties?instant=1'" class="px-2 py-0.5 rounded-lg bg-gray-200/80 dark:bg-gray-800 hover:bg-indigo-100 dark:hover:bg-indigo-950 text-slate-700 dark:text-slate-300 hover:text-indigo-600 transition text-[10px] font-sans">
+                                                    رزرو فوری
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        {{-- عنوان بنر و تارگت در یک سطر --}}
+                                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                            <div>
+                                                <label class="{{ $labelClass }}">عنوان / متن جایگزین (Alt & Title):</label>
+                                                <input type="text" 
+                                                       :name="'rental_hero_slides[' + sIdx + '][title]'" 
+                                                       x-model="slide.title" 
+                                                       class="{{ $inputClass }} font-sans" 
+                                                       placeholder="عنوان اسلاید (جهت سئو و دسترس‌پذیری)">
+                                            </div>
+
+                                            <div>
+                                                <label class="{{ $labelClass }}">نحوه باز شدن لینک:</label>
+                                                <select :name="'rental_hero_slides[' + sIdx + '][target]'" 
+                                                        x-model="slide.target" 
+                                                        class="{{ $inputClass }} font-sans">
+                                                    <option value="_self">در همان برگه (_self)</option>
+                                                    <option value="_blank">در برگه جدید (_blank)</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </div>
+
+            {{-- ======================================================== --}}
+            {{-- ۲. بخش پیکربندی و چندمیزبانی                           --}}
+            {{-- ======================================================== --}}
+            <div x-show="rentalSubTab === 'core'" class="space-y-6">
 
             {{-- کارت فعال‌سازی و تنظیمات بازار چندمیزبانی --}}
             <div class="{{ $cardClass }} p-5 sm:p-6 space-y-5">
@@ -447,6 +718,12 @@
                     </div>
                 </div>
             </div>
+            </div>
+
+            {{-- ======================================================== --}}
+            {{-- ۳. بخش قوانین تسویه و نکات میزبانی                     --}}
+            {{-- ======================================================== --}}
+            <div x-show="rentalSubTab === 'rules_tips'" class="space-y-6">
 
             {{-- ======================================================== --}}
             {{-- کارت اختصاصی جدید: مدیریت قوانین و رویه تسویه حساب درآمد --}}
@@ -680,6 +957,12 @@
                     </template>
                 </div>
             </div>
+            </div>
+
+            {{-- ======================================================== --}}
+            {{-- ۴. بخش حریم خصوصی و نمایش جزئیات اقامتگاه                --}}
+            {{-- ======================================================== --}}
+            <div x-show="rentalSubTab === 'display'" class="space-y-6">
 
             {{-- ======================================================== --}}
             {{-- کارت اختصاصی: تنظیمات نمایش اقامتگاه، نقشه و تماس مسافر --}}
@@ -835,6 +1118,7 @@
                     </div>
                 </div>
 
+            </div>
             </div>
 
         </div>
@@ -1265,6 +1549,17 @@
     function propertySettingsManager(config) {
         return {
             activeTab: config.activeTab || 'general',
+            rentalSubTab: config.rentalSubTab || 'slider',
+            heroSlides: (config.heroSlides && Array.isArray(config.heroSlides)) ? config.heroSlides.map((s, idx) => ({
+                id: s.id || ('slide_' + Date.now() + '_' + idx),
+                image: s.image || '',
+                preview: null,
+                title: s.title || '',
+                link: s.link || '',
+                target: s.target || '_self',
+                is_active: typeof s.is_active !== 'undefined' ? Boolean(s.is_active) : true,
+                order: typeof s.order !== 'undefined' ? s.order : idx
+            })) : [],
             rentalEnabled: config.rentalEnabled,
             rentalVideoEnabled: config.rentalVideoEnabled ?? true,
             rentalBuildingEnabled: config.rentalBuildingEnabled ?? true,
@@ -1350,6 +1645,42 @@
 
             submitForm() {
                 document.getElementById('propertySettingsForm').submit();
+            },
+
+            addSlide() {
+                this.heroSlides.push({
+                    id: 'slide_' + Date.now(),
+                    image: '',
+                    preview: null,
+                    title: '',
+                    link: '',
+                    target: '_self',
+                    is_active: true,
+                    order: this.heroSlides.length
+                });
+            },
+
+            removeSlide(idx) {
+                if (confirm('آیا از حذف این اسلاید اطمینان دارید؟')) {
+                    this.heroSlides.splice(idx, 1);
+                    this.heroSlides.forEach((s, i) => s.order = i);
+                }
+            },
+
+            moveSlide(idx, direction) {
+                const targetIdx = idx + direction;
+                if (targetIdx < 0 || targetIdx >= this.heroSlides.length) return;
+                const temp = this.heroSlides[idx];
+                this.heroSlides[idx] = this.heroSlides[targetIdx];
+                this.heroSlides[targetIdx] = temp;
+                this.heroSlides.forEach((s, i) => s.order = i);
+            },
+
+            handleImageSelect(event, idx) {
+                const file = event.target.files[0];
+                if (file) {
+                    this.heroSlides[idx].preview = URL.createObjectURL(file);
+                }
             },
 
             addRule() {
