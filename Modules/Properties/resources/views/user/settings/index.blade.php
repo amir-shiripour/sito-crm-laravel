@@ -640,6 +640,37 @@
                                                        placeholder="عنوان نمایشی (فارسی)..."
                                                        required>
                                             </div>
+
+                                            {{-- انتخاب آیکون نمایشی --}}
+                                            <div class="w-36 shrink-0">
+                                                <select :name="'rental_property_types[' + typeItem.key + '][icon]'"
+                                                        x-model="typeItem.icon"
+                                                        class="{{ $inputClass }} text-[11px] py-1.5 px-2 w-full">
+                                                    <option value="">آیکون پیش‌فرض</option>
+                                                    <option value="villa">ویلا</option>
+                                                    <option value="cottage">کلبه چوبی</option>
+                                                    <option value="apartment">آپارتمان و سوئیت</option>
+                                                    <option value="ecolodge">بوم‌گردی و سنتی</option>
+                                                    <option value="resort">مجتمع اقامتی</option>
+                                                    <option value="pool">استخردار</option>
+                                                    <option value="beach">ساحلی و لب آب</option>
+                                                    <option value="forest">جنگلی</option>
+                                                    <option value="mountain">ییلاقی و کوهستانی</option>
+                                                    <option value="jacuzzi">جکوزی‌دار</option>
+                                                    <option value="luxury">لوکس و ممتاز</option>
+                                                    <option value="breakfast">با صبحانه</option>
+                                                    <option value="pet">پت‌نواز</option>
+                                                </select>
+                                            </div>
+
+                                            {{-- تصویر اختیاری --}}
+                                            <div class="w-40 shrink-0">
+                                                <input type="text"
+                                                       :name="'rental_property_types[' + typeItem.key + '][image]'"
+                                                       x-model="typeItem.image"
+                                                       class="{{ $inputClass }} text-[11px] py-1.5 px-2 w-full"
+                                                       placeholder="آدرس آیکون/تصویر...">
+                                            </div>
                                         </div>
 
                                         {{-- دکمه حذف برای موارد اضافه شده توسط کاربر --}}
@@ -1755,6 +1786,8 @@
                 this.rentalPropertyTypes.push({
                     key: uniqueKey,
                     label: '',
+                    icon: 'villa',
+                    image: '',
                     is_active: true
                 });
             },
@@ -1767,11 +1800,11 @@
 
             resetDefaultRentalTypes() {
                 this.rentalPropertyTypes = [
-                    { key: 'villa', label: 'ویلا', is_active: true },
-                    { key: 'apartment', label: 'آپارتمان و سوئیت', is_active: true },
-                    { key: 'cottage', label: 'کلبه و اقامتگاه چوبی', is_active: true },
-                    { key: 'ecolodge', label: 'بوم‌گردی و سنتی', is_active: true },
-                    { key: 'resort', label: 'مجتمع اقامتی و هتل‌آپارتمان', is_active: true }
+                    { key: 'villa', label: 'ویلا', icon: 'villa', image: '', is_active: true },
+                    { key: 'apartment', label: 'آپارتمان و سوئیت', icon: 'apartment', image: '', is_active: true },
+                    { key: 'cottage', label: 'کلبه و اقامتگاه چوبی', icon: 'cottage', image: '', is_active: true },
+                    { key: 'ecolodge', label: 'بوم‌گردی و سنتی', icon: 'ecolodge', image: '', is_active: true },
+                    { key: 'resort', label: 'مجتمع اقامتی و هتل‌آپارتمان', icon: 'resort', image: '', is_active: true }
                 ];
             },
 

@@ -408,12 +408,16 @@ class SettingsController extends Controller
                 $typeKey = trim($item['key'] ?? $key);
                 $typeLabel = trim($item['label'] ?? '');
                 $isActive = !empty($item['is_active']);
+                $icon = trim($item['icon'] ?? '');
+                $image = trim($item['image'] ?? '');
 
                 if (!empty($typeKey) && !empty($typeLabel)) {
                     $cleanRentalTypes[$typeKey] = [
                         'key' => $typeKey,
                         'label' => $typeLabel,
                         'is_active' => $isActive,
+                        'icon' => $icon ?: $typeKey,
+                        'image' => $image,
                     ];
                 }
             }

@@ -10,19 +10,39 @@ use Illuminate\Support\Str;
 
 class CategoryController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         $user = auth()->user();
         $canViewAll = $user->hasRole(['super-admin', 'admin']) || $user->can('properties.categories.view') || $user->can('properties.categories.manage');
 
-        $query = PropertyCategory::query();
+        $baseQuery = PropertyCategory::query();
         if (!$canViewAll) {
-            $query->where('user_id', $user->id);
+            $baseQuery->where('user_id', $user->id);
         }
 
-        $categories = $query->latest()->paginate(10);
+        $totalCategories = (clone $baseQuery)->count();
+        $categoriesWithProperties = (clone $baseQuery)->has('properties')->count();
+        $totalPropertiesCategorized = \Modules\Properties\Entities\Property::whereNotNull('category_id')->count();
 
-        return view('properties::user.categories.index', compact('categories'));
+        $query = (clone $baseQuery)->withCount('properties');
+
+        if ($request->filled('search')) {
+            $search = trim($request->search);
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('slug', 'like', "%{$search}%");
+            });
+        }
+
+        $categories = $query->latest()->paginate(12)->withQueryString();
+
+        return view('properties::user.categories.index', compact(
+            'categories',
+            'canViewAll',
+            'totalCategories',
+            'categoriesWithProperties',
+            'totalPropertiesCategorized'
+        ));
     }
 
     public function store(Request $request)
@@ -31,6 +51,8 @@ class CategoryController extends Controller
             'name' => 'required|string|max:255',
             'slug' => 'nullable|string|max:255',
             'color' => 'nullable|string|max:7',
+            'icon' => 'nullable|string|max:100',
+            'image' => 'nullable|string|max:255',
         ]);
 
         if ($validator->fails()) {
@@ -41,6 +63,8 @@ class CategoryController extends Controller
             'name' => $request->name,
             'slug' => $request->slug ? Str::slug($request->slug) : Str::slug($request->name),
             'color' => $request->color ?? '#6366f1',
+            'icon' => $request->icon,
+            'image' => $request->image,
             'user_id' => auth()->id(),
         ]);
 
@@ -60,6 +84,8 @@ class CategoryController extends Controller
             'name' => 'required|string|max:255',
             'slug' => 'nullable|string|max:255',
             'color' => 'nullable|string|max:7',
+            'icon' => 'nullable|string|max:100',
+            'image' => 'nullable|string|max:255',
         ]);
 
         if ($validator->fails()) {
@@ -70,6 +96,8 @@ class CategoryController extends Controller
             'name' => $request->name,
             'slug' => $request->slug ? Str::slug($request->slug) : Str::slug($request->name),
             'color' => $request->color,
+            'icon' => $request->icon,
+            'image' => $request->image,
         ]);
 
         return back()->with('success', 'دسته‌بندی با موفقیت ویرایش شد.');
