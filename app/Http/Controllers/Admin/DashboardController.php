@@ -351,6 +351,37 @@ class DashboardController extends Controller
             }
         }
 
+        // بهینه‌سازی اسلایدرهای اختصاصی املاک و اقامتگاه‌ها (rental_hero_slides)
+        if (class_exists(\Modules\Properties\Entities\PropertySetting::class)) {
+            $rawSlides = \Modules\Properties\Entities\PropertySetting::get('rental_hero_slides');
+            $slides = $rawSlides ? json_decode($rawSlides, true) : [];
+            if (is_array($slides) && !empty($slides)) {
+                $slidesChanged = false;
+                foreach ($slides as &$slide) {
+                    $imgPath = $slide['image'] ?? null;
+                    if (is_string($imgPath) && !str_ends_with(strtolower($imgPath), '.webp')) {
+                        $cleanDiskPath = ltrim(str_replace(['/storage/', 'storage/'], '', $imgPath), '/');
+                        if (Storage::disk('public')->exists($cleanDiskPath)) {
+                            try {
+                                $result = $optimizer->optimizeExistingImage($cleanDiskPath, 'public', 1400);
+                                if ($result['status'] === 'success') {
+                                    $slide['image'] = 'storage/' . $result['new_path'];
+                                    $slidesChanged = true;
+                                    $processedCount++;
+                                }
+                            } catch (\Exception $e) {
+                                Log::error("Image optimization failed for rental_hero_slide ({$cleanDiskPath}): " . $e->getMessage());
+                                $errorCount++;
+                            }
+                        }
+                    }
+                }
+                if ($slidesChanged) {
+                    \Modules\Properties\Entities\PropertySetting::set('rental_hero_slides', json_encode($slides, JSON_UNESCAPED_UNICODE));
+                }
+            }
+        }
+
         // اگر خطایی رخ داد، به کاربر هشدار می‌دهیم تا لاگ‌ها را چک کند
         $message = "عملیات با پایان رسید. {$processedCount} تصویر بهینه شد.";
         if ($errorCount > 0) {
