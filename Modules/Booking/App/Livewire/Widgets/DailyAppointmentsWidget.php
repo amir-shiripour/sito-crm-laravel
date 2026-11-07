@@ -170,7 +170,7 @@ class DailyAppointmentsWidget extends Component
 
     public function setTab(string $tab): void
     {
-        $this->activeTab = in_array($tab, ['all', 'waiting', 'in_progress', 'done'], true) ? $tab : 'all';
+        $this->activeTab = trim($tab) ?: 'all';
         $this->resetPage();
     }
 
@@ -284,7 +284,10 @@ class DailyAppointmentsWidget extends Component
             }
         }
 
-        $this->dispatch('notify', type: 'success', text: 'وضعیت نوبت به «' . $appointment->status_label . '» تغییر یافت.');
+        $statusMeta = collect(BookingSetting::current()->appointment_statuses)->firstWhere('id', $newStatus);
+        $statusLabel = $statusMeta['name'] ?? $appointment->status_label;
+
+        $this->dispatch('notify', type: 'success', text: 'وضعیت نوبت به «' . $statusLabel . '» تغییر یافت.');
     }
 
     public function markNoShow(int $appointmentId): void
@@ -322,11 +325,20 @@ class DailyAppointmentsWidget extends Component
         $todayGregorian = $today->format('Y-m-d');
         $todayJalaliShort = Jalalian::fromDateTime($today)->format('Y/m/d');
 
-        // Dynamic labels configured via /admin/booking/settings/label
+        // Dynamic labels configured via /admin/booking/settings/label (with fallback to client settings)
+        $defaultClient = config('clients.labels.singular', config('booking.labels.client', 'مراجع'));
+        $defaultClients = config('clients.labels.plural', config('booking.labels.clients', 'مراجعین'));
+        if (class_exists(\Modules\Clients\Entities\ClientSetting::class)) {
+            $defaultClient = \Modules\Clients\Entities\ClientSetting::getValue('label_singular', $defaultClient);
+            $defaultClients = \Modules\Clients\Entities\ClientSetting::getValue('label_plural', $defaultClients);
+        }
+
         $labelProvider  = BookingSetting::getValue('label_provider', config('booking.labels.provider', 'ارائه‌دهنده'));
         $labelProviders = BookingSetting::getValue('label_providers', config('booking.labels.providers', 'ارائه‌دهندگان'));
         $labelService   = BookingSetting::getValue('label_service', config('booking.labels.service', 'سرویس'));
         $labelServices  = BookingSetting::getValue('label_services', config('booking.labels.services', 'سرویس‌ها'));
+        $labelClient    = BookingSetting::getValue('label_client', $defaultClient);
+        $labelClients   = BookingSetting::getValue('label_clients', $defaultClients);
 
         if (empty($this->selectedDate)) {
             $this->selectedDate = $todayGregorian;
@@ -350,45 +362,66 @@ class DailyAppointmentsWidget extends Component
         $canViewAll = $monitoringService->canViewAllAppointments($user);
         $providers = $canViewAll ? $monitoringService->getAccessibleProviders($user) : collect();
 
-        // 1. Base query for the selected date
+        // 1. بارگذاری وضعیت‌های نوبت از تنظیمات (/user/booking/settings)
+        $settingObj = BookingSetting::current();
+        $configuredStatuses = $settingObj->appointment_statuses ?? BookingSetting::defaultAppointmentStatuses();
+
+        $statusMetaMap = [];
+        foreach ($configuredStatuses as $st) {
+            if (!empty($st['id'])) {
+                $statusMetaMap[$st['id']] = [
+                    'id'             => $st['id'],
+                    'name'           => $st['name'] ?? $st['id'],
+                    'color'          => $st['color'] ?? '#6b7280',
+                    'order'          => (int) ($st['order'] ?? 1),
+                    'widget_enabled' => !empty($st['widget_enabled']),
+                ];
+            }
+        }
+
+        // فیلتر فقط وضعیت‌های فعال‌شده برای ویجت
+        $enabledStatuses = collect($statusMetaMap)->filter(fn($st) => !empty($st['widget_enabled']))->sortBy('order')->values();
+        $allowedStatusIds = $enabledStatuses->pluck('id')->toArray();
+
+        // در صورت عدم انتخاب هیچ وضعیتی، وضعیت‌های پیش‌فرض مجاز در نظر گرفته می‌شوند
+        if (empty($allowedStatusIds)) {
+            $allowedStatusIds = collect(BookingSetting::defaultAppointmentStatuses())
+                ->filter(fn($st) => !empty($st['widget_enabled']))
+                ->pluck('id')
+                ->toArray();
+        }
+
+        // 2. کوئری پایه برای تاریخ انتخابی (فقط شامل وضعیت‌های پشتیبانی‌شده در ویجت)
         $baseQuery = $monitoringService->buildBaseQuery($this->selectedDate, $user);
+        $baseQuery->whereIn('status', $allowedStatusIds);
 
         if ($this->selectedProviderId && $canViewAll) {
             $baseQuery->where('provider_user_id', $this->selectedProviderId);
         }
 
-        // 2. Count metrics for the selected day
+        // 3. محاسبه آمار و شمارش برای تاریخ انتخابی
         $allDayAppointments = (clone $baseQuery)->get(['id', 'status', 'entry_at_utc', 'exit_at_utc']);
-        $stats = [
-            'total'       => $allDayAppointments->count(),
-            'waiting'     => $allDayAppointments->whereIn('status', [
-                Appointment::STATUS_PENDING,
-                Appointment::STATUS_PENDING_PAYMENT,
-                Appointment::STATUS_CONFIRMED,
-            ])->count(),
-            'in_progress' => $allDayAppointments->where('status', Appointment::STATUS_IN_PROGRESS)->count(),
-            'done'        => $allDayAppointments->where('status', Appointment::STATUS_DONE)->count(),
-            'canceled'    => $allDayAppointments->whereIn('status', [
-                Appointment::STATUS_CANCELED_BY_ADMIN,
-                Appointment::STATUS_CANCELED_BY_CLIENT,
-                Appointment::STATUS_NO_SHOW,
-            ])->count(),
-        ];
+        $countsByStatus = $allDayAppointments->groupBy('status')->map->count();
+        $totalCount = $allDayAppointments->count();
 
-        // 3. Filter by tab
+        // افزودن تعداد به هر وضعیت فعال برای تب‌های ویجت
+        $enabledStatusesWithCounts = $enabledStatuses->map(function ($st) use ($countsByStatus) {
+            $st['count'] = $countsByStatus->get($st['id'], 0);
+            return $st;
+        })->all();
+
+        // 4. فیلتر تب فعال (بر اساس وضعیت انتخاب‌شده)
         $listQuery = clone $baseQuery;
-        match ($this->activeTab) {
-            'waiting'     => $listQuery->whereIn('status', [
-                Appointment::STATUS_PENDING,
-                Appointment::STATUS_PENDING_PAYMENT,
-                Appointment::STATUS_CONFIRMED,
-            ]),
-            'in_progress' => $listQuery->where('status', Appointment::STATUS_IN_PROGRESS),
-            'done'        => $listQuery->where('status', Appointment::STATUS_DONE),
-            default       => null,
-        };
+        if ($this->activeTab !== 'all') {
+            if (in_array($this->activeTab, $allowedStatusIds, true)) {
+                $listQuery->where('status', $this->activeTab);
+            } else {
+                // اگر تب انتخاب‌شده دیگر در تنظیمات فعال نیست، بازگشت به همه
+                $this->activeTab = 'all';
+            }
+        }
 
-        // 4. Filter by search
+        // 5. فیلتر جستجو
         if (! empty(trim($this->search))) {
             $term = '%' . trim($this->search) . '%';
             $listQuery->where(function ($q) use ($term) {
@@ -412,23 +445,31 @@ class DailyAppointmentsWidget extends Component
         $canCreate = $user && ($monitoringService->isAdminUser($user) || $user->can('booking.appointments.create'));
 
         return view('booking::livewire.widgets.daily-appointments-widget', [
-            'appointments'           => $appointments,
-            'stats'                  => $stats,
-            'currentJalaliLong'      => $currentJalaliLong,
-            'currentJalaliFormatted' => $currentJalaliFormatted,
-            'dayOfWeekName'          => $dayOfWeekName,
-            'todayJalaliShort'       => $todayJalaliShort,
-            'isToday'                => $isToday,
-            'canViewAll'             => $canViewAll,
-            'providers'              => $providers,
-            'canEdit'                => $canEdit,
-            'canCreate'              => $canCreate,
-            'scheduleTz'             => $tz,
-            'labelProvider'          => $labelProvider,
-            'labelProviders'         => $labelProviders,
-            'labelService'           => $labelService,
-            'labelServices'          => $labelServices,
-            'timeSort'               => $this->timeSort,
+            'appointments'              => $appointments,
+            'enabledStatusesWithCounts' => $enabledStatusesWithCounts,
+            'totalCount'                => $totalCount,
+            'statusMetaMap'             => $statusMetaMap,
+            'activeTab'                 => $this->activeTab,
+            'selectedDateJalali'        => $this->selectedDateJalali,
+            'search'                    => $this->search,
+            'selectedProviderId'        => $this->selectedProviderId,
+            'currentJalaliLong'         => $currentJalaliLong,
+            'currentJalaliFormatted'    => $currentJalaliFormatted,
+            'dayOfWeekName'             => $dayOfWeekName,
+            'todayJalaliShort'          => $todayJalaliShort,
+            'isToday'                   => $isToday,
+            'canViewAll'                => $canViewAll,
+            'providers'                 => $providers,
+            'canEdit'                   => $canEdit,
+            'canCreate'                 => $canCreate,
+            'scheduleTz'                => $tz,
+            'labelProvider'             => $labelProvider,
+            'labelProviders'            => $labelProviders,
+            'labelService'              => $labelService,
+            'labelServices'             => $labelServices,
+            'labelClient'               => $labelClient,
+            'labelClients'              => $labelClients,
+            'timeSort'                  => $this->timeSort,
         ]);
     }
 }

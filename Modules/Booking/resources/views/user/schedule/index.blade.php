@@ -9,8 +9,12 @@
                     <span class="w-3 h-8 bg-indigo-600 rounded-full inline-block"></span>
                     مدیریت برنامه زمانی (تقویم نوبت‌ها)
                 </h1>
-                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                    بررسی چیدمان روزانه نوبت‌ها، زمان‌های خالی، و برنامه کاری {{ config('booking.labels.providers') }} و سرویس‌ها
+                @php
+                    $labelProviders = \Modules\Booking\Entities\BookingSetting::getValue('label_providers', config('booking.labels.providers', 'ارائه‌دهندگان'));
+                    $labelServices = \Modules\Booking\Entities\BookingSetting::getValue('label_services', config('booking.labels.services', 'سرویس‌ها'));
+                @endphp
+                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 font-sans">
+                    بررسی چیدمان روزانه نوبت‌ها، زمان‌های خالی، و برنامه کاری {{ $labelProviders }} و {{ $labelServices }}
                 </p>
             </div>
 

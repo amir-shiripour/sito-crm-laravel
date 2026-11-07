@@ -14,10 +14,12 @@ return [
     ],
 
     'labels' => [
-        'provider' => 'ارائه‌دهنده',
+        'provider'  => 'ارائه‌دهنده',
         'providers' => 'ارائه‌دهندگان',
-        'service' => 'سرویس',
-        'services' => 'سرویس‌ها',
+        'service'   => 'سرویس',
+        'services'  => 'سرویس‌ها',
+        'client'    => 'مراجع',
+        'clients'   => 'مراجعین',
     ],
 
     'defaults' => [

@@ -395,6 +395,7 @@ class BookingSetting extends Model
                     'order' => 1,
                     'step_booking_enabled' => true,
                     'schedule_booking_enabled' => true,
+                    'widget_enabled' => true,
                 ],
                 [
                     'id' => 'PENDING',
@@ -403,6 +404,7 @@ class BookingSetting extends Model
                     'order' => 2,
                     'step_booking_enabled' => true,
                     'schedule_booking_enabled' => true,
+                    'widget_enabled' => true,
                 ],
                 [
                     'id' => 'PENDING_PAYMENT',
@@ -411,6 +413,7 @@ class BookingSetting extends Model
                     'order' => 3,
                     'step_booking_enabled' => true,
                     'schedule_booking_enabled' => true,
+                    'widget_enabled' => true,
                 ],
                 [
                     'id' => 'IN_PROGRESS',
@@ -419,6 +422,7 @@ class BookingSetting extends Model
                     'order' => 4,
                     'step_booking_enabled' => true,
                     'schedule_booking_enabled' => true,
+                    'widget_enabled' => true,
                 ],
                 [
                     'id' => 'DONE',
@@ -427,6 +431,7 @@ class BookingSetting extends Model
                     'order' => 5,
                     'step_booking_enabled' => true,
                     'schedule_booking_enabled' => true,
+                    'widget_enabled' => true,
                 ],
                 [
                     'id' => 'CANCELED_BY_CLIENT',
@@ -435,6 +440,7 @@ class BookingSetting extends Model
                     'order' => 6,
                     'step_booking_enabled' => true,
                     'schedule_booking_enabled' => true,
+                    'widget_enabled' => true,
                 ],
                 [
                     'id' => 'CANCELED_BY_ADMIN',
@@ -443,6 +449,7 @@ class BookingSetting extends Model
                     'order' => 7,
                     'step_booking_enabled' => true,
                     'schedule_booking_enabled' => true,
+                    'widget_enabled' => true,
                 ],
                 [
                     'id' => 'NO_SHOW',
@@ -451,6 +458,7 @@ class BookingSetting extends Model
                     'order' => 8,
                     'step_booking_enabled' => true,
                     'schedule_booking_enabled' => true,
+                    'widget_enabled' => true,
                 ],
                 [
                     'id' => 'RESCHEDULED',
@@ -459,6 +467,7 @@ class BookingSetting extends Model
                     'order' => 9,
                     'step_booking_enabled' => true,
                     'schedule_booking_enabled' => true,
+                    'widget_enabled' => true,
                 ],
                 [
                     'id' => 'DRAFT',
@@ -467,6 +476,7 @@ class BookingSetting extends Model
                     'order' => 10,
                     'step_booking_enabled' => true,
                     'schedule_booking_enabled' => true,
+                    'widget_enabled' => false,
                 ],
             ];
         }
@@ -497,6 +507,7 @@ class BookingSetting extends Model
                     $merged = array_merge($def, $savedMap[$id]);
                     $merged['step_booking_enabled'] = (bool)($merged['step_booking_enabled'] ?? true);
                     $merged['schedule_booking_enabled'] = (bool)($merged['schedule_booking_enabled'] ?? true);
+                    $merged['widget_enabled'] = (bool)($merged['widget_enabled'] ?? ($def['widget_enabled'] ?? true));
                     $result[] = $merged;
                     unset($savedMap[$id]);
                 } else {
@@ -507,6 +518,7 @@ class BookingSetting extends Model
             foreach ($savedMap as $extra) {
                 $extra['step_booking_enabled'] = (bool)($extra['step_booking_enabled'] ?? true);
                 $extra['schedule_booking_enabled'] = (bool)($extra['schedule_booking_enabled'] ?? true);
+                $extra['widget_enabled'] = (bool)($extra['widget_enabled'] ?? true);
                 $result[] = $extra;
             }
 
