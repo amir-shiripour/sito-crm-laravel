@@ -281,17 +281,89 @@
                 $activeHeroSlides = is_array($allHeroSlides) 
                     ? array_values(array_filter($allHeroSlides, fn($s) => !empty($s['is_active']) && !empty($s['image']))) 
                     : [];
+
+                $rawHeroBg = class_exists(\Modules\Properties\Entities\PropertySetting::class) 
+                    ? \Modules\Properties\Entities\PropertySetting::get('rental_hero_bg_image') 
+                    : null;
+                $rentalHeroBg = $rawHeroBg ? asset($rawHeroBg) : null;
+
+                $rawHeroMobileBg = class_exists(\Modules\Properties\Entities\PropertySetting::class) 
+                    ? \Modules\Properties\Entities\PropertySetting::get('rental_hero_mobile_bg_image') 
+                    : null;
+                $rentalHeroMobileBg = $rawHeroMobileBg ? asset($rawHeroMobileBg) : null;
+
+                // تصویر موبایل در صورت وجود، یا فالبک به تصویر دسکتاپ
+                $effectiveMobileBg = $rentalHeroMobileBg ?: $rentalHeroBg;
+
+                // وضعیت وجود تصاویر پس‌زمینه
+                $hasDesktopHeroBg = !empty($rentalHeroBg);
+                $hasMobileHeroBg = !empty($effectiveMobileBg);
+                $hasAnyHeroBg = $hasDesktopHeroBg || $hasMobileHeroBg;
+
+                // موقعیت عمودی محتوای هیرو (وسط یا بالا)
+                $rentalHeroValign = class_exists(\Modules\Properties\Entities\PropertySetting::class) 
+                    ? \Modules\Properties\Entities\PropertySetting::get('rental_hero_valign', 'center') 
+                    : 'center';
+
+                // موقعیت فوکوس پس‌زمینه (background-position)
+                $rentalHeroBgPos = class_exists(\Modules\Properties\Entities\PropertySetting::class) 
+                    ? \Modules\Properties\Entities\PropertySetting::get('rental_hero_bg_position', 'center') 
+                    : 'center';
+
+                $rentalHeroMobileBgPos = class_exists(\Modules\Properties\Entities\PropertySetting::class) 
+                    ? \Modules\Properties\Entities\PropertySetting::get('rental_hero_mobile_bg_position', 'center') 
+                    : 'center';
+
+                $valignDesktopClass = $rentalHeroValign === 'top' 
+                    ? 'md:justify-start md:pt-16 lg:pt-20 xl:pt-24 md:pb-12' 
+                    : 'md:justify-center md:py-32 lg:py-40';
             @endphp
 
-            <!-- DESKTOP ULTRA-MINIMAL HERO & SEARCH BAR -->
-            <section class="hidden md:block pt-6 pb-8">
-                <div class="max-w-4xl mx-auto px-8 text-center">
-                    <h1 class="text-2xl sm:text-3xl font-extrabold text-[#18181B] dark:text-zinc-100 tracking-tight mb-8">
+            @if($hasAnyHeroBg)
+                <style>
+                    @if($effectiveMobileBg)
+                        .hero-panoramic-bg {
+                            background-image: url('{{ $effectiveMobileBg }}');
+                            background-position: {{ $rentalHeroMobileBgPos }};
+                        }
+                    @endif
+                    @if($rentalHeroBg)
+                        @media (min-width: 768px) {
+                            .hero-panoramic-bg {
+                                background-image: url('{{ $rentalHeroBg }}') !important;
+                                background-position: {{ $rentalHeroBgPos }} !important;
+                            }
+                        }
+                    @else
+                        @media (min-width: 768px) {
+                            .hero-panoramic-bg {
+                                background-image: none !important;
+                            }
+                        }
+                    @endif
+                </style>
+            @endif
+
+            <!-- FULL-WIDTH PANORAMIC HERO (Mobile & Desktop) OR ULTRA-MINIMAL HERO (Desktop Only) -->
+            @if($hasAnyHeroBg)
+                <section class="hero-panoramic-bg w-full relative bg-cover overflow-hidden {{ $hasMobileHeroBg ? 'block h-40 sm:h-48' : 'hidden md:block' }} {{ $hasDesktopHeroBg ? 'md:h-auto md:min-h-[640px] lg:min-h-[720px] xl:min-h-[780px] md:flex md:flex-col ' . $valignDesktopClass . ' md:items-center shadow-xs' : 'md:h-auto md:min-h-0 md:pt-6 md:pb-8 md:block' }}">
+            @else
+                <section class="hidden md:block pt-6 pb-8">
+            @endif
+
+                @if($hasDesktopHeroBg)
+                    {{-- Desktop Dark Gradient Backdrop Overlay (Edge-to-Edge) --}}
+                    <div class="hidden md:block absolute inset-0 bg-gradient-to-b from-black/60 via-black/35 to-black/65 backdrop-blur-[0.5px]"></div>
+                @endif
+
+                <div class="relative z-10 w-full max-w-5xl lg:max-w-6xl xl:max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center font-sans hidden md:block">
+                    <h1 class="text-2xl sm:text-3xl lg:text-4xl xl:text-[38px] font-black {{ $hasDesktopHeroBg ? 'text-white drop-shadow-md' : 'text-[#18181B] dark:text-zinc-100' }} tracking-tight mb-8 leading-snug whitespace-normal md:whitespace-nowrap">
                         {{ $appName }} . اجاره ویلا، کلبه، بومگردی و انواع اقامتگاه در شمال
                     </h1>
 
-                    <!-- Clean 3-Part Flat Search Bar -->
-                    <div class="bg-white dark:bg-zinc-900 border border-[#ECECEE] dark:border-zinc-800 rounded-2xl p-2 grid grid-cols-12 gap-2 items-center text-right shadow-sm">
+                    <div class="max-w-4xl lg:max-w-5xl mx-auto">
+                        <!-- 1. DESKTOP 3-PART FLAT SEARCH BAR (Hidden on Mobile) -->
+                        <div class="hidden md:grid {{ $hasDesktopHeroBg ? 'bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md border border-white/40 dark:border-zinc-700/60 shadow-2xl' : 'bg-white dark:bg-zinc-900 border border-[#ECECEE] dark:border-zinc-800 shadow-sm' }} rounded-2xl p-2 grid-cols-12 gap-2 items-center text-right font-sans">
                 <!-- 1. Zone -->
                 @php
                     $availableDests = $availableDestinations ?? [];
@@ -599,12 +671,12 @@
                         </div>
                     </div>
 
-                    <!-- Quick Zone & Instant Filter Pills -->
-                    <div class="flex items-center justify-center flex-wrap gap-2 mt-5">
+                    <!-- Quick Zone & Instant Filter Pills (Desktop Only) -->
+                    <div class="hidden md:flex items-center justify-center flex-wrap gap-2 mt-5 sm:mt-6">
                         <button type="button" 
                                 id="instant-pill-btn"
                                 onclick="toggleInstantFilter(event)"
-                                class="px-4 py-2 rounded-full text-xs font-bold transition-all border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 hover:border-[#007A5E] hover:text-[#007A5E] dark:hover:text-emerald-400 shadow-xs flex items-center gap-1.5 active:scale-95">
+                                class="px-4 py-2 rounded-full text-xs font-bold transition-all {{ $rentalHeroBg ? 'bg-white/90 dark:bg-zinc-900/90 backdrop-blur-md text-zinc-800 dark:text-zinc-100 border border-white/30 shadow-md' : 'border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300' }} hover:border-[#007A5E] hover:text-[#007A5E] dark:hover:text-emerald-400 shadow-xs flex items-center gap-1.5 active:scale-95">
                             <span class="text-amber-500 text-xs">⚡</span>
                             <span>رزرو آنی</span>
                         </button>
@@ -616,10 +688,11 @@
                             $quickCities = collect($availableDests)->flatMap(function($g) { return $g['cities']; })->unique()->take(6);
                         @endphp
                         @foreach($quickCities as $quickCity)
-                            <button type="button" onclick="applyQuickZoneFilter('{{ $quickCity }}', '{{ $quickCity }}', event)" data-zone-pill="{{ $quickCity }}" class="zone-quick-pill px-4 py-2 rounded-full text-xs font-bold bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-800 hover:border-[#007A5E] dark:hover:border-emerald-500 hover:text-[#007A5E] dark:hover:text-emerald-400 shadow-xs transition-all active:scale-95">
+                            <button type="button" onclick="applyQuickZoneFilter('{{ $quickCity }}', '{{ $quickCity }}', event)" data-zone-pill="{{ $quickCity }}" class="zone-quick-pill px-4 py-2 rounded-full text-xs font-bold {{ $hasDesktopHeroBg ? 'bg-white/90 dark:bg-zinc-900/90 backdrop-blur-md text-zinc-800 dark:text-zinc-100 border border-white/30 shadow-md' : 'bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-800' }} hover:border-[#007A5E] dark:hover:border-emerald-500 hover:text-[#007A5E] dark:hover:text-emerald-400 shadow-xs transition-all active:scale-95">
                                 {{ $quickCity }}
                             </button>
                         @endforeach
+                    </div>
                     </div>
                 </div>
             </section>
@@ -627,11 +700,9 @@
             <!-- ============================================================= -->
             <!-- LISTINGS SECTION CONTAINER (Dynamic Carousels with Unified Consistent Spacing) -->
             <!-- ============================================================= -->
-            <main class="w-full pt-8 sm:pt-12 pb-12 sm:pb-16 flex flex-col gap-12 sm:gap-16 lg:gap-20 font-sans">
+            <main class="w-full {{ $hasAnyHeroBg ? 'pt-12 sm:pt-16 lg:pt-20' : 'pt-6 sm:pt-8 lg:pt-10' }} pb-12 sm:pb-16 flex flex-col gap-12 sm:gap-16 lg:gap-20 font-sans">
                 <!-- Active Filters Notification Bar -->
-                <div class="max-w-[1360px] mx-auto px-4 sm:px-8 w-full empty:hidden">
-                    <div id="active-filters-bar" class="hidden font-sans"></div>
-                </div>
+                <div id="active-filters-bar" class="max-w-[1360px] mx-auto px-4 sm:px-8 w-full hidden font-sans"></div>
 
                 <!-- ============================================================= -->
                 <!-- DYNAMIC AGGREGATED CATEGORIES & PROPERTY TYPES (Flat Cards & Drag Navigation with Peek Effect) -->
@@ -1939,8 +2010,7 @@
             const updateScroll = () => {
                 if (!isDown) return;
                 const walk = currentX - startX;
-                // RTL-Accurate: In standard modern RTL browsers, dragging mouse right (walk > 0) pulls content right
-                carousel.scrollLeft = isRTL ? (scrollStart + walk) : (scrollStart - walk);
+                carousel.scrollLeft = scrollStart - walk;
                 rafId = requestAnimationFrame(updateScroll);
             };
 
@@ -2002,7 +2072,7 @@
                 if (momentum < -maxGlide) momentum = -maxGlide;
 
                 if (Math.abs(momentum) > 10) {
-                    const targetLeft = isRTL ? (carousel.scrollLeft + momentum) : (carousel.scrollLeft - momentum);
+                    const targetLeft = carousel.scrollLeft - momentum;
                     carousel.scrollTo({
                         left: targetLeft,
                         behavior: 'smooth'
@@ -2130,10 +2200,7 @@
         const updateScroll = () => {
             if (!isDown) return;
             const walk = currentX - startX;
-            // RTL-Accurate: In standard modern RTL browsers (Chromium/Safari/Firefox), scrollLeft is 0 at right and negative towards left.
-            // When user drags mouse left (walk < 0), we want content to move left (decreasing scrollLeft towards -maxScroll).
-            // In LTR, dragging left (walk < 0) increases scrollLeft towards +maxScroll.
-            track.scrollLeft = isRTL ? (scrollStart + walk) : (scrollStart - walk);
+            track.scrollLeft = scrollStart - walk;
             rafId = requestAnimationFrame(updateScroll);
         };
 
@@ -2193,7 +2260,7 @@
             if (momentum < -maxGlide) momentum = -maxGlide;
 
             if (Math.abs(momentum) > 10) {
-                const targetLeft = isRTL ? (track.scrollLeft + momentum) : (track.scrollLeft - momentum);
+                const targetLeft = track.scrollLeft - momentum;
                 track.scrollTo({
                     left: targetLeft,
                     behavior: 'smooth'
@@ -2911,14 +2978,18 @@
 
         const dLabel = document.getElementById('desktop-dest-label');
         const mPill = document.getElementById('mobile-pill-dest');
+        const hPill = document.getElementById('hero-mobile-pill-dest');
         const mSummaryDest = document.getElementById('m-summary-dest-val');
         if (state.keyword) {
-            if (dLabel) dLabel.textContent = `جستجو: ${toPersianNum(state.keyword)}`;
-            if (mPill) mPill.textContent = `جستجو: ${toPersianNum(state.keyword)}`;
-            if (mSummaryDest) mSummaryDest.textContent = `جستجو: ${toPersianNum(state.keyword)}`;
+            const kwText = `جستجو: ${toPersianNum(state.keyword)}`;
+            if (dLabel) dLabel.textContent = kwText;
+            if (mPill) mPill.textContent = kwText;
+            if (hPill) hPill.textContent = kwText;
+            if (mSummaryDest) mSummaryDest.textContent = kwText;
         } else {
             if (dLabel) dLabel.textContent = 'همه مقاصد';
             if (mPill) mPill.textContent = 'جستجو بر اساس مقصد، عنوان یا کد اقامتگاه...';
+            if (hPill) hPill.textContent = 'جستجو بر اساس مقصد، عنوان یا کد اقامتگاه...';
             if (mSummaryDest) mSummaryDest.textContent = 'همه مقاصد';
         }
 
@@ -2952,8 +3023,11 @@
         if (mInput) mInput.value = '';
         const dLabel = document.getElementById('desktop-dest-label');
         const mPill = document.getElementById('mobile-pill-dest');
+        const hPill = document.getElementById('hero-mobile-pill-dest');
         if (dLabel) dLabel.textContent = state.cityLabel || 'همه مقاصد';
-        if (mPill) mPill.textContent = state.city === 'all' ? 'جستجو بر اساس مقصد، عنوان یا کد اقامتگاه...' : `مقصد: ${state.cityLabel}`;
+        const clearDestText = state.city === 'all' ? 'جستجو بر اساس مقصد، عنوان یا کد اقامتگاه...' : `مقصد: ${state.cityLabel}`;
+        if (mPill) mPill.textContent = clearDestText;
+        if (hPill) hPill.textContent = clearDestText;
         simulateWireLoading(() => renderListings());
     }
 
@@ -3024,10 +3098,13 @@
 
         const dLabel = document.getElementById('desktop-dest-label');
         const mPill = document.getElementById('mobile-pill-dest');
+        const hPill = document.getElementById('hero-mobile-pill-dest');
         const dHint = document.getElementById('desktop-dest-selected-hint');
         const mSummaryDest = document.getElementById('m-summary-dest-val');
+        const destTitle = destKey === 'all' ? 'جستجو در استان و شهر مقصد...' : `مقصد: ${label}`;
         if (dLabel) dLabel.textContent = label;
-        if (mPill) mPill.textContent = destKey === 'all' ? 'جستجو در استان و شهر مقصد...' : `مقصد: ${label}`;
+        if (mPill) mPill.textContent = destTitle;
+        if (hPill) hPill.textContent = destTitle;
         if (dHint) dHint.textContent = `مقصد: ${label}`;
         if (mSummaryDest) mSummaryDest.textContent = label;
 
@@ -3058,10 +3135,13 @@
         const dGuests = document.getElementById('desktop-guests-label');
         const mGuests = document.getElementById('mobile-sheet-guests');
         const mSub = document.getElementById('mobile-pill-sub');
+        const hSub = document.getElementById('hero-mobile-pill-sub');
         const mSummaryGuests = document.getElementById('m-summary-guests-val');
+        const guestSubText = `${toPersianNum(state.startDay)} تا ${toPersianNum(state.endDay)} ${currentJalaliMonthName} • ${pCount} نفر`;
         if (dGuests) dGuests.textContent = `${pCount} نفر`;
         if (mGuests) mGuests.textContent = pCount;
-        if (mSub) mSub.textContent = `${toPersianNum(state.startDay)} تا ${toPersianNum(state.endDay)} ${currentJalaliMonthName} • ${pCount} نفر`;
+        if (mSub) mSub.textContent = guestSubText;
+        if (hSub) hSub.textContent = guestSubText;
         if (mSummaryGuests) {
             const instantPart = state.instantOnly ? ' • ⚡ آنی' : '';
             mSummaryGuests.textContent = `${pCount} نفر${instantPart}`;
@@ -3099,13 +3179,16 @@
         const mSummary = document.getElementById('mobile-calendar-summary');
         const mSummaryDate = document.getElementById('m-summary-date-val');
         const mSub = document.getElementById('mobile-pill-sub');
+        const hSub = document.getElementById('hero-mobile-pill-sub');
         const dNights = document.getElementById('desktop-nights-count');
         const mNights = document.getElementById('mobile-nights-count');
 
+        const dateSubText = `${summaryShort} • ${toPersianNum(state.guests)} نفر`;
         if (dLabel) dLabel.textContent = summary;
         if (mSummary) mSummary.textContent = summary;
         if (mSummaryDate) mSummaryDate.textContent = summaryShort;
-        if (mSub) mSub.textContent = `${summaryShort} • ${toPersianNum(state.guests)} نفر`;
+        if (mSub) mSub.textContent = dateSubText;
+        if (hSub) hSub.textContent = dateSubText;
         if (dNights) dNights.textContent = pNights;
         if (mNights) mNights.textContent = pNights;
 
@@ -3268,10 +3351,12 @@
 
         const dLabel = document.getElementById('desktop-dest-label');
         const mPill = document.getElementById('mobile-pill-dest');
+        const hPill = document.getElementById('hero-mobile-pill-dest');
         const dHint = document.getElementById('desktop-dest-selected-hint');
         const mSummaryDest = document.getElementById('m-summary-dest-val');
         if (dLabel) dLabel.textContent = 'همه مقاصد';
         if (mPill) mPill.textContent = 'جستجو بر اساس مقصد، عنوان یا کد اقامتگاه...';
+        if (hPill) hPill.textContent = 'جستجو بر اساس مقصد، عنوان یا کد اقامتگاه...';
         if (dHint) dHint.textContent = 'مقصد: همه مقاصد';
         if (mSummaryDest) mSummaryDest.textContent = 'همه مقاصد';
         setMobileSearchSection('dest');
@@ -3321,8 +3406,11 @@
             state.province = 'all';
             const dLabel = document.getElementById('desktop-dest-label');
             const mPill = document.getElementById('mobile-pill-dest');
-            if (dLabel) dLabel.textContent = `جستجو: ${toPersianNum(state.keyword)}`;
-            if (mPill) mPill.textContent = `جستجو: ${toPersianNum(state.keyword)}`;
+            const hPill = document.getElementById('hero-mobile-pill-dest');
+            const kwSearchText = `جستجو: ${toPersianNum(state.keyword)}`;
+            if (dLabel) dLabel.textContent = kwSearchText;
+            if (mPill) mPill.textContent = kwSearchText;
+            if (hPill) hPill.textContent = kwSearchText;
         }
 
         simulateWireLoading(() => renderListings());
