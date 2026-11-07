@@ -1605,11 +1605,26 @@ class ScheduleManager extends Component
 
     public function openDetailsModal(int $appointmentId): void
     {
-        $apt = Appointment::with(['service', 'provider', 'client', 'payments'])->find($appointmentId);
+        $apt = Appointment::with(['service.appointmentForm', 'provider', 'client', 'payments'])->find($appointmentId);
         if (!$apt) {
             $this->toastError = 'نوبت مورد نظر یافت نشد.';
             return;
         }
+
+        // Dynamic labels configured via /admin/booking/settings/label (with fallback to client settings)
+        $defaultClient = config('clients.labels.singular', config('booking.labels.client', 'مراجع'));
+        $defaultClients = config('clients.labels.plural', config('booking.labels.clients', 'مراجعین'));
+        if (class_exists(\Modules\Clients\Entities\ClientSetting::class)) {
+            $defaultClient = \Modules\Clients\Entities\ClientSetting::getValue('label_singular', $defaultClient);
+            $defaultClients = \Modules\Clients\Entities\ClientSetting::getValue('label_plural', $defaultClients);
+        }
+
+        $labelProvider  = BookingSetting::getValue('label_provider', config('booking.labels.provider', 'ارائه‌دهنده'));
+        $labelProviders = BookingSetting::getValue('label_providers', config('booking.labels.providers', 'ارائه‌دهندگان'));
+        $labelService   = BookingSetting::getValue('label_service', config('booking.labels.service', 'سرویس'));
+        $labelServices  = BookingSetting::getValue('label_services', config('booking.labels.services', 'سرویس‌ها'));
+        $labelClient    = BookingSetting::getValue('label_client', $defaultClient);
+        $labelClients   = BookingSetting::getValue('label_clients', $defaultClients);
 
         $scheduleTz = config('booking.timezones.schedule', 'Asia/Tehran');
         $startLocal = $apt->start_at_utc?->copy()->timezone($scheduleTz);
@@ -1621,6 +1636,13 @@ class ScheduleManager extends Component
         $startTime = $startLocal ? $startLocal->format('H:i') : '—';
         $endTime = $endLocal ? $endLocal->format('H:i') : '—';
 
+        // Load configured statuses from settings
+        $statusSettings = BookingSetting::current()->appointment_statuses ?? BookingSetting::defaultAppointmentStatuses();
+        $statusMetaMap = collect($statusSettings)->keyBy('id');
+        $statusConfig = $statusMetaMap->get($apt->status);
+        $statusLabel = $statusConfig['name'] ?? null;
+        $statusColor = $statusConfig['color'] ?? null;
+
         $statusMap = [
             Appointment::STATUS_DRAFT => ['label' => 'پیش‌نویس', 'badge' => 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300 border-gray-300'],
             Appointment::STATUS_PENDING => ['label' => 'در انتظار تایید', 'badge' => 'bg-amber-50 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300 border-amber-300'],
@@ -1630,22 +1652,129 @@ class ScheduleManager extends Component
             Appointment::STATUS_DONE => ['label' => 'انجام شده', 'badge' => 'bg-blue-50 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 border-blue-300'],
             Appointment::STATUS_NO_SHOW => ['label' => 'عدم حضور', 'badge' => 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border-slate-400'],
             Appointment::STATUS_CANCELED_BY_ADMIN => ['label' => 'لغو شده (ادمین)', 'badge' => 'bg-rose-50 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300 border-rose-300'],
-            Appointment::STATUS_CANCELED_BY_CLIENT => ['label' => 'لغو شده (مشتری)', 'badge' => 'bg-rose-50 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300 border-rose-300'],
+            Appointment::STATUS_CANCELED_BY_CLIENT => ['label' => 'لغو شده (' . $labelClient . ')', 'badge' => 'bg-rose-50 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300 border-rose-300'],
             Appointment::STATUS_RESCHEDULED => ['label' => 'جابجا شده', 'badge' => 'bg-purple-50 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300 border-purple-300'],
         ];
 
         $statusInfo = $statusMap[$apt->status] ?? ['label' => $apt->status, 'badge' => 'bg-gray-100 text-gray-700'];
+        if ($statusLabel) {
+            $statusInfo['label'] = $statusLabel;
+            if ($apt->status === Appointment::STATUS_CANCELED_BY_CLIENT && !str_contains($statusInfo['label'], '(')) {
+                $statusInfo['label'] .= ' (' . $labelClient . ')';
+            }
+        }
+
+        // Parse supplementary info from appointment_form_response_json
+        $rawFormResponses = $apt->appointment_form_response_json ?? [];
+        $supplementaryFields = [];
+        $formName = null;
+
+        if (!empty($rawFormResponses) && is_array($rawFormResponses)) {
+            $form = $apt->service?->appointmentForm;
+            $formName = $form?->name ?? ('فرم اختصاصی ' . ($apt->service?->name ?? $labelService));
+            $fieldMeta = [];
+
+            if ($form && isset($form->schema_json['fields']) && is_array($form->schema_json['fields'])) {
+                foreach ($form->schema_json['fields'] as $field) {
+                    if (isset($field['name'])) {
+                        $fieldMeta[$field['name']] = [
+                            'label' => $field['label'] ?? $field['name'],
+                            'type'  => $field['type'] ?? 'text',
+                            'options' => $field['options'] ?? [],
+                        ];
+                    }
+                }
+            }
+
+            // User names for select-user-by-role
+            $roleUserIds = [];
+            foreach ($rawFormResponses as $key => $val) {
+                if (isset($fieldMeta[$key]) && ($fieldMeta[$key]['type'] ?? '') === 'select-user-by-role') {
+                    if (is_array($val)) {
+                        foreach ($val as $v) {
+                            if (is_numeric($v)) $roleUserIds[] = (int) $v;
+                        }
+                    } elseif (is_numeric($val)) {
+                        $roleUserIds[] = (int) $val;
+                    }
+                }
+            }
+
+            $userNamesMap = [];
+            if (!empty($roleUserIds)) {
+                $userNamesMap = User::whereIn('id', array_unique($roleUserIds))->pluck('name', 'id')->toArray();
+            }
+
+            foreach ($rawFormResponses as $key => $val) {
+                if ($val === null || $val === '') continue;
+
+                $type = $fieldMeta[$key]['type'] ?? 'text';
+                $label = $fieldMeta[$key]['label'] ?? (
+                    $key === 'tooth_numbers' ? 'نقشه دندانی' : (
+                        str_replace(['_', '-'], ' ', (string)$key)
+                    )
+                );
+
+                $displayVal = $val;
+                $isTooth = ($type === 'tooth_number' || $key === 'tooth_numbers' || str_contains(strtolower((string)$key), 'tooth'));
+                $teeth = [];
+
+                if ($type === 'select-user-by-role') {
+                    if (is_array($val)) {
+                        $names = array_map(fn($id) => $userNamesMap[$id] ?? "کاربر #{$id}", $val);
+                        $displayVal = implode('، ', $names);
+                    } elseif (is_numeric($val)) {
+                        $displayVal = $userNamesMap[$val] ?? "کاربر #{$val}";
+                    }
+                } elseif ($isTooth) {
+                    if (is_array($val)) {
+                        $teeth = array_values(array_filter(array_map('intval', $val)));
+                    } elseif (is_string($val) && trim($val) !== '') {
+                        $decoded = json_decode($val, true);
+                        if (is_array($decoded)) {
+                            $teeth = array_values(array_filter(array_map('intval', $decoded)));
+                        } else {
+                            $teeth = array_values(array_filter(array_map('intval', preg_split('/[\s,،]+/', $val))));
+                        }
+                    } elseif (is_numeric($val)) {
+                        $teeth = [(int)$val];
+                    }
+                    $displayVal = !empty($teeth) ? implode('، ', $teeth) : (is_array($val) ? implode('، ', $val) : (string)$val);
+                } elseif (is_array($val)) {
+                    $displayVal = implode('، ', array_filter(array_map('strval', $val)));
+                } elseif (is_bool($val)) {
+                    $displayVal = $val ? 'بله' : 'خیر';
+                }
+
+                $supplementaryFields[] = [
+                    'key' => $key,
+                    'label' => $label,
+                    'value' => (string)$displayVal,
+                    'type' => $type,
+                    'is_tooth' => $isTooth,
+                    'teeth' => $teeth,
+                ];
+            }
+        }
 
         $this->detailsAppointment = [
             'id' => $apt->id,
-            'client_name' => $apt->client?->full_name ?? 'بیمار جدید',
+            'client_id' => $apt->client_id,
+            'client_name' => $apt->client?->full_name ?? ('بدون نام'),
             'client_phone' => $apt->client?->phone ?? '—',
             'client_national_code' => $apt->client?->national_code ?? '—',
-            'service_name' => $apt->service?->name ?? 'خدمت عمومی',
+            'client_case_number' => $apt->client?->case_number ?? null,
+            'client_url' => ($apt->client_id && \Illuminate\Support\Facades\Route::has('user.clients.show'))
+                ? route('user.clients.show', $apt->client_id)
+                : null,
+            'service_name' => $apt->service?->name ?? ('خدمت ' . $labelService),
+            'service_color' => $apt->service?->color ?? '#6366f1',
+            'service_duration' => $apt->service?->duration_minutes ?? null,
             'provider_name' => $apt->provider?->name ?? '—',
             'status' => $apt->status,
             'status_label' => $statusInfo['label'],
             'status_badge' => $statusInfo['badge'],
+            'status_color' => $statusColor,
             'date_jalali' => $dateJalali,
             'start_time' => $startTime,
             'end_time' => $endTime,
@@ -1656,6 +1785,12 @@ class ScheduleManager extends Component
             'created_at' => $apt->created_at ? Jalalian::fromDateTime($apt->created_at)->format('Y/m/d H:i') : '—',
             'show_url' => route('user.booking.appointments.show', $apt->id),
             'edit_url' => route('user.booking.appointments.edit', $apt->id),
+            'form_name' => $formName,
+            'supplementary_fields' => $supplementaryFields,
+            'has_supplementary' => !empty($supplementaryFields),
+            'label_client' => $labelClient,
+            'label_provider' => $labelProvider,
+            'label_service' => $labelService,
         ];
 
         $this->showDetailsModal = true;
@@ -3345,6 +3480,21 @@ class ScheduleManager extends Component
             }, $providerSchedules ?? []),
         ]);
 
+        // Dynamic labels configured via /admin/booking/settings/label (with fallback to client settings)
+        $defaultClient = config('clients.labels.singular', config('booking.labels.client', 'مراجع'));
+        $defaultClients = config('clients.labels.plural', config('booking.labels.clients', 'مراجعین'));
+        if (class_exists(\Modules\Clients\Entities\ClientSetting::class)) {
+            $defaultClient = \Modules\Clients\Entities\ClientSetting::getValue('label_singular', $defaultClient);
+            $defaultClients = \Modules\Clients\Entities\ClientSetting::getValue('label_plural', $defaultClients);
+        }
+
+        $labelProvider  = BookingSetting::getValue('label_provider', config('booking.labels.provider', 'ارائه‌دهنده'));
+        $labelProviders = BookingSetting::getValue('label_providers', config('booking.labels.providers', 'ارائه‌دهندگان'));
+        $labelService   = BookingSetting::getValue('label_service', config('booking.labels.service', 'سرویس'));
+        $labelServices  = BookingSetting::getValue('label_services', config('booking.labels.services', 'سرویس‌ها'));
+        $labelClient    = BookingSetting::getValue('label_client', $defaultClient);
+        $labelClients   = BookingSetting::getValue('label_clients', $defaultClients);
+
         return view('booking::livewire.user.schedule-manager', [
             'localDate' => $localDate,
             'dayOfWeekJalali' => $dayOfWeekJalali,
@@ -3364,7 +3514,13 @@ class ScheduleManager extends Component
             'waitlistForDrawer' => $waitlistForDrawer,
             'waitlistCount' => $waitlistCount,
             'selectedWaitlistEntry' => $selectedWaitlistEntry,
-            'clientLabel' => config('clients.labels.singular', 'مشتری'),
+            'clientLabel' => $labelClient,
+            'labelProvider' => $labelProvider,
+            'labelProviders' => $labelProviders,
+            'labelService' => $labelService,
+            'labelServices' => $labelServices,
+            'labelClient' => $labelClient,
+            'labelClients' => $labelClients,
             'gridStartHour' => $gridStartHour,
             'gridEndHour' => $gridEndHour,
             'isStepLocked' => $isStepLocked,

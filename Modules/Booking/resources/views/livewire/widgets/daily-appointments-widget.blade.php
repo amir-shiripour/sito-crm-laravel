@@ -32,7 +32,7 @@
                     @endif
                 </div>
                 <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5 font-sans">
-                    نمای زنده نوبت‌ها و پذیرش مراجعین {{ $labelProviders }}
+                    نمای زنده نوبت‌ها و پذیرش {{ $labelClients }} {{ $labelProviders }}
                 </p>
             </div>
         </div>
@@ -48,7 +48,7 @@
             @endif
 
             @if(Route::has('user.booking.appointments.schedule'))
-                <a href="{{ route('user.booking.appointments.schedule') }}" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-xl text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200/80 dark:border-slate-700 transition-colors font-sans">
+                <a href="{{ route('user.booking.appointments.schedule') }}" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-xl text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200/80 dark:border-slate-700 transition-colors font-sans">
                     <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7" />
                     </svg>
@@ -105,7 +105,7 @@
                 {{-- کپسول تعاملی تاریخ جلالی: همواره دارای پیش‌فرض تاریخ روز و بازشونده با کلیک --}}
                 <div
                     @click="openPicker()"
-                    class="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-750 transition-colors cursor-pointer group"
+                    class="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors cursor-pointer group"
                     title="کلیک برای باز شدن تقویم جلالی و انتخاب تاریخ"
                 >
                     <svg class="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0 group-hover:scale-110 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -168,6 +168,17 @@
                     <span>امروز ({{ $todayJalaliShort }})</span>
                 </button>
             @endif
+
+            {{-- نشانگر بارگذاری مدرن، افقی، تک‌خطی و کاملاً هماهنگ با تم دارک و لایت --}}
+            <div
+                wire:loading.delay.shortest
+                class="inline-flex flex-row items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold bg-indigo-50/90 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-800/60 shadow-2xs whitespace-nowrap shrink-0 transition-all font-sans"
+            >
+                <svg class="w-3.5 h-3.5 animate-spin text-indigo-600 dark:text-indigo-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                <span class="font-sans leading-none select-none">در حال به‌روزرسانی...</span>
+            </div>
         </div>
 
         {{-- فیلتر داینامیک پزشک / ارائه‌دهنده (داینامیک بر اساس تنظیمات /admin/booking/settings/label) --}}
@@ -187,41 +198,38 @@
         @endif
     </div>
 
-    {{-- کارت‌های آمار نوبت‌ها برای تاریخ انتخابی --}}
-    <div class="grid grid-cols-2 sm:grid-cols-5 gap-2.5" wire:loading.class="opacity-60">
-        <button type="button" wire:click="setTab('all')" class="flex items-center justify-between p-2.5 rounded-xl border text-right transition-all font-sans {{ $activeTab === 'all' ? 'bg-indigo-50/80 dark:bg-indigo-950/40 border-indigo-400 dark:border-indigo-600 text-indigo-700 dark:text-indigo-300 shadow-xs' : 'bg-white dark:bg-slate-800/60 border-slate-200/80 dark:border-slate-700/60 text-slate-700 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-600' }}">
-            <span class="text-xs">کل نوبت‌ها</span>
-            <span class="text-sm font-bold font-sans">{{ $stats['total'] }}</span>
+    {{-- کارت‌های آمار نوبت‌ها برای تاریخ انتخابی (کاملاً داینامیک و هماهنگ با بخش مدیریت وضعیت‌ها در /user/booking/settings) --}}
+    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2.5" wire:loading.class="opacity-60">
+        {{-- کل نوبت‌ها --}}
+        <button
+            type="button"
+            wire:click="setTab('all')"
+            class="flex items-center justify-between p-2.5 rounded-xl border text-right transition-all font-sans {{ $activeTab === 'all' ? 'bg-indigo-50/90 dark:bg-indigo-950/50 border-indigo-400 dark:border-indigo-500 text-indigo-700 dark:text-indigo-300 shadow-xs' : 'bg-white dark:bg-slate-800/80 border-slate-200/80 dark:border-slate-700/70 text-slate-700 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-600' }}"
+        >
+            <span class="text-xs font-bold font-sans">کل نوبت‌ها</span>
+            <span class="text-sm font-bold font-sans">{{ $totalCount }}</span>
         </button>
 
-        <button type="button" wire:click="setTab('waiting')" class="flex items-center justify-between p-2.5 rounded-xl border text-right transition-all font-sans {{ $activeTab === 'waiting' ? 'bg-amber-50/80 dark:bg-amber-950/40 border-amber-400 dark:border-amber-600 text-amber-800 dark:text-amber-200 shadow-xs' : 'bg-white dark:bg-slate-800/60 border-slate-200/80 dark:border-slate-700/60 text-slate-700 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-600' }}">
-            <span class="text-xs flex items-center gap-1.5">
-                <span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
-                در انتظار
-            </span>
-            <span class="text-sm font-bold font-sans text-amber-600 dark:text-amber-400">{{ $stats['waiting'] }}</span>
-        </button>
-
-        <button type="button" wire:click="setTab('in_progress')" class="flex items-center justify-between p-2.5 rounded-xl border text-right transition-all font-sans {{ $activeTab === 'in_progress' ? 'bg-cyan-50/80 dark:bg-cyan-950/40 border-cyan-400 dark:border-cyan-600 text-cyan-800 dark:text-cyan-200 shadow-xs' : 'bg-white dark:bg-slate-800/60 border-slate-200/80 dark:border-slate-700/60 text-slate-700 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-600' }}">
-            <span class="text-xs flex items-center gap-1.5">
-                <span class="w-2 h-2 rounded-full bg-cyan-500"></span>
-                در حال ویزیت
-            </span>
-            <span class="text-sm font-bold font-sans text-cyan-600 dark:text-cyan-400">{{ $stats['in_progress'] }}</span>
-        </button>
-
-        <button type="button" wire:click="setTab('done')" class="flex items-center justify-between p-2.5 rounded-xl border text-right transition-all font-sans {{ $activeTab === 'done' ? 'bg-emerald-50/80 dark:bg-emerald-950/40 border-emerald-400 dark:border-emerald-600 text-emerald-800 dark:text-emerald-200 shadow-xs' : 'bg-white dark:bg-slate-800/60 border-slate-200/80 dark:border-slate-700/60 text-slate-700 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-600' }}">
-            <span class="text-xs flex items-center gap-1.5">
-                <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
-                تکمیل‌شده
-            </span>
-            <span class="text-sm font-bold font-sans text-emerald-600 dark:text-emerald-400">{{ $stats['done'] }}</span>
-        </button>
-
-        <div class="col-span-2 sm:col-span-1 flex items-center justify-between p-2.5 rounded-xl border bg-white dark:bg-slate-800/60 border-slate-200/80 dark:border-slate-700/60 text-slate-700 dark:text-slate-300 font-sans">
-            <span class="text-xs text-rose-600 dark:text-rose-400">لغو / غیبت</span>
-            <span class="text-sm font-bold font-sans text-rose-600 dark:text-rose-400">{{ $stats['canceled'] }}</span>
-        </div>
+        {{-- وضعیت‌های فعال‌شده در تنظیمات --}}
+        @foreach($enabledStatusesWithCounts as $st)
+            @php
+                $isActive = ($activeTab === $st['id']);
+                $stColor = $st['color'] ?? '#6b7280';
+            @endphp
+            <button
+                type="button"
+                wire:click="setTab('{{ $st['id'] }}')"
+                style="{{ $isActive ? "background-color: {$stColor}18; border-color: {$stColor}70; color: {$stColor};" : '' }}"
+                class="flex items-center justify-between p-2.5 rounded-xl border text-right transition-all font-sans {{ $isActive ? 'shadow-xs font-bold' : 'bg-white dark:bg-slate-800/80 border-slate-200/80 dark:border-slate-700/70 text-slate-700 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-600' }}"
+                title="{{ $st['name'] }}"
+            >
+                <span class="text-xs flex items-center gap-1.5 truncate max-w-[120px] font-sans">
+                    <span class="w-2 h-2 rounded-full shrink-0" style="background-color: {{ $stColor }};"></span>
+                    <span class="truncate">{{ $st['name'] }}</span>
+                </span>
+                <span class="text-sm font-bold font-sans shrink-0 mr-1" style="{{ $isActive ? "color: {$stColor};" : '' }}">{{ $st['count'] }}</span>
+            </button>
+        @endforeach
     </div>
 
     {{-- نوار ابزار جستجو و چیدمان بر اساس ساعت --}}
@@ -231,7 +239,7 @@
             <input
                 type="text"
                 wire:model.live.debounce.300ms="search"
-                placeholder="جستجوی مراجع، شماره تلفن، کد ملی یا نوع {{ $labelService }}..."
+                placeholder="جستجوی {{ $labelClient }}، شماره تلفن، کد ملی یا نوع {{ $labelService }}..."
                 class="w-full text-xs pr-9 pl-8 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 font-sans shadow-2xs"
             />
             <svg class="w-4 h-4 absolute right-3 top-3 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -264,7 +272,7 @@
             <button
                 type="button"
                 wire:click="setTimeSort('asc')"
-                class="px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all font-sans flex items-center gap-1 {{ $timeSort === 'asc' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-300 shadow-2xs border border-slate-200/60 dark:border-slate-600' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200' }}"
+                class="px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all font-sans flex items-center gap-1 {{ $timeSort === 'asc' ? 'bg-white dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-300 shadow-2xs border border-slate-200/80 dark:border-indigo-500/40' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200' }}"
                 title="نمایش نوبت‌ها از کمترین ساعت (صبح به بعد)"
             >
                 <svg class="w-3 h-3 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -277,7 +285,7 @@
             <button
                 type="button"
                 wire:click="setTimeSort('desc')"
-                class="px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all font-sans flex items-center gap-1 {{ $timeSort === 'desc' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-300 shadow-2xs border border-slate-200/60 dark:border-slate-600' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200' }}"
+                class="px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all font-sans flex items-center gap-1 {{ $timeSort === 'desc' ? 'bg-white dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-300 shadow-2xs border border-slate-200/80 dark:border-indigo-500/40' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200' }}"
                 title="نمایش نوبت‌ها از بیشترین ساعت (عصر/شب به قبل)"
             >
                 <svg class="w-3 h-3 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -292,8 +300,14 @@
     <div class="overflow-hidden rounded-2xl border border-slate-200/80 dark:border-slate-700/70 divide-y divide-slate-100 dark:divide-slate-800/80 bg-white dark:bg-slate-800/50 shadow-2xs" wire:loading.class="opacity-60 pointer-events-none">
         @forelse($appointments as $appointment)
             @php
-                $statusList = \Modules\Booking\Entities\Appointment::statusesList();
-                $statusInfo = $statusList[$appointment->status] ?? ['label' => $appointment->status_label, 'class' => 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'];
+                $statusMeta = $statusMetaMap[$appointment->status] ?? null;
+                $statusColor = $statusMeta['color'] ?? '#6b7280';
+                $statusLabel = $statusMeta['name'] ?? $appointment->status_label;
+
+                // داینامیک‌سازی متن وضعیت لغو مشتری بر اساس عنوان مراجع
+                if ($appointment->status === \Modules\Booking\Entities\Appointment::STATUS_CANCELED_BY_CLIENT) {
+                    $statusLabel = 'لغو شده (' . $labelClient . ')';
+                }
 
                 $startTime = $appointment->start_at_utc ? $appointment->start_at_utc->copy()->timezone($scheduleTz)->format('H:i') : '--:--';
                 $endTime = $appointment->end_at_utc ? $appointment->end_at_utc->copy()->timezone($scheduleTz)->format('H:i') : '--:--';
@@ -311,15 +325,15 @@
             <div class="p-4 hover:bg-slate-50/80 dark:hover:bg-slate-800/90 transition-colors flex flex-col md:flex-row md:items-center justify-between gap-4 font-sans">
                 {{-- ستون اطلاعات نوبت و مراجع --}}
                 <div class="flex items-center gap-3.5 min-w-0">
-                    {{-- جعبه ساعت نوبت: درشت، واضح و کاملاً خوانا --}}
-                    <div class="flex flex-col items-center justify-center w-24 sm:w-28 shrink-0 py-2.5 px-2 rounded-2xl border text-center shadow-xs transition-colors {{ $isInProgress ? 'bg-cyan-50/90 dark:bg-cyan-950/50 border-cyan-300 dark:border-cyan-700/80 text-cyan-900 dark:text-cyan-200' : ($hasArrived ? 'bg-emerald-50/90 dark:bg-emerald-950/50 border-emerald-300 dark:border-emerald-700/80 text-emerald-900 dark:text-emerald-200' : 'bg-slate-50/90 dark:bg-slate-900/70 border-slate-200/90 dark:border-slate-700/80 text-slate-800 dark:text-slate-200') }}">
+                    {{-- جعبه ساعت نوبت: درشت، واضح و کاملاً خوانا در هر دو تم دارک و لایت --}}
+                    <div class="flex flex-col items-center justify-center w-24 sm:w-28 shrink-0 py-2.5 px-2 rounded-2xl border text-center shadow-xs transition-colors {{ $isInProgress ? 'bg-cyan-500/10 dark:bg-cyan-950/40 border-cyan-400/50 dark:border-cyan-700/60' : ($hasArrived ? 'bg-emerald-500/10 dark:bg-emerald-950/40 border-emerald-400/50 dark:border-emerald-700/60' : 'bg-slate-100/90 dark:bg-slate-900/60 border-slate-200 dark:border-slate-700/80') }}">
                         {{-- ساعت شروع با فونت درشت و برجسته --}}
-                        <span class="text-base sm:text-lg font-black tracking-tight font-sans text-slate-900 dark:text-slate-100">
+                        <span class="text-base sm:text-lg font-black tracking-tight font-sans {{ $isInProgress ? 'text-cyan-800 dark:text-cyan-200' : ($hasArrived ? 'text-emerald-800 dark:text-emerald-200' : 'text-slate-900 dark:text-slate-100') }}">
                             {{ $startTime }}
                         </span>
 
                         {{-- ساعت پایان نوبت --}}
-                        <span class="text-xs font-bold font-sans text-slate-500 dark:text-slate-400">
+                        <span class="text-xs font-bold font-sans {{ $isInProgress ? 'text-cyan-700/80 dark:text-cyan-300/80' : ($hasArrived ? 'text-emerald-700/80 dark:text-emerald-300/80' : 'text-slate-500 dark:text-slate-400') }}">
                             تا {{ $endTime }}
                         </span>
 
@@ -340,8 +354,8 @@
                     {{-- مشخصات مراجع و اطلاعات خدمت --}}
                     <div class="min-w-0 flex-1 space-y-1.5">
                         <div class="flex items-center gap-2.5 flex-wrap">
-                            {{-- نام بیمار --}}
-                            <span class="text-sm sm:text-base font-bold text-slate-800 dark:text-slate-100 font-sans">
+                            {{-- نام مراجع --}}
+                            <span class="text-sm sm:text-base font-bold text-slate-900 dark:text-slate-100 font-sans">
                                 {{ $appointment->client?->full_name ?? 'بدون نام' }}
                             </span>
 
@@ -351,9 +365,11 @@
                                 </a>
                             @endif
 
-                            {{-- بج وضعیت نوبت --}}
-                            <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-medium {{ $statusInfo['class'] }} font-sans">
-                                {{ $statusInfo['label'] }}
+                            {{-- بج وضعیت نوبت هماهنگ با پالت رنگ و عنوان تنظیمی --}}
+                            <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-bold font-sans"
+                                  style="background-color: {{ $statusColor }}15; color: {{ $statusColor }}; border: 1px solid {{ $statusColor }}35;">
+                                <span class="w-1.5 h-1.5 rounded-full shrink-0" style="background-color: {{ $statusColor }};"></span>
+                                <span>{{ $statusLabel }}</span>
                             </span>
                         </div>
 
@@ -374,9 +390,9 @@
                                 </span>
                             @endif
 
-                            {{-- شماره پرونده بیمار --}}
+                            {{-- شماره پرونده --}}
                             @if(!empty($appointment->client?->case_number))
-                                <span class="text-[11px] font-semibold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-750 px-2 py-0.5 rounded-md border border-slate-200/80 dark:border-slate-700/80 font-sans">
+                                <span class="text-[11px] font-semibold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md border border-slate-200 dark:border-slate-700 font-sans">
                                     پرونده: {{ $appointment->client->case_number }}
                                 </span>
                             @endif
@@ -386,18 +402,18 @@
 
                 {{-- ستون اکشن‌های سریع، دکمه انتقال به پرونده و تغییر وضعیت --}}
                 <div class="flex items-center gap-2 shrink-0 self-end md:self-center flex-wrap">
-                    {{-- دکمه اختصاصی پرونده بیمار --}}
+                    {{-- دکمه اختصاصی پرونده (کاملاً داینامیک بر اساس تنظیمات لیبل) --}}
                     @if($appointment->client_id && Route::has('user.clients.show'))
                         <a
                             href="{{ route('user.clients.show', $appointment->client_id) }}"
                             target="_blank"
-                            class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-750 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 hover:text-indigo-600 dark:hover:text-indigo-300 border border-slate-200 dark:border-slate-700 hover:border-indigo-300 dark:hover:border-indigo-700 transition-all font-sans shadow-2xs"
-                            title="مشاهده و ویرایش پرونده کامل بیمار"
+                            class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 hover:text-indigo-600 dark:hover:text-indigo-300 border border-slate-200 dark:border-slate-700 hover:border-indigo-300 dark:hover:border-indigo-800/80 transition-all font-sans shadow-2xs"
+                            title="مشاهده و ویرایش پرونده کامل {{ $labelClient }}"
                         >
                             <svg class="w-3.5 h-3.5 text-indigo-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                             </svg>
-                            <span>پرونده بیمار</span>
+                            <span>پرونده {{ $labelClient }}</span>
                         </a>
                     @endif
 
@@ -408,7 +424,7 @@
                                 type="button"
                                 wire:click="checkIn({{ $appointment->id }})"
                                 class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800/60 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 transition-all font-sans shadow-2xs"
-                                title="ثبت ورود مراجع به کلینیک"
+                                title="ثبت ورود {{ $labelClient }} به کلینیک"
                             >
                                 <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
@@ -423,7 +439,7 @@
                                 type="button"
                                 wire:click="startVisit({{ $appointment->id }})"
                                 class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-600 dark:hover:bg-indigo-500 shadow-2xs transition-all font-sans"
-                                title="شروع معاینه و ورود مراجع به اتاق ویزیت"
+                                title="شروع معاینه و ورود {{ $labelClient }} به اتاق ویزیت"
                             >
                                 <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
@@ -439,7 +455,7 @@
                                 type="button"
                                 wire:click="finishVisit({{ $appointment->id }})"
                                 class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-500 shadow-2xs transition-all font-sans"
-                                title="ثبت خاتمه ویزیت و خروج مراجع"
+                                title="ثبت خاتمه ویزیت و خروج {{ $labelClient }}"
                             >
                                 <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -472,44 +488,28 @@
                                     <a
                                         href="{{ route('user.clients.show', $appointment->client_id) }}"
                                         target="_blank"
-                                        class="w-full text-right px-3.5 py-2 text-xs text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/50 flex items-center gap-2 font-sans"
+                                        class="w-full text-right px-3.5 py-2 text-xs text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/60 flex items-center gap-2 font-sans"
                                     >
                                         <svg class="w-3.5 h-3.5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                         </svg>
-                                        <span>مشاهده پرونده بیمار</span>
+                                        <span>مشاهده پرونده {{ $labelClient }}</span>
                                     </a>
                                 @endif
 
-                                <button
-                                    type="button"
-                                    wire:click="quickChangeStatus({{ $appointment->id }}, 'CONFIRMED')"
-                                    @click="open = false"
-                                    class="w-full text-right px-3.5 py-2 text-xs text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/50 flex items-center gap-2 font-sans"
-                                >
-                                    <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
-                                    <span>تایید نوبت</span>
-                                </button>
-
-                                <button
-                                    type="button"
-                                    wire:click="markNoShow({{ $appointment->id }})"
-                                    @click="open = false"
-                                    class="w-full text-right px-3.5 py-2 text-xs text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/50 flex items-center gap-2 font-sans"
-                                >
-                                    <span class="w-2 h-2 rounded-full bg-slate-400"></span>
-                                    <span>عدم حضور</span>
-                                </button>
-
-                                <button
-                                    type="button"
-                                    wire:click="quickChangeStatus({{ $appointment->id }}, 'CANCELED_BY_ADMIN')"
-                                    @click="open = false"
-                                    class="w-full text-right px-3.5 py-2 text-xs text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 flex items-center gap-2 font-sans"
-                                >
-                                    <span class="w-2 h-2 rounded-full bg-rose-500"></span>
-                                    <span>لغو نوبت</span>
-                                </button>
+                                @foreach($enabledStatusesWithCounts as $targetSt)
+                                    @if($targetSt['id'] !== $appointment->status)
+                                        <button
+                                            type="button"
+                                            wire:click="quickChangeStatus({{ $appointment->id }}, '{{ $targetSt['id'] }}')"
+                                            @click="open = false"
+                                            class="w-full text-right px-3.5 py-2 text-xs text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/60 flex items-center gap-2 font-sans transition-colors"
+                                        >
+                                            <span class="w-2 h-2 rounded-full shrink-0" style="background-color: {{ $targetSt['color'] ?? '#6b7280' }};"></span>
+                                            <span>تغییر به: {{ $targetSt['name'] }}</span>
+                                        </button>
+                                    @endif
+                                @endforeach
                             </div>
                         </div>
                     @endif
@@ -518,7 +518,7 @@
                     @if(Route::has('user.booking.appointments.show'))
                         <a
                             href="{{ route('user.booking.appointments.show', $appointment->id) }}"
-                            class="p-2 rounded-xl text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200/60 dark:border-slate-700/60 transition-colors"
+                            class="p-2 rounded-xl text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200/60 dark:border-slate-700/60 transition-colors"
                             title="مشاهده جزئیات کامل نوبت"
                         >
                             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -531,16 +531,16 @@
             </div>
         @empty
             <div class="py-12 px-4 text-center font-sans space-y-3">
-                <div class="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-400 flex items-center justify-center mx-auto">
+                <div class="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 flex items-center justify-center mx-auto">
                     <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                     </svg>
                 </div>
                 <div>
-                    <p class="text-sm font-bold text-slate-700 dark:text-slate-300 font-sans">
+                    <p class="text-sm font-bold text-slate-700 dark:text-slate-200 font-sans">
                         هیچ نوبتی برای {{ $currentJalaliLong }} ثبت نشده است
                     </p>
-                    <p class="text-xs text-slate-400 dark:text-slate-500 mt-1 font-sans">
+                    <p class="text-xs text-slate-400 dark:text-slate-400 mt-1 font-sans">
                         می‌توانید با استفاده از فلش‌های تاریخ یا انتخابگر تقویم، نوبت‌های سایر روزها را بررسی فرمایید.
                     </p>
                 </div>
@@ -560,11 +560,11 @@
         {{-- صفحه‌بندی هر ۱۰ تا با استایل هماهنگ لایووایر و فونت یکپارچه IRANYekanX --}}
         @if($appointments->hasPages())
             <div class="p-3.5 border-t border-slate-100 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/40 flex flex-col sm:flex-row items-center justify-between gap-3 font-sans">
-                <div class="text-xs text-slate-500 dark:text-slate-400 font-sans">
+                <div class="text-xs text-slate-600 dark:text-slate-300 font-sans">
                     نمایش نوبت‌های
-                    <span class="font-bold text-slate-800 dark:text-slate-200">{{ $appointments->firstItem() }}</span>
+                    <span class="font-bold text-slate-900 dark:text-slate-100">{{ $appointments->firstItem() }}</span>
                     تا
-                    <span class="font-bold text-slate-800 dark:text-slate-200">{{ $appointments->lastItem() }}</span>
+                    <span class="font-bold text-slate-900 dark:text-slate-100">{{ $appointments->lastItem() }}</span>
                     از مجموع
                     <span class="font-bold text-indigo-600 dark:text-indigo-400">{{ $appointments->total() }}</span>
                     نوبت (صفحه {{ $appointments->currentPage() }} از {{ $appointments->lastPage() }})
@@ -577,7 +577,7 @@
                         wire:click="previousPage"
                         wire:loading.attr="disabled"
                         @if($appointments->onFirstPage()) disabled @endif
-                        class="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold transition-all font-sans {{ $appointments->onFirstPage() ? 'opacity-40 cursor-not-allowed text-slate-400 bg-slate-100 dark:bg-slate-800 border border-transparent' : 'text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 shadow-2xs' }}"
+                        class="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold transition-all font-sans {{ $appointments->onFirstPage() ? 'opacity-40 cursor-not-allowed text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-800/60 border border-transparent' : 'text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 shadow-2xs' }}"
                     >
                         <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
@@ -591,7 +591,7 @@
                             type="button"
                             wire:click="gotoPage({{ $page }})"
                             wire:loading.attr="disabled"
-                            class="w-8 h-8 rounded-xl text-xs font-bold transition-all font-sans {{ $page == $appointments->currentPage() ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700' }}"
+                            class="w-8 h-8 rounded-xl text-xs font-bold transition-all font-sans {{ $page == $appointments->currentPage() ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700' }}"
                         >
                             {{ $page }}
                         </button>
@@ -603,7 +603,7 @@
                         wire:click="nextPage"
                         wire:loading.attr="disabled"
                         @if(!$appointments->hasMorePages()) disabled @endif
-                        class="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold transition-all font-sans {{ !$appointments->hasMorePages() ? 'opacity-40 cursor-not-allowed text-slate-400 bg-slate-100 dark:bg-slate-800 border border-transparent' : 'text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 shadow-2xs' }}"
+                        class="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold transition-all font-sans {{ !$appointments->hasMorePages() ? 'opacity-40 cursor-not-allowed text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-800/60 border border-transparent' : 'text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 shadow-2xs' }}"
                     >
                         <span>بعدی</span>
                         <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">

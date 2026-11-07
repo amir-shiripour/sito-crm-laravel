@@ -5,17 +5,21 @@
 @endphp
 
 @section('content')
-    <div class="max-w-4xl mx-auto space-y-8 font-iranYekan animate-fadeIn"
+    <div class="max-w-4xl mx-auto space-y-8 font-sans animate-fadeIn"
          x-data="{
              provider: '{{ old('label_provider', $labelProvider) }}',
              providers: '{{ old('label_providers', $labelProviders) }}',
              service: '{{ old('label_service', $labelService) }}',
              services: '{{ old('label_services', $labelServices) }}',
-             setPreset(p, ps, s, ss) {
+             client: '{{ old('label_client', $labelClient) }}',
+             clients: '{{ old('label_clients', $labelClients) }}',
+             setPreset(p, ps, s, ss, c, cs) {
                  this.provider = p;
                  this.providers = ps;
                  this.service = s;
                  this.services = ss;
+                 this.client = c;
+                 this.clients = cs;
              }
          }">
 
@@ -68,36 +72,36 @@
                     <svg class="w-4 h-4 text-violet-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
                     الگوهای پیشنهادی سریع بر اساس صنف و کسب‌وکار:
                 </span>
-                <span class="text-[11px] text-slate-400">با کلیک روی هر الگو عناوین ارائه‌دهنده و سرویس همزمان پر می‌شوند</span>
+                <span class="text-[11px] text-slate-400">با کلیک روی هر الگو عناوین ارائه‌دهنده، سرویس و مراجع همزمان پر می‌شوند</span>
             </div>
             <div class="flex flex-wrap gap-2">
-                <button type="button" @click="setPreset('متخصص', 'متخصصین', 'لاین', 'لاین‌ها')"
+                <button type="button" @click="setPreset('متخصص', 'متخصصین', 'لاین', 'لاین‌ها', 'مشتری', 'مشتریان')"
                         class="px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800/80 hover:bg-violet-600 hover:text-white dark:hover:bg-violet-600 text-xs font-bold text-slate-700 dark:text-slate-200 transition-all border border-slate-200/60 dark:border-slate-700/60">
-                    ✂️ زیبایی و سالن (متخصص / متخصصین — لاین / لاین‌ها)
+                    ✂️ زیبایی و سالن (متخصص — لاین — مشتری)
                 </button>
-                <button type="button" @click="setPreset('پزشک', 'پزشکان', 'خدمت', 'خدمات')"
+                <button type="button" @click="setPreset('پزشک', 'پزشکان', 'خدمت', 'خدمات', 'بیمار', 'بیماران')"
                         class="px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800/80 hover:bg-violet-600 hover:text-white dark:hover:bg-violet-600 text-xs font-bold text-slate-700 dark:text-slate-200 transition-all border border-slate-200/60 dark:border-slate-700/60">
-                    🩺 پزشکی و کلینیک (پزشک / پزشکان — خدمت / خدمات)
+                    🩺 پزشکی و کلینیک (پزشک — خدمت — بیمار)
                 </button>
-                <button type="button" @click="setPreset('کارشناس', 'کارشناسان', 'آزمایش', 'آزمایش‌ها')"
+                <button type="button" @click="setPreset('کارشناس', 'کارشناسان', 'آزمایش', 'آزمایش‌ها', 'بیمار', 'بیماران')"
                         class="px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800/80 hover:bg-violet-600 hover:text-white dark:hover:bg-violet-600 text-xs font-bold text-slate-700 dark:text-slate-200 transition-all border border-slate-200/60 dark:border-slate-700/60">
-                    🔬 آزمایشگاه و تصویربرداری (کارشناس — آزمایش / آزمایش‌ها)
+                    🔬 آزمایشگاه (کارشناس — آزمایش — بیمار)
                 </button>
-                <button type="button" @click="setPreset('مشاور', 'مشاوران', 'جلسه', 'جلسات')"
+                <button type="button" @click="setPreset('مشاور', 'مشاوران', 'جلسه', 'جلسات', 'مراجع', 'مراجعین')"
                         class="px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800/80 hover:bg-violet-600 hover:text-white dark:hover:bg-violet-600 text-xs font-bold text-slate-700 dark:text-slate-200 transition-all border border-slate-200/60 dark:border-slate-700/60">
-                    💼 مشاوره و روانشناسی (مشاور — جلسه / جلسات)
+                    💼 مشاوره و روانشناسی (مشاور — جلسه — مراجع)
                 </button>
-                <button type="button" @click="setPreset('وکیل', 'وکلا', 'پرونده', 'پرونده‌ها')"
+                <button type="button" @click="setPreset('وکیل', 'وکلا', 'پرونده', 'پرونده‌ها', 'موکل', 'موکلین')"
                         class="px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800/80 hover:bg-violet-600 hover:text-white dark:hover:bg-violet-600 text-xs font-bold text-slate-700 dark:text-slate-200 transition-all border border-slate-200/60 dark:border-slate-700/60">
-                    ⚖️ حقوقی و وکالت (وکیل / وکلا — پرونده / پرونده‌ها)
+                    ⚖️ حقوقی و وکالت (وکیل — پرونده — موکل)
                 </button>
-                <button type="button" @click="setPreset('استاد', 'اساتید', 'کلاس', 'کلاس‌ها')"
+                <button type="button" @click="setPreset('استاد', 'اساتید', 'کلاس', 'کلاس‌ها', 'دانش‌پذیر', 'دانش‌پذیران')"
                         class="px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800/80 hover:bg-violet-600 hover:text-white dark:hover:bg-violet-600 text-xs font-bold text-slate-700 dark:text-slate-200 transition-all border border-slate-200/60 dark:border-slate-700/60">
-                    🎓 آموزش و تدریس (استاد / اساتید — کلاس / کلاس‌ها)
+                    🎓 آموزش و تدریس (استاد — کلاس — دانش‌پذیر)
                 </button>
-                <button type="button" @click="setPreset('ارائه‌دهنده', 'ارائه‌دهندگان', 'سرویس', 'سرویس‌ها')"
+                <button type="button" @click="setPreset('ارائه‌دهنده', 'ارائه‌دهندگان', 'سرویس', 'سرویس‌ها', 'مشتری', 'مشتریان')"
                         class="px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800/80 hover:bg-violet-600 hover:text-white dark:hover:bg-violet-600 text-xs font-bold text-slate-700 dark:text-slate-200 transition-all border border-slate-200/60 dark:border-slate-700/60">
-                    🔄 عمومی سیستم (ارائه‌دهنده — سرویس / سرویس‌ها)
+                    🔄 عمومی سیستم (ارائه‌دهنده — سرویس — مشتری)
                 </button>
             </div>
         </div>
@@ -205,13 +209,62 @@
                 </div>
             </div>
 
+            {{-- کارت فیلدهای مراجعین / بیماران / مشتریان --}}
+            <div class="bg-white/70 dark:bg-slate-900/50 backdrop-blur-xl border border-white dark:border-slate-800 p-8 rounded-[2.5rem] shadow-xl shadow-slate-200/50 dark:shadow-none">
+                <div class="flex items-center gap-3 mb-6 pb-4 border-b border-slate-100 dark:border-slate-800">
+                    <div class="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+                    </div>
+                    <div>
+                        <h2 class="text-base font-black text-slate-900 dark:text-white">عناوین مراجعین و بیماران (بیمار، مراجع، مشتری، موکل و...)</h2>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">این عبارات جایگزین کلمه "بیمار / مراجع" در ویجت‌های داشبورد، لیست نوبت‌ها، فرم‌های پذیرش و پرونده‌ها خواهند شد.</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-2">
+                            برچسب مفرد مراجع (Singular Client) <span class="text-rose-500">*</span>
+                        </label>
+                        <div class="relative">
+                            <input type="text" name="label_client" x-model="client"
+                                   class="w-full rounded-2xl border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-800/80 px-4 py-3 text-sm text-slate-900 dark:text-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 transition-all font-medium"
+                                   placeholder="مثلاً: بیمار، مراجع، مشتری، موکل، دانش‌آموز">
+                        </div>
+                        <p class="text-[11px] text-slate-400 mt-2 font-medium">
+                            استفاده در عباراتی مانند: <span class="text-emerald-600 dark:text-emerald-400 font-bold" x-text="'پرونده ' + (client || 'مراجع')"></span>
+                        </p>
+                        @error('label_client')
+                            <p class="mt-1 text-xs text-rose-500 font-bold">{{ $message }}</p>
+                        @enderror
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-2">
+                            برچسب جمع مراجعین (Plural Clients) <span class="text-rose-500">*</span>
+                        </label>
+                        <div class="relative">
+                            <input type="text" name="label_clients" x-model="clients"
+                                   class="w-full rounded-2xl border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-800/80 px-4 py-3 text-sm text-slate-900 dark:text-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 transition-all font-medium"
+                                   placeholder="مثلاً: بیماران، مراجعین، مشتریان، موکلین، دانش‌آموزان">
+                        </div>
+                        <p class="text-[11px] text-slate-400 mt-2 font-medium">
+                            استفاده در عباراتی مانند: <span class="text-emerald-600 dark:text-emerald-400 font-bold" x-text="'لیست ' + (clients || 'مراجعین')"></span>
+                        </p>
+                        @error('label_clients')
+                            <p class="mt-1 text-xs text-rose-500 font-bold">{{ $message }}</p>
+                        @enderror
+                    </div>
+                </div>
+            </div>
+
             {{-- پیش‌نمایش زنده در رابط کاربری --}}
             <div class="bg-gradient-to-br from-violet-50/50 to-indigo-50/50 dark:from-slate-800/40 dark:to-slate-900/40 p-8 rounded-[2.5rem] border border-violet-100 dark:border-slate-800">
                 <h3 class="text-xs font-black text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-4 flex items-center gap-2">
                     <svg class="w-4 h-4 text-violet-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
                     پیش‌نمایش نحوه نمایش همزمان در رابط کاربری
                 </h3>
-                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     <div class="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/60 dark:border-slate-700/60 shadow-sm">
                         <div class="text-[10px] text-slate-400 font-bold mb-1">منوی ناوبری ارائه‌دهندگان</div>
                         <div class="text-xs font-black text-slate-800 dark:text-slate-200" x-text="'مدیریت ' + (providers || 'ارائه‌دهندگان')"></div>
@@ -223,6 +276,10 @@
                     <div class="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/60 dark:border-slate-700/60 shadow-sm">
                         <div class="text-[10px] text-slate-400 font-bold mb-1">فرایند رزرو نوبت</div>
                         <div class="text-xs font-black text-violet-600 dark:text-violet-400" x-text="'انتخاب ' + (service || 'سرویس') + ' و تعیین ' + (provider || 'ارائه‌دهنده')"></div>
+                    </div>
+                    <div class="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/60 dark:border-slate-700/60 shadow-sm">
+                        <div class="text-[10px] text-slate-400 font-bold mb-1">ویجت داشبورد و پرونده</div>
+                        <div class="text-xs font-black text-emerald-600 dark:text-emerald-400" x-text="'پرونده ' + (client || 'مراجع') + ' و پذیرش ' + (clients || 'مراجعین')"></div>
                     </div>
                 </div>
             </div>

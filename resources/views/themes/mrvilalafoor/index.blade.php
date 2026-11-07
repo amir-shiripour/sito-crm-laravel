@@ -283,87 +283,6 @@
                     : [];
             @endphp
 
-            @if(!empty($activeHeroSlides) && count($activeHeroSlides) > 0)
-                <section id="hero-banner-section" class="pt-3 sm:pt-6 pb-2 max-w-[1360px] mx-auto px-3 sm:px-6 md:px-8 font-sans">
-                    <style>
-                        #hero-slider-track {
-                            scroll-snap-type: x mandatory;
-                            overscroll-behavior-x: contain;
-                            -webkit-overflow-scrolling: touch;
-                            touch-action: pan-y pinch-zoom;
-                            user-select: none;
-                            -webkit-user-select: none;
-                        }
-                        .hero-slide {
-                            scroll-snap-align: center;
-                            scroll-snap-stop: always;
-                        }
-                        .hero-slide a {
-                            -webkit-user-drag: none;
-                            user-drag: none;
-                        }
-                        .hero-slide img {
-                            pointer-events: none;
-                            -webkit-user-drag: none;
-                            user-drag: none;
-                        }
-                    </style>
-                    <div class="relative group">
-                        <!-- Carousel Scroll Track with Peek Effect -->
-                        <div id="hero-slider-track"
-                             class="flex gap-3 sm:gap-4 overflow-x-auto scroll-smooth snap-x snap-mandatory no-scrollbar py-1 px-1 select-none font-sans cursor-grab"
-                             style="scrollbar-width: none; -ms-overflow-style: none;">
-
-                            @foreach($activeHeroSlides as $slideIdx => $slide)
-                                @php
-                                    $slideUrl = !empty($slide['link']) ? $slide['link'] : 'javascript:void(0)';
-                                    $slideTarget = ($slide['target'] ?? '_self') === '_blank' ? '_blank' : '_self';
-                                    $slideImg = $slide['image'] ?? '';
-                                    if (!str_starts_with($slideImg, 'http') && !str_starts_with($slideImg, '/')) {
-                                        $slideImg = '/' . $slideImg;
-                                    }
-                                @endphp
-                                <div class="hero-slide shrink-0 w-[88%] sm:w-[92%] md:w-[94%] snap-center rounded-2xl sm:rounded-3xl overflow-hidden shadow-lg relative block font-sans transition-transform duration-300 aspect-[2.6/1] bg-zinc-100 dark:bg-zinc-800"
-                                     data-slide-index="{{ $slideIdx }}">
-                                    <a href="{{ $slideUrl }}"
-                                       @if($slideTarget === '_blank') target="_blank" rel="noopener noreferrer" @endif
-                                       class="block w-full h-full relative"
-                                       draggable="false"
-                                       aria-label="{{ $slide['title'] ?? ('اسلاید ' . ($slideIdx + 1)) }}">
-                                        <img src="{{ asset($slideImg) }}"
-                                             alt="{{ $slide['title'] ?? ('بنر ' . ($slideIdx + 1)) }}"
-                                             class="w-full h-full object-cover rounded-2xl sm:rounded-3xl select-none pointer-events-none"
-                                             draggable="false"
-                                             loading="{{ $slideIdx === 0 ? 'eager' : 'lazy' }}" />
-                                    </a>
-                                </div>
-                            @endforeach
-                        </div>
-
-                        @if(count($activeHeroSlides) > 1)
-                            <!-- Desktop Navigation Arrows (Floating on edges - correctly pointing outwards) -->
-                            <button type="button" onclick="prevHeroSlide()" aria-label="اسلاید قبلی"
-                                    class="hidden md:flex absolute top-1/2 -translate-y-1/2 -right-3 lg:-right-5 w-10 h-10 rounded-full bg-white/95 dark:bg-zinc-900/95 text-zinc-700 dark:text-zinc-200 border border-zinc-200/80 dark:border-zinc-700 shadow-xl items-center justify-center hover:bg-white dark:hover:bg-zinc-800 transition-all z-20 opacity-0 group-hover:opacity-100 active:scale-90 font-sans cursor-pointer">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
-                            </button>
-                            <button type="button" onclick="nextHeroSlide()" aria-label="اسلاید بعدی"
-                                    class="hidden md:flex absolute top-1/2 -translate-y-1/2 -left-3 lg:-left-5 w-10 h-10 rounded-full bg-white/95 dark:bg-zinc-900/95 text-zinc-700 dark:text-zinc-200 border border-zinc-200/80 dark:border-zinc-700 shadow-xl items-center justify-center hover:bg-white dark:hover:bg-zinc-800 transition-all z-20 opacity-0 group-hover:opacity-100 active:scale-90 font-sans cursor-pointer">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
-                            </button>
-
-                            <!-- Modern Pagination Indicators -->
-                            <div id="hero-slider-dots" class="flex items-center justify-center gap-1.5 mt-2.5 sm:mt-3.5 font-sans">
-                                @foreach($activeHeroSlides as $dotIdx => $dotSlide)
-                                    <button type="button" onclick="goToHeroSlide({{ $dotIdx }})"
-                                            class="hero-dot {{ $dotIdx === 0 ? 'w-6 h-2 bg-[#EA580C] dark:bg-amber-400' : 'w-2 h-2 bg-zinc-300 dark:bg-zinc-700 hover:bg-zinc-400 dark:hover:bg-zinc-600' }} rounded-full transition-all duration-300 font-sans cursor-pointer"
-                                            aria-label="اسلاید {{ $dotIdx + 1 }}"></button>
-                                @endforeach
-                            </div>
-                        @endif
-                    </div>
-                </section>
-            @endif
-
             <!-- DESKTOP ULTRA-MINIMAL HERO & SEARCH BAR -->
             <section class="hidden md:block pt-6 pb-8">
                 <div class="max-w-4xl mx-auto px-8 text-center">
@@ -706,175 +625,264 @@
             </section>
 
             <!-- ============================================================= -->
-            <!-- DYNAMIC AGGREGATED CATEGORIES & PROPERTY TYPES (Flat Cards & Drag Navigation with Peek Effect) -->
+            <!-- LISTINGS SECTION CONTAINER (Dynamic Carousels with Unified Consistent Spacing) -->
             <!-- ============================================================= -->
-            @if(!empty($aggregatedExploreItems) && count($aggregatedExploreItems) > 0)
-                <section class="max-w-[1360px] mx-auto px-3 sm:px-6 md:px-8 pt-5 sm:pt-7 pb-4 sm:pb-6 font-sans">
-                    <style>
-                        #category-explore-track {
-                            cursor: grab;
-                            user-select: none;
-                            -webkit-user-select: none;
-                            -webkit-overflow-scrolling: touch;
-                            touch-action: pan-y pinch-zoom;
-                        }
-                        #category-explore-track.is-dragging {
-                            cursor: grabbing !important;
-                            scroll-snap-type: none !important;
-                            scroll-behavior: auto !important;
-                        }
-                        #category-explore-track a, #category-explore-track img, #category-explore-track svg {
-                            -webkit-user-drag: none;
-                            user-drag: none;
-                        }
-                        /* Guaranteed Peek Affordance across all screen resolutions */
-                        .category-peek-item {
-                            flex: 0 0 calc((100% - 3.5 * 14px) / 4.45) !important;
-                            width: calc((100% - 3.5 * 14px) / 4.45) !important;
-                            min-width: 76px !important;
-                            max-width: 96px !important;
-                        }
-                        @media (min-width: 640px) {
-                            .category-peek-item {
-                                flex: 0 0 calc((100% - 5.5 * 18px) / 6.45) !important;
-                                width: calc((100% - 5.5 * 18px) / 6.45) !important;
-                                min-width: 86px !important;
-                                max-width: 104px !important;
-                            }
-                        }
-                        @media (min-width: 768px) {
-                            .category-peek-item {
-                                flex: 0 0 calc((100% - 6.5 * 20px) / 7.45) !important;
-                                width: calc((100% - 6.5 * 20px) / 7.45) !important;
-                                min-width: 90px !important;
-                                max-width: 108px !important;
-                            }
-                        }
-                        @media (min-width: 1024px) {
-                            .category-peek-item {
-                                flex: 0 0 calc((100% - 7.5 * 22px) / 8.45) !important;
-                                width: calc((100% - 7.5 * 22px) / 8.45) !important;
-                                min-width: 94px !important;
-                                max-width: 112px !important;
-                            }
-                        }
-                        @media (min-width: 1280px) {
-                            .category-peek-item {
-                                flex: 0 0 calc((100% - 8.5 * 24px) / 9.45) !important;
-                                width: calc((100% - 8.5 * 24px) / 9.45) !important;
-                                min-width: 98px !important;
-                                max-width: 116px !important;
-                            }
-                        }
-                    </style>
-
-                    <!-- Section Header Row: Title, Subtitle with generous vertical gap, Carousel Arrows, and Flat Button -->
-                    <div class="flex items-center justify-between mb-6 sm:mb-8 px-1">
-                        <div>
-                            <h2 class="text-sm sm:text-base font-extrabold text-[#18181B] dark:text-zinc-100 flex items-center gap-2">
-                                <span class="w-2 h-2 rounded-full bg-[#007A5E] dark:bg-emerald-400"></span>
-                                دسته‌بندی و انواع اقامتگاه
-                            </h2>
-                            <p class="text-[11px] sm:text-xs text-zinc-400 dark:text-zinc-400 mt-2 sm:mt-2.5">کاوش بر اساس سبک و نوع ملک در اقامتگاه‌های شمال</p>
-                        </div>
-                        <div class="flex items-center gap-2 sm:gap-3">
-                            <div class="hidden md:flex items-center gap-1">
-                                <button type="button"
-                                        id="cat-scroll-right-btn"
-                                        onclick="scrollCategoryExploreTrack('prev')"
-                                        class="w-8 h-8 rounded-xl bg-white dark:bg-zinc-900 border border-[#ECECEE] dark:border-zinc-800 hover:bg-[#F7F8F9] dark:hover:bg-zinc-800 flex items-center justify-center text-zinc-600 dark:text-zinc-300 transition-colors shadow-xs active:scale-95 disabled:opacity-30 disabled:pointer-events-none"
-                                        title="قبلی">
-                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
-                                </button>
-                                <button type="button"
-                                        id="cat-scroll-left-btn"
-                                        onclick="scrollCategoryExploreTrack('next')"
-                                        class="w-8 h-8 rounded-xl bg-white dark:bg-zinc-900 border border-[#ECECEE] dark:border-zinc-800 hover:bg-[#F7F8F9] dark:hover:bg-zinc-800 flex items-center justify-center text-zinc-600 dark:text-zinc-300 transition-colors shadow-xs active:scale-95 disabled:opacity-30 disabled:pointer-events-none"
-                                        title="بعدی">
-                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
-                                </button>
-                            </div>
-                            <a href="{{ route('properties.index') }}"
-                               class="inline-flex items-center gap-1.5 px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl sm:rounded-2xl bg-[#F4F4F5] hover:bg-[#E8F8F3] dark:bg-zinc-800/80 dark:hover:bg-emerald-950/50 text-zinc-700 hover:text-[#007A5E] dark:text-zinc-200 dark:hover:text-emerald-400 text-xs sm:text-[13px] font-bold transition-all border-0 shadow-none">
-                                <span>همه اقامتگاه‌ها</span>
-                                <svg class="w-3.5 h-3.5 rotate-180 shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
-                                </svg>
-                            </a>
-                        </div>
-                    </div>
-
-                    <!-- Items Carousel Track Container with Peek Effect & Desktop Navigation -->
-                    <div class="relative">
-                        <div id="category-explore-track"
-                             class="flex items-start gap-3.5 sm:gap-5 lg:gap-6 overflow-x-auto no-scrollbar py-1 px-1">
-                            @foreach($aggregatedExploreItems as $item)
-                                <a href="{{ $item['url'] }}"
-                                   onclick="if(window.isCategoryDragging){event.preventDefault();event.stopPropagation();return false;}"
-                                   class="category-peek-item group shrink-0 flex flex-col items-center justify-start text-center bg-transparent border-0 shadow-none hover:shadow-none transition-transform duration-200 active:scale-95 cursor-pointer font-sans select-none no-underline"
-                                   title="{{ $item['title'] }}">
-                                    
-                                    {{-- Flat Icon Squircle Badge (Mint/Pastel Green background, Forest green stroke, Flat without shadow or border) --}}
-                                    <div class="w-14 h-14 sm:w-16 sm:h-16 rounded-[20px] sm:rounded-[22px] bg-[#E8F8F3] dark:bg-emerald-950/40 text-[#007A5E] dark:text-emerald-400 group-hover:bg-[#D4F4E7] dark:group-hover:bg-emerald-900/50 transition-all duration-200 mb-3 sm:mb-3.5 flex items-center justify-center border-0 shadow-none">
-                                        @if(!empty($item['image']))
-                                            <img src="{{ asset($item['image']) }}" alt="{{ $item['title'] }}" class="w-7 h-7 sm:w-8 sm:h-8 object-contain rounded-lg pointer-events-none">
-                                        @else
-                                            @php $iKey = strtolower($item['icon'] ?? 'category'); @endphp
-                                            <svg class="w-6 h-6 sm:w-7 sm:h-7 pointer-events-none transition-transform duration-200 group-hover:scale-105" fill="none" stroke="currentColor" stroke-width="1.9" viewBox="0 0 24 24">
-                                                @if($iKey === 'cottage')
-                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 3L2.5 19.5h19L12 3zm0 6.5v10m-3.5 0v-4h7v4"/>
-                                                @elseif($iKey === 'villa')
-                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25"/>
-                                                @elseif($iKey === 'apartment')
-                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21"/>
-                                                @elseif($iKey === 'ecolodge')
-                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 3c-4.5 0-8 3.5-8 8v9a1 1 0 001 1h14a1 1 0 001-1v-9c0-4.5-3.5-8-8-8zm-2 17v-4a2 2 0 114 0v4m-2-12a1.5 1.5 0 100-3 1.5 1.5 0 000 3z"/>
-                                                @elseif($iKey === 'resort')
-                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 21v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21m0 0h4.5V3.75H6v17.25h2.25z"/>
-                                                @elseif($iKey === 'pool')
-                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 18.5c1.5 0 2-1 3.5-1s2 1 3.5 1 2-1 3.5-1 2 1 3.5 1 2-1 3.5-1M3 21.5c1.5 0 2-1 3.5-1s2 1 3.5 1 2-1 3.5-1 2 1 3.5 1 2-1 3.5-1M7 14V3.5a1.5 1.5 0 013 0V14m-3-7h3m-3 4h3m4-7.5V3.5a1.5 1.5 0 013 0V14m-3-7h3m-3 4h3"/>
-                                                @elseif($iKey === 'beach')
-                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM3 19.5c2 0 3-1 4.5-1s2.5 1 4.5 1 3-1 4.5-1 2.5 1 4.5 1"/>
-                                                @elseif($iKey === 'forest')
-                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 2L6 11h3l-4 7h6v3h2v-3h6l-4-7h3L12 2z"/>
-                                                @elseif($iKey === 'mountain')
-                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 19.5L9.75 7.5l4.5 7.5 3-4.5 4.5 9H2.25zM8.25 10l2 3.5m4.25-1.5l1.5 2.5"/>
-                                                @elseif($iKey === 'jacuzzi')
-                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 13h18c0 4.5-3.5 8-8 8h-2c-4.5 0-8-3.5-8-8zm2-4c0-2 1.5-2 1.5-4s-1.5-2-1.5-4m6 8c0-2 1.5-2 1.5-4s-1.5-2-1.5-4m6 8c0-2 1.5-2 1.5-4s-1.5-2-1.5-4"/>
-                                                @elseif($iKey === 'luxury')
-                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z"/>
-                                                @elseif($iKey === 'breakfast')
-                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 100-18 9 9 0 000 18zm0-5a4 4 0 100-8 4 4 0 000 8z"/>
-                                                @elseif($iKey === 'pet')
-                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 13a4 4 0 100-8 4 4 0 000 8zm-7-2a2.5 2.5 0 115 0 2.5 2.5 0 01-5 0zm14 0a2.5 2.5 0 115 0 2.5 2.5 0 01-5 0zM7 18.5a4.5 4.5 0 019 0v.5H7v-.5z"/>
-                                                @else
-                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.386a10.978 10.978 0 003.955-3.955c.486-.827.313-1.908-.386-2.607L9.835 4.909A2.25 2.25 0 008.243 4.25H9.568zM6 6h.008v.008H6V6z"/>
-                                                @endif
-                                            </svg>
-                                        @endif
-                                    </div>
-
-                                    {{-- Title (Uniform width with clean truncate) --}}
-                                    <span class="w-full text-xs sm:text-[13px] font-bold text-zinc-800 dark:text-zinc-200 group-hover:text-[#007A5E] dark:group-hover:text-emerald-400 transition-colors text-center truncate block px-0.5"
-                                          title="{{ $item['title'] }}">
-                                        {{ $item['title'] }}
-                                    </span>
-                                </a>
-                            @endforeach
-                        </div>
-                    </div>
-                </section>
-            @endif
-
-            <!-- LISTINGS SECTION CONTAINER (Dynamic Carousels) -->
-            <main class="w-full py-6 sm:py-10 space-y-12 sm:space-y-16 lg:space-y-20">
+            <main class="w-full pt-8 sm:pt-12 pb-12 sm:pb-16 flex flex-col gap-12 sm:gap-16 lg:gap-20 font-sans">
                 <!-- Active Filters Notification Bar -->
-                <div class="max-w-[1360px] mx-auto px-4 sm:px-8">
-                    <div id="active-filters-bar" class="hidden mb-6 font-sans"></div>
+                <div class="max-w-[1360px] mx-auto px-4 sm:px-8 w-full empty:hidden">
+                    <div id="active-filters-bar" class="hidden font-sans"></div>
                 </div>
 
+                <!-- ============================================================= -->
+                <!-- DYNAMIC AGGREGATED CATEGORIES & PROPERTY TYPES (Flat Cards & Drag Navigation with Peek Effect) -->
+                <!-- ============================================================= -->
+                @if(!empty($aggregatedExploreItems) && count($aggregatedExploreItems) > 0)
+                    <section id="category-explore-section" class="w-full max-w-[1360px] mx-auto px-4 sm:px-8 font-sans">
+                        <style>
+                            #category-explore-track {
+                                cursor: grab;
+                                user-select: none;
+                                -webkit-user-select: none;
+                                -webkit-overflow-scrolling: touch;
+                                touch-action: pan-x pan-y pinch-zoom;
+                                overscroll-behavior-x: contain;
+                                scroll-behavior: smooth;
+                                -webkit-tap-highlight-color: transparent;
+                            }
+                            #category-explore-track.is-dragging {
+                                cursor: grabbing !important;
+                                scroll-snap-type: none !important;
+                                scroll-behavior: auto !important;
+                                user-select: none !important;
+                                -webkit-user-select: none !important;
+                            }
+                            #category-explore-track a, #category-explore-track img, #category-explore-track svg {
+                                -webkit-user-drag: none;
+                                user-drag: none;
+                            }
+                            #category-explore-track.is-dragging a {
+                                pointer-events: none !important;
+                            }
+                            /* Guaranteed Peek Affordance across all screen resolutions */
+                            .category-peek-item {
+                                flex: 0 0 calc((100% - 3.5 * 14px) / 4.45) !important;
+                                width: calc((100% - 3.5 * 14px) / 4.45) !important;
+                                min-width: 76px !important;
+                                max-width: 96px !important;
+                            }
+                            @media (min-width: 640px) {
+                                .category-peek-item {
+                                    flex: 0 0 calc((100% - 5.5 * 18px) / 6.45) !important;
+                                    width: calc((100% - 5.5 * 18px) / 6.45) !important;
+                                    min-width: 86px !important;
+                                    max-width: 104px !important;
+                                }
+                            }
+                            @media (min-width: 768px) {
+                                .category-peek-item {
+                                    flex: 0 0 calc((100% - 6.5 * 20px) / 7.45) !important;
+                                    width: calc((100% - 6.5 * 20px) / 7.45) !important;
+                                    min-width: 90px !important;
+                                    max-width: 108px !important;
+                                }
+                            }
+                            @media (min-width: 1024px) {
+                                .category-peek-item {
+                                    flex: 0 0 calc((100% - 7.5 * 22px) / 8.45) !important;
+                                    width: calc((100% - 7.5 * 22px) / 8.45) !important;
+                                    min-width: 94px !important;
+                                    max-width: 112px !important;
+                                }
+                            }
+                            @media (min-width: 1280px) {
+                                .category-peek-item {
+                                    flex: 0 0 calc((100% - 8.5 * 24px) / 9.45) !important;
+                                    width: calc((100% - 8.5 * 24px) / 9.45) !important;
+                                    min-width: 98px !important;
+                                    max-width: 116px !important;
+                                }
+                            }
+                        </style>
+
+                        <!-- Section Header Row: Title, Subtitle with generous vertical gap, Carousel Arrows (No "All Properties" button) -->
+                        <div class="flex items-center justify-between mb-6 sm:mb-8 px-1">
+                            <div>
+                                <h2 class="text-sm sm:text-base font-extrabold text-[#18181B] dark:text-zinc-100 flex items-center gap-2">
+                                    <span class="w-2 h-2 rounded-full bg-[#007A5E] dark:bg-emerald-400"></span>
+                                    دسته‌بندی و انواع اقامتگاه
+                                </h2>
+                                <p class="text-[11px] sm:text-xs text-zinc-400 dark:text-zinc-400 mt-2 sm:mt-2.5">کاوش بر اساس سبک و نوع ملک در اقامتگاه‌های شمال</p>
+                            </div>
+                            <div class="flex items-center gap-2 sm:gap-3">
+                                <div class="hidden md:flex items-center gap-1">
+                                    <button type="button"
+                                            id="cat-scroll-right-btn"
+                                            onclick="scrollCategoryExploreTrack('prev')"
+                                            class="w-8 h-8 rounded-xl bg-white dark:bg-zinc-900 border border-[#ECECEE] dark:border-zinc-800 hover:bg-[#F7F8F9] dark:hover:bg-zinc-800 flex items-center justify-center text-zinc-600 dark:text-zinc-300 transition-colors shadow-xs active:scale-95 disabled:opacity-30 disabled:pointer-events-none"
+                                            title="قبلی">
+                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+                                    </button>
+                                    <button type="button"
+                                            id="cat-scroll-left-btn"
+                                            onclick="scrollCategoryExploreTrack('next')"
+                                            class="w-8 h-8 rounded-xl bg-white dark:bg-zinc-900 border border-[#ECECEE] dark:border-zinc-800 hover:bg-[#F7F8F9] dark:hover:bg-zinc-800 flex items-center justify-center text-zinc-600 dark:text-zinc-300 transition-colors shadow-xs active:scale-95 disabled:opacity-30 disabled:pointer-events-none"
+                                            title="بعدی">
+                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Items Carousel Track Container with Peek Effect & Desktop Navigation -->
+                        <div class="relative">
+                            <div id="category-explore-track"
+                                 class="flex items-start gap-3.5 sm:gap-5 lg:gap-6 overflow-x-auto no-scrollbar py-1 px-1">
+                                @foreach($aggregatedExploreItems as $item)
+                                    <a href="{{ $item['url'] }}"
+                                       onclick="if(window.isCategoryDragging){event.preventDefault();event.stopPropagation();return false;}"
+                                       class="category-peek-item group shrink-0 flex flex-col items-center justify-start text-center bg-transparent border-0 shadow-none hover:shadow-none transition-transform duration-200 active:scale-95 cursor-pointer font-sans select-none no-underline"
+                                       title="{{ $item['title'] }}">
+                                        
+                                        {{-- Flat Icon Squircle Badge (Mint/Pastel Green background, Forest green stroke, Flat without shadow or border) --}}
+                                        <div class="w-14 h-14 sm:w-16 sm:h-16 rounded-[20px] sm:rounded-[22px] bg-[#E8F8F3] dark:bg-emerald-950/40 text-[#007A5E] dark:text-emerald-400 group-hover:bg-[#D4F4E7] dark:group-hover:bg-emerald-900/50 transition-all duration-200 mb-3 sm:mb-3.5 flex items-center justify-center border-0 shadow-none">
+                                            @if(!empty($item['image']))
+                                                <img src="{{ asset($item['image']) }}" alt="{{ $item['title'] }}" class="w-7 h-7 sm:w-8 sm:h-8 object-contain rounded-lg pointer-events-none">
+                                            @else
+                                                @php $iKey = strtolower($item['icon'] ?? 'category'); @endphp
+                                                <svg class="w-6 h-6 sm:w-7 sm:h-7 pointer-events-none transition-transform duration-200 group-hover:scale-105" fill="none" stroke="currentColor" stroke-width="1.9" viewBox="0 0 24 24">
+                                                    @if($iKey === 'cottage')
+                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 3L2.5 19.5h19L12 3zm0 6.5v10m-3.5 0v-4h7v4"/>
+                                                    @elseif($iKey === 'villa')
+                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25"/>
+                                                    @elseif($iKey === 'apartment')
+                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21"/>
+                                                    @elseif($iKey === 'ecolodge')
+                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 3c-4.5 0-8 3.5-8 8v9a1 1 0 001 1h14a1 1 0 001-1v-9c0-4.5-3.5-8-8-8zm-2 17v-4a2 2 0 114 0v4m-2-12a1.5 1.5 0 100-3 1.5 1.5 0 000 3z"/>
+                                                    @elseif($iKey === 'resort')
+                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 21v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21m0 0h4.5V3.75H6v17.25h2.25z"/>
+                                                    @elseif($iKey === 'pool')
+                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 18.5c1.5 0 2-1 3.5-1s2 1 3.5 1 2-1 3.5-1 2 1 3.5 1 2-1 3.5-1M3 21.5c1.5 0 2-1 3.5-1s2 1 3.5 1 2-1 3.5-1 2 1 3.5 1 2-1 3.5-1M7 14V3.5a1.5 1.5 0 013 0V14m-3-7h3m-3 4h3m4-7.5V3.5a1.5 1.5 0 013 0V14m-3-7h3m-3 4h3"/>
+                                                    @elseif($iKey === 'beach')
+                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM3 19.5c2 0 3-1 4.5-1s2.5 1 4.5 1 3-1 4.5-1 2.5 1 4.5 1"/>
+                                                    @elseif($iKey === 'forest')
+                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 2L6 11h3l-4 7h6v3h2v-3h6l-4-7h3L12 2z"/>
+                                                    @elseif($iKey === 'mountain')
+                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 19.5L9.75 7.5l4.5 7.5 3-4.5 4.5 9H2.25zM8.25 10l2 3.5m4.25-1.5l1.5 2.5"/>
+                                                    @elseif($iKey === 'jacuzzi')
+                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 13h18c0 4.5-3.5 8-8 8h-2c-4.5 0-8-3.5-8-8zm2-4c0-2 1.5-2 1.5-4s-1.5-2-1.5-4m6 8c0-2 1.5-2 1.5-4s-1.5-2-1.5-4m6 8c0-2 1.5-2 1.5-4s-1.5-2-1.5-4"/>
+                                                    @elseif($iKey === 'luxury')
+                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z"/>
+                                                    @elseif($iKey === 'breakfast')
+                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9 9 0 100-18 9 9 0 000 18zm0-5a4 4 0 100-8 4 4 0 000 8z"/>
+                                                    @elseif($iKey === 'pet')
+                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 13a4 4 0 100-8 4 4 0 000 8zm-7-2a2.5 2.5 0 115 0 2.5 2.5 0 01-5 0zm14 0a2.5 2.5 0 115 0 2.5 2.5 0 01-5 0zM7 18.5a4.5 4.5 0 019 0v.5H7v-.5z"/>
+                                                    @else
+                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.386a10.978 10.978 0 003.955-3.955c.486-.827.313-1.908-.386-2.607L9.835 4.909A2.25 2.25 0 008.243 4.25H9.568zM6 6h.008v.008H6V6z"/>
+                                                    @endif
+                                                </svg>
+                                            @endif
+                                        </div>
+
+                                        {{-- Title (Uniform width with clean truncate) --}}
+                                        <span class="w-full text-xs sm:text-[13px] font-bold text-zinc-800 dark:text-zinc-200 group-hover:text-[#007A5E] dark:group-hover:text-emerald-400 transition-colors text-center truncate block px-0.5"
+                                              title="{{ $item['title'] }}">
+                                            {{ $item['title'] }}
+                                        </span>
+                                    </a>
+                                @endforeach
+                            </div>
+                        </div>
+                    </section>
+                @endif
+
                 <!-- Dynamic Sections Carousel Container (Consistent Spacing Between All Sections) -->
-                <div id="sections-wrapper" class="w-full flex flex-col gap-12 sm:gap-16 lg:gap-20"></div>
+                <div id="sections-wrapper" class="w-full flex flex-col gap-12 sm:gap-16 lg:gap-20">
+                    <div id="sections-before-slider" class="w-full flex flex-col gap-12 sm:gap-16 lg:gap-20 empty:hidden"></div>
+
+                    @if(!empty($activeHeroSlides) && count($activeHeroSlides) > 0)
+                        <!-- HERO PROMOTIONAL BANNER CAROUSEL (Positioned between 'اقامتگاه‌های پیشنهادی' and 'جدیدترین بوم‌گردی‌ها و اقامتگاه‌ها') -->
+                        <section id="hero-banner-section" class="w-full max-w-[1360px] mx-auto px-4 sm:px-8 font-sans">
+                            <style>
+                                #hero-slider-track {
+                                    scroll-snap-type: x mandatory;
+                                    overscroll-behavior-x: contain;
+                                    -webkit-overflow-scrolling: touch;
+                                    touch-action: pan-x pan-y pinch-zoom;
+                                    user-select: none;
+                                    -webkit-user-select: none;
+                                }
+                                .hero-slide {
+                                    scroll-snap-align: center;
+                                    scroll-snap-stop: normal;
+                                }
+                                .hero-slide a {
+                                    -webkit-user-drag: none;
+                                    user-drag: none;
+                                }
+                                .hero-slide img {
+                                    pointer-events: none;
+                                    -webkit-user-drag: none;
+                                    user-drag: none;
+                                }
+                            </style>
+                            <div class="relative group">
+                                <!-- Carousel Scroll Track with Peek Effect -->
+                                <div id="hero-slider-track"
+                                     class="flex gap-3 sm:gap-4 overflow-x-auto scroll-smooth snap-x snap-mandatory no-scrollbar py-1 px-1 select-none font-sans cursor-grab"
+                                     style="scrollbar-width: none; -ms-overflow-style: none;">
+
+                                    @foreach($activeHeroSlides as $slideIdx => $slide)
+                                        @php
+                                            $slideUrl = !empty($slide['link']) ? $slide['link'] : 'javascript:void(0)';
+                                            $slideTarget = ($slide['target'] ?? '_self') === '_blank' ? '_blank' : '_self';
+                                            $slideImg = $slide['image'] ?? '';
+                                            if (!str_starts_with($slideImg, 'http') && !str_starts_with($slideImg, '/')) {
+                                                $slideImg = '/' . $slideImg;
+                                            }
+                                        @endphp
+                                        <div class="hero-slide shrink-0 w-[88%] sm:w-[92%] md:w-[94%] snap-center rounded-2xl sm:rounded-3xl overflow-hidden shadow-lg relative block font-sans transition-transform duration-300 aspect-[2.6/1] bg-zinc-100 dark:bg-zinc-800"
+                                             data-slide-index="{{ $slideIdx }}">
+                                            <a href="{{ $slideUrl }}"
+                                               @if($slideTarget === '_blank') target="_blank" rel="noopener noreferrer" @endif
+                                               class="block w-full h-full relative"
+                                               draggable="false"
+                                               aria-label="{{ $slide['title'] ?? ('اسلاید ' . ($slideIdx + 1)) }}">
+                                                <img src="{{ asset($slideImg) }}"
+                                                     alt="{{ $slide['title'] ?? ('بنر ' . ($slideIdx + 1)) }}"
+                                                     class="w-full h-full object-cover rounded-2xl sm:rounded-3xl select-none pointer-events-none"
+                                                     draggable="false"
+                                                     loading="{{ $slideIdx === 0 ? 'eager' : 'lazy' }}" />
+                                            </a>
+                                        </div>
+                                    @endforeach
+                                </div>
+
+                                @if(count($activeHeroSlides) > 1)
+                                    <!-- Desktop Navigation Arrows (Floating on edges - correctly pointing outwards) -->
+                                    <button type="button" onclick="prevHeroSlide()" aria-label="اسلاید قبلی"
+                                            class="hidden md:flex absolute top-1/2 -translate-y-1/2 -right-3 lg:-right-5 w-10 h-10 rounded-full bg-white/95 dark:bg-zinc-900/95 text-zinc-700 dark:text-zinc-200 border border-zinc-200/80 dark:border-zinc-700 shadow-xl items-center justify-center hover:bg-white dark:hover:bg-zinc-800 transition-all z-20 opacity-0 group-hover:opacity-100 active:scale-90 font-sans cursor-pointer">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+                                    </button>
+                                    <button type="button" onclick="nextHeroSlide()" aria-label="اسلاید بعدی"
+                                            class="hidden md:flex absolute top-1/2 -translate-y-1/2 -left-3 lg:-left-5 w-10 h-10 rounded-full bg-white/95 dark:bg-zinc-900/95 text-zinc-700 dark:text-zinc-200 border border-zinc-200/80 dark:border-zinc-700 shadow-xl items-center justify-center hover:bg-white dark:hover:bg-zinc-800 transition-all z-20 opacity-0 group-hover:opacity-100 active:scale-90 font-sans cursor-pointer">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+                                    </button>
+
+                                    <!-- Modern Pagination Indicators (Hidden on Mobile per user request) -->
+                                    <div id="hero-slider-dots" class="hidden sm:flex items-center justify-center gap-1.5 mt-2.5 sm:mt-3.5 font-sans">
+                                        @foreach($activeHeroSlides as $dotIdx => $dotSlide)
+                                            <button type="button" onclick="goToHeroSlide({{ $dotIdx }})"
+                                                    class="hero-dot {{ $dotIdx === 0 ? 'w-6 h-2 bg-[#EA580C] dark:bg-amber-400' : 'w-2 h-2 bg-zinc-300 dark:bg-zinc-700 hover:bg-zinc-400 dark:hover:bg-zinc-600' }} rounded-full transition-all duration-300 font-sans cursor-pointer"
+                                                    aria-label="اسلاید {{ $dotIdx + 1 }}"></button>
+                                        @endforeach
+                                    </div>
+                                @endif
+                            </div>
+                        </section>
+                    @endif
+
+                    <div id="sections-after-slider" class="w-full flex flex-col gap-12 sm:gap-16 lg:gap-20 empty:hidden"></div>
+                </div>
 
                 <!-- Minimal Empty State -->
                 <div class="max-w-[1360px] mx-auto px-4 sm:px-8">
@@ -1808,6 +1816,7 @@
         } else {
             // Strictly clamp to prevent jumping to end / start on manual gestures
             if (index < 0) index = 0;
+            if (index >= slides.length) index = 0;
             if (index >= slides.length) index = slides.length - 1;
         }
 
@@ -1819,6 +1828,9 @@
             isProgrammaticScrolling = true;
             clearTimeout(programmaticScrollTimer);
 
+            // Temporarily disable scroll-snap during programmatic slide transition so browser snap engine doesn't clamp to intermediate slides
+            track.style.scrollSnapType = 'none';
+
             const trackRect = track.getBoundingClientRect();
             const slideRect = targetSlide.getBoundingClientRect();
             const deltaX = (slideRect.left + slideRect.width / 2) - (trackRect.left + trackRect.width / 2);
@@ -1827,9 +1839,22 @@
                 track.scrollBy({ left: deltaX, behavior: 'smooth' });
             }
 
-            programmaticScrollTimer = setTimeout(() => {
+            const restoreScrollSnap = () => {
                 isProgrammaticScrolling = false;
-            }, 600);
+                track.style.scrollSnapType = 'x mandatory';
+            };
+
+            let endHandled = false;
+            const onScrollEnd = () => {
+                if (endHandled) return;
+                endHandled = true;
+                track.removeEventListener('scrollend', onScrollEnd);
+                clearTimeout(programmaticScrollTimer);
+                restoreScrollSnap();
+            };
+
+            track.addEventListener('scrollend', onScrollEnd, { once: true });
+            programmaticScrollTimer = setTimeout(onScrollEnd, 1200);
         }
     }
 
@@ -1909,11 +1934,13 @@
             let rafId = null;
             let hasMovedSignificantly = false;
 
+            const isRTL = document.documentElement.dir === 'rtl' || getComputedStyle(carousel).direction === 'rtl';
+
             const updateScroll = () => {
                 if (!isDown) return;
                 const walk = currentX - startX;
-                // RTL-Accurate: Dragging right (walk > 0) scrolls towards next items (decreasing scrollLeft in modern RTL)
-                carousel.scrollLeft = scrollStart - walk;
+                // RTL-Accurate: In standard modern RTL browsers, dragging mouse right (walk > 0) pulls content right
+                carousel.scrollLeft = isRTL ? (scrollStart + walk) : (scrollStart - walk);
                 rafId = requestAnimationFrame(updateScroll);
             };
 
@@ -1975,7 +2002,7 @@
                 if (momentum < -maxGlide) momentum = -maxGlide;
 
                 if (Math.abs(momentum) > 10) {
-                    const targetLeft = carousel.scrollLeft - momentum;
+                    const targetLeft = isRTL ? (carousel.scrollLeft + momentum) : (carousel.scrollLeft - momentum);
                     carousel.scrollTo({
                         left: targetLeft,
                         behavior: 'smooth'
@@ -1992,14 +2019,26 @@
                 if (hasMovedSignificantly) {
                     setTimeout(() => {
                         window.isCarouselDragging = false;
-                    }, 140);
+                        hasMovedSignificantly = false;
+                    }, 180);
                 } else {
                     window.isCarouselDragging = false;
+                    hasMovedSignificantly = false;
                 }
             };
 
             carousel.addEventListener('mousedown', onMouseDown);
             carousel.addEventListener('dragstart', (e) => e.preventDefault());
+
+            // Capture-phase click interceptor on carousel so dragged cards never trigger navigation
+            carousel.addEventListener('click', (e) => {
+                if (window.isCarouselDragging || hasMovedSignificantly) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    e.stopImmediatePropagation();
+                    return false;
+                }
+            }, true);
 
             // Touch Swipe Tracking for Mobile (Ensures natural scroll without opening cards)
             let touchStartX = 0;
@@ -2020,6 +2059,7 @@
                 if (dx > 7 && dx > dy) {
                     isTouchSwiping = true;
                     window.isCarouselDragging = true;
+                    hasMovedSignificantly = true;
                 }
             }, { passive: true });
 
@@ -2028,9 +2068,11 @@
                     setTimeout(() => {
                         window.isCarouselDragging = false;
                         isTouchSwiping = false;
-                    }, 140);
+                        hasMovedSignificantly = false;
+                    }, 180);
                 } else {
                     window.isCarouselDragging = false;
+                    hasMovedSignificantly = false;
                 }
             }, { passive: true });
         });
@@ -2067,7 +2109,7 @@
         if (leftBtn) leftBtn.disabled = isAtEnd;
     }
 
-    // Ultra-smooth Mouse Drag Controller for Category Explore Track (RTL-accurate, Momentum, No Auto-play)
+    // Ultra-smooth Mouse Drag & Mobile Touch Controller for Category Explore Track (RTL-accurate, Momentum, No Auto-play)
     function initCategoryExploreDrag() {
         const track = document.getElementById('category-explore-track');
         if (!track || track.dataset.dragReady === 'true') return;
@@ -2083,11 +2125,15 @@
         let rafId = null;
         let hasMovedSignificantly = false;
 
+        const isRTL = document.documentElement.dir === 'rtl' || getComputedStyle(track).direction === 'rtl';
+
         const updateScroll = () => {
             if (!isDown) return;
             const walk = currentX - startX;
-            // RTL-Accurate: In standard RTL direction, dragging mouse right (walk > 0) pulls content right
-            track.scrollLeft = scrollStart - walk;
+            // RTL-Accurate: In standard modern RTL browsers (Chromium/Safari/Firefox), scrollLeft is 0 at right and negative towards left.
+            // When user drags mouse left (walk < 0), we want content to move left (decreasing scrollLeft towards -maxScroll).
+            // In LTR, dragging left (walk < 0) increases scrollLeft towards +maxScroll.
+            track.scrollLeft = isRTL ? (scrollStart + walk) : (scrollStart - walk);
             rafId = requestAnimationFrame(updateScroll);
         };
 
@@ -2137,18 +2183,17 @@
             isDown = false;
             cancelAnimationFrame(rafId);
 
-            track.classList.remove('is-dragging');
             window.removeEventListener('mousemove', onMouseMove);
             window.removeEventListener('mouseup', onMouseUp);
 
-            // Momentum glide based on release velocity
+            // Natural momentum glide based on release velocity
             let momentum = velocityX * 220;
             const maxGlide = track.clientWidth * 0.85;
             if (momentum > maxGlide) momentum = maxGlide;
             if (momentum < -maxGlide) momentum = -maxGlide;
 
             if (Math.abs(momentum) > 10) {
-                const targetLeft = track.scrollLeft - momentum;
+                const targetLeft = isRTL ? (track.scrollLeft + momentum) : (track.scrollLeft - momentum);
                 track.scrollTo({
                     left: targetLeft,
                     behavior: 'smooth'
@@ -2157,22 +2202,79 @@
 
             // Restore smooth scrolling behavior
             setTimeout(() => {
+                track.classList.remove('is-dragging');
                 track.style.scrollBehavior = 'smooth';
                 updateCategoryTrackAffordance();
-            }, 300);
+            }, 50);
 
             // Prevent card navigation if user dragged
             if (hasMovedSignificantly) {
                 setTimeout(() => {
                     window.isCategoryDragging = false;
-                }, 140);
+                    hasMovedSignificantly = false;
+                }, 180);
             } else {
                 window.isCategoryDragging = false;
+                hasMovedSignificantly = false;
             }
         };
 
         track.addEventListener('mousedown', onMouseDown);
         track.addEventListener('dragstart', (e) => e.preventDefault());
+
+        // Capture-phase click interceptor on track to guarantee dragged/swiped items never trigger URL navigation
+        track.addEventListener('click', (e) => {
+            if (window.isCategoryDragging || hasMovedSignificantly) {
+                e.preventDefault();
+                e.stopPropagation();
+                e.stopImmediatePropagation();
+                return false;
+            }
+        }, true);
+
+        // Native touch support tracking for mobile devices
+        let touchStartX = 0;
+        let touchStartY = 0;
+        let isTouchSwiping = false;
+
+        track.addEventListener('touchstart', (e) => {
+            if (!e.touches || !e.touches[0]) return;
+            touchStartX = e.touches[0].clientX;
+            touchStartY = e.touches[0].clientY;
+            isTouchSwiping = false;
+        }, { passive: true });
+
+        track.addEventListener('touchmove', (e) => {
+            if (!e.touches || !e.touches[0]) return;
+            const dx = Math.abs(e.touches[0].clientX - touchStartX);
+            const dy = Math.abs(e.touches[0].clientY - touchStartY);
+            if (dx > 6 && dx > dy) {
+                isTouchSwiping = true;
+                window.isCategoryDragging = true;
+                hasMovedSignificantly = true;
+            }
+        }, { passive: true });
+
+        track.addEventListener('touchend', () => {
+            if (isTouchSwiping) {
+                setTimeout(() => {
+                    window.isCategoryDragging = false;
+                    hasMovedSignificantly = false;
+                    isTouchSwiping = false;
+                }, 180);
+            } else {
+                window.isCategoryDragging = false;
+                hasMovedSignificantly = false;
+            }
+            setTimeout(updateCategoryTrackAffordance, 100);
+        }, { passive: true });
+
+        track.addEventListener('touchcancel', () => {
+            window.isCategoryDragging = false;
+            hasMovedSignificantly = false;
+            isTouchSwiping = false;
+        }, { passive: true });
+
         track.addEventListener('scroll', updateCategoryTrackAffordance, { passive: true });
         window.addEventListener('resize', updateCategoryTrackAffordance, { passive: true });
 
@@ -2331,7 +2433,9 @@
     }
 
     function renderListings() {
-        const sectionsWrapper = document.getElementById('sections-wrapper');
+        const beforeWrapper = document.getElementById('sections-before-slider');
+        const afterWrapper = document.getElementById('sections-after-slider');
+        const heroBanner = document.getElementById('hero-banner-section');
         const emptyState = document.getElementById('empty-state');
 
         const filtered = LISTINGS_DATA.filter(item => {
@@ -2422,7 +2526,9 @@
         syncInstantUI();
 
         if (filtered.length === 0) {
-            sectionsWrapper.innerHTML = '';
+            if (beforeWrapper) beforeWrapper.innerHTML = '';
+            if (afterWrapper) afterWrapper.innerHTML = '';
+            if (heroBanner) heroBanner.classList.add('hidden');
             emptyState.classList.remove('hidden');
             const emptyTitle = document.getElementById('empty-state-title');
             const emptySubtitle = document.getElementById('empty-state-subtitle');
@@ -2446,7 +2552,7 @@
             // When keyword search is active, render a dedicated search results grid so all matches are immediately visible!
             if (state.keyword) {
                 const searchResultsHtml = `
-                    <section class="pt-2 font-sans">
+                    <section class="w-full max-w-[1360px] mx-auto px-4 sm:px-8 pt-2 font-sans">
                         <div class="flex items-center justify-between mb-5 sm:mb-7">
                             <div>
                                 <h2 class="text-base sm:text-lg font-extrabold text-[#18181B] dark:text-zinc-100 font-sans">
@@ -2464,12 +2570,17 @@
                         </div>
                     </section>
                 `;
-                sectionsWrapper.innerHTML = searchResultsHtml;
+                if (beforeWrapper) beforeWrapper.innerHTML = searchResultsHtml;
+                if (afterWrapper) afterWrapper.innerHTML = '';
+                if (heroBanner) heroBanner.classList.add('hidden');
                 initCarouselDrag();
                 return;
             }
 
-            const renderedSections = SECTIONS_META.map(sec => {
+            const beforeSectionsHtml = [];
+            const afterSectionsHtml = [];
+
+            SECTIONS_META.forEach(sec => {
                 let secItems = filtered.filter(item => {
                     if (Array.isArray(item.sections)) {
                         return item.sections.includes(sec.key);
@@ -2481,9 +2592,9 @@
                 if (sec.key === 'lastminute') {
                     secItems = secItems.filter(item => (item.discountPercent && item.discountPercent > 0) || (item.oldPrice && item.oldPrice > item.price));
                     secItems = secItems.slice(0, 24);
-                    if (secItems.length === 0) return '';
+                    if (secItems.length === 0) return;
 
-                    return `
+                    const lmHtml = `
                     <section class="w-full bg-[#007A5E] dark:bg-[#064e3b] py-8 sm:py-12 border-y border-[#005F48]/60 dark:border-emerald-800/40 text-white relative overflow-hidden">
                         <!-- Subtle Travel Doodles Watermark (Matching Brand Palette) -->
                         <div class="absolute inset-0 opacity-[0.05] pointer-events-none text-white" style="background-image: radial-gradient(circle, currentColor 1.5px, transparent 1.5px), radial-gradient(circle, currentColor 1px, transparent 1px); background-size: 28px 28px; background-position: 0 0, 14px 14px;"></div>
@@ -2532,6 +2643,8 @@
                             </div>
                         </div>
                     </section>`;
+                    beforeSectionsHtml.push(lmHtml);
+                    return;
                 }
 
                 // اقامتگاه‌های خاص: بررسی مستقیم بر اساس تیک «آگهی ویژه» (is_special)
@@ -2543,9 +2656,9 @@
                 secItems = secItems.slice(0, 24);
 
                 // سایر سکشن‌های استاندارد (کاروسل ۳تایی در دسکتاپ و ۲تایی کامل + بعدی در موبایل)
-                if (secItems.length === 0) return '';
+                if (secItems.length === 0) return;
 
-                return `
+                const secHtml = `
                 <section class="w-full max-w-[1360px] mx-auto px-4 sm:px-8">
                     <div class="flex items-end justify-between gap-2 mb-5 sm:mb-7">
                         <div>
@@ -2568,9 +2681,18 @@
                         ${secItems.map(buildVillaCardHTML).join('')}
                     </div>
                 </section>`;
-            }).filter(Boolean).join('');
 
-            sectionsWrapper.innerHTML = renderedSections;
+                if (sec.key === 'newest') {
+                    afterSectionsHtml.push(secHtml);
+                } else {
+                    beforeSectionsHtml.push(secHtml);
+                }
+            });
+
+            if (beforeWrapper) beforeWrapper.innerHTML = beforeSectionsHtml.join('');
+            if (afterWrapper) afterWrapper.innerHTML = afterSectionsHtml.join('');
+            if (heroBanner) heroBanner.classList.remove('hidden');
+
             initCarouselDrag();
         }
 

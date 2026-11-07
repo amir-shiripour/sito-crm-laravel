@@ -2061,15 +2061,20 @@
 
     {{-- Quick Details Appointment Modal (نمایش جزئیات سریع نوبت با استایل هماهنگ پنل) --}}
     @if ($showDetailsModal && $detailsAppointment)
-        <div class="fixed inset-0 z-50 overflow-y-auto bg-gray-900/60 backdrop-blur-md flex items-center justify-center p-4"
+        @php
+            $mLabelClient = $detailsAppointment['label_client'] ?? ($labelClient ?? 'مراجع');
+            $mLabelProvider = $detailsAppointment['label_provider'] ?? ($labelProvider ?? 'ارائه‌دهنده');
+            $mLabelService = $detailsAppointment['label_service'] ?? ($labelService ?? 'سرویس');
+        @endphp
+        <div class="fixed inset-0 z-50 overflow-y-auto bg-gray-900/60 backdrop-blur-md flex items-center justify-center p-4 font-sans"
              @keydown.escape.window="$wire.closeDetailsModal()">
 
-            <div class="bg-white dark:bg-gray-800 rounded-3xl max-w-lg w-full shadow-2xl border border-gray-100 dark:border-gray-700/80 relative overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div class="bg-white dark:bg-gray-800 rounded-3xl max-w-xl w-full shadow-2xl border border-gray-100 dark:border-gray-700/80 relative overflow-hidden animate-in fade-in zoom-in-95 duration-200 font-sans">
 
                 {{-- Top Gradient Accent Line --}}
-                <div class="h-1.5 w-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500"></div>
+                <div class="h-1.5 w-full bg-gradient-to-r from-indigo-500 via-sky-500 to-indigo-600"></div>
 
-                <div class="p-6 space-y-6">
+                <div class="p-6 space-y-5 font-sans">
                     {{-- Modal Header --}}
                     <div class="flex items-center justify-between border-b border-gray-100 dark:border-gray-700/70 pb-4">
                         <div class="flex items-center gap-3">
@@ -2079,10 +2084,10 @@
                                 </svg>
                             </div>
                             <div>
-                                <h3 class="text-base font-black text-gray-900 dark:text-white flex items-center gap-2">
+                                <h3 class="text-base font-black text-gray-900 dark:text-white flex items-center gap-2 font-sans">
                                     جزئیات نوبت #{{ $detailsAppointment['id'] }}
                                 </h3>
-                                <p class="text-xs font-bold text-gray-400 mt-0.5">{{ $detailsAppointment['date_jalali'] }}</p>
+                                <p class="text-xs font-bold text-gray-400 mt-0.5 font-sans">{{ $detailsAppointment['date_jalali'] }}</p>
                             </div>
                         </div>
                         <button wire:click="closeDetailsModal" class="p-1.5 rounded-xl text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition">
@@ -2091,99 +2096,196 @@
                     </div>
 
                     {{-- Main Details Grid --}}
-                    <div class="space-y-4 text-xs font-bold">
+                    <div class="space-y-4 text-xs font-bold font-sans">
                         {{-- Status & Time Row --}}
                         <div class="grid grid-cols-2 gap-3 p-4 bg-gray-50/80 dark:bg-gray-900/60 rounded-2xl border border-gray-100 dark:border-gray-700/60">
                             <div>
-                                <span class="text-[11px] text-gray-400 block mb-1.5 font-medium">وضعیت فعلی</span>
-                                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-black border {{ $detailsAppointment['status_badge'] }}">
-                                    <span class="w-2 h-2 rounded-full bg-current"></span>
-                                    {{ $detailsAppointment['status_label'] }}
+                                <span class="text-[11px] text-gray-400 block mb-1.5 font-medium font-sans">وضعیت فعلی</span>
+                                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-black border font-sans {{ $detailsAppointment['status_badge'] }}"
+                                      @if(!empty($detailsAppointment['status_color']))
+                                          style="background-color: {{ $detailsAppointment['status_color'] }}18; color: {{ $detailsAppointment['status_color'] }}; border-color: {{ $detailsAppointment['status_color'] }}40;"
+                                      @endif
+                                >
+                                    <span class="w-2 h-2 rounded-full shrink-0"
+                                          @if(!empty($detailsAppointment['status_color']))
+                                              style="background-color: {{ $detailsAppointment['status_color'] }};"
+                                          @else
+                                              class="bg-current"
+                                          @endif
+                                    ></span>
+                                    <span>{{ $detailsAppointment['status_label'] }}</span>
                                 </span>
                             </div>
                             <div>
-                                <span class="text-[11px] text-gray-400 block mb-1.5 font-medium">ساعت نوبت</span>
-                                <div class="flex items-center gap-1.5 text-sm font-black text-gray-900 dark:text-gray-100">
+                                <span class="text-[11px] text-gray-400 block mb-1.5 font-medium font-sans">ساعت نوبت</span>
+                                <div class="flex items-center gap-1.5 text-sm font-black text-gray-900 dark:text-gray-100 font-sans">
                                     <svg class="w-4 h-4 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                                    {{ $detailsAppointment['start_time'] }} <span class="text-xs font-normal text-gray-400">تا</span> {{ $detailsAppointment['end_time'] }}
+                                    {{ $detailsAppointment['start_time'] }} <span class="text-xs font-normal text-gray-400 font-sans">تا</span> {{ $detailsAppointment['end_time'] }}
                                 </div>
                             </div>
                         </div>
 
-                        {{-- Client & Provider & Service Grid --}}
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {{-- Client & Provider & Service Grid (کاملاً داینامیک با تنظیمات لیبل) --}}
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                             {{-- Client Block --}}
-                            <div class="p-3.5 bg-gray-50/80 dark:bg-gray-900/60 rounded-2xl border border-gray-100 dark:border-gray-700/60 flex items-start gap-3">
-                                <div class="p-2 rounded-xl bg-teal-50 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400 flex-none">
-                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z"></path></svg>
+                            <div class="p-3.5 bg-gray-50/80 dark:bg-gray-900/60 rounded-2xl border border-gray-100 dark:border-gray-700/60 flex flex-col justify-between gap-2">
+                                <div class="flex items-start gap-2.5 min-w-0">
+                                    <div class="p-2 rounded-xl bg-teal-50 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400 shrink-0">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z"></path></svg>
+                                    </div>
+                                    <div class="min-w-0 flex-1">
+                                        <span class="text-[11px] font-medium text-gray-400 block mb-0.5 font-sans">{{ $mLabelClient }}</span>
+                                        <span class="text-xs font-black text-gray-900 dark:text-gray-100 block truncate font-sans">{{ $detailsAppointment['client_name'] }}</span>
+                                    </div>
                                 </div>
-                                <div class="truncate">
-                                    <span class="text-[11px] font-medium text-gray-400 block mb-0.5">بیمار / مشتری</span>
-                                    <span class="text-xs font-black text-gray-900 dark:text-gray-100 block truncate">{{ $detailsAppointment['client_name'] }}</span>
-                                    <span class="text-[11px] font-semibold text-gray-500 dark:text-gray-400 block mt-1 dir-ltr text-right">📞 {{ $detailsAppointment['client_phone'] }}</span>
+                                <div class="space-y-1 pt-1.5 border-t border-gray-150 dark:border-gray-700/50">
+                                    @if(!empty($detailsAppointment['client_phone']) && $detailsAppointment['client_phone'] !== '—')
+                                        <span class="text-[11px] font-semibold text-gray-500 dark:text-gray-400 block dir-ltr text-right font-sans">📞 {{ $detailsAppointment['client_phone'] }}</span>
+                                    @endif
+                                    @if(!empty($detailsAppointment['client_national_code']) && $detailsAppointment['client_national_code'] !== '—')
+                                        <span class="text-[10px] text-gray-400 block font-sans">کد ملی: {{ $detailsAppointment['client_national_code'] }}</span>
+                                    @endif
+                                    @if(!empty($detailsAppointment['client_case_number']))
+                                        <span class="text-[10px] font-bold text-teal-700 dark:text-teal-300 bg-teal-50 dark:bg-teal-950/40 px-1.5 py-0.5 rounded border border-teal-200 dark:border-teal-800/50 inline-block font-sans">
+                                            پرونده: {{ $detailsAppointment['client_case_number'] }}
+                                        </span>
+                                    @endif
                                 </div>
                             </div>
 
                             {{-- Provider Block --}}
-                            <div class="p-3.5 bg-gray-50/80 dark:bg-gray-900/60 rounded-2xl border border-gray-100 dark:border-gray-700/60 flex items-start gap-3">
-                                <div class="p-2 rounded-xl bg-purple-50 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 flex-none">
-                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72m.94 3.198.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0 1 12 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 0 1 6 18.719m12 0a5.971 5.971 0 0 0-.941-3.197m0 0A5.995 5.995 0 0 0 12 12.75a5.995 5.995 0 0 0-5.058 2.772m0 0a3 3 0 0 0-4.681 2.72 8.986 8.986 0 0 0 3.74.477m.94-3.197a5.971 5.971 0 0 0-.94 3.197M15 6.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"></path></svg>
+                            <div class="p-3.5 bg-gray-50/80 dark:bg-gray-900/60 rounded-2xl border border-gray-100 dark:border-gray-700/60 flex flex-col justify-between gap-2">
+                                <div class="flex items-start gap-2.5 min-w-0">
+                                    <div class="p-2 rounded-xl bg-purple-50 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 shrink-0">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72m.94 3.198.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0 1 12 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 0 1 6 18.719m12 0a5.971 5.971 0 0 0-.941-3.197m0 0A5.995 5.995 0 0 0 12 12.75a5.995 5.995 0 0 0-5.058 2.772m0 0a3 3 0 0 0-4.681 2.72 8.986 8.986 0 0 0 3.74.477m.94-3.197a5.971 5.971 0 0 0-.94 3.197M15 6.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"></path></svg>
+                                    </div>
+                                    <div class="min-w-0 flex-1">
+                                        <span class="text-[11px] font-medium text-gray-400 block mb-0.5 font-sans">{{ $mLabelProvider }}</span>
+                                        <span class="text-xs font-black text-gray-900 dark:text-gray-100 block truncate font-sans">{{ $detailsAppointment['provider_name'] }}</span>
+                                    </div>
                                 </div>
-                                <div class="truncate">
-                                    <span class="text-[11px] font-medium text-gray-400 block mb-0.5">{{ config('booking.labels.provider') }}</span>
-                                    <span class="text-xs font-black text-gray-900 dark:text-gray-100 block truncate">{{ $detailsAppointment['provider_name'] }}</span>
-                                    <span class="text-[11px] font-semibold text-indigo-600 dark:text-indigo-400 block mt-1 truncate">{{ $detailsAppointment['service_name'] }}</span>
+                                <div class="pt-1.5 border-t border-gray-150 dark:border-gray-700/50">
+                                    <span class="text-[10px] text-gray-400 block font-medium font-sans">مسئول ارائه‌دهنده</span>
+                                </div>
+                            </div>
+
+                            {{-- Service Block --}}
+                            <div class="p-3.5 bg-gray-50/80 dark:bg-gray-900/60 rounded-2xl border border-gray-100 dark:border-gray-700/60 flex flex-col justify-between gap-2">
+                                <div class="flex items-start gap-2.5 min-w-0">
+                                    <div class="p-2 rounded-xl bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 shrink-0">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z"></path></svg>
+                                    </div>
+                                    <div class="min-w-0 flex-1">
+                                        <span class="text-[11px] font-medium text-gray-400 block mb-0.5 font-sans">{{ $mLabelService }}</span>
+                                        <span class="text-xs font-black text-indigo-600 dark:text-indigo-400 block truncate font-sans">{{ $detailsAppointment['service_name'] }}</span>
+                                    </div>
+                                </div>
+                                <div class="pt-1.5 border-t border-gray-150 dark:border-gray-700/50">
+                                    @if(!empty($detailsAppointment['service_duration']))
+                                        <span class="text-[10px] text-gray-500 dark:text-gray-400 font-sans">⏱️ {{ $detailsAppointment['service_duration'] }} دقیقه</span>
+                                    @else
+                                        <span class="text-[10px] text-gray-400 font-sans">سرویس تخصیص‌یافته</span>
+                                    @endif
                                 </div>
                             </div>
                         </div>
 
                         {{-- Entry/Exit times --}}
                         @if ($detailsAppointment['entry_time'] || $detailsAppointment['exit_time'])
-                            <div class="grid grid-cols-2 gap-3 p-3 bg-indigo-50/50 dark:bg-indigo-900/20 rounded-2xl border border-indigo-100 dark:border-indigo-900/40 text-center">
+                            <div class="grid grid-cols-2 gap-3 p-3 bg-indigo-50/50 dark:bg-indigo-900/20 rounded-2xl border border-indigo-100 dark:border-indigo-900/40 text-center font-sans">
                                 <div>
-                                    <span class="text-gray-500 dark:text-gray-400 text-[11px] font-medium">زمان ورود:</span>
-                                    <span class="text-gray-900 dark:text-gray-100 font-black mr-1.5">{{ $detailsAppointment['entry_time'] ?? '—' }}</span>
+                                    <span class="text-gray-500 dark:text-gray-400 text-[11px] font-medium font-sans">زمان ورود:</span>
+                                    <span class="text-gray-900 dark:text-gray-100 font-black mr-1.5 font-sans">{{ $detailsAppointment['entry_time'] ?? '—' }}</span>
                                 </div>
                                 <div>
-                                    <span class="text-gray-500 dark:text-gray-400 text-[11px] font-medium">زمان خروج:</span>
-                                    <span class="text-gray-900 dark:text-gray-100 font-black mr-1.5">{{ $detailsAppointment['exit_time'] ?? '—' }}</span>
+                                    <span class="text-gray-500 dark:text-gray-400 text-[11px] font-medium font-sans">زمان خروج:</span>
+                                    <span class="text-gray-900 dark:text-gray-100 font-black mr-1.5 font-sans">{{ $detailsAppointment['exit_time'] ?? '—' }}</span>
+                                </div>
+                            </div>
+                        @endif
+
+                        {{-- اطلاعات تکمیلی نوبت (فرم اختصاصی سرویس) --}}
+                        @if(!empty($detailsAppointment['has_supplementary']) && !empty($detailsAppointment['supplementary_fields']))
+                            <div class="p-4 bg-indigo-50/40 dark:bg-slate-900/50 rounded-2xl border border-indigo-100/80 dark:border-slate-700/70 space-y-3 font-sans">
+                                <div class="flex items-center justify-between border-b border-indigo-100/60 dark:border-slate-800 pb-2">
+                                    <div class="flex items-center gap-2 text-indigo-700 dark:text-indigo-300 font-bold text-xs font-sans">
+                                        <svg class="w-4 h-4 text-indigo-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                        </svg>
+                                        <span>اطلاعات تکمیلی نوبت ({{ $detailsAppointment['form_name'] ?? ('فرم ' . $mLabelService) }})</span>
+                                    </div>
+                                    <span class="text-[10px] text-slate-400 font-normal font-sans">{{ count($detailsAppointment['supplementary_fields']) }} فیلد</span>
+                                </div>
+
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                                    @foreach($detailsAppointment['supplementary_fields'] as $sField)
+                                        <div class="p-2.5 rounded-xl bg-white dark:bg-slate-800/90 border border-slate-200/70 dark:border-slate-700/60 shadow-2xs {{ $sField['is_tooth'] ? 'sm:col-span-2' : '' }}">
+                                            <span class="text-[11px] font-medium text-slate-500 dark:text-slate-400 block mb-1 font-sans">
+                                                {{ $sField['label'] }}:
+                                            </span>
+                                            @if($sField['is_tooth'] && !empty($sField['teeth']))
+                                                <div class="flex items-center gap-1.5 flex-wrap">
+                                                    @foreach($sField['teeth'] as $toothNum)
+                                                        <span class="inline-flex items-center justify-center px-2 py-0.5 rounded-lg text-xs font-black bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800/60 font-sans">
+                                                            دندان #{{ $toothNum }}
+                                                        </span>
+                                                    @endforeach
+                                                </div>
+                                            @else
+                                                <span class="text-xs font-bold text-slate-800 dark:text-slate-100 block font-sans break-words">
+                                                    {{ $sField['value'] }}
+                                                </span>
+                                            @endif
+                                        </div>
+                                    @endforeach
                                 </div>
                             </div>
                         @endif
 
                         {{-- Notes --}}
                         @if (!empty($detailsAppointment['notes']))
-                            <div class="p-3.5 bg-gray-50/80 dark:bg-gray-900/60 rounded-2xl border border-gray-100 dark:border-gray-700/60">
-                                <span class="text-[11px] font-medium text-gray-400 block mb-1">یادداشت / توضیحات</span>
-                                <p class="text-gray-700 dark:text-gray-300 font-medium leading-relaxed">{{ $detailsAppointment['notes'] }}</p>
+                            <div class="p-3.5 bg-gray-50/80 dark:bg-gray-900/60 rounded-2xl border border-gray-100 dark:border-gray-700/60 font-sans">
+                                <span class="text-[11px] font-medium text-gray-400 block mb-1 font-sans">یادداشت / توضیحات</span>
+                                <p class="text-gray-700 dark:text-gray-300 font-medium leading-relaxed font-sans">{{ $detailsAppointment['notes'] }}</p>
                             </div>
                         @endif
 
                         {{-- Cancel Reason --}}
                         @if (!empty($detailsAppointment['cancel_reason']))
-                            <div class="p-3.5 bg-rose-50 dark:bg-rose-900/30 rounded-2xl border border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-200">
-                                <span class="text-[11px] font-bold block mb-1 flex items-center gap-1">
+                            <div class="p-3.5 bg-rose-50 dark:bg-rose-900/30 rounded-2xl border border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-200 font-sans">
+                                <span class="text-[11px] font-bold block mb-1 flex items-center gap-1 font-sans">
                                     <svg class="w-4 h-4 text-rose-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                                     دلیل لغو نوبت:
                                 </span>
-                                <p class="font-medium text-xs">{{ $detailsAppointment['cancel_reason'] }}</p>
+                                <p class="font-medium text-xs font-sans">{{ $detailsAppointment['cancel_reason'] }}</p>
                             </div>
                         @endif
                     </div>
 
                     {{-- Modal Footer --}}
-                    <div class="flex items-center justify-between gap-3 pt-4 border-t border-gray-100 dark:border-gray-700/70">
-                        <button wire:click="closeDetailsModal" class="px-4 py-2.5 rounded-xl bg-gray-100 dark:bg-gray-700/70 text-gray-700 dark:text-gray-200 text-xs font-bold hover:bg-gray-200 dark:hover:bg-gray-600 transition-all">
+                    <div class="flex items-center justify-between gap-3 pt-4 border-t border-gray-100 dark:border-gray-700/70 font-sans flex-wrap">
+                        <button wire:click="closeDetailsModal" class="px-4 py-2.5 rounded-xl bg-gray-100 dark:bg-gray-700/70 text-gray-700 dark:text-gray-200 text-xs font-bold hover:bg-gray-200 dark:hover:bg-gray-600 transition-all font-sans">
                             بستن
                         </button>
-                        <div class="flex items-center gap-2">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            @if (!empty($detailsAppointment['client_url']))
+                                <a href="{{ $detailsAppointment['client_url'] }}"
+                                   target="_blank"
+                                   class="inline-flex items-center gap-1.5 px-3 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-700/60 border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-200 text-xs font-bold hover:bg-slate-200 dark:hover:bg-slate-600 transition-all font-sans">
+                                    <svg class="w-4 h-4 text-teal-600 dark:text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                    </svg>
+                                    <span>پرونده {{ $mLabelClient }}</span>
+                                </a>
+                            @endif
+
                             @if ($detailsAppointment['status'] !== \Modules\Booking\Entities\Appointment::STATUS_CANCELED_BY_ADMIN && $detailsAppointment['status'] !== \Modules\Booking\Entities\Appointment::STATUS_CANCELED_BY_CLIENT)
-                                <button wire:click="cancelAppointment({{ $detailsAppointment['id'] }})" class="px-3.5 py-2.5 rounded-xl bg-rose-50 dark:bg-rose-900/30 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-xs font-bold hover:bg-rose-100 dark:hover:bg-rose-900/50 transition-all flex items-center gap-1">
+                                <button wire:click="cancelAppointment({{ $detailsAppointment['id'] }})" class="px-3.5 py-2.5 rounded-xl bg-rose-50 dark:bg-rose-900/30 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-xs font-bold hover:bg-rose-100 dark:hover:bg-rose-900/50 transition-all flex items-center gap-1 font-sans">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                                     لغو نوبت
                                 </button>
                             @endif
-                            <a href="{{ $detailsAppointment['show_url'] }}" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 text-white text-xs font-bold hover:bg-indigo-700 hover:shadow-lg hover:shadow-indigo-500/30 transition-all">
+                            <a href="{{ $detailsAppointment['show_url'] }}" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 text-white text-xs font-bold hover:bg-indigo-700 hover:shadow-lg hover:shadow-indigo-500/30 transition-all font-sans">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
                                 مشاهده کامل و ویرایش
                             </a>

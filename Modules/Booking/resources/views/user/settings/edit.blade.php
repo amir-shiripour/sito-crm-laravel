@@ -406,7 +406,7 @@
                             </div>
                             <div>
                                 <h2 class="text-base font-bold text-gray-900 dark:text-white">مدیریت وضعیت‌های نوبت</h2>
-                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">پیکربندی وضعیت‌های نوبت، پالت رنگ و فعال‌سازی در ثبت نوبت مرحله‌ای و برنامه زمانی</p>
+                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">پیکربندی وضعیت‌های نوبت، پالت رنگ، و مدیریت فعال‌سازی در ویجت پیشخوان، ثبت مرحله‌ای و تقویم زمانی</p>
                             </div>
                         </div>
                         <div class="p-6 space-y-4">
@@ -419,13 +419,15 @@
                                         $stOrder = $st['order'] ?? ($idx + 1);
                                         $stepEnabled = isset($st['step_booking_enabled']) ? (bool)$st['step_booking_enabled'] : true;
                                         $schedEnabled = isset($st['schedule_booking_enabled']) ? (bool)$st['schedule_booking_enabled'] : true;
+                                        $widgetEnabled = isset($st['widget_enabled']) ? (bool)$st['widget_enabled'] : ($stId !== 'DRAFT');
                                     @endphp
                                     <div class="p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/20 transition hover:border-indigo-200 dark:hover:border-indigo-800"
                                          x-data="{
                                              color: '{{ $stColor }}',
                                              name: '{{ addslashes($stName) }}',
                                              stepBooking: {{ $stepEnabled ? 'true' : 'false' }},
-                                             scheduleBooking: {{ $schedEnabled ? 'true' : 'false' }}
+                                             scheduleBooking: {{ $schedEnabled ? 'true' : 'false' }},
+                                             widgetBooking: {{ $widgetEnabled ? 'true' : 'false' }}
                                          }">
                                         <input type="hidden" name="appointment_statuses[{{ $idx }}][id]" value="{{ $stId }}">
                                         <input type="hidden" name="appointment_statuses[{{ $idx }}][order]" value="{{ $stOrder }}">
@@ -464,7 +466,24 @@
 
                                             {{-- سوییچ‌ها / گزینه‌ها --}}
                                             <div class="flex flex-wrap items-center gap-4 sm:gap-6 pt-3 lg:pt-0 border-t lg:border-t-0 border-gray-200 dark:border-gray-700 shrink-0">
-                                                {{-- گزینه ۱: فعال برای ثبت نوبت مرحله ایی --}}
+                                                {{-- گزینه ۱: فعال در ویجت پیشخوان --}}
+                                                <label class="flex items-center gap-2 cursor-pointer select-none">
+                                                    <input type="hidden" name="appointment_statuses[{{ $idx }}][widget_enabled]" value="0">
+                                                    <div class="relative inline-flex items-center shrink-0">
+                                                        <input type="checkbox"
+                                                               name="appointment_statuses[{{ $idx }}][widget_enabled]"
+                                                               value="1"
+                                                               x-model="widgetBooking"
+                                                               @checked($widgetEnabled)
+                                                               class="sr-only peer">
+                                                        <div class="w-9 h-5 bg-gray-300 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-indigo-600"></div>
+                                                    </div>
+                                                    <span class="text-xs font-semibold text-gray-700 dark:text-gray-300">
+                                                        فعال در ویجت
+                                                    </span>
+                                                </label>
+
+                                                {{-- گزینه ۲: فعال برای ثبت نوبت مرحله ایی --}}
                                                 <label class="flex items-center gap-2 cursor-pointer select-none">
                                                     <input type="hidden" name="appointment_statuses[{{ $idx }}][step_booking_enabled]" value="0">
                                                     <div class="relative inline-flex items-center shrink-0">
@@ -477,11 +496,11 @@
                                                         <div class="w-9 h-5 bg-gray-300 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-indigo-600"></div>
                                                     </div>
                                                     <span class="text-xs font-semibold text-gray-700 dark:text-gray-300">
-                                                        فعال برای ثبت نوبت مرحله ایی
+                                                        ثبت مرحله‌ای
                                                     </span>
                                                 </label>
 
-                                                {{-- گزینه ۲: فعال برای برنامه زمانی نوبت دهی --}}
+                                                {{-- گزینه ۳: فعال برای برنامه زمانی نوبت دهی --}}
                                                 <label class="flex items-center gap-2 cursor-pointer select-none">
                                                     <input type="hidden" name="appointment_statuses[{{ $idx }}][schedule_booking_enabled]" value="0">
                                                     <div class="relative inline-flex items-center shrink-0">
@@ -494,7 +513,7 @@
                                                         <div class="w-9 h-5 bg-gray-300 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-indigo-600"></div>
                                                     </div>
                                                     <span class="text-xs font-semibold text-gray-700 dark:text-gray-300">
-                                                        فعال برای برنامه زمانی نوبت دهی
+                                                        تقویم زمانی
                                                     </span>
                                                 </label>
                                             </div>

@@ -263,6 +263,7 @@ class SettingsController extends Controller
                     'order' => (int) ($st['order'] ?? 1),
                     'step_booking_enabled' => !empty($st['step_booking_enabled']),
                     'schedule_booking_enabled' => !empty($st['schedule_booking_enabled']),
+                    'widget_enabled' => !empty($st['widget_enabled']),
                 ];
             }
             if (!empty($formattedAppointmentStatuses)) {
