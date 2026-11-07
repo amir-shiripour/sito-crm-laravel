@@ -1668,23 +1668,35 @@ class ScheduleManager extends Component
         $rawFormResponses = $apt->appointment_form_response_json ?? [];
         $supplementaryFields = [];
         $formName = null;
+        $hasSupplementary = false;
 
-        if (!empty($rawFormResponses) && is_array($rawFormResponses)) {
-            $form = $apt->service?->appointmentForm;
-            $formName = $form?->name ?? ('فرم اختصاصی ' . ($apt->service?->name ?? $labelService));
+        $form = $apt->service?->appointmentForm;
+        $dentalChartEnabled = (bool) (BookingSetting::current()->cure_dental_chart_enabled ?? false);
+
+        // Only process supplementary form responses if the service actually has an assigned form
+        if ($form && !empty($rawFormResponses) && is_array($rawFormResponses)) {
+            $formName = $form->name ?? ('فرم اختصاصی ' . ($apt->service?->name ?? $labelService));
             $fieldMeta = [];
+            $hasToothField = ($form->form_type === 'TOOTH_NUMBER');
 
-            if ($form && isset($form->schema_json['fields']) && is_array($form->schema_json['fields'])) {
+            if (isset($form->schema_json['fields']) && is_array($form->schema_json['fields'])) {
                 foreach ($form->schema_json['fields'] as $field) {
                     if (isset($field['name'])) {
+                        $fType = $field['type'] ?? 'text';
+                        if ($fType === 'tooth_number') {
+                            $hasToothField = true;
+                        }
                         $fieldMeta[$field['name']] = [
-                            'label' => $field['label'] ?? $field['name'],
-                            'type'  => $field['type'] ?? 'text',
+                            'label'   => $field['label'] ?? $field['name'],
+                            'type'    => $fType,
                             'options' => $field['options'] ?? [],
                         ];
                     }
                 }
             }
+
+            // Only allow tooth mapping if dental chart is enabled in settings AND this form has a tooth field
+            $canShowTooth = $dentalChartEnabled && $hasToothField;
 
             // User names for select-user-by-role
             $roleUserIds = [];
@@ -1705,18 +1717,32 @@ class ScheduleManager extends Component
                 $userNamesMap = User::whereIn('id', array_unique($roleUserIds))->pluck('name', 'id')->toArray();
             }
 
+            $legacyToothKeys = ['UR', 'UL', 'DR', 'LR', 'DL', 'LL'];
+
             foreach ($rawFormResponses as $key => $val) {
                 if ($val === null || $val === '') continue;
 
-                $type = $fieldMeta[$key]['type'] ?? 'text';
+                $isToothKey = ($key === 'tooth_numbers' || str_contains(strtolower((string)$key), 'tooth') || in_array($key, $legacyToothKeys, true));
+
+                // If this is a tooth field but dental chart is disabled in settings or the form does not have tooth fields, skip it
+                if ($isToothKey && !$canShowTooth) {
+                    continue;
+                }
+
+                // If key is not in form schema and it is not a permitted tooth field, ignore it
+                if (!isset($fieldMeta[$key]) && (!$isToothKey || !$canShowTooth)) {
+                    continue;
+                }
+
+                $type = $fieldMeta[$key]['type'] ?? ($isToothKey && $canShowTooth ? 'tooth_number' : 'text');
                 $label = $fieldMeta[$key]['label'] ?? (
-                    $key === 'tooth_numbers' ? 'نقشه دندانی' : (
+                    $isToothKey ? 'نقشه دندانی' : (
                         str_replace(['_', '-'], ' ', (string)$key)
                     )
                 );
 
                 $displayVal = $val;
-                $isTooth = ($type === 'tooth_number' || $key === 'tooth_numbers' || str_contains(strtolower((string)$key), 'tooth'));
+                $isTooth = ($type === 'tooth_number' || ($isToothKey && $canShowTooth));
                 $teeth = [];
 
                 if ($type === 'select-user-by-role') {
@@ -1755,6 +1781,8 @@ class ScheduleManager extends Component
                     'teeth' => $teeth,
                 ];
             }
+
+            $hasSupplementary = !empty($supplementaryFields);
         }
 
         $this->detailsAppointment = [
