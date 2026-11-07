@@ -27,7 +27,16 @@
     hostTipsTitle: @js($rental_host_tips_title ?? 'نکات کلیدی میزبانی موفق'),
     hostTips: @js($rental_host_tips ?? []),
     rentalSubTab: 'slider',
-    heroSlides: @js($rental_hero_slides ?? [])
+    heroSlides: @js($rental_hero_slides ?? []),
+    rentalHeroBgImage: @js($rental_hero_bg_image ?? null),
+    rentalHeroBgPreview: @js(!empty($rental_hero_bg_image) ? asset($rental_hero_bg_image) : null),
+    deleteRentalHeroBg: false,
+    rentalHeroMobileBgImage: @js($rental_hero_mobile_bg_image ?? null),
+    rentalHeroMobileBgPreview: @js(!empty($rental_hero_mobile_bg_image) ? asset($rental_hero_mobile_bg_image) : null),
+    deleteRentalHeroMobileBg: false,
+    rentalHeroValign: @js($rental_hero_valign ?? 'center'),
+    rentalHeroBgPosition: @js($rental_hero_bg_position ?? 'center'),
+    rentalHeroMobileBgPosition: @js($rental_hero_mobile_bg_position ?? 'center')
 })" class="w-full max-w-none px-4 sm:px-6 lg:px-8 py-6 space-y-6 font-sans">
 
     {{-- هدر صفحه با بردکرامب و دکمه ذخیره سریع --}}
@@ -291,11 +300,389 @@
             </div>
 
             {{-- ======================================================== --}}
-            {{-- ۱. بخش اسلایدر و بنرهای تبلیغاتی هیرو                    --}}
+            {{-- ۱. بخش اسلایدر، بنرهای تبلیغاتی و پس‌زمینه هیرو       --}}
             {{-- ======================================================== --}}
             <div x-show="rentalSubTab === 'slider'" class="space-y-6">
                 <input type="hidden" name="rental_hero_slides_submitted" value="1">
 
+                {{-- کارت اختصاصی مدیریت تصویر پس‌زمینه هیرو سکشن (باکس جستجو و عنوان اصلی) --}}
+                <div class="{{ $cardClass }} p-5 sm:p-6 space-y-6 border-indigo-100 dark:border-indigo-900/50">
+                    {{-- هدر کارت پس‌زمینه هیرو --}}
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-gray-100 dark:border-gray-700/60 pb-4">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-2xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-300 flex items-center justify-center font-bold">
+                                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                                </svg>
+                            </div>
+                            <div>
+                                <h2 class="text-xs font-black text-gray-900 dark:text-white flex items-center gap-2">
+                                    <span>تصویر پس‌زمینه هیرو سکشن صفحه اصلی</span>
+                                    <span class="px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 text-[10px] font-bold">بخش جستجو و سربرگ</span>
+                                </h2>
+                                <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                                    آپلود تصویر پس‌زمینه عریض برای پشت عنوان و باکس جستجوی اصلی در تم MrVila
+                                </p>
+                            </div>
+                        </div>
+
+                        {{-- دکمه‌های اقدام سریع هیرو --}}
+                        <div class="flex items-center gap-2 shrink-0">
+                            <template x-if="rentalHeroBgPreview && !deleteRentalHeroBg">
+                                <div class="flex items-center gap-2">
+                                    <button type="button" 
+                                            @click="$refs.heroBgFileInput.click()"
+                                            class="px-3.5 py-2 rounded-xl bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/50 dark:hover:bg-indigo-900/60 text-indigo-600 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer">
+                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+                                        <span>تغییر تصویر</span>
+                                    </button>
+                                    <button type="button" 
+                                            @click="removeHeroBg()"
+                                            class="px-3.5 py-2 rounded-xl bg-red-50 hover:bg-red-100 dark:bg-red-950/50 dark:hover:bg-red-900/60 text-red-600 dark:text-red-300 border border-red-200 dark:border-red-800 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer">
+                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                        <span>حذف تصویر</span>
+                                    </button>
+                                </div>
+                            </template>
+                            <template x-if="deleteRentalHeroBg">
+                                <button type="button" 
+                                        @click="undoDeleteHeroBg()"
+                                        class="px-3.5 py-2 rounded-xl bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/50 dark:hover:bg-amber-900/60 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-700 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer">
+                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/></svg>
+                                    <span>لغو حذف تصویر</span>
+                                </button>
+                            </template>
+                        </div>
+                    </div>
+
+                    {{-- فیلدهای مخفی ارسال فرم --}}
+                    <input type="file" 
+                           name="rental_hero_bg_image_file" 
+                           x-ref="heroBgFileInput" 
+                           @change="handleHeroBgSelect($event)" 
+                           accept="image/jpeg,image/png,image/webp,image/avif,image/gif" 
+                           class="hidden">
+                    <input type="hidden" name="delete_rental_hero_bg_image" :value="deleteRentalHeroBg ? '1' : '0'">
+
+                    {{-- راهنما و مشخصات ابعاد --}}
+                    <div class="p-4 rounded-2xl bg-indigo-50/70 dark:bg-indigo-950/20 border border-indigo-200/70 dark:border-indigo-800/40 flex flex-col md:flex-row md:items-center justify-between gap-3 font-sans">
+                        <div class="flex items-start gap-3">
+                            <div class="w-8 h-8 rounded-xl bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0 mt-0.5">
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            </div>
+                            <div class="text-xs text-slate-700 dark:text-slate-300 space-y-1">
+                                <p class="font-bold text-gray-900 dark:text-white">
+                                    ابعاد استاندارد پیشنهادی برای پس‌زمینه هیرو سکشن:
+                                </p>
+                                <p class="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">
+                                    ابعاد بهینه: <span class="font-bold text-indigo-600 dark:text-indigo-400">۱۹۲۰ × ۶۵۰ پیکسل</span> یا <span class="font-bold">۱۹۲۰ × ۷۲۰ پیکسل</span> (کیفیت بالا، عریض و پانوراما).
+                                    تصویر به صورت <span class="font-bold text-indigo-600 dark:text-indigo-400">تمام‌عرض (Full-Width / سرتاسری)</span> بدون محدودیت کادر در دسکتاپ و موبایل نمایش می‌یابد و به صورت خودکار توسط موتور بهینه‌سازی هسته به فرمت سبک <span class="font-bold">WebP</span> تبدیل می‌شود.
+                                </p>
+                                <p class="text-[10px] text-slate-500 dark:text-slate-400 font-medium">
+                                    * در صورت حذف تصویر یا عدم آپلود، هیرو سکشن به شکل مینیمال پیش‌فرض (رنگ پس‌زمینه تم) نمایش داده خواهد شد.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- پیش‌نمایش زنده یا دراپ‌زون آپلود --}}
+                    <div>
+                        {{-- حالت ۱: تصویری وجود دارد و فعال است (نمایش پیش‌نمایش شبیه‌سازی‌شده هیرو تمام‌عرض) --}}
+                        <template x-if="rentalHeroBgPreview && !deleteRentalHeroBg">
+                            <div class="space-y-3">
+                                <div class="flex items-center justify-between text-xs">
+                                    <span class="font-bold text-gray-800 dark:text-gray-200 flex items-center gap-1.5">
+                                        <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                                        پیش‌نمایش زنده در هیرو سکشن صفحه اصلی (تمام‌عرض):
+                                    </span>
+                                    <span class="text-[11px] text-slate-500 dark:text-slate-400">
+                                        (نمایش تمام‌عرض همراه با شبیه‌سازی عنوان و کادر جستجو روی دسکتاپ و موبایل)
+                                    </span>
+                                </div>
+
+                                <div class="relative w-full rounded-2xl overflow-hidden shadow-xl border border-gray-200 dark:border-gray-700 aspect-[3.2/1] min-h-[220px] bg-cover flex items-center justify-center p-6 text-center transition-all"
+                                     :style="'background-image: url(' + rentalHeroBgPreview + '); background-position: ' + rentalHeroBgPosition">
+                                    {{-- گرادیان شبیه‌سازی شده تاریک تمام‌عرض --}}
+                                    <div class="absolute inset-0 bg-gradient-to-b from-black/60 via-black/40 to-black/65 backdrop-blur-[0.5px]"></div>
+                                    
+                                    {{-- المان‌های شبیه‌سازی شده --}}
+                                    <div class="relative z-10 max-w-xl mx-auto space-y-4">
+                                        <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/20 backdrop-blur-md text-white text-[10px] font-bold border border-white/30">
+                                            <span>نمایش تمام‌عرض (Full-Width) در دسکتاپ و موبایل</span>
+                                        </div>
+                                        <h3 class="text-sm sm:text-base md:text-lg font-black text-white drop-shadow-md">
+                                            اجاره ویلا، کلبه، بومگردی و انواع اقامتگاه در شمال
+                                        </h3>
+                                        <div class="bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md rounded-xl p-2.5 shadow-xl border border-white/20 flex items-center justify-between text-right text-xs text-slate-600 dark:text-slate-300">
+                                            <span class="font-bold">مقصد، تاریخ و نفرات...</span>
+                                            <span class="px-3 py-1 rounded-lg bg-[#007A5E] text-white font-bold text-[11px]">جستجو</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
+
+                        {{-- حالت ۲: کاربر تصویر را برای حذف علامت زده است --}}
+                        <template x-if="deleteRentalHeroBg">
+                            <div class="p-6 rounded-2xl border-2 border-dashed border-red-300 dark:border-red-800/60 bg-red-50/50 dark:bg-red-950/20 text-center space-y-3 font-sans">
+                                <div class="w-12 h-12 rounded-2xl bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 mx-auto flex items-center justify-center">
+                                    <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                </div>
+                                <div class="space-y-1">
+                                    <p class="text-xs font-bold text-red-700 dark:text-red-300">
+                                        تصویر پس‌زمینه برای حذف نشانه‌گذاری شد
+                                    </p>
+                                    <p class="text-[11px] text-red-600/80 dark:text-red-400/80">
+                                        پس از کلیک بر روی دکمه «ذخیره تنظیمات»، تصویر به طور کامل حذف شده و هیرو سکشن به حالت مینیمال بازمی‌گردد.
+                                    </p>
+                                </div>
+                                <button type="button" 
+                                        @click="undoDeleteHeroBg()"
+                                        class="px-4 py-2 rounded-xl bg-white dark:bg-zinc-800 border border-red-200 dark:border-red-800 text-xs font-bold text-red-600 dark:text-red-300 hover:bg-red-50 dark:hover:bg-zinc-700 transition cursor-pointer">
+                                    انصراف و بازگردانی تصویر
+                                </button>
+                            </div>
+                        </template>
+
+                        {{-- حالت ۳: هیچ تصویری تنظیم نشده است (دراپ‌زون آپلود) --}}
+                        <template x-if="!rentalHeroBgPreview && !deleteRentalHeroBg">
+                            <div @click="$refs.heroBgFileInput.click()"
+                                 class="p-8 rounded-2xl border-2 border-dashed border-indigo-200 dark:border-indigo-900/60 hover:border-indigo-500 dark:hover:border-indigo-500 bg-indigo-50/30 dark:bg-indigo-950/10 hover:bg-indigo-50/60 dark:hover:bg-indigo-950/20 transition-all cursor-pointer text-center space-y-3 font-sans group">
+                                <div class="w-12 h-12 rounded-2xl bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 mx-auto flex items-center justify-center group-hover:scale-110 transition-transform">
+                                    <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                                    </svg>
+                                </div>
+                                <div class="space-y-1">
+                                    <p class="text-xs font-bold text-gray-800 dark:text-gray-200">
+                                        برای آپلود تصویر پس‌زمینه هیرو سکشن کلیک کنید
+                                    </p>
+                                    <p class="text-[11px] text-slate-500 dark:text-slate-400">
+                                        یا فایل تصویر خود را به این کادر بکشید (WebP, JPG, PNG تا سقف ۱۵ مگابایت)
+                                    </p>
+                                </div>
+                                <button type="button" 
+                                        class="px-4 py-2 rounded-xl bg-indigo-600 group-hover:bg-indigo-700 text-white font-bold text-xs shadow-md shadow-indigo-600/20 transition inline-flex items-center gap-1.5 cursor-pointer">
+                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+                                    <span>انتخاب تصویر از کامپیوتر</span>
+                                </button>
+                            </div>
+                        </template>
+                    </div>
+
+                    {{-- کنترل موقعیت پس‌زمینه دسکتاپ (background-position) و چیدمان عمودی محتوا --}}
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {{-- موقعیت فوکوس پس‌زمینه (background-position) --}}
+                        <div class="p-4 rounded-2xl bg-white dark:bg-gray-800/80 border border-gray-200 dark:border-gray-700/70 space-y-2">
+                            <div>
+                                <label class="text-xs font-bold text-gray-900 dark:text-white flex items-center gap-1.5">
+                                    <svg class="w-4 h-4 text-indigo-600 dark:text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                                    </svg>
+                                    <span>موقعیت کادر عکس دسکتاپ (Background Position)</span>
+                                </label>
+                                <p class="text-[11px] text-slate-500 dark:text-slate-400">
+                                    تنظیم نقطه تمرکز و تراز تصویر پس‌زمینه دسکتاپ (بالا، مرکز یا پایین)
+                                </p>
+                            </div>
+
+                            <input type="hidden" name="rental_hero_bg_position" :value="rentalHeroBgPosition">
+
+                            <div class="inline-flex p-1 rounded-xl bg-gray-100 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 w-full justify-between">
+                                <button type="button" 
+                                        @click="rentalHeroBgPosition = 'top'"
+                                        :class="rentalHeroBgPosition === 'top' ? 'bg-indigo-600 text-white font-bold shadow-xs' : 'text-slate-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-gray-200'"
+                                        class="flex-1 py-1.5 rounded-lg text-xs transition cursor-pointer text-center">
+                                    بالا
+                                </button>
+                                <button type="button" 
+                                        @click="rentalHeroBgPosition = 'center'"
+                                        :class="rentalHeroBgPosition === 'center' ? 'bg-indigo-600 text-white font-bold shadow-xs' : 'text-slate-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-gray-200'"
+                                        class="flex-1 py-1.5 rounded-lg text-xs transition cursor-pointer text-center">
+                                    مرکز (پیش‌فرض)
+                                </button>
+                                <button type="button" 
+                                        @click="rentalHeroBgPosition = 'bottom'"
+                                        :class="rentalHeroBgPosition === 'bottom' ? 'bg-indigo-600 text-white font-bold shadow-xs' : 'text-slate-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-gray-200'"
+                                        class="flex-1 py-1.5 rounded-lg text-xs transition cursor-pointer text-center">
+                                    پایین
+                                </button>
+                            </div>
+                        </div>
+
+                        {{-- موقعیت عمودی محتوا (وسط یا بالا) --}}
+                        <div class="p-4 rounded-2xl bg-white dark:bg-gray-800/80 border border-gray-200 dark:border-gray-700/70 space-y-2">
+                            <div>
+                                <label class="text-xs font-bold text-gray-900 dark:text-white flex items-center gap-1.5">
+                                    <svg class="w-4 h-4 text-indigo-600 dark:text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+                                    </svg>
+                                    <span>موقعیت عمودی محتوا (عنوان و جستجو)</span>
+                                </label>
+                                <p class="text-[11px] text-slate-500 dark:text-slate-400">
+                                    محل قرارگیری باکس جستجو و تیتر بر روی تصویر
+                                </p>
+                            </div>
+
+                            <input type="hidden" name="rental_hero_valign" :value="rentalHeroValign">
+
+                            <div class="inline-flex p-1 rounded-xl bg-gray-100 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 w-full justify-between">
+                                <button type="button" 
+                                        @click="rentalHeroValign = 'center'"
+                                        :class="rentalHeroValign === 'center' ? 'bg-indigo-600 text-white font-bold shadow-xs' : 'text-slate-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-gray-200'"
+                                        class="flex-1 py-1.5 rounded-lg text-xs transition cursor-pointer text-center">
+                                    وسط (پیش‌فرض)
+                                </button>
+                                <button type="button" 
+                                        @click="rentalHeroValign = 'top'"
+                                        :class="rentalHeroValign === 'top' ? 'bg-indigo-600 text-white font-bold shadow-xs' : 'text-slate-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-gray-200'"
+                                        class="flex-1 py-1.5 rounded-lg text-xs transition cursor-pointer text-center">
+                                    بالا
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- بخش تصویر پس‌زمینه اختصاصی موبایل --}}
+                    <div class="pt-4 border-t border-gray-100 dark:border-gray-700/60 space-y-4">
+                        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                            <div class="flex items-center gap-3">
+                                <div class="w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-300 flex items-center justify-center font-bold">
+                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h3 class="text-xs font-black text-gray-900 dark:text-white flex items-center gap-2">
+                                        <span>تصویر پس‌زمینه اختصاصی موبایل</span>
+                                        <span class="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 text-[10px] font-bold">نمایش در گوشی‌ها</span>
+                                    </h3>
+                                    <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                                        آپلود تصویر مناسب برای نمایشگرهای عمودی گوشی‌های موبایل (ابعاد پیشنهادی: ۱۰۸۰ × ۷۲۰ پیکسل)
+                                    </p>
+                                </div>
+                            </div>
+
+                            {{-- دکمه‌های اقدام تصویر موبایل --}}
+                            <div class="flex items-center gap-2 shrink-0">
+                                <template x-if="rentalHeroMobileBgPreview && !deleteRentalHeroMobileBg">
+                                    <div class="flex items-center gap-2">
+                                        <button type="button" 
+                                                @click="$refs.heroMobileBgFileInput.click()"
+                                                class="px-3 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/50 dark:hover:bg-indigo-900/60 text-indigo-600 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer">
+                                            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+                                            <span>تغییر تصویر موبایل</span>
+                                        </button>
+                                        <button type="button" 
+                                                @click="removeHeroMobileBg()"
+                                                class="px-3 py-1.5 rounded-xl bg-red-50 hover:bg-red-100 dark:bg-red-950/50 dark:hover:bg-red-900/60 text-red-600 dark:text-red-300 border border-red-200 dark:border-red-800 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer">
+                                            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                            <span>حذف</span>
+                                        </button>
+                                    </div>
+                                </template>
+                                <template x-if="deleteRentalHeroMobileBg">
+                                    <button type="button" 
+                                            @click="undoDeleteHeroMobileBg()"
+                                            class="px-3 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/50 dark:hover:bg-amber-900/60 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-700 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer">
+                                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/></svg>
+                                        <span>لغو حذف</span>
+                                    </button>
+                                </template>
+                            </div>
+                        </div>
+
+                        {{-- فیلدهای مخفی ارسال تصویر موبایل --}}
+                        <input type="file" 
+                               name="rental_hero_mobile_bg_image_file" 
+                               x-ref="heroMobileBgFileInput" 
+                               @change="handleHeroMobileBgSelect($event)" 
+                               accept="image/jpeg,image/png,image/webp,image/avif,image/gif" 
+                               class="hidden">
+                        <input type="hidden" name="delete_rental_hero_mobile_bg_image" :value="deleteRentalHeroMobileBg ? '1' : '0'">
+
+                        {{-- وضعیت یا آپلود تصویر موبایل --}}
+                        <div>
+                            <template x-if="rentalHeroMobileBgPreview && !deleteRentalHeroMobileBg">
+                                <div class="space-y-2">
+                                    <div class="relative w-full max-w-sm mx-auto rounded-2xl overflow-hidden shadow-md border border-gray-200 dark:border-gray-700 aspect-[16/9] sm:aspect-[2/1] bg-cover bg-center flex items-center justify-center p-4 text-center"
+                                         :style="'background-image: url(' + rentalHeroMobileBgPreview + ')'">
+                                        <div class="absolute inset-0 bg-black/20"></div>
+                                        <span class="relative z-10 px-3 py-1 rounded-full bg-black/50 backdrop-blur-md text-white text-[11px] font-bold border border-white/20">
+                                            پیش‌نمایش تصویر موبایل
+                                        </span>
+                                    </div>
+                                </div>
+                            </template>
+
+                            <template x-if="deleteRentalHeroMobileBg">
+                                <div class="p-4 rounded-xl border border-dashed border-red-300 dark:border-red-800 bg-red-50/50 dark:bg-red-950/20 text-center space-y-1">
+                                    <p class="text-xs font-bold text-red-600 dark:text-red-400">تصویر موبایل برای حذف نشانه‌گذاری شد.</p>
+                                    <p class="text-[11px] text-slate-500 dark:text-slate-400">در صورت عدم وجود تصویر موبایل، از تصویر دسکتاپ (در صورت وجود) یا حالت پیش‌فرض استفاده خواهد شد.</p>
+                                </div>
+                            </template>
+
+                            <template x-if="!rentalHeroMobileBgPreview && !deleteRentalHeroMobileBg">
+                                <div @click="$refs.heroMobileBgFileInput.click()"
+                                     class="p-5 rounded-2xl border-2 border-dashed border-gray-200 dark:border-gray-700 hover:border-indigo-500 dark:hover:border-indigo-500 bg-gray-50/50 dark:bg-gray-800/20 hover:bg-indigo-50/30 transition-all cursor-pointer text-center space-y-2 font-sans group">
+                                    <div class="w-10 h-10 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 group-hover:text-indigo-600 group-hover:bg-indigo-50 dark:group-hover:bg-indigo-950/40 mx-auto flex items-center justify-center transition-colors">
+                                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <p class="text-xs font-bold text-gray-700 dark:text-gray-300">
+                                            آپلود تصویر اختصاصی پس‌زمینه برای موبایل (اختیاری)
+                                        </p>
+                                        <p class="text-[11px] text-slate-400 dark:text-slate-500">
+                                            در صورت عدم انتخاب، از تصویر پس‌زمینه دسکتاپ به عنوان تصویر موبایل استفاده خواهد شد
+                                        </p>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+
+                        {{-- کنترل موقعیت کادر عکس موبایل (background-position) --}}
+                        <div class="p-3.5 rounded-xl bg-white dark:bg-gray-800/80 border border-gray-200 dark:border-gray-700/70 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                            <div>
+                                <label class="text-xs font-bold text-gray-900 dark:text-white flex items-center gap-1.5">
+                                    <svg class="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+                                    </svg>
+                                    <span>موقعیت کادر عکس در موبایل (Mobile Background Position)</span>
+                                </label>
+                                <p class="text-[11px] text-slate-500 dark:text-slate-400">
+                                    تراز و نقطه تمرکز تصویر روی نمایشگر گوشی‌ها (بالا، مرکز، یا پایین)
+                                </p>
+                            </div>
+
+                            <input type="hidden" name="rental_hero_mobile_bg_position" :value="rentalHeroMobileBgPosition">
+
+                            <div class="inline-flex p-1 rounded-xl bg-gray-100 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 shrink-0">
+                                <button type="button" 
+                                        @click="rentalHeroMobileBgPosition = 'top'"
+                                        :class="rentalHeroMobileBgPosition === 'top' ? 'bg-indigo-600 text-white font-bold shadow-xs' : 'text-slate-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-gray-200'"
+                                        class="px-3.5 py-1.5 rounded-lg text-xs transition cursor-pointer text-center">
+                                    بالا
+                                </button>
+                                <button type="button" 
+                                        @click="rentalHeroMobileBgPosition = 'center'"
+                                        :class="rentalHeroMobileBgPosition === 'center' ? 'bg-indigo-600 text-white font-bold shadow-xs' : 'text-slate-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-gray-200'"
+                                        class="px-3.5 py-1.5 rounded-lg text-xs transition cursor-pointer text-center">
+                                    مرکز (پیش‌فرض)
+                                </button>
+                                <button type="button" 
+                                        @click="rentalHeroMobileBgPosition = 'bottom'"
+                                        :class="rentalHeroMobileBgPosition === 'bottom' ? 'bg-indigo-600 text-white font-bold shadow-xs' : 'text-slate-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-gray-200'"
+                                        class="px-3.5 py-1.5 rounded-lg text-xs transition cursor-pointer text-center">
+                                    پایین
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- ۲. کارت مدیریت اسلایدر و بنرهای تبلیغاتی --}}
                 <div class="{{ $cardClass }} p-5 sm:p-6 space-y-6 border-indigo-100 dark:border-indigo-900/50">
                     {{-- هدر کارت اسلایدر --}}
                     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-gray-100 dark:border-gray-700/60 pb-4">
@@ -306,10 +693,10 @@
                             <div>
                                 <h2 class="text-xs font-black text-gray-900 dark:text-white flex items-center gap-2">
                                     <span>مدیریت اسلایدر و بنرهای تبلیغاتی صفحه اصلی</span>
-                                    <span class="px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 text-[10px] font-bold">هیرو صفحه اصلی</span>
+                                    <span class="px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 text-[10px] font-bold">اسلایدر بنرها</span>
                                 </h2>
                                 <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                                    آپلود تصاویر بنر، تنظیم لینک و ترتیب نمایش در اسلایدر بالای بخش جستجو
+                                    آپلود تصاویر بنر، تنظیم لینک و ترتیب نمایش در اسلایدر اختصاصی بین بخش‌های صفحه اصلی
                                 </p>
                             </div>
                         </div>
@@ -1581,6 +1968,15 @@
         return {
             activeTab: config.activeTab || 'general',
             rentalSubTab: config.rentalSubTab || 'slider',
+            rentalHeroBgImage: config.rentalHeroBgImage || null,
+            rentalHeroBgPreview: config.rentalHeroBgPreview || null,
+            deleteRentalHeroBg: Boolean(config.deleteRentalHeroBg),
+            rentalHeroMobileBgImage: config.rentalHeroMobileBgImage || null,
+            rentalHeroMobileBgPreview: config.rentalHeroMobileBgPreview || null,
+            deleteRentalHeroMobileBg: Boolean(config.deleteRentalHeroMobileBg),
+            rentalHeroValign: config.rentalHeroValign || 'center',
+            rentalHeroBgPosition: config.rentalHeroBgPosition || 'center',
+            rentalHeroMobileBgPosition: config.rentalHeroMobileBgPosition || 'center',
             heroSlides: (config.heroSlides && Array.isArray(config.heroSlides)) ? config.heroSlides.map((s, idx) => ({
                 id: s.id || ('slide_' + Date.now() + '_' + idx),
                 image: s.image || '',
@@ -1712,6 +2108,48 @@
                 if (file) {
                     this.heroSlides[idx].preview = URL.createObjectURL(file);
                 }
+            },
+
+            handleHeroBgSelect(event) {
+                const file = event.target.files[0];
+                if (file) {
+                    this.rentalHeroBgPreview = URL.createObjectURL(file);
+                    this.deleteRentalHeroBg = false;
+                }
+            },
+
+            removeHeroBg() {
+                this.deleteRentalHeroBg = true;
+                this.rentalHeroBgPreview = null;
+                if (this.$refs.heroBgFileInput) {
+                    this.$refs.heroBgFileInput.value = '';
+                }
+            },
+
+            undoDeleteHeroBg() {
+                this.deleteRentalHeroBg = false;
+                this.rentalHeroBgPreview = this.rentalHeroBgImage ? ('/' + this.rentalHeroBgImage.replace(/^\/+/, '')) : null;
+            },
+
+            handleHeroMobileBgSelect(event) {
+                const file = event.target.files[0];
+                if (file) {
+                    this.rentalHeroMobileBgPreview = URL.createObjectURL(file);
+                    this.deleteRentalHeroMobileBg = false;
+                }
+            },
+
+            removeHeroMobileBg() {
+                this.deleteRentalHeroMobileBg = true;
+                this.rentalHeroMobileBgPreview = null;
+                if (this.$refs.heroMobileBgFileInput) {
+                    this.$refs.heroMobileBgFileInput.value = '';
+                }
+            },
+
+            undoDeleteHeroMobileBg() {
+                this.deleteRentalHeroMobileBg = false;
+                this.rentalHeroMobileBgPreview = this.rentalHeroMobileBgImage ? ('/' + this.rentalHeroMobileBgImage.replace(/^\/+/, '')) : null;
             },
 
             addRule() {

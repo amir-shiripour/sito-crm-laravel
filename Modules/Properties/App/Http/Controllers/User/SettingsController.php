@@ -136,6 +136,13 @@ class SettingsController extends Controller
             $rental_hero_slides = [];
         }
 
+        // Hero Section Background Images & Alignment (تصویر پس‌زمینه هیرو سکشن و چیدمان عمودی)
+        $rental_hero_bg_image = PropertySetting::get('rental_hero_bg_image');
+        $rental_hero_mobile_bg_image = PropertySetting::get('rental_hero_mobile_bg_image');
+        $rental_hero_valign = PropertySetting::get('rental_hero_valign', 'center');
+        $rental_hero_bg_position = PropertySetting::get('rental_hero_bg_position', 'center');
+        $rental_hero_mobile_bg_position = PropertySetting::get('rental_hero_mobile_bg_position', 'center');
+
         // Host Tips Settings (نکات کلیدی میزبانی موفق)
         $rental_host_tips_enabled = PropertySetting::get('rental_host_tips_enabled', 1);
         $rental_host_tips_title = PropertySetting::get('rental_host_tips_title', 'نکات کلیدی میزبانی موفق');
@@ -233,7 +240,12 @@ class SettingsController extends Controller
             'rental_map_display_type',
             'rental_map_circle_radius',
             'rental_show_direct_call_btn',
-            'rental_hero_slides'
+            'rental_hero_slides',
+            'rental_hero_bg_image',
+            'rental_hero_mobile_bg_image',
+            'rental_hero_valign',
+            'rental_hero_bg_position',
+            'rental_hero_mobile_bg_position'
         ));
     }
 
@@ -305,6 +317,13 @@ class SettingsController extends Controller
             'rental_hero_slides.*.order' => 'nullable|integer',
             'rental_hero_slides.*.image' => 'nullable|string|max:500',
             'rental_hero_slides.*.image_file' => 'nullable|file|mimes:jpeg,png,jpg,webp,gif,avif|max:15360',
+            'rental_hero_bg_image_file' => 'nullable|file|mimes:jpeg,png,jpg,webp,gif,avif|max:15360',
+            'delete_rental_hero_bg_image' => 'nullable|boolean',
+            'rental_hero_mobile_bg_image_file' => 'nullable|file|mimes:jpeg,png,jpg,webp,gif,avif|max:15360',
+            'delete_rental_hero_mobile_bg_image' => 'nullable|boolean',
+            'rental_hero_valign' => 'nullable|in:center,top',
+            'rental_hero_bg_position' => 'nullable|in:center,top,bottom,left,right',
+            'rental_hero_mobile_bg_position' => 'nullable|in:center,top,bottom,left,right',
         ]);
 
         $allowedFileTypes = str_replace(' ', '', $request->allowed_file_types);
@@ -478,6 +497,57 @@ class SettingsController extends Controller
             PropertySetting::set('rental_hero_slides', json_encode($cleanSlides, JSON_UNESCAPED_UNICODE));
         } elseif ($request->has('rental_hero_slides_submitted')) {
             PropertySetting::set('rental_hero_slides', json_encode([], JSON_UNESCAPED_UNICODE));
+        }
+
+        // Hero Section Content Vertical Alignment & Background Positions
+        if ($request->has('rental_hero_valign')) {
+            PropertySetting::set('rental_hero_valign', $request->input('rental_hero_valign', 'center'));
+        }
+        if ($request->has('rental_hero_bg_position')) {
+            PropertySetting::set('rental_hero_bg_position', $request->input('rental_hero_bg_position', 'center'));
+        }
+        if ($request->has('rental_hero_mobile_bg_position')) {
+            PropertySetting::set('rental_hero_mobile_bg_position', $request->input('rental_hero_mobile_bg_position', 'center'));
+        }
+
+        // Hero Section Background Image (مدیریت تصویر پس‌زمینه هیرو سکشن دسکتاپ)
+        if ($request->boolean('delete_rental_hero_bg_image')) {
+            $currentBg = PropertySetting::get('rental_hero_bg_image');
+            if ($currentBg) {
+                $relPath = str_replace('storage/', '', $currentBg);
+                \Illuminate\Support\Facades\Storage::disk('public')->delete($relPath);
+            }
+            PropertySetting::set('rental_hero_bg_image', null);
+        } elseif ($request->hasFile('rental_hero_bg_image_file')) {
+            try {
+                $uploadedBgFile = $request->file('rental_hero_bg_image_file');
+                $optimizer = app(\App\Services\ImageOptimizerService::class);
+                // بهینه‌سازی و تبدیل خودکار به WebP با حداکثر عرض ۱۹۲۰ و کیفیت ۸۵%
+                $optimizedBgRel = $optimizer->uploadAndOptimize($uploadedBgFile, 'properties/hero', 'public', 1920, 85);
+                PropertySetting::set('rental_hero_bg_image', 'storage/' . $optimizedBgRel);
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::error("Hero background image upload failed: " . $e->getMessage());
+            }
+        }
+
+        // Hero Section Mobile Background Image (مدیریت تصویر پس‌زمینه اختصاصی موبایل هیرو)
+        if ($request->boolean('delete_rental_hero_mobile_bg_image')) {
+            $currentMobileBg = PropertySetting::get('rental_hero_mobile_bg_image');
+            if ($currentMobileBg) {
+                $relPath = str_replace('storage/', '', $currentMobileBg);
+                \Illuminate\Support\Facades\Storage::disk('public')->delete($relPath);
+            }
+            PropertySetting::set('rental_hero_mobile_bg_image', null);
+        } elseif ($request->hasFile('rental_hero_mobile_bg_image_file')) {
+            try {
+                $uploadedMobileBgFile = $request->file('rental_hero_mobile_bg_image_file');
+                $optimizer = app(\App\Services\ImageOptimizerService::class);
+                // بهینه‌سازی و تبدیل خودکار به WebP برای موبایل با حداکثر عرض ۱۰۸۰ و کیفیت ۸۵%
+                $optimizedMobileBgRel = $optimizer->uploadAndOptimize($uploadedMobileBgFile, 'properties/hero', 'public', 1080, 85);
+                PropertySetting::set('rental_hero_mobile_bg_image', 'storage/' . $optimizedMobileBgRel);
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::error("Hero mobile background image upload failed: " . $e->getMessage());
+            }
         }
 
         return back()->with('success', 'تنظیمات با موفقیت ذخیره شد.');
