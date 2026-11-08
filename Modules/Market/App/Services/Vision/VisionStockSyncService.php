@@ -24,16 +24,26 @@ class VisionStockSyncService
     }
 
     /**
-     * Sync inventory/stock from Vision ERP (Type 20 / Online Stock Data)
+     * Sync inventory/stock from Vision ERP (Type 3 / Online Goods with AllT Stock)
      *
      * @return array
      */
     public function syncStock(): array
     {
         try {
-            // Type 20 is commonly inventory in Vision PDA
+            $buyerCode = (string)($this->setting->ws_username ?: '10100177');
+
+            $payload = [
+                'type' => 3,
+                'PerPage' => 500,
+                'groupe' => -1,
+                'idf' => '',
+                'start' => 1,
+                'buyercode' => $buyerCode,
+            ];
+
             $response = $this->client->callAction('GetOnLineBaseDataPDA', [
-                'type' => 20,
+                'inputStringJson' => json_encode($payload, JSON_UNESCAPED_UNICODE),
             ]);
 
             if (!$response['success']) {
@@ -51,7 +61,11 @@ class VisionStockSyncService
             }
 
             $data = $response['data'];
-            $items = is_array($data) ? ($data['items'] ?? $data['Data'] ?? $data) : [];
+            if (is_string($data)) {
+                $data = json_decode($data, true) ?: [];
+            }
+
+            $items = $data['kala']['kalas'] ?? $data['items'] ?? [];
 
             if (!is_array($items) || empty($items)) {
                 $this->setting->update([
@@ -88,7 +102,7 @@ class VisionStockSyncService
                 }
 
                 $goodCode = (string)($item['GoodCode'] ?? $item['Code'] ?? $item['good_code'] ?? '');
-                $qty = (float)($item['Stock'] ?? $item['Qty'] ?? $item['stock'] ?? 0);
+                $qty = (float)($item['AllT'] ?? $item['Stock'] ?? $item['Qty'] ?? $item['stock'] ?? 0);
 
                 if (empty($goodCode)) {
                     continue;

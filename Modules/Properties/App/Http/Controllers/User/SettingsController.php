@@ -165,6 +165,11 @@ class SettingsController extends Controller
             ];
         }
 
+        // Rental Homepage SEO & About Content (محتوای متنی، معرفی و سئو صفحه اصلی)
+        $rental_seo_content_enabled = PropertySetting::get('rental_seo_content_enabled', 1);
+        $rental_seo_content_title = PropertySetting::get('rental_seo_content_title', 'مستر ویلا؛ سامانه رزرواسیون و اجاره آنلاین ویلا و اقامتگاه در شمال');
+        $rental_seo_content_body = PropertySetting::get('rental_seo_content_body', "مستر ویلا سال‌ها است که به عنوان مرجع تخصصی رزرو و اجاره آنلاین انواع اقامتگاه، کلبه‌های جنگلی، سوئیت و ویلاهای استخردار در زیباترین مناطق شمال کشور به‌ویژه منطقه سرسبز لفور و سوادکوه شناخته می‌شود. هدف ما ایجاد تجربه‌ای بی‌دغدغه و مطمئن از سفر برای تمام میهمانان گرامی است. تضمین تطابق کامل تصاویر با اقامتگاه، پشتیبانی ۲۴ ساعته در تمام روزهای هفته، تحویل تضمین‌شده و تسویه با میزبان پس از رضایت و ورود میهمان، از استانداردهای بنیادین مستر ویلا می‌باشد. با خیالی آسوده اقامتگاه رویایی خود را بررسی کرده و تنها با چند کلیک، خاطره‌ای ماندگار در دل طبیعت بسازید.");
+
         // Storage Report
         $storagePath = 'properties';
         $totalSize = 0;
@@ -245,7 +250,10 @@ class SettingsController extends Controller
             'rental_hero_mobile_bg_image',
             'rental_hero_valign',
             'rental_hero_bg_position',
-            'rental_hero_mobile_bg_position'
+            'rental_hero_mobile_bg_position',
+            'rental_seo_content_enabled',
+            'rental_seo_content_title',
+            'rental_seo_content_body'
         ));
     }
 
@@ -324,6 +332,9 @@ class SettingsController extends Controller
             'rental_hero_valign' => 'nullable|in:center,top',
             'rental_hero_bg_position' => 'nullable|in:center,top,bottom,left,right',
             'rental_hero_mobile_bg_position' => 'nullable|in:center,top,bottom,left,right',
+            'rental_seo_content_enabled' => 'nullable|boolean',
+            'rental_seo_content_title' => 'nullable|string|max:255',
+            'rental_seo_content_body' => 'nullable|string',
         ]);
 
         $allowedFileTypes = str_replace(' ', '', $request->allowed_file_types);
@@ -548,6 +559,15 @@ class SettingsController extends Controller
             } catch (\Throwable $e) {
                 \Illuminate\Support\Facades\Log::error("Hero mobile background image upload failed: " . $e->getMessage());
             }
+        }
+
+        // Save Homepage SEO & About Content (محتوای متنی و سئو صفحه اصلی)
+        PropertySetting::set('rental_seo_content_enabled', $request->has('rental_seo_content_enabled') ? 1 : 0);
+        if ($request->has('rental_seo_content_title')) {
+            PropertySetting::set('rental_seo_content_title', $request->input('rental_seo_content_title'));
+        }
+        if ($request->has('rental_seo_content_body')) {
+            PropertySetting::set('rental_seo_content_body', $request->input('rental_seo_content_body'));
         }
 
         return back()->with('success', 'تنظیمات با موفقیت ذخیره شد.');
