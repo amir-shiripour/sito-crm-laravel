@@ -1,5 +1,51 @@
 @extends('layouts.user')
 
+@push('styles')
+    <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+    <style>
+        .custom-quill-wrapper .ql-toolbar {
+            border-top-left-radius: 0.75rem;
+            border-top-right-radius: 0.75rem;
+            border-color: #e5e7eb;
+            background-color: #f9fafb;
+            direction: rtl;
+            text-align: right;
+        }
+        .dark .custom-quill-wrapper .ql-toolbar {
+            border-color: #374151;
+            background-color: #111827;
+        }
+        .custom-quill-wrapper .ql-container {
+            border-bottom-left-radius: 0.75rem;
+            border-bottom-right-radius: 0.75rem;
+            border-color: #e5e7eb;
+            min-height: 220px;
+            font-family: inherit;
+            font-size: 0.875rem;
+        }
+        .dark .custom-quill-wrapper .ql-container {
+            border-color: #374151;
+            color: #f3f4f6;
+            background-color: #1f2937;
+        }
+        .custom-quill-wrapper .ql-editor {
+            direction: rtl;
+            text-align: right;
+            font-family: inherit;
+            min-height: 220px;
+            line-height: 1.8;
+        }
+        .dark .ql-snow .ql-stroke { stroke: #9ca3af; }
+        .dark .ql-snow .ql-fill { fill: #9ca3af; }
+        .dark .ql-snow .ql-picker { color: #9ca3af; }
+        .dark .ql-snow .ql-picker-options { background-color: #1f2937; border-color: #374151; color: #f3f4f6; }
+    </style>
+@endpush
+
+@push('scripts')
+    <script src="https://cdn.quilljs.com/1.3.6/quill.min.js"></script>
+@endpush
+
 @php
     $title = 'تنظیمات جامع املاک و اقامتگاه‌ها';
 
@@ -36,7 +82,10 @@
     deleteRentalHeroMobileBg: false,
     rentalHeroValign: @js($rental_hero_valign ?? 'center'),
     rentalHeroBgPosition: @js($rental_hero_bg_position ?? 'center'),
-    rentalHeroMobileBgPosition: @js($rental_hero_mobile_bg_position ?? 'center')
+    rentalHeroMobileBgPosition: @js($rental_hero_mobile_bg_position ?? 'center'),
+    rentalSeoContentEnabled: {{ ($rental_seo_content_enabled ?? 1) ? 'true' : 'false' }},
+    rentalSeoContentTitle: @js($rental_seo_content_title ?? 'مستر ویلا؛ سامانه رزرواسیون و اجاره آنلاین ویلا و اقامتگاه در شمال'),
+    rentalSeoContentBody: @js($rental_seo_content_body ?? 'مستر ویلا سال‌ها است که به عنوان مرجع تخصصی رزرو و اجاره آنلاین انواع اقامتگاه، کلبه‌های جنگلی، سوئیت و ویلاهای استخردار در زیباترین مناطق شمال کشور به‌ویژه منطقه سرسبز لفور و سوادکوه شناخته می‌شود. هدف ما ایجاد تجربه‌ای بی‌دغدغه و مطمئن از سفر برای تمام میهمانان گرامی است. تضمین تطابق کامل تصاویر با اقامتگاه، پشتیبانی ۲۴ ساعته در تمام روزهای هفته، تحویل تضمین‌شده و تسویه با میزبان پس از رضایت و ورود میهمان، از استانداردهای بنیادین مستر ویلا می‌باشد. با خیالی آسوده اقامتگاه رویایی خود را بررسی کرده و تنها با چند کلیک، خاطره‌ای ماندگار در دل طبیعت بسازید.')
 })" class="w-full max-w-none px-4 sm:px-6 lg:px-8 py-6 space-y-6 font-sans">
 
     {{-- هدر صفحه با بردکرامب و دکمه ذخیره سریع --}}
@@ -296,6 +345,16 @@
                         class="flex items-center gap-2 px-4 py-2 rounded-xl text-xs whitespace-nowrap transition cursor-pointer">
                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
                     <span>حریم خصوصی و نمایش جزئیات</span>
+                </button>
+
+                {{-- زیر-تب ۵: محتوای متنی و سئو صفحه اصلی --}}
+                <button type="button" 
+                        @click="rentalSubTab = 'seo_content'"
+                        :class="rentalSubTab === 'seo_content' ? 'bg-indigo-600 text-white shadow-sm font-bold' : 'text-slate-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-white/60 dark:hover:bg-gray-700/50'"
+                        class="flex items-center gap-2 px-4 py-2 rounded-xl text-xs whitespace-nowrap transition cursor-pointer">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/></svg>
+                    <span>معرفی و سئو صفحه اصلی</span>
+                    <span x-show="rentalSeoContentEnabled" class="w-2 h-2 rounded-full bg-emerald-400"></span>
                 </button>
             </div>
 
@@ -1539,6 +1598,191 @@
             </div>
             </div>
 
+            {{-- ======================================================== --}}
+            {{-- ۵. بخش محتوای متنی، معرفی و سئو صفحه اصلی (SEO Content)   --}}
+            {{-- ======================================================== --}}
+            <div x-show="rentalSubTab === 'seo_content'" class="space-y-6">
+
+                <div class="{{ $cardClass }} p-5 sm:p-6 space-y-6 border-indigo-100 dark:border-indigo-900/50">
+                    {{-- هدر کارت سئو --}}
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-gray-100 dark:border-gray-700/60">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0 shadow-2xs">
+                                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/>
+                                </svg>
+                            </div>
+                            <div>
+                                <h3 class="text-sm font-black text-gray-900 dark:text-white">محتوای متنی و بهینه‌سازی سئو (SEO) صفحه اصلی</h3>
+                                <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                                    بخش متنی معرفی پلتفرم در انتهای صفحه اصلی (مشابه دیجی‌کالا و جاباما) با قابلیت باز شدن («مشاهده بیشتر») جهت ارتقای رتبه سئو در گوگل.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center gap-2 self-start sm:self-auto">
+                            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold"
+                                  :class="rentalSeoContentEnabled ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800' : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400 border border-gray-200 dark:border-gray-700'">
+                                <span class="w-2 h-2 rounded-full" :class="rentalSeoContentEnabled ? 'bg-emerald-500 animate-pulse' : 'bg-gray-400'"></span>
+                                <span x-text="rentalSeoContentEnabled ? 'نمایش در صفحه اصلی فعال است' : 'نمایش غیرفعال است'"></span>
+                            </span>
+                        </div>
+                    </div>
+
+                    {{-- سوئیچ فعال / غیرفعال --}}
+                    <div class="p-4 rounded-xl bg-gray-50/70 dark:bg-gray-900/40 border border-gray-200/70 dark:border-gray-700/60 flex items-center justify-between gap-4">
+                        <div class="space-y-0.5">
+                            <label for="toggle-rental-seo-enabled" class="text-xs font-bold text-gray-900 dark:text-white cursor-pointer">
+                                فعال‌سازی بلوک سئو و معرفی در انتهای صفحه اصلی
+                            </label>
+                            <p class="text-[11px] text-slate-500 dark:text-slate-400">
+                                در صورت فعال بودن، عنوان و متن زیر در پایین‌ترین بخش محتوایی صفحه اصلی (بدون باکس) نمایش داده می‌شود.
+                            </p>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer shrink-0">
+                            <input type="checkbox" 
+                                   id="toggle-rental-seo-enabled"
+                                   name="rental_seo_content_enabled" 
+                                   value="1" 
+                                   x-model="rentalSeoContentEnabled" 
+                                   class="sr-only peer">
+                            <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-indigo-600"></div>
+                        </label>
+                    </div>
+
+                    {{-- فیلدهای عنوان و ویرایشگر پیشرفته Quill --}}
+                    <div class="space-y-4">
+                        {{-- عنوان هدینگ --}}
+                        <div class="space-y-1.5">
+                            <div class="flex items-center justify-between">
+                                <label class="block text-xs font-bold text-gray-800 dark:text-gray-200">
+                                    عنوان معرفی و تیتر سئو (تگ H2):
+                                </label>
+                                <span class="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold">بسیار مهم برای موتورهای جستجو</span>
+                            </div>
+                            <input type="text" 
+                                   name="rental_seo_content_title" 
+                                   x-model="rentalSeoContentTitle" 
+                                   class="{{ $inputClass }} font-bold text-xs sm:text-sm" 
+                                   placeholder="مثال: مستر ویلا؛ سامانه رزرواسیون و اجاره آنلاین ویلا و اقامتگاه در شمال">
+                            <p class="text-[11px] text-slate-500 dark:text-slate-400 font-sans">
+                                💡 توصیه می‌شود در عنوان از نام برند، کلمات کلیدی نظیر «اجاره ویلا»، «کلبه»، «رزرو اقامتگاه» و منطقه جغرافیایی هدف استفاده نمایید.
+                            </p>
+                        </div>
+
+                        {{-- ویرایشگر حرفه‌ای Quill (مشابه ماژول‌های Market و ContentForge) --}}
+                        <div class="space-y-1.5"
+                             x-data="{
+                                 _quillInstance: null,
+                                 initQuillEditor() {
+                                     const setup = () => {
+                                         if (typeof Quill === 'undefined') {
+                                             setTimeout(setup, 150);
+                                             return;
+                                         }
+                                         if (this._quillInstance) return;
+
+                                         const quill = new Quill(this.$refs.quillEditor, {
+                                             theme: 'snow',
+                                             placeholder: 'متن معرفی، خدمات، توضیحات سئو، هدینگ‌ها و کلمات کلیدی را اینجا بنویسید...',
+                                             modules: {
+                                                 toolbar: [
+                                                     [{ 'header': [1, 2, 3, 4, false] }],
+                                                     ['bold', 'italic', 'underline', 'strike'],
+                                                     [{ 'color': [] }, { 'background': [] }],
+                                                     [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                                                     [{ 'align': [] }, { 'direction': 'rtl' }],
+                                                     ['link'],
+                                                     ['clean']
+                                                 ]
+                                             }
+                                         });
+
+                                         this._quillInstance = quill;
+
+                                         quill.on('text-change', () => {
+                                             this.rentalSeoContentBody = quill.root.innerHTML;
+                                             if (this.$refs.hiddenSeoBody) {
+                                                 this.$refs.hiddenSeoBody.value = this.rentalSeoContentBody;
+                                             }
+                                         });
+
+                                         if (this.rentalSeoContentBody) {
+                                             quill.root.innerHTML = this.rentalSeoContentBody;
+                                         }
+
+                                         this.$watch('rentalSubTab', (tab) => {
+                                             if (tab === 'seo_content' && this._quillInstance) {
+                                                 setTimeout(() => this._quillInstance.update(), 50);
+                                             }
+                                         });
+                                     };
+
+                                     setup();
+                                 }
+                             }"
+                             x-init="initQuillEditor()">
+                            
+                            <div class="flex items-center justify-between">
+                                <label class="block text-xs font-bold text-gray-800 dark:text-gray-200">
+                                    متن کامل محتوا و سئو (با امکان تنظیم تگ‌ها، هدینگ‌ها و لیست‌ها):
+                                </label>
+                                <span class="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold">ویرایشگر پیشرفته Quill</span>
+                            </div>
+
+                            <input type="hidden" name="rental_seo_content_body" x-ref="hiddenSeoBody" :value="rentalSeoContentBody">
+
+                            <div class="custom-quill-wrapper border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden bg-white dark:bg-gray-800/90 transition-all focus-within:ring-2 focus-within:ring-indigo-500/20 focus-within:border-indigo-500 shadow-2xs font-sans">
+                                <div x-ref="quillEditor" class="focus:outline-none"></div>
+                            </div>
+                            
+                            <p class="text-[11px] text-slate-500 dark:text-slate-400 font-sans">
+                                💡 با استفاده از نوار ابزار بالا می‌توانید تگ‌های ساختاریافته (H1, H2, H3)، لینک‌ها، لیست‌های نشانه‌دار و استایل متنی دلخواه خود را برای سئوی حداکثری تنظیم فرمایید.
+                            </p>
+                        </div>
+                    </div>
+
+                    {{-- کارت پیش‌نمایش زنده در همین تب (کاملاً تخت و بدون باکس، مطابق دیجی‌کالا) --}}
+                    <div class="p-4 sm:p-5 rounded-2xl bg-indigo-50/30 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/40 space-y-3">
+                        <div class="flex items-center justify-between pb-2 border-b border-indigo-100 dark:border-indigo-900/30">
+                            <div class="flex items-center gap-2">
+                                <span class="w-2.5 h-2.5 rounded-full bg-indigo-600 dark:bg-indigo-400"></span>
+                                <h4 class="text-xs font-black text-indigo-950 dark:text-indigo-200">پیش‌نمایش در صفحه اصلی (بدون باکس و تخت - استایل دیجی‌کالا):</h4>
+                            </div>
+                            <span class="text-[10px] text-slate-500 dark:text-slate-400 font-sans">فقط مشاهده بیشتر (بدون مشاهده کمتر)</span>
+                        </div>
+
+                        <div class="py-2 space-y-2 font-sans">
+                            <h4 class="text-sm font-bold text-slate-800 dark:text-zinc-100" 
+                                x-text="rentalSeoContentTitle ? rentalSeoContentTitle : 'مستر ویلا؛ سامانه رزرواسیون و اجاره آنلاین ویلا و اقامتگاه در شمال'"></h4>
+
+                            <div class="relative overflow-hidden transition-all duration-300"
+                                 :class="seoPreviewExpanded ? 'max-h-none' : 'max-h-16 sm:max-h-20'">
+                                <div class="text-xs text-slate-600 dark:text-slate-300 leading-relaxed sm:leading-7 text-justify font-sans [&_p]:mb-1 [&_h1]:text-sm [&_h2]:text-xs [&_h3]:text-xs [&_ul]:list-disc [&_ul]:mr-4 [&_ol]:list-decimal [&_ol]:mr-4"
+                                     x-html="rentalSeoContentBody ? rentalSeoContentBody : 'متن معرفی خالی است...'"></div>
+
+                                {{-- افکت گرادیان محوشدگی در پیش‌نمایش --}}
+                                <div x-show="!seoPreviewExpanded"
+                                     class="absolute bottom-0 inset-x-0 h-10 bg-gradient-to-t from-indigo-50/40 via-indigo-50/20 to-transparent dark:from-gray-900 dark:via-gray-900/60 pointer-events-none"></div>
+                            </div>
+
+                            <div x-show="!seoPreviewExpanded" class="flex items-center justify-start pt-1">
+                                <button type="button" 
+                                        @click="seoPreviewExpanded = true"
+                                        class="inline-flex items-center gap-1.5 text-xs font-bold text-sky-600 hover:text-sky-700 dark:text-sky-400 transition cursor-pointer no-underline hover:no-underline">
+                                    <span>مشاهده بیشتر</span>
+                                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+
         </div>
 
         {{-- ======================================================== --}}
@@ -1977,6 +2221,10 @@
             rentalHeroValign: config.rentalHeroValign || 'center',
             rentalHeroBgPosition: config.rentalHeroBgPosition || 'center',
             rentalHeroMobileBgPosition: config.rentalHeroMobileBgPosition || 'center',
+            rentalSeoContentEnabled: Boolean(config.rentalSeoContentEnabled ?? true),
+            rentalSeoContentTitle: config.rentalSeoContentTitle || '',
+            rentalSeoContentBody: config.rentalSeoContentBody || '',
+            seoPreviewExpanded: false,
             heroSlides: (config.heroSlides && Array.isArray(config.heroSlides)) ? config.heroSlides.map((s, idx) => ({
                 id: s.id || ('slide_' + Date.now() + '_' + idx),
                 image: s.image || '',

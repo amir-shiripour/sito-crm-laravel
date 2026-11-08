@@ -159,6 +159,11 @@ class PageController extends Controller
                 $data['rentalModeEnabled'] = (bool) \Modules\Properties\Entities\PropertySetting::get('rental_mode_enabled', 1);
                 $data['rentalMultiHostEnabled'] = (bool) \Modules\Properties\Entities\PropertySetting::get('rental_multi_host_enabled', 0);
 
+                // محتوای متنی، معرفی و سئو صفحه اصلی
+                $data['rentalSeoContentEnabled'] = (bool) \Modules\Properties\Entities\PropertySetting::get('rental_seo_content_enabled', 1);
+                $data['rentalSeoContentTitle'] = \Modules\Properties\Entities\PropertySetting::get('rental_seo_content_title', 'مستر ویلا؛ سامانه رزرواسیون و اجاره آنلاین ویلا و اقامتگاه در شمال');
+                $data['rentalSeoContentBody'] = \Modules\Properties\Entities\PropertySetting::get('rental_seo_content_body', "مستر ویلا سال‌ها است که به عنوان مرجع تخصصی رزرو و اجاره آنلاین انواع اقامتگاه، کلبه‌های جنگلی، سوئیت و ویلاهای استخردار در زیباترین مناطق شمال کشور به‌ویژه منطقه سرسبز لفور و سوادکوه شناخته می‌شود. هدف ما ایجاد تجربه‌ای بی‌دغدغه و مطمئن از سفر برای تمام میهمانان گرامی است. تضمین تطابق کامل تصاویر با اقامتگاه، پشتیبانی ۲۴ ساعته در تمام روزهای هفته، تحویل تضمین‌شده و تسویه با میزبان پس از رضایت و ورود میهمان، از استانداردهای بنیادین مستر ویلا می‌باشد. با خیالی آسوده اقامتگاه رویایی خود را بررسی کرده و تنها با چند کلیک، خاطره‌ای ماندگار در دل طبیعت بسازید.");
+
                 // مقاصد در دسترس (استان‌ها و شهرهایی که اقامتگاه فعال و قابل رزرو دارند)
                 $data['availableDestinations'] = \Modules\Properties\Entities\Property::query()
                     ->where('publication_status', 'published')

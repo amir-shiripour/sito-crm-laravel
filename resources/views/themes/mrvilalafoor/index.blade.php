@@ -21,6 +21,23 @@
         }
     } catch (\Throwable $e) {}
 
+    $rentalSeoContentEnabled = $rentalSeoContentEnabled ?? true;
+    $rentalSeoContentTitle = $rentalSeoContentTitle ?? null;
+    $rentalSeoContentBody = $rentalSeoContentBody ?? null;
+    try {
+        if (\Illuminate\Support\Facades\Schema::hasTable('property_settings')) {
+            if (!isset($rentalSeoContentEnabled)) {
+                $rentalSeoContentEnabled = (bool) \Modules\Properties\Entities\PropertySetting::get('rental_seo_content_enabled', 1);
+            }
+            if (!$rentalSeoContentTitle) {
+                $rentalSeoContentTitle = \Modules\Properties\Entities\PropertySetting::get('rental_seo_content_title', 'مستر ویلا؛ سامانه رزرواسیون و اجاره آنلاین ویلا و اقامتگاه در شمال');
+            }
+            if (!$rentalSeoContentBody) {
+                $rentalSeoContentBody = \Modules\Properties\Entities\PropertySetting::get('rental_seo_content_body', "مستر ویلا سال‌ها است که به عنوان مرجع تخصصی رزرو و اجاره آنلاین انواع اقامتگاه، کلبه‌های جنگلی، سوئیت و ویلاهای استخردار در زیباترین مناطق شمال کشور به‌ویژه منطقه سرسبز لفور و سوادکوه شناخته می‌شود. هدف ما ایجاد تجربه‌ای بی‌دغدغه و مطمئن از سفر برای تمام میهمانان گرامی است. تضمین تطابق کامل تصاویر با اقامتگاه، پشتیبانی ۲۴ ساعته در تمام روزهای هفته، تحویل تضمین‌شده و تسویه با میزبان پس از رضایت و ورود میهمان، از استانداردهای بنیادین مستر ویلا می‌باشد. با خیالی آسوده اقامتگاه رویایی خود را بررسی کرده و تنها با چند کلیک، خاطره‌ای ماندگار در دل طبیعت بسازید.");
+            }
+        }
+    } catch (\Throwable $e) {}
+
     $currencyLabel = $currencyLabel ?? (\Modules\Properties\Entities\PropertySetting::getCurrencyLabel() ?? 'تومان');
 
     $rentalTypes = [];
@@ -700,7 +717,7 @@
             <!-- ============================================================= -->
             <!-- LISTINGS SECTION CONTAINER (Dynamic Carousels with Unified Consistent Spacing) -->
             <!-- ============================================================= -->
-            <main class="w-full {{ $hasAnyHeroBg ? 'pt-12 sm:pt-16 lg:pt-20' : 'pt-6 sm:pt-8 lg:pt-10' }} pb-12 sm:pb-16 flex flex-col gap-12 sm:gap-16 lg:gap-20 font-sans">
+            <main class="w-full {{ $hasAnyHeroBg ? 'pt-12 sm:pt-16 lg:pt-20' : 'pt-6 sm:pt-8 lg:pt-10' }} pb-0 flex flex-col gap-12 sm:gap-16 lg:gap-20 font-sans">
                 <!-- Active Filters Notification Bar -->
                 <div id="active-filters-bar" class="max-w-[1360px] mx-auto px-4 sm:px-8 w-full hidden font-sans"></div>
 
@@ -953,22 +970,140 @@
                     @endif
 
                     <div id="sections-after-slider" class="w-full flex flex-col gap-12 sm:gap-16 lg:gap-20 empty:hidden"></div>
+
+                    <!-- ============================================================= -->
+                    <!-- VALUE PROPOSITIONS & TRUST GUARANTEES (بخش تضمین‌ها و ویژگی‌های اقامتگاه‌ها) -->
+                    <!-- ============================================================= -->
+                    <section id="trust-guarantees-section" class="w-full max-w-[1360px] mx-auto px-4 sm:px-8 font-sans">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4 lg:gap-5">
+                            
+                            {{-- ۱. ضمانت تحویل اقامتگاه --}}
+                            <div class="bg-white dark:bg-zinc-900 border border-[#ECECEE] dark:border-zinc-800 rounded-2xl sm:rounded-3xl p-4 sm:p-5 flex items-center gap-3.5 sm:gap-4 shadow-xs hover:shadow-sm hover:border-amber-300 dark:hover:border-amber-700/60 transition-all duration-200 group">
+                                <div class="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200/60 dark:border-amber-800/40 text-amber-500 dark:text-amber-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform duration-200 shadow-2xs">
+                                    <svg class="w-6 h-6 sm:w-7 sm:h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z"/>
+                                    </svg>
+                                </div>
+                                <div class="space-y-1 text-right min-w-0">
+                                    <h3 class="text-xs sm:text-sm font-black text-[#18181B] dark:text-zinc-100 tracking-tight group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors truncate">
+                                        ضمانت تحویل اقامتگاه
+                                    </h3>
+                                    <p class="text-[11px] sm:text-xs text-zinc-400 dark:text-zinc-400 font-medium leading-relaxed font-sans">
+                                        تسویه با میزبان پس از تحویل اقامتگاه
+                                    </p>
+                                </div>
+                            </div>
+
+                            {{-- ۲. کم‌هزینه و باکیفیت --}}
+                            <div class="bg-white dark:bg-zinc-900 border border-[#ECECEE] dark:border-zinc-800 rounded-2xl sm:rounded-3xl p-4 sm:p-5 flex items-center gap-3.5 sm:gap-4 shadow-xs hover:shadow-sm hover:border-emerald-300 dark:hover:border-emerald-700/60 transition-all duration-200 group">
+                                <div class="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/60 dark:border-emerald-800/40 text-[#007A5E] dark:text-emerald-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform duration-200 shadow-2xs">
+                                    <svg class="w-6 h-6 sm:w-7 sm:h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 14.25l6-6m4.5-3.493V14a2 2 0 01-2 2h-4.5l-4 4-4-4H5a2 2 0 01-2-2V4.757a2 2 0 012-2h14a2 2 0 012 2zM9 9h.01M15 15h.01"/>
+                                    </svg>
+                                </div>
+                                <div class="space-y-1 text-right min-w-0">
+                                    <h3 class="text-xs sm:text-sm font-black text-[#18181B] dark:text-zinc-100 tracking-tight group-hover:text-[#007A5E] dark:group-hover:text-emerald-400 transition-colors truncate">
+                                        کم‌هزینه و باکیفیت
+                                    </h3>
+                                    <p class="text-[11px] sm:text-xs text-zinc-400 dark:text-zinc-400 font-medium leading-relaxed font-sans">
+                                        اقامت باکیفیت‌تر با هزینه کمتر
+                                    </p>
+                                </div>
+                            </div>
+
+                            {{-- ۳. ضمانت تطابق امکانات --}}
+                            <div class="bg-white dark:bg-zinc-900 border border-[#ECECEE] dark:border-zinc-800 rounded-2xl sm:rounded-3xl p-4 sm:p-5 flex items-center gap-3.5 sm:gap-4 shadow-xs hover:shadow-sm hover:border-indigo-300 dark:hover:border-indigo-700/60 transition-all duration-200 group">
+                                <div class="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200/60 dark:border-indigo-800/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform duration-200 shadow-2xs">
+                                    <svg class="w-6 h-6 sm:w-7 sm:h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25"/>
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M9.75 13.5l1.5 1.5 3-3"/>
+                                    </svg>
+                                </div>
+                                <div class="space-y-1 text-right min-w-0">
+                                    <h3 class="text-xs sm:text-sm font-black text-[#18181B] dark:text-zinc-100 tracking-tight group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors truncate">
+                                        ضمانت تطابق امکانات
+                                    </h3>
+                                    <p class="text-[11px] sm:text-xs text-zinc-400 dark:text-zinc-400 font-medium leading-relaxed font-sans">
+                                        یکسان بودن اقامتگاه‌ها با تصاویر
+                                    </p>
+                                </div>
+                            </div>
+
+                            {{-- ۴. رزرواسیون ۲۴ ساعته --}}
+                            <div class="bg-white dark:bg-zinc-900 border border-[#ECECEE] dark:border-zinc-800 rounded-2xl sm:rounded-3xl p-4 sm:p-5 flex items-center gap-3.5 sm:gap-4 shadow-xs hover:shadow-sm hover:border-sky-300 dark:hover:border-sky-700/60 transition-all duration-200 group">
+                                <div class="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-sky-50 dark:bg-sky-950/40 border border-sky-200/60 dark:border-sky-800/40 text-sky-600 dark:text-sky-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform duration-200 shadow-2xs">
+                                    <svg class="w-6 h-6 sm:w-7 sm:h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 19.5a1.5 1.5 0 01-1.5-1.5v-3a1.5 1.5 0 011.5-1.5h1.5a1.5 1.5 0 011.5 1.5v3a1.5 1.5 0 01-1.5 1.5h-1.5zm7.5 0a1.5 1.5 0 01-1.5-1.5v-3a1.5 1.5 0 011.5-1.5h1.5a1.5 1.5 0 011.5 1.5v3a1.5 1.5 0 01-1.5 1.5h-1.5z"/>
+                                    </svg>
+                                </div>
+                                <div class="space-y-1 text-right min-w-0">
+                                    <h3 class="text-xs sm:text-sm font-black text-[#18181B] dark:text-zinc-100 tracking-tight group-hover:text-sky-600 dark:group-hover:text-sky-400 transition-colors truncate">
+                                        رزرواسیون ۲۴ ساعته
+                                    </h3>
+                                    <p class="text-[11px] sm:text-xs text-zinc-400 dark:text-zinc-400 font-medium leading-relaxed font-sans">
+                                        پشتیبانی آنلاین در تمام روزهای هفته
+                                    </p>
+                                </div>
+                            </div>
+
+                        </div>
+                    </section>
+
+                    {{-- ============================================================= --}}
+                    {{-- HOMEPAGE SEO & INTRODUCTORY CONTENT (Digikala/Jabama style)   --}}
+                    {{-- کاملاً فلت و بدون کادر/باکس، با دکمه بازشونده «مشاهده بیشتر»    --}}
+                    {{-- ============================================================= --}}
+                    @if(!empty($rentalSeoContentEnabled) && !empty($rentalSeoContentBody))
+                        <section id="homepage-seo-content-section" 
+                                 x-data="{ expanded: false }"
+                                 class="w-full max-w-[1360px] mx-auto px-4 sm:px-8 font-sans">
+                            
+                            @if(!empty($rentalSeoContentTitle))
+                                <h2 class="text-base sm:text-lg lg:text-xl font-bold text-slate-800 dark:text-zinc-100 tracking-tight leading-snug mb-3 text-right">
+                                    {{ $rentalSeoContentTitle }}
+                                </h2>
+                            @endif
+
+                            <div class="relative transition-all duration-300 overflow-hidden"
+                                 :class="expanded ? 'max-h-none' : 'max-h-20 sm:max-h-24'">
+                                
+                                <div class="text-xs sm:text-[13px] text-slate-600 dark:text-slate-300 leading-relaxed sm:leading-7 text-justify font-sans space-y-2 [&_h1]:text-base [&_h1]:font-bold [&_h1]:text-slate-900 dark:[&_h1]:text-white [&_h1]:my-2 [&_h2]:text-sm [&_h2]:font-bold [&_h2]:text-slate-800 dark:[&_h2]:text-zinc-100 [&_h2]:my-2 [&_h3]:text-xs [&_h3]:font-bold [&_h3]:text-slate-800 dark:[&_h3]:text-zinc-200 [&_p]:mb-2 [&_ul]:list-disc [&_ul]:mr-5 [&_ol]:list-decimal [&_ol]:mr-5 [&_a]:text-indigo-600 dark:[&_a]:text-indigo-400 [&_a]:underline">
+                                    {!! $rentalSeoContentBody !!}
+                                </div>
+
+                                {{-- افکت گرادیان محوشدگی انتهای متن در حالت بسته --}}
+                                <div x-show="!expanded"
+                                     class="absolute bottom-0 inset-x-0 h-14 bg-gradient-to-t from-white via-white/85 to-transparent dark:from-gray-950 dark:via-gray-950/85 pointer-events-none transition-opacity duration-300"></div>
+                            </div>
+
+                            {{-- دکمه مشاهده بیشتر - فقط در حالت بسته نمایش داده می‌شود و پس از باز شدن حذف می‌گردد --}}
+                            <div x-show="!expanded" class="flex items-center justify-start mt-2">
+                                <button type="button" 
+                                        @click="expanded = true"
+                                        class="inline-flex items-center gap-1.5 text-xs font-bold text-sky-600 hover:text-sky-700 dark:text-sky-400 dark:hover:text-sky-300 transition-colors cursor-pointer py-1 pe-2 rounded-lg no-underline hover:no-underline group">
+                                    <span>مشاهده بیشتر</span>
+                                    <svg class="w-3.5 h-3.5 transition-transform duration-200 group-hover:-translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+                                    </svg>
+                                </button>
+                            </div>
+                        </section>
+                    @endif
                 </div>
 
-                <!-- Minimal Empty State -->
-                <div class="max-w-[1360px] mx-auto px-4 sm:px-8">
-                    <div id="empty-state" class="hidden py-20 text-center space-y-3 font-sans">
-                        <div class="w-14 h-14 rounded-2xl bg-[#ECFDF5] dark:bg-emerald-950/40 text-[#007A5E] dark:text-emerald-400 flex items-center justify-center mx-auto shadow-xs">
-                            <svg class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
-                            </svg>
-                        </div>
-                        <p id="empty-state-title" class="text-sm font-bold text-[#18181B] dark:text-zinc-100">اقامتگاهی با این مشخصات یافت نشد</p>
-                        <p id="empty-state-subtitle" class="text-xs text-zinc-400 max-w-sm mx-auto leading-relaxed">می‌توانید فیلترهای جستجو را پاکسازی کرده یا مقاصد دیگر را انتخاب نمایید.</p>
-                        <button id="empty-state-btn" type="button" onclick="resetAllFilters()" class="mt-2 px-5 py-2.5 rounded-xl bg-[#007A5E] hover:bg-[#005F48] text-xs font-bold text-white transition-colors shadow-sm">
-                            نمایش همه اقامتگاه‌ها
-                        </button>
+                <!-- Minimal Empty State (Hidden by default, consumes 0 space when hidden) -->
+                <div id="empty-state" class="hidden max-w-[1360px] mx-auto px-4 sm:px-8 py-20 text-center space-y-3 font-sans">
+                    <div class="w-14 h-14 rounded-2xl bg-[#ECFDF5] dark:bg-emerald-950/40 text-[#007A5E] dark:text-emerald-400 flex items-center justify-center mx-auto shadow-xs">
+                        <svg class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+                        </svg>
                     </div>
+                    <p id="empty-state-title" class="text-sm font-bold text-[#18181B] dark:text-zinc-100">اقامتگاهی با این مشخصات یافت نشد</p>
+                    <p id="empty-state-subtitle" class="text-xs text-zinc-400 max-w-sm mx-auto leading-relaxed">می‌توانید فیلترهای جستجو را پاکسازی کرده یا مقاصد دیگر را انتخاب نمایید.</p>
+                    <button id="empty-state-btn" type="button" onclick="resetAllFilters()" class="mt-2 px-5 py-2.5 rounded-xl bg-[#007A5E] hover:bg-[#005F48] text-xs font-bold text-white transition-colors shadow-sm">
+                        نمایش همه اقامتگاه‌ها
+                    </button>
                 </div>
             </main>
         </div>
@@ -1116,27 +1251,6 @@
                 <span class="text-[10px] font-medium">حساب من</span>
             </button>
         </nav>
-
-        <!-- MINIMAL DESKTOP FOOTER -->
-        <footer class="hidden md:block border-t border-[#ECECEE] dark:border-zinc-800 mt-16 py-8 text-xs text-zinc-400">
-            <div class="max-w-[1360px] mx-auto px-8 flex items-center justify-between">
-                <span>بوم‌گرد — سامانه رزرو اقامتگاه و کلبه‌های جنگلی</span>
-                <div class="flex items-center gap-6">
-                    @php
-                        $footerCities = collect($availableDests)->flatMap(function($g) { return $g['cities']; })->unique()->take(4);
-                    @endphp
-                    @foreach($footerCities as $fCity)
-                        <button type="button" onclick="selectDestination('{{ $fCity }}', '{{ $fCity }}')" class="hover:text-[#18181B] dark:hover:text-white transition-colors">{{ $fCity }}</button>
-                    @endforeach
-                    @if($rentalMultiHostEnabled && Route::has('user.properties.hosts.register'))
-                        <a href="{{ $isHostRegistered ? route('user.properties.hosts.dashboard') : route('user.properties.hosts.register') }}" class="text-[#007A5E] dark:text-emerald-400 font-bold hover:text-emerald-600 dark:hover:text-emerald-300 transition-colors">
-                            {{ $isHostRegistered ? 'داشبورد میزبانی' : 'ثبت اقامتگاه (میزبان شوید)' }}
-                        </a>
-                    @endif
-                    <a href="{{ route('properties.index') }}" class="hover:text-[#007A5E] dark:hover:text-emerald-400 transition-colors">همه اقامتگاه‌ها</a>
-                </div>
-            </div>
-        </footer>
 
     </div>
 
@@ -2592,10 +2706,13 @@
 
         syncInstantUI();
 
+        const trustSection = document.getElementById('trust-guarantees-section');
+
         if (filtered.length === 0) {
             if (beforeWrapper) beforeWrapper.innerHTML = '';
             if (afterWrapper) afterWrapper.innerHTML = '';
             if (heroBanner) heroBanner.classList.add('hidden');
+            if (trustSection) trustSection.classList.add('hidden');
             emptyState.classList.remove('hidden');
             const emptyTitle = document.getElementById('empty-state-title');
             const emptySubtitle = document.getElementById('empty-state-subtitle');
@@ -2615,6 +2732,7 @@
             }
         } else {
             emptyState.classList.add('hidden');
+            if (trustSection) trustSection.classList.remove('hidden');
 
             // When keyword search is active, render a dedicated search results grid so all matches are immediately visible!
             if (state.keyword) {
@@ -2640,6 +2758,7 @@
                 if (beforeWrapper) beforeWrapper.innerHTML = searchResultsHtml;
                 if (afterWrapper) afterWrapper.innerHTML = '';
                 if (heroBanner) heroBanner.classList.add('hidden');
+                if (trustSection) trustSection.classList.add('hidden');
                 initCarouselDrag();
                 return;
             }

@@ -274,47 +274,12 @@ class VisionSoapClient
         }
 
         try {
-            if (extension_loaded('soap')) {
-                $client = $this->getRawSoapClient();
-
-                // Inject required headers
-                $headerData = [
-                    'LicesnseKey' => $this->token,
-                    'Type' => 5,
-                    'UserId' => $this->userId,
-                ];
-
-                $soapHeaders = [];
-                foreach ($headerData as $headerKey => $headerVal) {
-                    $soapHeaders[] = new SoapHeader(self::SOAP_ACTION_BASE, $headerKey, $headerVal);
-                }
-                $client->__setSoapHeaders($soapHeaders);
-
-                $response = $client->__soapCall($actionName, [$params]);
-                $resultProp = $actionName . 'Result';
-                $rawResult = is_object($response) && isset($response->$resultProp) ? $response->$resultProp : $response;
-
-                $decoded = is_string($rawResult) ? json_decode($rawResult, true) : (array) $rawResult;
-
-                return [
-                    'success' => true,
-                    'data' => $decoded ?? $rawResult,
-                    'message' => 'فراخوانی با موفقیت انجام شد.',
-                ];
-            }
-
-            // HTTP Fallback
-            return $this->callActionViaHttpFallback($actionName, $params);
-
-        } catch (SoapFault $sf) {
-            // In case token expired, clear cache and retry once
-            Cache::forget($this->cachePrefix);
-            return [
-                'success' => false,
-                'data' => null,
-                'message' => 'خطای SOAP هنگام اجرای ' . $actionName . ': ' . $sf->getMessage(),
-            ];
+            return $this->callActionViaHttp($actionName, $params);
         } catch (Exception $e) {
+            Log::error('Vision SOAP callAction error: ' . $e->getMessage(), [
+                'vendor_id' => $this->setting->vendor_id,
+                'action' => $actionName,
+            ]);
             return [
                 'success' => false,
                 'data' => null,
@@ -324,33 +289,57 @@ class VisionSoapClient
     }
 
     /**
-     * HTTP Fallback for Authenticated Actions with Headers
+     * Authenticated HTTP SOAP request with HTTP headers required by Vision ERP 3.6.1:
+     * - SOAPAction: http://tempuri.org/{action}
+     * - LicenseKey / LicesnseKey: token
+     * - Type: 5
+     * - UserId: vendor default seller code
      */
-    protected function callActionViaHttpFallback(string $actionName, array $params = []): array
+    public function callActionViaHttp(string $actionName, array $params = []): array
     {
         $paramXml = '';
         foreach ($params as $k => $v) {
-            $paramXml .= "<{$k}>" . htmlspecialchars(is_array($v) ? json_encode($v, JSON_UNESCAPED_UNICODE) : (string)$v, ENT_XML1) . "</{$k}>";
+            $val = is_array($v) ? json_encode($v, JSON_UNESCAPED_UNICODE) : (string)$v;
+            $paramXml .= "<{$k}>" . htmlspecialchars($val, ENT_XML1) . "</{$k}>";
         }
+
+        $headerType = (string)($this->setting->header_type ?: 5);
+        $headerUserId = (string)($this->setting->header_user_id ?: ($this->userId ?: 1));
 
         $envelope = '<?xml version="1.0" encoding="utf-8"?>
 <soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
-  <soap:Header>
-    <LicesnseKey xmlns="http://tempuri.org/">' . htmlspecialchars($this->token, ENT_XML1) . '</LicesnseKey>
-    <Type xmlns="http://tempuri.org/">5</Type>
-    <UserId xmlns="http://tempuri.org/">' . htmlspecialchars((string)$this->userId, ENT_XML1) . '</UserId>
-  </soap:Header>
   <soap:Body>
     <' . $actionName . ' xmlns="http://tempuri.org/">' . $paramXml . '</' . $actionName . '>
   </soap:Body>
 </soap:Envelope>';
 
-        $response = Http::withHeaders([
+        $headers = [
             'Content-Type' => 'text/xml; charset=utf-8',
             'SOAPAction' => 'http://tempuri.org/' . $actionName,
-        ])->timeout(30)->send('POST', $this->endpoint, ['body' => $envelope]);
+            'LicenseKey' => (string)$this->token,
+            'LicesnseKey' => (string)$this->token,
+            'Type' => $headerType,
+            'UserId' => $headerUserId,
+        ];
+
+        $response = Http::withHeaders($headers)
+            ->timeout(30)
+            ->send('POST', $this->endpoint, ['body' => $envelope]);
 
         if (!$response->successful()) {
+            $body = $response->body();
+            if (preg_match('/<faultstring>(.*?)<\/faultstring>/s', $body, $fm)) {
+                $fault = html_entity_decode($fm[1], ENT_QUOTES | ENT_XML1);
+                if (stripos($fault, 'LicenseError') !== false || stripos($fault, 'لایسنس') !== false) {
+                    Cache::forget($this->cachePrefix);
+                }
+                return [
+                    'success' => false,
+                    'data' => null,
+                    'message' => 'خطای وب‌سرویس: ' . $fault,
+                ];
+            }
+
             return [
                 'success' => false,
                 'data' => null,

@@ -24,17 +24,29 @@ class VisionCatalogSyncService
     }
 
     /**
-     * Sync base data types from Vision ERP:
-     * Type 0: Units of measurement / پایه
-     * Type 1: Products / Goods
-     * Type 2: Customers
-     * Type 3: Warehouses
+     * Sync base data types from Vision ERP v3.6.1:
+     * Type 0: Customer info (buyer)
+     * Type 1: Categories (category.gorohks)
+     * Type 2: Subcategories (subCategory.subGorohks)
+     * Type 3: Products / Kala (kala.kalas)
+     * Type 100: Total products count
      */
-    public function syncBaseData(int $type): array
+    public function syncBaseData(int $type, int $perPage = 100, int $start = 1): array
     {
         try {
-            $response = $this->client->callAction('GetOnLineBaseDataPDA', [
+            $buyerCode = (string)($this->setting->ws_username ?: '10100177');
+
+            $payload = [
                 'type' => $type,
+                'PerPage' => $perPage,
+                'groupe' => -1,
+                'idf' => '',
+                'start' => $start,
+                'buyercode' => $buyerCode,
+            ];
+
+            $response = $this->client->callAction('GetOnLineBaseDataPDA', [
+                'inputStringJson' => json_encode($payload, JSON_UNESCAPED_UNICODE),
             ]);
 
             if (!$response['success']) {
@@ -46,7 +58,30 @@ class VisionCatalogSyncService
             }
 
             $data = $response['data'];
-            $items = is_array($data) ? ($data['items'] ?? $data['Data'] ?? $data) : [];
+            if (is_string($data)) {
+                $data = json_decode($data, true) ?: [];
+            }
+
+            // Unpack items based on Vision ERP 3.6.1 response schema
+            $items = [];
+            if ($type === 3) {
+                $items = $data['kala']['kalas'] ?? [];
+            } elseif ($type === 1) {
+                $items = $data['category']['gorohks'] ?? [];
+            } elseif ($type === 2) {
+                $items = $data['subCategory']['subGorohks'] ?? [];
+            } elseif ($type === 0) {
+                $items = $data['buyer']['buyers'] ?? [];
+            } elseif ($type === 100) {
+                $count = (int)($data['kalaCounts'] ?? 0);
+                return [
+                    'success' => true,
+                    'count' => $count,
+                    'message' => "تعداد کل اقلام کالا در ویژن: {$count}",
+                ];
+            } else {
+                $items = $data['items'] ?? $data['Data'] ?? $data;
+            }
 
             if (!is_array($items) || empty($items)) {
                 return [
@@ -57,12 +92,17 @@ class VisionCatalogSyncService
             }
 
             switch ($type) {
-                case 1:
-                    return $this->syncProducts($items);
-                case 2:
-                    return $this->syncCustomers($items);
                 case 3:
-                    return $this->syncWarehouses($items);
+                    return $this->syncProducts($items);
+                case 0:
+                    return $this->syncCustomers($items);
+                case 1:
+                case 2:
+                    return [
+                        'success' => true,
+                        'count' => count($items),
+                        'message' => "تعداد " . count($items) . " دسته‌بندی دریافت شد.",
+                    ];
                 default:
                     return [
                         'success' => true,
