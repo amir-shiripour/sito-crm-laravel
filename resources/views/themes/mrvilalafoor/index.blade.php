@@ -1374,32 +1374,18 @@
                                 </span>
                             </div>
                         </div>
-                        <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 text-[#007A5E] dark:text-emerald-300 text-xs font-black border border-emerald-200/60 dark:border-emerald-800/60 font-sans">
-                            <span>🗓️</span>
-                            <span>{{ $currentJalaliMonthName }} {{ $currentJalaliYear }}</span>
-                        </span>
                     </div>
 
-                    <!-- Check-in & Check-out Dual Buttons (Side-by-Side, Zero Overlap) -->
-                    <div class="grid grid-cols-2 gap-2.5 font-sans">
-                        <!-- Check-in -->
-                        <button type="button" id="mobile-checkin-tab-btn" onclick="setDateSelectionStep('start', event)"
-                                class="p-3 rounded-2xl text-right transition-all bg-white dark:bg-zinc-900 border-2 border-[#007A5E] dark:border-emerald-500 shadow-xs font-sans">
-                            <div class="flex items-center justify-between">
-                                <span id="mobile-checkin-status" class="text-[10px] text-[#007A5E] dark:text-emerald-400 font-bold font-sans">تاریخ ورود</span>
-                                <span id="mobile-checkin-dot" class="w-2 h-2 rounded-full bg-[#007A5E] dark:text-emerald-400"></span>
-                            </div>
-                            <span id="mobile-checkin-val" class="block text-xs font-black text-[#18181B] dark:text-zinc-100 mt-1 tracking-tight font-sans">{{ $defaultStartDay }} {{ $currentJalaliMonthName }}</span>
-                        </button>
-
-                        <!-- Check-out -->
-                        <button type="button" id="mobile-checkout-tab-btn" onclick="setDateSelectionStep('end', event)"
-                                class="p-3 rounded-2xl text-right transition-all bg-[#F7F8F9] dark:bg-zinc-800/60 border border-zinc-200/80 dark:border-zinc-700/80 hover:border-zinc-300 font-sans">
-                            <div class="flex items-center justify-between">
-                                <span id="mobile-checkout-status" class="text-[10px] text-zinc-500 dark:text-zinc-400 font-medium font-sans">تاریخ خروج</span>
-                                <span id="mobile-checkout-dot" class="hidden w-2 h-2 rounded-full bg-[#007A5E] dark:text-emerald-400"></span>
-                            </div>
-                            <span id="mobile-checkout-val" class="block text-xs font-bold text-zinc-700 dark:text-zinc-300 mt-1 tracking-tight font-sans">{{ $defaultEndDay }} {{ $currentJalaliMonthName }}</span>
+                    <!-- Dynamic Step Guide / Status Banner (Replaces old Check-in/Check-out cards - matches show.blade.php UX) -->
+                    <div class="flex items-center justify-between p-3 rounded-2xl bg-[#F7F8F9] dark:bg-zinc-800/60 border border-zinc-200/80 dark:border-zinc-700/80 text-xs font-sans">
+                        <div class="flex items-center gap-2">
+                            <span id="mobile-date-step-icon" class="text-sm">📍</span>
+                            <span id="mobile-date-step-text" class="font-bold text-[#18181B] dark:text-zinc-100 font-sans">
+                                تاریخ ورود و خروج را با لمس روزها انتخاب کنید
+                            </span>
+                        </div>
+                        <button type="button" onclick="clearDateSelection()" class="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 hover:underline font-sans">
+                            پاک کردن
                         </button>
                     </div>
 
@@ -1464,8 +1450,8 @@
                             <span class="w-2 h-2 rounded-full bg-emerald-500 inline-block animate-pulse"></span>
                             <span id="mobile-calendar-summary" class="font-bold">{{ $defaultStartDay }} تا {{ $defaultEndDay }} {{ $currentJalaliMonthName }} ({{ $defaultNights }} شب)</span>
                         </div>
-                        <button type="button" onclick="setMobileSearchSection('dest')" class="text-[11px] font-bold text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 font-sans">
-                            بستن تقویم ↑
+                        <button type="button" onclick="setMobileSearchSection('none')" class="text-[11px] font-bold text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 font-sans">
+                            تایید و بستن ↑
                         </button>
                     </div>
                 </div>
@@ -3277,22 +3263,45 @@
     }
 
     function updateDateLabelsAndSummary() {
-        const absStart = getAbsoluteDay(state.startMonthIndex, state.startDay);
-        const absEnd = getAbsoluteDay(state.endMonthIndex, state.endDay);
-        const nights = Math.max(1, absEnd - absStart);
-        const pNights = toPersianNum(nights);
+        const hasStart = (state.startDay !== null && state.startMonthIndex !== null);
+        const hasEnd = (state.endDay !== null && state.endMonthIndex !== null);
 
-        const startMonth = CALENDAR_MONTHS[state.startMonthIndex] || CALENDAR_MONTHS[0];
-        const endMonth = CALENDAR_MONTHS[state.endMonthIndex] || CALENDAR_MONTHS[0];
+        let absStart = -1;
+        let absEnd = -1;
+        let nights = 0;
+        let pNights = '۰';
+        let startStr = '';
+        let endStr = '';
+        let summary = '';
+        let summaryShort = '';
 
-        const startStr = `${toPersianNum(state.startDay)} ${startMonth.name}`;
-        const endStr = `${toPersianNum(state.endDay)} ${endMonth.name}`;
-        const summary = (state.startMonthIndex === state.endMonthIndex)
-            ? `${toPersianNum(state.startDay)} تا ${toPersianNum(state.endDay)} ${startMonth.name} (${pNights} شب)`
-            : `${startStr} تا ${endStr} (${pNights} شب)`;
-        const summaryShort = (state.startMonthIndex === state.endMonthIndex)
-            ? `${toPersianNum(state.startDay)} تا ${toPersianNum(state.endDay)} ${startMonth.name}`
-            : `${startStr} تا ${endStr}`;
+        const startMonth = (hasStart && CALENDAR_MONTHS[state.startMonthIndex]) ? CALENDAR_MONTHS[state.startMonthIndex] : (CALENDAR_MONTHS[0] || {});
+        const endMonth = (hasEnd && CALENDAR_MONTHS[state.endMonthIndex]) ? CALENDAR_MONTHS[state.endMonthIndex] : (CALENDAR_MONTHS[0] || {});
+
+        if (hasStart && hasEnd) {
+            absStart = getAbsoluteDay(state.startMonthIndex, state.startDay);
+            absEnd = getAbsoluteDay(state.endMonthIndex, state.endDay);
+            nights = Math.max(1, absEnd - absStart);
+            pNights = toPersianNum(nights);
+            startStr = `${toPersianNum(state.startDay)} ${startMonth.name}`;
+            endStr = `${toPersianNum(state.endDay)} ${endMonth.name}`;
+            summary = (state.startMonthIndex === state.endMonthIndex)
+                ? `${toPersianNum(state.startDay)} تا ${toPersianNum(state.endDay)} ${startMonth.name} (${pNights} شب)`
+                : `${startStr} تا ${endStr} (${pNights} شب)`;
+            summaryShort = (state.startMonthIndex === state.endMonthIndex)
+                ? `${toPersianNum(state.startDay)} تا ${toPersianNum(state.endDay)} ${startMonth.name}`
+                : `${startStr} تا ${endStr}`;
+        } else if (hasStart) {
+            absStart = getAbsoluteDay(state.startMonthIndex, state.startDay);
+            startStr = `${toPersianNum(state.startDay)} ${startMonth.name}`;
+            summary = `ورود: ${startStr} (انتخاب خروج)`;
+            summaryShort = `ورود: ${startStr}`;
+            pNights = '-';
+        } else {
+            summary = 'انتخاب تاریخ ورود و خروج';
+            summaryShort = 'انتخاب تاریخ';
+            pNights = '-';
+        }
 
         const dLabel = document.getElementById('desktop-date-label');
         const mSummary = document.getElementById('mobile-calendar-summary');
@@ -3311,7 +3320,23 @@
         if (dNights) dNights.textContent = pNights;
         if (mNights) mNights.textContent = pNights;
 
-        // Desktop checkin & checkout tabs UI
+        // Mobile dynamic step banner (matching show.blade.php UX)
+        const stepIcon = document.getElementById('mobile-date-step-icon');
+        const stepText = document.getElementById('mobile-date-step-text');
+        if (stepIcon && stepText) {
+            if (hasStart && hasEnd) {
+                stepIcon.textContent = '✨';
+                stepText.textContent = `${summaryShort} (${pNights} شب اقامت)`;
+            } else if (hasStart) {
+                stepIcon.textContent = '🟢';
+                stepText.textContent = `ورود: ${startStr} — لطفاً تاریخ خروج را لمس کنید`;
+            } else {
+                stepIcon.textContent = '📍';
+                stepText.textContent = 'تاریخ ورود و خروج را با لمس روزها انتخاب کنید';
+            }
+        }
+
+        // Desktop checkin & checkout tabs UI (remains supported for desktop view)
         const inBtn = document.getElementById('desktop-checkin-tab-btn');
         const outBtn = document.getElementById('desktop-checkout-tab-btn');
         const inVal = document.getElementById('desktop-checkin-val');
@@ -3323,8 +3348,8 @@
         const inStatus = document.getElementById('desktop-checkin-status');
         const outStatus = document.getElementById('desktop-checkout-status');
 
-        if (inVal) inVal.textContent = startStr;
-        if (outVal) outVal.textContent = endStr;
+        if (inVal) inVal.textContent = startStr || 'انتخاب ورود';
+        if (outVal) outVal.textContent = endStr || 'انتخاب خروج';
         if (inStatus) inStatus.textContent = 'تاریخ ورود';
         if (outStatus) outStatus.textContent = 'تاریخ خروج';
 
@@ -3332,7 +3357,7 @@
         const inactiveCls = 'p-3 rounded-2xl border border-[#ECECEE] dark:border-zinc-800 bg-[#F7F8F9] dark:bg-zinc-900/60 text-right hover:border-zinc-300 dark:hover:border-zinc-700 transition-all flex flex-col justify-between min-h-[72px]';
 
         if (inBtn && outBtn) {
-            if (dateSelectionStep === 'start') {
+            if (!hasEnd || dateSelectionStep === 'start') {
                 inBtn.className = activeCls;
                 outBtn.className = inactiveCls;
                 if (inDot) inDot.classList.remove('hidden');
@@ -3341,8 +3366,6 @@
                 if (outBadge) outBadge.classList.add('hidden');
                 if (inStatus) inStatus.className = 'text-[11px] font-bold text-[#007A5E] dark:text-emerald-400';
                 if (outStatus) outStatus.className = 'text-[11px] font-medium text-zinc-500 dark:text-zinc-400';
-                if (inVal) inVal.className = 'text-sm font-black text-[#18181B] dark:text-zinc-100 mt-2.5 block tracking-tight font-sans';
-                if (outVal) outVal.className = 'text-sm font-bold text-zinc-700 dark:text-zinc-300 mt-2.5 block tracking-tight font-sans';
             } else {
                 inBtn.className = inactiveCls;
                 outBtn.className = activeCls;
@@ -3352,51 +3375,28 @@
                 if (outBadge) outBadge.classList.remove('hidden');
                 if (inStatus) inStatus.className = 'text-[11px] font-medium text-zinc-500 dark:text-zinc-400';
                 if (outStatus) outStatus.className = 'text-[11px] font-bold text-[#007A5E] dark:text-emerald-400';
-                if (inVal) inVal.className = 'text-sm font-bold text-zinc-700 dark:text-zinc-300 mt-2.5 block tracking-tight font-sans';
-                if (outVal) outVal.className = 'text-sm font-black text-[#18181B] dark:text-zinc-100 mt-2.5 block tracking-tight font-sans';
-            }
-        }
-
-        // Mobile dual switch tabs
-        const mInBtn = document.getElementById('mobile-checkin-tab-btn');
-        const mOutBtn = document.getElementById('mobile-checkout-tab-btn');
-        const mInVal = document.getElementById('mobile-checkin-val');
-        const mOutVal = document.getElementById('mobile-checkout-val');
-        const mInStatus = document.getElementById('mobile-checkin-status');
-        const mOutStatus = document.getElementById('mobile-checkout-status');
-        const mInDot = document.getElementById('mobile-checkin-dot');
-        const mOutDot = document.getElementById('mobile-checkout-dot');
-
-        if (mInVal) mInVal.textContent = startStr;
-        if (mOutVal) mOutVal.textContent = endStr;
-
-        if (mInBtn && mOutBtn) {
-            if (dateSelectionStep === 'start') {
-                mInBtn.className = 'p-3 rounded-2xl text-right transition-all bg-white dark:bg-zinc-900 border-2 border-[#007A5E] dark:border-emerald-500 shadow-xs font-sans';
-                mOutBtn.className = 'p-3 rounded-2xl text-right transition-all bg-[#F7F8F9] dark:bg-zinc-800/60 border border-zinc-200/80 dark:border-zinc-700/80 hover:border-zinc-300 font-sans';
-                if (mInStatus) mInStatus.className = 'text-[10px] text-[#007A5E] dark:text-emerald-400 font-bold font-sans';
-                if (mOutStatus) mOutStatus.className = 'text-[10px] text-zinc-500 dark:text-zinc-400 font-medium font-sans';
-                if (mInDot) mInDot.classList.remove('hidden');
-                if (mOutDot) mOutDot.classList.add('hidden');
-            } else {
-                mInBtn.className = 'p-3 rounded-2xl text-right transition-all bg-[#F7F8F9] dark:bg-zinc-800/60 border border-zinc-200/80 dark:border-zinc-700/80 hover:border-zinc-300 font-sans';
-                mOutBtn.className = 'p-3 rounded-2xl text-right transition-all bg-white dark:bg-zinc-900 border-2 border-[#007A5E] dark:border-emerald-500 shadow-xs font-sans';
-                if (mInStatus) mInStatus.className = 'text-[10px] text-zinc-500 dark:text-zinc-400 font-medium font-sans';
-                if (mOutStatus) mOutStatus.className = 'text-[10px] text-[#007A5E] dark:text-emerald-400 font-bold font-sans';
-                if (mInDot) mInDot.classList.add('hidden');
-                if (mOutDot) mOutDot.classList.remove('hidden');
             }
         }
 
         // Sync quick stay duration chips active state
         document.querySelectorAll('.quick-stay-chip').forEach(chip => {
             const chipNights = parseInt(chip.getAttribute('data-nights'), 10);
-            if (chipNights === nights) {
+            if (hasStart && hasEnd && chipNights === nights) {
                 chip.className = 'quick-stay-chip px-3 py-1.5 rounded-xl border border-[#007A5E] bg-[#ECFDF5] dark:bg-emerald-950/40 text-[#007A5E] dark:text-emerald-400 text-[11px] font-black shrink-0 active:scale-95 transition-all font-sans';
             } else {
                 chip.className = 'quick-stay-chip px-3 py-1.5 rounded-xl border border-zinc-200 dark:border-zinc-700/80 bg-[#F7F8F9] dark:bg-zinc-800/80 text-zinc-700 dark:text-zinc-300 text-[11px] font-bold shrink-0 hover:border-[#007A5E] hover:text-[#007A5E] active:scale-95 transition-all font-sans';
             }
         });
+    }
+
+    function clearDateSelection() {
+        state.startMonthIndex = 0;
+        state.startDay = currentJalaliDay;
+        state.endMonthIndex = null;
+        state.endDay = null;
+        dateSelectionStep = 'end';
+        updateDateLabelsAndSummary();
+        renderJalaliCalendars();
     }
 
     function changeCalendarMonth(direction) {
@@ -3440,11 +3440,15 @@
         const targetEnd = getDateFromAbsoluteDay(todayAbs + nights);
         state.endMonthIndex = targetEnd.monthIndex;
         state.endDay = targetEnd.day;
-        dateSelectionStep = 'end';
+        dateSelectionStep = 'start';
         activeCalendarMonthIndex = 0;
         updateMonthNavigationUI();
         updateDateLabelsAndSummary();
         renderJalaliCalendars();
+
+        setTimeout(() => {
+            setMobileSearchSection('none');
+        }, 280);
     }
 
     function resetAllFilters() {
@@ -3516,6 +3520,14 @@
         closeAllPopups();
         closeMobileSheets();
 
+        // Fallback: If user selected check-in but didn't pick check-out, set +1 night
+        if (state.startDay !== null && state.endDay === null) {
+            const nextDay = getDateFromAbsoluteDay(getAbsoluteDay(state.startMonthIndex, state.startDay) + 1);
+            state.endMonthIndex = nextDay.monthIndex;
+            state.endDay = nextDay.day;
+            updateDateLabelsAndSummary();
+        }
+
         const dInput = document.getElementById('dest-search-input');
         const mInput = document.getElementById('mobile-dest-search-input');
         const keywordVal = (dInput && dInput.value.trim()) || (mInput && mInput.value.trim()) || '';
@@ -3557,15 +3569,17 @@
         const monthFirstDay = curMonth.firstDayOfWeek;
         const isFirstMonth = activeCalendarMonthIndex === 0;
 
-        const absStart = getAbsoluteDay(state.startMonthIndex, state.startDay);
-        const absEnd = getAbsoluteDay(state.endMonthIndex, state.endDay);
+        const hasStart = (state.startDay !== null && state.startMonthIndex !== null);
+        const hasEnd = (state.endDay !== null && state.endMonthIndex !== null);
+        const absStart = hasStart ? getAbsoluteDay(state.startMonthIndex, state.startDay) : -1;
+        const absEnd = hasEnd ? getAbsoluteDay(state.endMonthIndex, state.endDay) : -1;
 
         ['desktop-jalali-grid', 'mobile-jalali-grid'].forEach(gridId => {
             const grid = document.getElementById(gridId);
             if (!grid) return;
             let html = '';
 
-            // Add blank cells for correct Jalali weekday offset alignment (matches image ghost slots)
+            // Add blank cells for correct Jalali weekday offset alignment
             for (let b = 0; b < monthFirstDay; b++) {
                 html += '<div class="h-10 sm:h-11 w-full rounded-lg opacity-0 pointer-events-none"></div>';
             }
@@ -3573,13 +3587,11 @@
             for (let d = 1; d <= monthDaysCount; d++) {
                 const currentDayAbs = getAbsoluteDay(activeCalendarMonthIndex, d);
                 const isPast = isFirstMonth && (d < currentJalaliDay);
-                const isToday = isFirstMonth && (d === currentJalaliDay);
-                const isCheckIn = (currentDayAbs === absStart);
-                const isCheckOut = (currentDayAbs === absEnd);
-                const inRange = (currentDayAbs > absStart && currentDayAbs < absEnd);
+                const isCheckIn = (hasStart && currentDayAbs === absStart);
+                const isCheckOut = (hasEnd && currentDayAbs === absEnd);
+                const inRange = (hasStart && hasEnd && currentDayAbs > absStart && currentDayAbs < absEnd);
 
                 if (isPast) {
-                    // Past Days: Soft muted tile matching sample (days 1 to 13 in image 2)
                     html += `
                         <button type="button" disabled
                                 title="امکان انتخاب تاریخ در گذشته وجود ندارد"
@@ -3588,7 +3600,6 @@
                         </button>
                     `;
                 } else if (isCheckIn && isCheckOut) {
-                    // Single day check-in & check-out: Solid deep panel brand color
                     html += `
                         <button type="button" onclick="selectCalendarDay(${d})"
                                 title="تاریخ ورود و خروج"
@@ -3597,7 +3608,6 @@
                         </button>
                     `;
                 } else if (isCheckIn) {
-                    // Check-in (day 19 in sample): Solid deep panel brand color with white text
                     html += `
                         <button type="button" onclick="selectCalendarDay(${d})"
                                 title="تاریخ ورود"
@@ -3606,7 +3616,6 @@
                         </button>
                     `;
                 } else if (isCheckOut) {
-                    // Check-out (day 22 in sample): Solid deep panel brand color with white text
                     html += `
                         <button type="button" onclick="selectCalendarDay(${d})"
                                 title="تاریخ خروج"
@@ -3615,16 +3624,15 @@
                         </button>
                     `;
                 } else if (inRange) {
-                    // In-Range days (days 20 and 21 in sample): Solid medium panel brand tint with white text
+                    // In-Range days: Soft luminous emerald tint with dark green text for clear contrast with check-in/out
                     html += `
                         <button type="button" onclick="selectCalendarDay(${d})"
                                 title="بازه انتخابی"
-                                class="h-10 sm:h-11 w-full rounded-lg sm:rounded-xl font-bold text-xs sm:text-sm bg-[#007A5E]/75 dark:bg-emerald-600/75 text-white shadow-2xs flex items-center justify-center transition-colors font-sans">
+                                class="h-10 sm:h-11 w-full rounded-lg sm:rounded-xl font-bold text-xs sm:text-sm bg-[#E6F4F0] dark:bg-emerald-950/60 text-[#007A5E] dark:text-emerald-300 border border-emerald-100/80 dark:border-emerald-800/50 flex items-center justify-center transition-colors font-sans">
                             ${toPersianNum(d)}
                         </button>
                     `;
                 } else {
-                    // Future Unselected days (days 14-18, 23-30 in sample): Clean white card tile with crisp border (uniform styling, today is not styled differently)
                     html += `
                         <button type="button" onclick="selectCalendarDay(${d})"
                                 class="h-10 sm:h-11 w-full rounded-lg sm:rounded-xl text-xs sm:text-sm font-bold bg-white dark:bg-zinc-800 border border-[#E9ECEF] dark:border-zinc-700/80 text-[#212529] dark:text-zinc-100 shadow-2xs hover:border-[#007A5E] hover:text-[#007A5E] dark:hover:border-emerald-400 dark:hover:text-emerald-400 hover:bg-emerald-50/30 dark:hover:bg-zinc-700/60 flex items-center justify-center transition-all active:scale-95 font-sans">
@@ -3638,46 +3646,58 @@
     }
 
     function selectCalendarDay(day) {
-        // Strict validation: Reject past dates only if in first month (index 0) and day < currentJalaliDay
         if (activeCalendarMonthIndex === 0 && day < currentJalaliDay) {
             showToast('امکان انتخاب تاریخ در گذشته وجود ندارد');
             return;
         }
 
         const clickedAbs = getAbsoluteDay(activeCalendarMonthIndex, day);
-        const startAbs = getAbsoluteDay(state.startMonthIndex, state.startDay);
+        const hasStart = (state.startDay !== null && state.startMonthIndex !== null);
+        const hasEnd = (state.endDay !== null && state.endMonthIndex !== null);
 
-        if (dateSelectionStep === 'start') {
-            // User is setting Check-in date:
+        if (!hasStart || (hasStart && hasEnd)) {
+            // First tap: Select Check-in date, reset Check-out (matching show.blade.php UX)
             state.startMonthIndex = activeCalendarMonthIndex;
             state.startDay = day;
-
-            const currentEndAbs = getAbsoluteDay(state.endMonthIndex, state.endDay);
-            if (currentEndAbs <= clickedAbs) {
-                // Automatically set Check-out to next day
-                const nextDay = getDateFromAbsoluteDay(clickedAbs + 1);
-                state.endMonthIndex = nextDay.monthIndex;
-                state.endDay = nextDay.day;
-            }
+            state.endMonthIndex = null;
+            state.endDay = null;
             dateSelectionStep = 'end';
+            updateDateLabelsAndSummary();
+            renderJalaliCalendars();
         } else {
-            // User is setting Check-out date:
+            // Second tap: Check-in is selected, now selecting Check-out
+            const startAbs = getAbsoluteDay(state.startMonthIndex, state.startDay);
             if (clickedAbs > startAbs) {
                 state.endMonthIndex = activeCalendarMonthIndex;
                 state.endDay = day;
-            } else {
-                // Clicked before or on check-in: reset check-in to this day and set check-out to +1 day
+                dateSelectionStep = 'start';
+                updateDateLabelsAndSummary();
+                renderJalaliCalendars();
+
+                // Close date step on mobile search sheet after picking check-out
+                setTimeout(() => {
+                    setMobileSearchSection('none');
+                }, 280);
+            } else if (clickedAbs < startAbs) {
+                // Clicked an earlier date: make it the new check-in date
                 state.startMonthIndex = activeCalendarMonthIndex;
                 state.startDay = day;
-                const nextDay = getDateFromAbsoluteDay(clickedAbs + 1);
-                state.endMonthIndex = nextDay.monthIndex;
-                state.endDay = nextDay.day;
+                state.endMonthIndex = null;
+                state.endDay = null;
+                dateSelectionStep = 'end';
+                updateDateLabelsAndSummary();
+                renderJalaliCalendars();
+            } else {
+                // Clicked the exact same day: keep as check-in
+                state.startMonthIndex = activeCalendarMonthIndex;
+                state.startDay = day;
+                state.endMonthIndex = null;
+                state.endDay = null;
+                dateSelectionStep = 'end';
+                updateDateLabelsAndSummary();
+                renderJalaliCalendars();
             }
-            dateSelectionStep = 'end';
         }
-
-        updateDateLabelsAndSummary();
-        renderJalaliCalendars();
     }
 
     function toggleDesktopPopup(name, event) {

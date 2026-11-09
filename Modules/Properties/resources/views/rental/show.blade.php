@@ -1,31 +1,27 @@
 @extends('layouts.web')
 
-@section('title', $property->title . ' - اجاره ویلا و اقامتگاه')
+@section('title', $property->title . ' - اجاره ویلا و اقامتگاه در لفور')
 
 @push('styles')
     <style>
         .scrollbar-hide::-webkit-scrollbar { display: none; }
         .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
 
-        /* استایل‌های اختصاصی پاپ‌آپ نقشه */
+        /* پاپ‌آپ نقشه Leaflet */
         .leaflet-popup-content-wrapper {
-            border-radius: 1rem !important; padding: 0 !important; overflow: hidden !important;
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05) !important;
-            border: 1px solid #f3f4f6 !important; background-color: #ffffff !important;
+            border-radius: 1.25rem !important; padding: 0 !important; overflow: hidden !important;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1) !important;
+            border: 1px solid #ECECEE !important; background-color: #ffffff !important;
         }
-        .dark .leaflet-popup-content-wrapper { background-color: #1f2937 !important; border-color: #374151 !important; }
-        .leaflet-popup-tip { background-color: #ffffff !important; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1) !important; }
-        .dark .leaflet-popup-tip { background-color: #1f2937 !important; }
-        .leaflet-popup-content { margin: 0 !important; width: auto !important; min-width: 240px !important; font-family: inherit !important; }
-        .leaflet-popup-close-button {
-            color: #9ca3af !important; top: 10px !important; right: 10px !important; width: 24px !important; height: 24px !important;
-            display: flex !important; align-items: center !important; justify-content: center !important;
-            background: #f3f4f6 !important; border-radius: 50% !important; text-decoration: none !important; font-size: 16px !important;
-            transition: all 0.2s ease !important; z-index: 10 !important;
-        }
-        .dark .leaflet-popup-close-button { background: #374151 !important; color: #d1d5db !important; }
-        .leaflet-container a.leaflet-popup-close-button { padding: 0 !important; }
+        .dark .leaflet-popup-content-wrapper { background-color: #18181B !important; border-color: #27272a !important; }
+        .leaflet-popup-tip { background-color: #ffffff !important; }
+        .dark .leaflet-popup-tip { background-color: #18181B !important; }
+        .leaflet-popup-content { margin: 0 !important; font-family: 'IRANYekanX', sans-serif !important; }
     </style>
+    @if(!empty($property->latitude) && !empty($property->longitude))
+        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+        <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    @endif
 @endpush
 
 @section('content')
@@ -44,14 +40,11 @@
             return $user->hasAnyRole($allowedRoles);
         };
 
-        $canViewOwner = $checkVisibility('owner_info', true);
-        $canViewNotes = $checkVisibility('confidential_notes', true);
         $canViewPrice = $checkVisibility('price_info', false);
         $canViewMapPermission = $checkVisibility('map_info', false);
         $canViewCover = $checkVisibility('cover_image', false);
         $canViewGallery = $checkVisibility('gallery_images', false);
 
-        // تنظیمات پویا کنترل نمایش اقامتگاه (Display & Privacy Settings)
         $rSettings = $rentalDisplaySettings ?? [
             'show_host_box' => \Modules\Properties\Entities\PropertySetting::get('rental_show_host_box', 'all'),
             'host_show_avatar' => (bool) \Modules\Properties\Entities\PropertySetting::get('rental_host_show_avatar', 1),
@@ -70,14 +63,12 @@
             $isConfirmedOrPrivileged = app(\Modules\Properties\Services\RentalPublicService::class)->hasConfirmedBooking($property, auth()->user());
         }
 
-        // بررسی شرط دسترسی بر مبنای 'all' | 'confirmed_booking' | 'none'
         $evalRule = function($settingVal) use ($isConfirmedOrPrivileged) {
             if ($settingVal === 'none') return false;
             if ($settingVal === 'confirmed_booking') return $isConfirmedOrPrivileged;
-            return true; // 'all'
+            return true;
         };
 
-        // فلگ‌های نمایش
         $canShowHostBox = $evalRule($rSettings['show_host_box'] ?? 'all');
         $canShowHostAvatar = !empty($rSettings['host_show_avatar']);
         $canShowHostBadge = !empty($rSettings['host_show_badge']);
@@ -88,17 +79,9 @@
         $canShowMap = $canViewMapPermission && $evalRule($rSettings['show_map'] ?? 'all');
         $canShowDirectCall = $evalRule($rSettings['show_direct_call_btn'] ?? 'all');
 
-        // نحوه نمایش نقشه: 'circle' یا 'exact'
         $mapDisplaySetting = $rSettings['map_display_type'] ?? 'circle_then_exact';
         $circleRadius = max(50, (int) ($rSettings['map_circle_radius'] ?? 300));
-        if ($mapDisplaySetting === 'exact') {
-            $isMapExact = true;
-        } elseif ($mapDisplaySetting === 'circle') {
-            $isMapExact = false;
-        } else {
-            // 'circle_then_exact': اگر رزرو تایید شده باشد دقیق، در غیر این صورت محدوده
-            $isMapExact = $isConfirmedOrPrivileged;
-        }
+        $isMapExact = ($mapDisplaySetting === 'exact') ? true : (($mapDisplaySetting === 'circle') ? false : $isConfirmedOrPrivileged);
 
         $displayAgent = $property->agent ?? $property->creator;
         $host = $property->host;
@@ -107,1116 +90,1201 @@
         $currencyLabel = $currencyLabel ?? ($currency === 'toman' ? 'تومان' : 'ریال');
         $images = $property->images;
 
-        $mapService = \Modules\Properties\Entities\PropertySetting::get('map_service', 'leaflet');
-        $mapIrApiKey = \Modules\Properties\Entities\PropertySetting::get('map_ir_api_key', '');
-        $showBookmarkButton = (bool) \Modules\Properties\Entities\PropertySetting::get('show_bookmark_button', 1);
-
-        // فرمت استاندارد ساعت ورود و خروج بدون ثانیه (HH:mm)
         $formatTimeOnly = function($time, $default = '14:00') {
             if (empty($time)) return $default;
-            if (preg_match('/^(\d{1,2}:\d{2})/', trim($time), $m)) {
-                return $m[1];
-            }
+            if (preg_match('/^(\d{1,2}:\d{2})/', trim($time), $m)) return $m[1];
             return $time;
         };
-        $checkInTimeFormatted = $formatTimeOnly($config?->check_in_time, '14:00');
-        $checkOutTimeFormatted = $formatTimeOnly($config?->check_out_time, '12:00');
+        $checkInTimeFormatted = !empty($config?->check_in_time) ? $formatTimeOnly($config->check_in_time) : null;
+        $checkOutTimeFormatted = !empty($config?->check_out_time) ? $formatTimeOnly($config->check_out_time) : null;
 
-        // استخراج و هماهنگ‌سازی امکانات رفاهی و تفریحی (Features)
-        $features = $property->attributeValues->filter(function($attr) {
-            return $attr->attribute && $attr->attribute->section === 'features' && ($attr->value == '1' || $attr->value === true);
-        });
-
-        $rawCustomFeatures = isset($property->meta['features']) && is_array($property->meta['features']) ? $property->meta['features'] : [];
-        $customFeatures = [];
-        foreach($rawCustomFeatures as $cItem) {
-            if (is_array($cItem)) {
-                $val = $cItem['value'] ?? $cItem['name'] ?? reset($cItem);
+        // محاسبات قیمت پایه و تخفیف روزانه
+        $baseNightPrice = (float) ($config?->price_per_night ?: ($property->rent_price ?: ($property->price ?: 0)));
+        $hasDiscount = !empty($config?->has_discount) && (float)($config?->discount_value ?? 0) > 0;
+        $discountAmount = $hasDiscount ? $config->calculateDiscountAmount($baseNightPrice) : 0;
+        $payablePrice = max(0, $baseNightPrice - $discountAmount);
+        $discountBadge = null;
+        if ($hasDiscount) {
+            if ($config->discount_type === 'percent') {
+                $discountBadge = ((int) $config->discount_value) . '٪ تخفیف لحظه آخری';
             } else {
-                $val = $cItem;
-            }
-            if (!empty($val) && is_string($val)) {
-                $customFeatures[] = trim($val);
+                $discountBadge = number_format($config->discount_value) . ' ' . $currencyLabel . ' تخفیف';
             }
         }
+        $isInstant = !empty($config?->instant_booking);
 
-        // استخراج و ساختاردهی اطلاعات تکمیلی و مشخصات فنی (Details & Specs)
-        $detailSpecs = collect();
+        $features = $property->attributeValues ? $property->attributeValues->filter(function($attr) {
+            return $attr->attribute && $attr->attribute->section === 'features' && ($attr->value == '1' || $attr->value === true);
+        }) : collect();
 
-        if ($property->property_type) {
-            $detailSpecs->push([
-                'name' => 'نوع اقامتگاه',
-                'value' => $property->property_type_label ?? $property->property_type
-            ]);
-        }
-
-        if ($property->category) {
-            $detailSpecs->push(['name' => 'دسته‌بندی', 'value' => $property->category->name]);
-        }
-
-        if ($property->usage_type) {
-            $detailSpecs->push([
-                'name' => 'کاربری',
-                'value' => match($property->usage_type) {
-                    'residential' => 'مسکونی',
-                    'industrial' => 'صنعتی',
-                    'commercial' => 'تجاری',
-                    'agricultural' => 'کشاورزی / زراعی',
-                    'garden' => 'باغ',
-                    'outsideTheTissue' => 'خارج از بافت',
-                    default => $property->usage_type
-                }
-            ]);
-        }
-
-        if ($property->document_type) {
-            $detailSpecs->push([
-                'name' => 'نوع سند / مدرک',
-                'value' => \Modules\Properties\Entities\Property::DOCUMENT_TYPES[$property->document_type] ?? $property->document_type
-            ]);
-        }
-
-        // فیلدهای بخش اطلاعات تکمیلی در سیستم (section !== 'features')
-        $detailsAttributes = $property->attributeValues->filter(function($attr) {
-            if (!$attr->attribute) return false;
-            if ($attr->attribute->section === 'features') return false;
-            return $attr->value !== null && $attr->value !== '';
-        });
-
-        foreach ($detailsAttributes as $detail) {
-            $val = $detail->value;
-            if ($detail->attribute->type === 'checkbox') {
-                $val = ($val == '1' || $val === true) ? 'دارد' : 'ندارد';
-            }
-            $detailSpecs->push([
-                'name' => $detail->attribute->name,
-                'value' => $val
-            ]);
-        }
-
-        // ویژگی‌های سفارشی بخش اطلاعات تکمیلی (meta['details'])
-        if (isset($property->meta['details']) && is_array($property->meta['details'])) {
-            foreach ($property->meta['details'] as $key => $value) {
-                if (is_array($value)) {
-                    $name = $value['key'] ?? $value['name'] ?? (is_string($key) ? $key : null);
-                    $val = $value['value'] ?? null;
-                    if ($name && $val !== null && $val !== '') {
-                        $detailSpecs->push(['name' => $name, 'value' => $val]);
-                    }
-                } elseif ($value !== null && $value !== '') {
-                    $detailSpecs->push(['name' => $key, 'value' => $value]);
+        // استخراج و تفکیک مشخصات واقعی اقامتگاه از مقادیر ویژگی‌ها بدون دیتای فیک
+        $attrMap = [];
+        if ($property->relationLoaded('attributeValues') || $property->attributeValues) {
+            foreach ($property->attributeValues as $av) {
+                if ($av->attribute) {
+                    $attrMap[trim($av->attribute->name)] = $av->value;
                 }
             }
         }
+        $bedroomsCount = $property->bedrooms ?: (!empty($attrMap['تعداد اتاق خواب']) ? (int)$attrMap['تعداد اتاق خواب'] : null);
+        $doubleBeds = !empty($attrMap['تعداد تخت دو نفره']) ? (int)$attrMap['تعداد تخت دو نفره'] : null;
+        $singleBeds = !empty($attrMap['تعداد تخت یک نفره']) ? (int)$attrMap['تعداد تخت یک نفره'] : null;
+        $bathroomsCount = $property->bathrooms ?: (!empty($attrMap['تعداد حمام']) ? (int)$attrMap['تعداد حمام'] : (!empty($attrMap['تعداد سرویس بهداشتی']) ? (int)$attrMap['تعداد سرویس بهداشتی'] : null));
+        $areaValue = $property->area_formatted ?? ($property->area ? $property->area . ' متر' : (!empty($attrMap['متراژ اقامتگاه (زیربنا)']) ? $attrMap['متراژ اقامتگاه (زیربنا)'] . ' متر' : (!empty($attrMap['متراژ']) ? $attrMap['متراژ'] . ' متر' : null)));
 
-        $detailSpecs = $detailSpecs->unique('name');
+        // استخراج و تفکیک دقیق قوانین اقامتگاه
+        $allHouseRules = $config?->house_rules ?? [];
+        $ruleKeys = is_array($allHouseRules) ? $allHouseRules : [];
+        $smokingAllowed = !in_array('no_smoking', $ruleKeys);
+        $petsAllowed = !in_array('no_pets', $ruleKeys);
+        $partiesAllowed = !in_array('no_party', $ruleKeys);
+        $idRequired = in_array('national_card_required', $ruleKeys);
+        $quietHours = in_array('quiet_hours', $ruleKeys);
+        $coupleRules = in_array('couple_rules', $ruleKeys);
 
-        // قوانین اقامتگاه
-        $houseRules = $config ? ($config->house_rules ?? []) : [];
-        $customRules = $houseRules['custom_rules'] ?? [];
-        // مشخصات کلاینت لاگین‌شده در صورت وجود
+        $customRules = [];
+        $defaultRuleKeys = ['no_smoking', 'no_pets', 'no_party', 'national_card_required', 'quiet_hours', 'couple_rules'];
+        foreach ($ruleKeys as $r) {
+            if (!in_array($r, $defaultRuleKeys) && is_string($r) && trim($r) !== '') {
+                $customRules[] = trim($r);
+            }
+        }
+
         $currentClient = auth('client')->user();
-        $clientPayload = $currentClient ? [
-            'is_logged_in' => true,
-            'name' => $currentClient->name ?? '',
+        $clientPayload = [
+            'is_logged_in' => (bool)$currentClient,
+            'name' => $currentClient->full_name ?? ($currentClient->name ?? ''),
             'phone' => $currentClient->phone ?? '',
             'national_code' => $currentClient->national_code ?? '',
-        ] : [
-            'is_logged_in' => false,
-            'name' => '',
-            'phone' => '',
-            'national_code' => '',
         ];
+
+        // گردآوری تصاویر برای گالری
+        $allGalleryUrls = [];
+        if (!empty($property->cover_image)) {
+            $allGalleryUrls[] = str_starts_with($property->cover_image, 'http')
+                ? $property->cover_image
+                : asset('storage/' . $property->cover_image);
+        }
+        if ($images && $images->count() > 0) {
+            foreach($images as $img) {
+                $imgPath = $img->path ?? $img->image_path;
+                if ($imgPath) {
+                    $allGalleryUrls[] = str_starts_with($imgPath, 'http') ? $imgPath : asset('storage/' . $imgPath);
+                }
+            }
+        }
+        if (empty($allGalleryUrls)) {
+            if (!empty($property->primary_image_url) && !str_contains($property->primary_image_url, 'placeholder')) {
+                $allGalleryUrls[] = $property->primary_image_url;
+            } else {
+                $allGalleryUrls[] = asset('images/property-placeholder.svg');
+            }
+        }
+
+        $checkoutUrlBase = route('properties.checkout', $property->slug ?: $property->code);
+        $similarList = $similarProperties ?? collect([]);
     @endphp
 
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-10 w-full font-sans" 
-         x-data="rentalBookingApp(@js($calendarData['flatDates'] ?? []), @js($config), '{{ $currencyLabel }}', '{{ addslashes($property->title) }}', '{{ $property->code }}', @js($clientPayload), '{{ route('properties.book', $property->slug ?: $property->code) }}')">
+    <div class="max-w-[1360px] mx-auto px-4 sm:px-8 py-5 w-full font-sans pb-28 lg:pb-12" 
+         x-data="rentalBookingApp(@js($calendarData['flatDates'] ?? []), @js($config), '{{ $currencyLabel }}', '{{ addslashes($property->title) }}', '{{ $property->code }}', @js($clientPayload), '{{ $checkoutUrlBase }}', {{ $hasDiscount ? 'true' : 'false' }}, '{{ $config?->discount_type ?? 'percent' }}', {{ (float)($config?->discount_value ?? 0) }})">
 
-        {{-- نوار ناوبری و عنوان --}}
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
-            <div class="flex items-center gap-2 text-xs sm:text-sm font-bold text-gray-500 dark:text-gray-400">
-                <a href="{{ route('properties.index') }}" class="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">املاک</a>
-                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
-                <span class="text-indigo-600 dark:text-indigo-400 font-bold">اقامتگاه‌های روزانه</span>
-                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
-                <span class="text-gray-900 dark:text-white line-clamp-1 font-bold">{{ $property->title }}</span>
+        {{-- ۱. بخش گالری و تصاویر شاخص (در موبایل تمام‌عرض با اسلایدر، در دسکتاپ موزاییکی شکیل) --}}
+        <div class="relative -mx-4 sm:mx-0 mb-6 sm:rounded-3xl overflow-hidden bg-gray-100 dark:bg-zinc-900 border-b sm:border border-gray-200/80 dark:border-zinc-800 shadow-sm"
+             x-data="{ activeIndex: 0, total: {{ count($allGalleryUrls) }} }">
+            
+            {{-- نمایش موبایل (اسلایدر سوایپ با شمارنده عکس) --}}
+            <div class="block sm:hidden relative aspect-[16/11] w-full overflow-hidden"
+                 x-data="{ touchStartX: 0, touchEndX: 0 }"
+                 @touchstart.passive="touchStartX = $event.changedTouches[0].screenX"
+                 @touchend.passive="touchEndX = $event.changedTouches[0].screenX; 
+                    if (touchStartX - touchEndX > 40) { 
+                        activeIndex = (activeIndex < total - 1 ? activeIndex + 1 : 0); 
+                    } else if (touchEndX - touchStartX > 40) { 
+                        activeIndex = (activeIndex > 0 ? activeIndex - 1 : total - 1); 
+                    }">
+                <template x-for="(img, idx) in @js($allGalleryUrls)" :key="idx">
+                    <img :src="img" 
+                         x-show="activeIndex === idx" 
+                         @click="openLightbox(idx)" 
+                         alt="{{ $property->title }}" 
+                         class="w-full h-full object-cover select-none cursor-pointer transition-opacity duration-300">
+                </template>
+
+                {{-- دکمه‌های ناوبری موبایل روی تصویر --}}
+                <div class="absolute inset-x-3 top-3 flex items-center justify-between z-10">
+                    <a href="{{ route('properties.index') }}" class="w-9 h-9 rounded-full bg-black/40 backdrop-blur-md text-white flex items-center justify-center text-sm shadow">
+                        <svg class="w-5 h-5 rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                    </a>
+                    <button type="button" onclick="shareProperty()" class="w-9 h-9 rounded-full bg-black/40 backdrop-blur-md text-white flex items-center justify-center text-sm shadow">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/></svg>
+                    </button>
+                </div>
+
+                {{-- شماره تصویر در پایین عکس موبایل --}}
+                <div class="absolute bottom-3 left-3 px-3 py-1 rounded-full bg-black/60 backdrop-blur-md text-white text-xs font-bold font-sans flex items-center gap-1.5 z-10">
+                    <svg class="w-3.5 h-3.5 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                    <span x-text="formatNumber(activeIndex + 1) + ' / ' + formatNumber(total)"></span>
+                </div>
+
+                {{-- دکمه‌های قبلی / بعدی لمسی (فلش راست = بعدی، فلش چپ = قبلی) --}}
+                <button type="button" 
+                        @click="activeIndex = (activeIndex < total - 1 ? activeIndex + 1 : 0)" 
+                        class="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/50 hover:bg-black/70 text-white flex items-center justify-center transition shadow z-10" 
+                        title="تصویر بعدی" 
+                        aria-label="تصویر بعدی">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+                </button>
+                <button type="button" 
+                        @click="activeIndex = (activeIndex > 0 ? activeIndex - 1 : total - 1)" 
+                        class="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/50 hover:bg-black/70 text-white flex items-center justify-center transition shadow z-10" 
+                        title="تصویر قبلی" 
+                        aria-label="تصویر قبلی">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+                </button>
             </div>
 
-            <div class="flex items-center gap-2 self-start sm:self-auto">
-                <span class="px-3 py-1 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 text-xs font-bold border border-indigo-200/80 dark:border-indigo-800/50 flex items-center gap-1.5 shadow-2xs">
-                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14" /></svg>
-                    کد اقامتگاه: {{ $property->code }}
-                </span>
-                @if($config && $config->instant_booking)
-                    <span class="px-3 py-1 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 text-xs font-bold border border-amber-200 dark:border-amber-800/50 flex items-center gap-1 shadow-2xs">
-                        <svg class="w-3.5 h-3.5 text-amber-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clip-rule="evenodd"/></svg>
-                        رزرو آنی
-                    </span>
-                @endif
-            </div>
-        </div>
-
-        {{-- عنوان اصلی و لوکیشن خلاصه --}}
-        <div class="mb-6">
-            <h1 class="text-2xl sm:text-3xl font-black text-gray-900 dark:text-white leading-tight mb-2">
-                {{ $property->title }}
-            </h1>
-            @php
-                $subTitleAddress = null;
-                if ($canShowAddress) {
-                    $parts = array_filter([$property->province, $property->city, $property->address]);
-                    $subTitleAddress = !empty($parts) ? implode('، ', array_unique($parts)) : $property->address;
-                } else {
-                    $locationParts = array_filter([$property->province, $property->city]);
-                    if (!empty($locationParts)) {
-                        $subTitleAddress = implode('، ', $locationParts);
-                    } else {
-                        $subTitleAddress = 'محدوده اقامتگاه';
-                    }
-                }
-            @endphp
-            @if($subTitleAddress || $property->category)
-                <p class="text-xs sm:text-sm font-bold text-gray-500 dark:text-gray-400 flex items-center gap-1.5">
-                    @if($subTitleAddress)
-                        <svg class="w-4 h-4 text-rose-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                        </svg>
-                        <span>{{ $subTitleAddress }}</span>
-                    @endif
-                    @if($property->category)
-                        @if($subTitleAddress)
-                            <span class="inline-block w-1.5 h-1.5 rounded-full bg-gray-300 dark:bg-gray-600 mx-1"></span>
-                        @endif
-                        <span class="text-indigo-600 dark:text-indigo-400">{{ $property->category->name }}</span>
-                    @endif
-                </p>
-            @endif
-        </div>
-
-        {{-- گالری تصاویر مدرن موزاییکی (Hero Mosaic Gallery) --}}
-        <div class="mb-10">
-            @php
-                $coverUrl = ($canViewCover && $property->cover_image) ? asset('storage/' . $property->cover_image) : null;
-                $galleryItems = ($canViewGallery && $images) ? $images : collect();
-
-                if ($coverUrl) {
-                    // کاور همیشه در سمت راست قرار می‌گیرد
-                    $heroImage = $coverUrl;
-                    // تصاویر گالری در سمت چپ
-                    $sideImages = $galleryItems->take(4);
-                    // لیست کامل برای لایت‌باکس: ابتدا کاور، سپس بقیه تصاویر گالری بدون تکرار
-                    $allGalleryUrls = collect([$coverUrl])
-                        ->merge($galleryItems->map(fn($img) => asset('storage/' . $img->path)))
-                        ->unique()
-                        ->values();
-                } elseif ($galleryItems->isNotEmpty()) {
-                    // در صورت نبود کاور اختصاصی، اولین تصویر گالری به عنوان هیرو در سمت راست قرار می‌گیرد
-                    $heroImage = asset('storage/' . $galleryItems->first()->path);
-                    $sideImages = $galleryItems->slice(1, 4)->values();
-                    $allGalleryUrls = $galleryItems->map(fn($img) => asset('storage/' . $img->path))->values();
-                } else {
-                    $heroImage = null;
-                    $sideImages = collect();
-                    $allGalleryUrls = collect();
-                }
-            @endphp
-
-            @if($heroImage && $sideImages->isNotEmpty())
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-2.5 rounded-3xl overflow-hidden shadow-xl border border-gray-100 dark:border-gray-800 bg-gray-100 dark:bg-gray-900 relative group">
-                    {{-- تصویر اصلی / کاور شاخص در سمت راست (در دسکتاپ نیمی از فضا: ۲ ستون از ۴ ستون) --}}
-                    <div class="md:col-span-2 h-72 sm:h-96 md:h-[450px] relative overflow-hidden cursor-pointer" onclick="openLightbox(0)">
-                        <img src="{{ $heroImage }}" alt="{{ $property->title }}" class="w-full h-full object-cover transition-transform duration-700 hover:scale-105">
-                        <div class="absolute inset-0 bg-black/10 hover:bg-transparent transition-colors"></div>
-                    </div>
-
-                    {{-- شبکه تصاویر گالری در سمت چپ بر اساس تعداد تصاویر --}}
-                    @if($sideImages->count() === 1)
-                        {{-- تک تصویر جانبی تمام‌ارتفاع --}}
-                        <div class="hidden md:block md:col-span-2 h-[450px] relative overflow-hidden cursor-pointer" onclick="openLightbox(1)">
-                            <img src="{{ asset('storage/' . $sideImages->first()->path) }}" alt="{{ $property->title }}" class="w-full h-full object-cover transition-transform duration-700 hover:scale-105">
-                            <div class="absolute inset-0 bg-black/10 hover:bg-transparent transition-colors"></div>
-                        </div>
-                    @elseif($sideImages->count() === 2)
-                        {{-- دو تصویر جانبی عمودی روی هم --}}
-                        <div class="hidden md:grid md:col-span-2 grid-cols-1 gap-2.5 h-[450px]">
-                            @foreach($sideImages as $sIdx => $img)
-                                <div class="relative overflow-hidden cursor-pointer h-[220px]" onclick="openLightbox({{ $sIdx + 1 }})">
-                                    <img src="{{ asset('storage/' . $img->path) }}" alt="{{ $property->title }}" class="w-full h-full object-cover transition-transform duration-700 hover:scale-105">
-                                    <div class="absolute inset-0 bg-black/10 hover:bg-transparent transition-colors"></div>
-                                </div>
-                            @endforeach
-                        </div>
-                    @elseif($sideImages->count() === 3)
-                        {{-- سه تصویر: یک بزرگ + دو کوچک روی هم --}}
-                        <div class="hidden md:grid md:col-span-2 grid-cols-2 gap-2.5 h-[450px]">
-                            <div class="relative overflow-hidden cursor-pointer h-[450px]" onclick="openLightbox(1)">
-                                <img src="{{ asset('storage/' . $sideImages[0]->path) }}" alt="{{ $property->title }}" class="w-full h-full object-cover transition-transform duration-700 hover:scale-105">
-                                <div class="absolute inset-0 bg-black/10 hover:bg-transparent transition-colors"></div>
-                            </div>
-                            <div class="grid grid-cols-1 gap-2.5 h-[450px]">
-                                <div class="relative overflow-hidden cursor-pointer h-[220px]" onclick="openLightbox(2)">
-                                    <img src="{{ asset('storage/' . $sideImages[1]->path) }}" alt="{{ $property->title }}" class="w-full h-full object-cover transition-transform duration-700 hover:scale-105">
-                                    <div class="absolute inset-0 bg-black/10 hover:bg-transparent transition-colors"></div>
-                                </div>
-                                <div class="relative overflow-hidden cursor-pointer h-[220px]" onclick="openLightbox(3)">
-                                    <img src="{{ asset('storage/' . $sideImages[2]->path) }}" alt="{{ $property->title }}" class="w-full h-full object-cover transition-transform duration-700 hover:scale-105">
-                                    <div class="absolute inset-0 bg-black/10 hover:bg-transparent transition-colors"></div>
-                                </div>
-                            </div>
-                        </div>
-                    @else
-                        {{-- چهار تصویر به صورت شبکه ۲x۲ --}}
-                        <div class="hidden md:grid md:col-span-2 grid-cols-2 gap-2.5 h-[450px]">
-                            @foreach($sideImages as $sIdx => $img)
-                                <div class="relative overflow-hidden cursor-pointer h-[220px]" onclick="openLightbox({{ $sIdx + 1 }})">
-                                    <img src="{{ asset('storage/' . $img->path) }}" alt="{{ $property->title }}" class="w-full h-full object-cover transition-transform duration-700 hover:scale-105">
-                                    <div class="absolute inset-0 bg-black/10 hover:bg-transparent transition-colors"></div>
-                                </div>
-                            @endforeach
-                        </div>
-                    @endif
-
-                    {{-- دکمه مشاهده همه تصاویر --}}
-                    @if($allGalleryUrls->count() > 1)
-                        <button onclick="openLightbox(0)" 
-                                class="absolute bottom-4 left-4 sm:bottom-6 sm:left-6 px-4 py-2.5 rounded-2xl bg-white/95 dark:bg-gray-900/95 text-gray-900 dark:text-white text-xs sm:text-sm font-black shadow-lg backdrop-blur-md border border-gray-200/80 dark:border-gray-700 hover:scale-105 transition-all flex items-center gap-2">
-                            <svg class="w-4 h-4 text-indigo-600 dark:text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                            </svg>
-                            <span>مشاهده همه {{ $allGalleryUrls->count() }} تصویر</span>
-                        </button>
-                    @endif
-                </div>
-            @elseif($heroImage)
-                <div class="h-80 sm:h-96 md:h-[450px] rounded-3xl overflow-hidden shadow-xl border border-gray-100 dark:border-gray-800 relative cursor-pointer" onclick="openLightbox(0)">
-                    <img src="{{ $heroImage }}" alt="{{ $property->title }}" class="w-full h-full object-cover">
-                </div>
-            @else
-                <div class="h-64 sm:h-80 rounded-3xl bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 flex flex-col items-center justify-center text-gray-400">
-                    <svg class="w-16 h-16 opacity-40 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>
-                    <span class="text-sm font-bold">بدون تصویر</span>
-                </div>
-            @endif
-        </div>
-
-        {{-- نوار خلاصه ظرفیت و ویژگی‌های کلیدی اقامتگاه (Highlights Bar) --}}
-        <div class="bg-white dark:bg-gray-900/90 backdrop-blur-md rounded-3xl p-5 sm:p-6 shadow-sm border border-gray-200/80 dark:border-gray-800 mb-10">
-            <div class="grid grid-cols-2 sm:grid-cols-5 text-center">
-                {{-- ۱. ظرفیت پایه و حداکثر (سمت راست - بدون بوردر راست) --}}
-                <div class="flex flex-col items-center justify-center gap-1.5 py-3 sm:py-1 px-3">
-                    <div class="w-10 h-10 rounded-2xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shadow-2xs">
-                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
-                    </div>
-                    <span class="text-xs text-gray-400 font-bold">ظرفیت مهمان</span>
-                    <span class="text-sm font-black text-gray-900 dark:text-white">
-                        {{ $config ? $config->base_guests : 2 }} نفر پایه
-                        @if($config && $config->max_guests > $config->base_guests)
-                            <span class="text-[11px] text-gray-500 font-bold block">(تا {{ $config->max_guests }} نفر)</span>
-                        @endif
-                    </span>
+            {{-- نمایش دسکتاپ (موزاییک ۵ عکسی شبیه جاباما / جاجیگا) --}}
+            <div class="hidden sm:grid grid-cols-4 gap-2 p-2">
+                <div class="col-span-2 row-span-2 aspect-[4/3] rounded-2xl overflow-hidden cursor-pointer relative group" onclick="openLightbox(0)">
+                    <img src="{{ $allGalleryUrls[0] }}" 
+                         alt="{{ $property->title }}" 
+                         class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700">
+                    <div class="absolute inset-0 bg-black/5 group-hover:bg-transparent transition-colors"></div>
                 </div>
 
-                {{-- ۲. خواب --}}
-                <div class="flex flex-col items-center justify-center gap-1.5 py-3 sm:py-1 px-3 border-r border-gray-100 dark:border-gray-800">
-                    <div class="w-10 h-10 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shadow-2xs">
-                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
-                    </div>
-                    <span class="text-xs text-gray-400 font-bold">تعداد خواب</span>
-                    <span class="text-sm font-black text-gray-900 dark:text-white">
-                        @if($property->bedrooms !== null && $property->bedrooms !== '')
-                            {{ $property->bedrooms == 0 ? 'سوئیت (بدون خواب)' : $property->bedrooms . ' اتاق خواب' }}
-                        @else
-                            —
-                        @endif
-                    </span>
-                </div>
+                @for($i = 1; $i < min(5, count($allGalleryUrls)); $i++)
+                    <div class="aspect-[4/3] rounded-2xl overflow-hidden cursor-pointer relative group" onclick="openLightbox({{ $i }})">
+                        <img src="{{ $allGalleryUrls[$i] }}" 
+                             alt="{{ $property->title }} - تصویر {{ $i + 1 }}" 
+                             class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700">
+                        <div class="absolute inset-0 bg-black/5 group-hover:bg-transparent transition-colors"></div>
 
-                {{-- ۳. سرویس بهداشتی --}}
-                <div class="flex flex-col items-center justify-center gap-1.5 py-3 sm:py-1 px-3 border-t sm:border-t-0 sm:border-r border-gray-100 dark:border-gray-800">
-                    <div class="w-10 h-10 rounded-2xl bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 flex items-center justify-center shadow-2xs">
-                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 13h18M3 13a2 2 0 00-2 2v1a4 4 0 004 4h14a4 4 0 004-4v-1a2 2 0 00-2-2M3 13V7a3 3 0 013-3h1m3 0a2 2 0 012 2v7M5 21v1m14-1v1"/></svg>
-                    </div>
-                    <span class="text-xs text-gray-400 font-bold">سرویس بهداشتی</span>
-                    <span class="text-sm font-black text-gray-900 dark:text-white">
-                        @if($property->bathrooms !== null && $property->bathrooms !== '')
-                            {{ $property->bathrooms }} سرویس و حمام
-                        @else
-                            —
-                        @endif
-                    </span>
-                </div>
-
-                {{-- ۴. متراژ اقامتگاه --}}
-                <div class="flex flex-col items-center justify-center gap-1.5 py-3 sm:py-1 px-3 border-t sm:border-t-0 border-r border-gray-100 dark:border-gray-800">
-                    <div class="w-10 h-10 rounded-2xl bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 flex items-center justify-center shadow-2xs">
-                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/></svg>
-                    </div>
-                    <span class="text-xs text-gray-400 font-bold">متراژ اقامتگاه</span>
-                    <span class="text-sm font-black text-gray-900 dark:text-white">
-                        {{ $property->area_formatted ? ($property->area_formatted . ' متر مربع') : '—' }}
-                    </span>
-                </div>
-
-                {{-- ۵. حداقل مدت اقامت --}}
-                <div class="flex flex-col items-center justify-center gap-1.5 py-3 sm:py-1 px-3 col-span-2 sm:col-span-1 border-t sm:border-t-0 sm:border-r border-gray-100 dark:border-gray-800">
-                    <div class="w-10 h-10 rounded-2xl bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400 flex items-center justify-center shadow-2xs">
-                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>
-                    </div>
-                    <span class="text-xs text-gray-400 font-bold">حداقل رزرو</span>
-                    <span class="text-sm font-black text-gray-900 dark:text-white">{{ $config ? ($config->min_stay_nights ?? 1) : 1 }} شب اقامت</span>
-                </div>
-            </div>
-        </div>
-
-        {{-- چیدمان اصلی: دو ستونه (ستون محتوا + سایدبار چسبان رزرو) --}}
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-
-            {{-- ستون محتوا (Main Column) --}}
-            <div class="lg:col-span-2 space-y-8">
-
-                {{-- کارت میزبان و هویت (Host Identity Card) --}}
-                @if($canShowHostBox)
-                    <div class="bg-white dark:bg-gray-900/90 backdrop-blur-md rounded-3xl p-6 sm:p-7 shadow-sm border border-gray-200/80 dark:border-gray-800">
-                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-5">
-                            <div class="flex items-center gap-4">
-                                @if($canShowHostAvatar)
-                                    @if($host && $host->avatar)
-                                        <img src="{{ asset('storage/' . $host->avatar) }}" alt="{{ $host->display_name }}" class="w-16 h-16 rounded-2xl object-cover border-2 border-indigo-100 dark:border-indigo-900/50 shadow-sm">
-                                    @else
-                                        <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-black text-2xl shadow-md shadow-indigo-500/20">
-                                            {{ mb_substr($host ? $host->display_name : ($displayAgent->name ?? 'م'), 0, 1) }}
-                                        </div>
-                                    @endif
-                                @endif
-
-                                <div>
-                                    <div class="flex items-center gap-2 mb-1">
-                                        <h3 class="text-lg font-black text-gray-900 dark:text-white">
-                                            {{ $host ? $host->display_name : ($displayAgent->name ?? 'میزبان اقامتگاه') }}
-                                        </h3>
-                                        @if($canShowHostBadge && $host && $host->kyc_status === 'approved')
-                                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 text-[11px] font-bold border border-emerald-200/80 dark:border-emerald-800/40">
-                                                <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
-                                                میزبان تایید هویت شده
-                                            </span>
-                                        @endif
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="flex items-center gap-2.5">
-                                @if($canShowHostPhoneInBox && $hostPhone)
-                                    <a href="tel:{{ $hostPhone }}" class="px-4 py-2.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 transition text-xs font-bold flex items-center gap-2 border border-indigo-200/60 dark:border-indigo-800/50">
-                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg>
-                                        تماس با میزبان
-                                    </a>
-                                @endif
-                            </div>
-                        </div>
-
-                        @if($canShowHostAbout && $host && $host->about)
-                            <div class="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800 text-xs text-gray-600 dark:text-gray-300 leading-relaxed">
-                                {{ $host->about }}
+                        @if($i === 4 && count($allGalleryUrls) > 5)
+                            <div class="absolute inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center text-white text-xs font-black">
+                                + {{ count($allGalleryUrls) - 5 }} تصویر دیگر
                             </div>
                         @endif
                     </div>
-                @endif
-
-                {{-- توضیحات اقامتگاه و ویدئو تور --}}
-                <div class="bg-white dark:bg-gray-900/90 backdrop-blur-md rounded-3xl p-6 sm:p-7 shadow-sm border border-gray-200/80 dark:border-gray-800 space-y-5">
-                    <h2 class="text-lg font-black text-gray-900 dark:text-white flex items-center gap-2 border-b border-gray-100 dark:border-gray-800 pb-4">
-                        <span class="w-2.5 h-2.5 rounded-full bg-indigo-500"></span>
-                        درباره این اقامتگاه
-                    </h2>
-
-                    <div class="text-sm text-gray-700 dark:text-gray-300 leading-loose text-justify whitespace-pre-line font-medium">
-                        {{ $property->description ?: 'توضیحات تکمیلی برای این اقامتگاه ثبت نشده است.' }}
-                    </div>
-
-                    @if($property->video)
-                        <div class="mt-6 pt-6 border-t border-gray-100 dark:border-gray-800">
-                            <h3 class="text-sm font-black text-gray-900 dark:text-white mb-3 flex items-center gap-2">
-                                <svg class="w-4 h-4 text-red-500" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-                                تور ویدئویی اقامتگاه
-                            </h3>
-                            <div class="rounded-2xl overflow-hidden shadow-lg bg-black aspect-video">
-                                <video controls class="w-full h-full">
-                                    <source src="{{ asset('storage/' . $property->video) }}" type="video/mp4">
-                                </video>
-                            </div>
-                        </div>
-                    @endif
-                </div>
-
-                {{-- اطلاعات تکمیلی و مشخصات اقامتگاه (Supplementary Details & Specs) --}}
-                @if($detailSpecs->count() > 0)
-                    <div class="bg-white dark:bg-gray-900/90 backdrop-blur-md rounded-3xl p-6 sm:p-7 shadow-sm border border-gray-200/80 dark:border-gray-800">
-                        <h2 class="text-lg font-black text-gray-900 dark:text-white flex items-center gap-2 border-b border-gray-100 dark:border-gray-800 pb-4 mb-6">
-                            <span class="w-2.5 h-2.5 rounded-full bg-indigo-500"></span>
-                            اطلاعات تکمیلی و مشخصات اقامتگاه
-                        </h2>
-
-                        <div class="grid grid-cols-2 sm:grid-cols-3 gap-3.5">
-                            @foreach($detailSpecs as $spec)
-                                <div class="flex flex-col gap-1 p-3.5 rounded-2xl bg-gray-50/70 dark:bg-gray-800/60 border border-gray-100 dark:border-gray-700/60">
-                                    <span class="text-xs font-bold text-gray-400 dark:text-gray-400">{{ $spec['name'] }}</span>
-                                    <span class="text-sm font-black text-gray-900 dark:text-gray-100">{{ $spec['value'] }}</span>
-                                </div>
-                            @endforeach
-                        </div>
-                    </div>
-                @endif
-
-                {{-- امکانات و تجهیزات اقامتگاه (Amenities & Facilities) --}}
-                @if($features->count() > 0 || count($customFeatures) > 0)
-                    <div class="bg-white dark:bg-gray-900/90 backdrop-blur-md rounded-3xl p-6 sm:p-7 shadow-sm border border-gray-200/80 dark:border-gray-800">
-                        <h2 class="text-lg font-black text-gray-900 dark:text-white flex items-center gap-2 border-b border-gray-100 dark:border-gray-800 pb-4 mb-6">
-                            <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
-                            امکانات و تجهیزات اقامتگاه
-                        </h2>
-
-                        <div class="grid grid-cols-2 sm:grid-cols-3 gap-3.5">
-                            @foreach($features as $feature)
-                                <div class="flex items-center gap-2.5 p-3 rounded-2xl bg-gray-50/70 dark:bg-gray-800/60 border border-gray-100 dark:border-gray-700/60 text-gray-800 dark:text-gray-200">
-                                    <svg class="w-4 h-4 text-emerald-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
-                                    </svg>
-                                    <span class="text-xs font-bold">{{ $feature->attribute->name }}</span>
-                                </div>
-                            @endforeach
-
-                            @foreach($customFeatures as $customFeature)
-                                <div class="flex items-center gap-2.5 p-3 rounded-2xl bg-gray-50/70 dark:bg-gray-800/60 border border-gray-100 dark:border-gray-700/60 text-gray-800 dark:text-gray-200">
-                                    <svg class="w-4 h-4 text-emerald-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
-                                    </svg>
-                                    <span class="text-xs font-bold">{{ $customFeature }}</span>
-                                </div>
-                            @endforeach
-                        </div>
-                    </div>
-                @endif
-
-                {{-- قوانین، مقررات و ساعت تحویل و تخلیه (House Rules) --}}
-                <div class="bg-white dark:bg-gray-900/90 backdrop-blur-md rounded-3xl p-6 sm:p-7 shadow-sm border border-gray-200/80 dark:border-gray-800 space-y-6">
-                    <h2 class="text-lg font-black text-gray-900 dark:text-white flex items-center gap-2 border-b border-gray-100 dark:border-gray-800 pb-4">
-                        <span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
-                        قوانین و مقررات ورود به اقامتگاه
-                    </h2>
-
-                    {{-- ساعات ورود و خروج --}}
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div class="flex items-center gap-3.5 p-4 rounded-2xl bg-amber-50/60 dark:bg-amber-950/20 border border-amber-200/60 dark:border-amber-900/40">
-                            <span class="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-400 flex items-center justify-center shrink-0">
-                                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                            </span>
-                            <div>
-                                <span class="block text-xs font-bold text-gray-500 dark:text-gray-400">ساعت تحویل (ورود)</span>
-                                <span class="text-sm font-black text-gray-900 dark:text-white">از ساعت {{ $checkInTimeFormatted }}</span>
-                            </div>
-                        </div>
-
-                        <div class="flex items-center gap-3.5 p-4 rounded-2xl bg-indigo-50/60 dark:bg-indigo-950/20 border border-indigo-200/60 dark:border-indigo-900/40">
-                            <span class="w-10 h-10 rounded-xl bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-400 flex items-center justify-center shrink-0">
-                                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
-                            </span>
-                            <div>
-                                <span class="block text-xs font-bold text-gray-500 dark:text-gray-400">ساعت تخلیه (خروج)</span>
-                                <span class="text-sm font-black text-gray-900 dark:text-white">تا ساعت {{ $checkOutTimeFormatted }}</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    {{-- لیست قوانین شاخص --}}
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs font-bold">
-                        <div class="flex items-center gap-2 p-3 rounded-xl bg-gray-50 dark:bg-gray-800/60 text-gray-700 dark:text-gray-300">
-                            <span class="w-2 h-2 rounded-full {{ !empty($houseRules['pets_allowed']) ? 'bg-emerald-500' : 'bg-rose-500' }}"></span>
-                            <span>ورود حیوان خانگی:</span>
-                            <span class="{{ !empty($houseRules['pets_allowed']) ? 'text-emerald-600' : 'text-rose-600' }}">
-                                {{ !empty($houseRules['pets_allowed']) ? 'مجاز است' : 'ممنوع است' }}
-                            </span>
-                        </div>
-
-                        <div class="flex items-center gap-2 p-3 rounded-xl bg-gray-50 dark:bg-gray-800/60 text-gray-700 dark:text-gray-300">
-                            <span class="w-2 h-2 rounded-full {{ !empty($houseRules['smoking_allowed']) ? 'bg-emerald-500' : 'bg-rose-500' }}"></span>
-                            <span>استعمال دخانیات:</span>
-                            <span class="{{ !empty($houseRules['smoking_allowed']) ? 'text-emerald-600' : 'text-rose-600' }}">
-                                {{ !empty($houseRules['smoking_allowed']) ? 'مجاز است' : 'در فضای داخلی ممنوع است' }}
-                            </span>
-                        </div>
-
-                        <div class="flex items-center gap-2 p-3 rounded-xl bg-gray-50 dark:bg-gray-800/60 text-gray-700 dark:text-gray-300">
-                            <span class="w-2 h-2 rounded-full {{ !empty($houseRules['parties_allowed']) ? 'bg-emerald-500' : 'bg-rose-500' }}"></span>
-                            <span>برگزاری جشن و مهمانی:</span>
-                            <span class="{{ !empty($houseRules['parties_allowed']) ? 'text-emerald-600' : 'text-rose-600' }}">
-                                {{ !empty($houseRules['parties_allowed']) ? 'مجاز است' : 'ممنوع است' }}
-                            </span>
-                        </div>
-
-                        <div class="flex items-center gap-2 p-3 rounded-xl bg-gray-50 dark:bg-gray-800/60 text-gray-700 dark:text-gray-300">
-                            <span class="w-2 h-2 rounded-full bg-blue-500"></span>
-                            <span>مدارک مورد نیاز:</span>
-                            <span class="text-gray-800 dark:text-gray-200">ارائه کارت ملی هوشمند الزامی است</span>
-                        </div>
-                    </div>
-
-                    {{-- قوانین سفارشی ثبت‌شده --}}
-                    @if(!empty($customRules) && is_array($customRules))
-                        <div class="pt-3 border-t border-gray-100 dark:border-gray-800">
-                            <span class="block text-xs font-black text-gray-800 dark:text-gray-200 mb-2.5">سایر قوانین خاص میزبان:</span>
-                            <ul class="space-y-1.5 text-xs text-gray-600 dark:text-gray-400 list-disc list-inside">
-                                @foreach($customRules as $cRule)
-                                    <li>{{ $cRule }}</li>
-                                @endforeach
-                            </ul>
-                        </div>
-                    @endif
-                </div>
-
-                {{-- تقویم تعاملی دسترسی و نرخ‌های روزانه (Interactive Calendar) --}}
-                <div class="bg-white dark:bg-gray-900/90 backdrop-blur-md rounded-3xl p-5 sm:p-7 shadow-sm border border-gray-200/80 dark:border-gray-800 space-y-5">
-                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-100 dark:border-gray-800 pb-4">
-                        <div>
-                            <div class="flex items-center gap-2">
-                                <h2 class="text-base sm:text-lg font-black text-gray-900 dark:text-white flex items-center gap-2">
-                                    <span class="w-2 h-2 rounded-full bg-indigo-600"></span>
-                                    تقویم دسترسی و نرخ‌های روزانه
-                                </h2>
-                                @if($config && $config->instant_booking)
-                                    <span class="px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 text-[10px] font-black border border-amber-200/80 dark:border-amber-800/40 flex items-center gap-1 shadow-2xs">
-                                        <svg class="w-3 h-3 text-amber-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clip-rule="evenodd"/></svg>
-                                        <span>رزرو آنی فعال</span>
-                                    </span>
-                                @endif
-                            </div>
-                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">جهت انتخاب بازه اقامت، روی تاریخ ورود و سپس تاریخ خروج کلیک نمایید.</p>
-                        </div>
-
-                        {{-- راهنمای رنگ‌ها (حداقلی و هماهنگ) --}}
-                        <div class="flex flex-wrap items-center gap-2.5 sm:gap-3 text-xs text-gray-500 dark:text-gray-400">
-                            <div class="flex items-center gap-1.5">
-                                <span class="w-2 h-2 rounded-full bg-indigo-600"></span>
-                                <span>عادی</span>
-                            </div>
-                            <div class="flex items-center gap-1.5">
-                                <span class="w-2 h-2 rounded-full bg-amber-500"></span>
-                                <span>آخر هفته</span>
-                            </div>
-                            <div class="flex items-center gap-1.5">
-                                <span class="w-2 h-2 rounded-full bg-rose-500"></span>
-                                <span>پیک و تعطیلات</span>
-                            </div>
-                            <div class="flex items-center gap-1.5">
-                                <span class="w-2 h-2 rounded-full bg-gray-400 dark:bg-gray-600"></span>
-                                <span>مسدود</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    {{-- نوار وضعیت بازه انتخابی --}}
-                    <div x-cloak x-show="checkIn" 
-                         class="flex flex-wrap items-center justify-between gap-3 px-4 py-2.5 rounded-xl bg-indigo-50/90 dark:bg-indigo-950/40 border border-indigo-200/80 dark:border-indigo-800/60 text-xs transition-all">
-                        <div class="flex flex-wrap items-center gap-2 font-bold text-indigo-950 dark:text-indigo-200">
-                            <span class="w-2 h-2 rounded-full bg-indigo-600 animate-pulse"></span>
-                            <span>ورود: <strong class="text-indigo-600 dark:text-indigo-400 font-black" x-text="checkIn"></strong></span>
-                            <template x-if="checkOut">
-                                <span class="flex items-center gap-2">
-                                    <span class="text-indigo-400">←</span>
-                                    <span>خروج: <strong class="text-indigo-600 dark:text-indigo-400 font-black" x-text="checkOut"></strong></span>
-                                    <span class="px-2 py-0.5 rounded-md bg-indigo-600 text-white text-[11px] font-black mr-1" x-text="nightsCount + ' شب اقامت'"></span>
-                                </span>
-                            </template>
-                            <template x-if="!checkOut">
-                                <span class="text-[11px] text-indigo-500 dark:text-indigo-400 font-normal mr-2">«لطفاً تاریخ خروج را انتخاب نمایید»</span>
-                            </template>
-                        </div>
-                        <button type="button" 
-                                @click="clearDates()" 
-                                class="text-rose-600 dark:text-rose-400 hover:text-rose-700 dark:hover:text-rose-300 font-bold text-[11px] flex items-center gap-1 transition">
-                            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-                            <span>لغو انتخاب</span>
-                        </button>
-                    </div>
-
-                    {{-- ماه‌های تقویم --}}
-                    <div class="space-y-6">
-                        @foreach($calendarData['months'] as $m)
-                            <div class="space-y-2.5">
-                                <div class="flex items-center justify-between pb-1 border-b border-gray-100 dark:border-gray-800/60">
-                                    <h3 class="text-sm font-black text-gray-900 dark:text-white flex items-center gap-1.5">
-                                        <span>{{ $m['month_name'] }}</span>
-                                        <span class="text-gray-400 font-bold">{{ $m['year'] }}</span>
-                                    </h3>
-                                    <span class="text-[11px] text-gray-400 font-bold">مبالغ به {{ $currencyLabel }}</span>
-                                </div>
-
-                                {{-- گرید تقویم با اسکرول افقی در موبایل --}}
-                                <div class="overflow-x-auto -mx-1 px-1 scrollbar-thin">
-                                    <div class="min-w-[480px] md:min-w-full space-y-1">
-                                        {{-- سرستون روزها --}}
-                                        <div class="grid grid-cols-7 gap-1 text-center text-[11px] font-bold py-1 text-gray-400 dark:text-gray-500">
-                                            <span>ش</span>
-                                            <span>۱ش</span>
-                                            <span>۲ش</span>
-                                            <span>۳ش</span>
-                                            <span>۴ش</span>
-                                            <span class="text-amber-500">۵ش</span>
-                                            <span class="text-amber-500">ج</span>
-                                        </div>
-
-                                        {{-- روزها --}}
-                                        <div class="grid grid-cols-7 gap-1">
-                                            @for($i = 0; $i < $m['first_day_of_week']; $i++)
-                                                <div class="h-13 sm:h-14 rounded-lg bg-transparent"></div>
-                                            @endfor
-
-                                            @foreach($m['days'] as $d)
-                                                @php
-                                                    $isBlocked = $d['is_blocked'];
-                                                    $isPast = $d['is_past'];
-                                                    $priceType = $d['price_type'];
-                                                @endphp
-                                                <div @click="!{{ $isBlocked ? 'true' : 'false' }} && !{{ $isPast ? 'true' : 'false' }} ? selectCalendarDate('{{ $d['jalali_date'] }}') : null"
-                                                     class="h-13 sm:h-14 p-1 rounded-lg border transition-all flex flex-col items-center justify-center text-center relative select-none
-                                                     {{ $isBlocked 
-                                                        ? 'bg-gray-100/60 dark:bg-gray-800/25 border-gray-200/50 dark:border-gray-800/40 text-gray-400 dark:text-gray-500 cursor-not-allowed opacity-60' 
-                                                        : ($isPast 
-                                                            ? 'bg-transparent border-transparent text-gray-300 dark:text-gray-700 opacity-25 cursor-not-allowed' 
-                                                            : ($priceType === 'custom'
-                                                                ? 'bg-purple-50/50 dark:bg-purple-950/20 border-purple-200/60 dark:border-purple-900/30 text-gray-900 dark:text-white hover:border-purple-400 cursor-pointer'
-                                                                : ($priceType === 'holiday'
-                                                                    ? 'bg-rose-50/50 dark:bg-rose-950/20 border-rose-200/60 dark:border-rose-900/30 text-gray-900 dark:text-white hover:border-rose-400 cursor-pointer'
-                                                                    : ($priceType === 'weekend'
-                                                                        ? 'bg-amber-50/50 dark:bg-amber-950/20 border-amber-200/60 dark:border-amber-900/30 text-gray-900 dark:text-white hover:border-amber-400 cursor-pointer'
-                                                                        : 'bg-white dark:bg-gray-800/40 border-gray-200/70 dark:border-gray-700/40 text-gray-900 dark:text-white hover:border-indigo-400 dark:hover:border-indigo-500 cursor-pointer')))) }}"
-                                                     :class="getDayClasses('{{ $d['jalali_date'] }}')">
-
-                                                    {{-- شماره روز (وسط‌چین) --}}
-                                                    <span class="text-xs sm:text-sm font-black leading-none text-center transition-colors"
-                                                          :class="{
-                                                              'text-white': isStartDate('{{ $d['jalali_date'] }}') || isEndDate('{{ $d['jalali_date'] }}'),
-                                                              'text-indigo-950 dark:text-indigo-100': isInRange('{{ $d['jalali_date'] }}'),
-                                                              'line-through text-gray-400 dark:text-gray-600': {{ $isBlocked ? 'true' : 'false' }}
-                                                          }">
-                                                        {{ $d['day'] }}
-                                                    </span>
-
-                                                    {{-- نرخ روزانه یا برچسب (وسط‌چین) --}}
-                                                    <div class="mt-0.5 leading-none">
-                                                        <template x-if="isStartDate('{{ $d['jalali_date'] }}')">
-                                                            <span class="text-[9px] text-white/90 font-bold block">ورود</span>
-                                                        </template>
-                                                        <template x-if="isEndDate('{{ $d['jalali_date'] }}')">
-                                                            <span class="text-[9px] text-white/90 font-bold block">خروج</span>
-                                                        </template>
-
-                                                        @if($d['price'] > 0 && !$isBlocked)
-                                                            <span x-show="!isStartDate('{{ $d['jalali_date'] }}') && !isEndDate('{{ $d['jalali_date'] }}')"
-                                                                  class="text-[10px] sm:text-[11px] font-bold leading-none tracking-tight block transition-colors"
-                                                                  :class="{
-                                                                      'text-indigo-700 dark:text-indigo-300 font-black': isInRange('{{ $d['jalali_date'] }}'),
-                                                                      '{{ $priceType === 'holiday' ? 'text-rose-600 dark:text-rose-400 font-black' : ($priceType === 'weekend' ? 'text-amber-600 dark:text-amber-400 font-black' : ($priceType === 'custom' ? 'text-purple-600 dark:text-purple-400 font-black' : 'text-indigo-600 dark:text-indigo-400 font-black')) }}': !isInRange('{{ $d['jalali_date'] }}')
-                                                                  }">
-                                                                {{ number_format($d['price']) }}
-                                                            </span>
-                                                        @elseif($isBlocked)
-                                                            <span x-show="!isStartDate('{{ $d['jalali_date'] }}') && !isEndDate('{{ $d['jalali_date'] }}')"
-                                                                  class="text-[9px] text-gray-400 dark:text-gray-500 font-medium block">مسدود</span>
-                                                        @endif
-                                                    </div>
-                                                </div>
-                                            @endforeach
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        @endforeach
-                    </div>
-                </div>
-
-                {{-- موقعیت روی نقشه و آدرس دسترسی --}}
-                @php
-                    $hasAddressToShow = $canShowAddress && !empty($property->address);
-                    $hasMapToShow = $canShowMap && $property->latitude && $property->longitude;
-                @endphp
-                @if($hasMapToShow || $hasAddressToShow)
-                    <div class="bg-white dark:bg-gray-900/90 backdrop-blur-md rounded-3xl p-6 sm:p-7 shadow-sm border border-gray-200/80 dark:border-gray-800">
-                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6 pb-4 border-b border-gray-100 dark:border-gray-800">
-                            <div>
-                                <h2 class="text-lg font-black text-gray-900 dark:text-white flex items-center gap-2">
-                                    <span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
-                                    موقعیت جغرافیایی و دسترسی
-                                </h2>
-                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                    @if($isMapExact)
-                                        موقعیت دقیق اقامتگاه
-                                    @else
-                                        محدوده تقریبی اقامتگاه
-                                    @endif
-                                </p>
-                            </div>
-                            @if($hasAddressToShow)
-                                <span class="text-xs font-bold text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 px-3.5 py-1.5 rounded-xl self-start sm:self-auto">
-                                    {{ $property->address }}
-                                </span>
-                            @endif
-                        </div>
-                        @if($hasMapToShow)
-                            <div id="map" class="w-full h-[350px] rounded-2xl z-0 border border-gray-200 dark:border-gray-700 shadow-inner"></div>
-                        @elseif($property->latitude && $property->longitude && ($rSettings['show_map'] ?? 'all') === 'confirmed_booking')
-                            <div class="w-full py-8 px-4 rounded-2xl bg-gray-50 dark:bg-gray-800/50 border border-dashed border-gray-200 dark:border-gray-700 text-center text-xs text-gray-500 dark:text-gray-400 flex flex-col items-center justify-center gap-2">
-                                <svg class="w-6 h-6 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                                <span>نقشه و موقعیت مکانی پس از تأیید نهایی رزرو اقامتگاه در دسترس قرار می‌گیرد.</span>
-                            </div>
-                        @endif
-                    </div>
-                @endif
+                @endfor
             </div>
 
-            {{-- سایدبار چسبان رزرواسیون و محاسبه‌گر زنده (Sticky Booking Widget) --}}
-            <div class="space-y-6 lg:sticky top-24 h-fit">
-
-                {{-- کارت ویجت رزرو --}}
-                <div class="bg-white dark:bg-gray-900/90 backdrop-blur-md rounded-3xl p-6 sm:p-7 shadow-xl border-t-4 border-indigo-500 border-x border-b border-gray-200/80 dark:border-gray-800">
-                    
-                    {{-- هدر قیمت پایه --}}
-                    <div class="mb-5 pb-5 border-b border-gray-100 dark:border-gray-800">
-                        <div class="flex items-baseline justify-between">
-                            <div>
-                                @if($config && $config->has_discount && $config->discount_value > 0)
-                                    @php
-                                        $origBase = (float) $config->price_per_night;
-                                        $discBase = $config->getDiscountedPrice($origBase);
-                                    @endphp
-                                    <div class="flex items-center gap-2 mb-1">
-                                        <span class="text-sm text-gray-400 line-through font-sans">{{ number_format($origBase) }}</span>
-                                        <span class="px-2 py-0.5 text-[11px] font-bold rounded-lg bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 font-sans">
-                                            {{ $config->discount_type === 'percent' ? $config->discount_value . '٪ تخفیف' : 'تخفیف ویژه' }}
-                                        </span>
-                                    </div>
-                                    <div class="flex items-baseline">
-                                        <span class="text-2xl sm:text-3xl font-black text-emerald-600 dark:text-emerald-400 font-sans">
-                                            {{ number_format($discBase) }}
-                                        </span>
-                                        <span class="text-xs font-bold text-gray-500 dark:text-gray-400 mr-1.5 font-sans">{{ $currencyLabel }} / هر شب (پایه)</span>
-                                    </div>
-                                @else
-                                    <span class="text-2xl sm:text-3xl font-black text-indigo-600 dark:text-indigo-400 font-sans" x-text="formatNumber(basePrice)">
-                                        {{ number_format($config ? $config->price_per_night : 0) }}
-                                    </span>
-                                    <span class="text-xs font-bold text-gray-500 dark:text-gray-400 mr-1.5 font-sans">{{ $currencyLabel }} / هر شب (پایه)</span>
-                                @endif
-                            </div>
-                        </div>
-                    </div>
-
-                    {{-- فرم انتخاب تاریخ و مهمانان --}}
-                    <div class="space-y-4 mb-6">
-                        {{-- انتخاب تاریخ ورود و خروج --}}
-                        <div class="grid grid-cols-2 gap-2.5">
-                            <div>
-                                <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">تاریخ ورود</label>
-                                <div class="relative">
-                                    <input type="text" 
-                                           id="rental_checkin"
-                                           x-model="checkIn"
-                                           data-jdp 
-                                           data-jdp-only-date 
-                                           @input="checkIn = normalizeDate($el.value); calculateInvoice()"
-                                           @change="checkIn = normalizeDate($el.value); calculateInvoice()"
-                                           @click="if(window.jalaliDatepicker) { jalaliDatepicker.updateOptions({date: true, time: false}); jalaliDatepicker.show($el); }"
-                                           placeholder="۱۴۰۵/۰۱/۰۱" 
-                                           class="w-full rounded-xl border border-gray-200 bg-gray-50/70 dark:border-gray-700 dark:bg-gray-800 px-3 py-2 text-xs font-bold text-center text-gray-900 dark:text-white cursor-pointer focus:ring-2 focus:ring-indigo-500/20">
-                                </div>
-                            </div>
-
-                            <div>
-                                <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">تاریخ خروج</label>
-                                <div class="relative">
-                                    <input type="text" 
-                                           id="rental_checkout"
-                                           x-model="checkOut"
-                                           data-jdp 
-                                           data-jdp-only-date 
-                                           @input="checkOut = normalizeDate($el.value); calculateInvoice()"
-                                           @change="checkOut = normalizeDate($el.value); calculateInvoice()"
-                                           @click="if(window.jalaliDatepicker) { jalaliDatepicker.updateOptions({date: true, time: false}); jalaliDatepicker.show($el); }"
-                                           placeholder="۱۴۰۵/۰۱/۰۵" 
-                                           class="w-full rounded-xl border border-gray-200 bg-gray-50/70 dark:border-gray-700 dark:bg-gray-800 px-3 py-2 text-xs font-bold text-center text-gray-900 dark:text-white cursor-pointer focus:ring-2 focus:ring-indigo-500/20">
-                                </div>
-                            </div>
-                        </div>
-
-                        {{-- انتخابگر تعداد مهمانان --}}
-                        <div>
-                            <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">تعداد مهمانان</label>
-                            <div class="flex items-center justify-between p-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/70 dark:bg-gray-800">
-                                <span class="text-xs font-bold text-gray-700 dark:text-gray-200">
-                                    <span x-text="guests"></span> نفر
-                                    <span class="text-[10px] text-gray-400" x-show="guests > baseGuests">
-                                        (<span x-text="guests - baseGuests"></span> نفر اضافه)
-                                    </span>
-                                </span>
-
-                                <div class="flex items-center gap-2">
-                                    <button type="button" 
-                                            @click="decreaseGuests()" 
-                                            :disabled="guests <= 1"
-                                            class="w-7 h-7 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-600 flex items-center justify-center font-bold hover:bg-gray-100 disabled:opacity-40 transition">
-                                        -
-                                    </button>
-                                    <button type="button" 
-                                            @click="increaseGuests()" 
-                                            :disabled="guests >= maxGuests"
-                                            class="w-7 h-7 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-600 flex items-center justify-center font-bold hover:bg-gray-100 disabled:opacity-40 transition">
-                                        +
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {{-- هشدار روزهای مسدود در بازه انتخابی --}}
-                    <div x-show="hasBlockedDays" x-cloak class="p-3 mb-4 rounded-xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/40 text-xs text-red-700 dark:text-red-300 font-bold flex items-center gap-2">
-                        <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
-                        <span>برخی از شب‌های انتخابی شما مسدود یا رزرو شده‌اند. لطفاً تاریخ‌های دیگری انتخاب کنید.</span>
-                    </div>
-
-                    {{-- پیش‌فاکتور شفاف محاسباتی زنده (Live Breakdown) --}}
-                    <div x-show="nightsCount > 0 && !hasBlockedDays" x-cloak class="p-4 rounded-2xl bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/40 space-y-2.5 mb-6 text-xs">
-                        <div class="flex justify-between items-center text-gray-600 dark:text-gray-300 font-bold">
-                            <span>اقامت به مدت <span x-text="nightsCount"></span> شب:</span>
-                            <span class="font-black text-gray-900 dark:text-white" x-text="formatNumber(nightsTotal) + ' ' + currencyLabel"></span>
-                        </div>
-
-                        <div class="flex justify-between items-center text-gray-600 dark:text-gray-300 font-bold" x-show="extraGuestsFeeTotal > 0">
-                            <span>هزینه نفرات اضافه (<span x-text="guests - baseGuests"></span> نفر):</span>
-                            <span class="font-black text-gray-900 dark:text-white" x-text="formatNumber(extraGuestsFeeTotal) + ' ' + currencyLabel"></span>
-                        </div>
-
-                        <div class="flex justify-between items-center text-gray-600 dark:text-gray-300 font-bold" x-show="cleaningFee > 0">
-                            <span>هزینه خدمات و نظافت:</span>
-                            <span class="font-black text-gray-900 dark:text-white" x-text="formatNumber(cleaningFee) + ' ' + currencyLabel"></span>
-                        </div>
-
-                        <div class="border-t border-indigo-200/60 dark:border-indigo-800/60 pt-2.5 flex justify-between items-center text-sm font-black">
-                            <span class="text-indigo-900 dark:text-indigo-200">مبلغ کل قابل پرداخت:</span>
-                            <span class="text-base text-indigo-600 dark:text-indigo-400" x-text="formatNumber(grandTotal) + ' ' + currencyLabel"></span>
-                        </div>
-                    </div>
-
-                    {{-- دکمه‌های اقدام رزرو و تماس --}}
-                    <div class="space-y-3">
-                        <button type="button" 
-                                @click="openBookingModal()" 
-                                :disabled="hasBlockedDays"
-                                class="w-full py-3.5 px-4 rounded-xl {{ ($config && $config->instant_booking) ? 'bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 shadow-amber-500/30 hover:shadow-amber-500/50' : 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-600/30 hover:shadow-indigo-600/50' }} text-white font-black text-sm transition-all shadow-lg flex items-center justify-center gap-2 disabled:opacity-50">
-                            @if($config && $config->instant_booking)
-                                <svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clip-rule="evenodd"/></svg>
-                                <span>بررسی و رزرو آنی ⚡</span>
-                            @else
-                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
-                                <span>ادامه فرایند رزرو (پیش‌فاکتور)</span>
-                            @endif
-                        </button>
-
-                        @if($canShowDirectCall && $hostPhone)
-                            <a href="tel:{{ $hostPhone }}" class="w-full py-3 px-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 hover:bg-gray-100 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-800 dark:text-gray-200 font-bold text-xs transition flex items-center justify-center gap-2">
-                                <svg class="w-4 h-4 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg>
-                                <span>تماس مستقیم با میزبان ({{ $hostPhone }})</span>
-                            </a>
-                        @endif
-                    </div>
-
-                    {{-- ضمانت‌های پلتفرم --}}
-                    <div class="mt-6 pt-5 border-t border-gray-100 dark:border-gray-800 space-y-2 text-[11px] text-gray-500 dark:text-gray-400 font-medium">
-                        <div class="flex items-center gap-2">
-                            <svg class="w-4 h-4 text-emerald-500 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
-                            <span>ضمانت تطابق مشخصات و تمیزی اقامتگاه</span>
-                        </div>
-                        <div class="flex items-center gap-2">
-                            <svg class="w-4 h-4 text-emerald-500 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
-                            <span>پشتیبانی شبانه‌روزی تا انتهای سفر</span>
-                        </div>
-                    </div>
-                </div>
-
-                {{-- کارت اشتراک‌گذاری --}}
-                <div class="bg-white dark:bg-gray-900/90 backdrop-blur-md rounded-2xl p-4 shadow-sm border border-gray-200/80 dark:border-gray-800 flex items-center justify-between text-xs font-bold text-gray-600 dark:text-gray-300">
-                    <span>اشتراک‌گذاری اقامتگاه:</span>
-                    <div class="flex items-center gap-2">
-                        <a href="https://t.me/share/url?url={{ urlencode(url()->current()) }}&text={{ urlencode($property->title) }}" target="_blank" class="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-950/40 text-blue-500 flex items-center justify-center hover:bg-blue-500 hover:text-white transition">
-                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69.01-.03.01-.14-.07-.2-.08-.06-.19-.04-.27-.02-.12.02-1.96 1.24-5.54 3.65-.52.36-.99.53-1.4.52-.46-.01-1.34-.26-2-.48-.8-.27-1.44-.42-1.39-.89.03-.25.38-.51 1.07-.78 4.2-1.82 7-3.03 8.4-3.61 3.99-1.66 4.82-1.95 5.36-1.96.12 0 .38.03.55.17.14.12.18.28.2.43-.02.07-.02.15-.02.22z"/></svg>
-                        </a>
-                        <a href="https://api.whatsapp.com/send?text={{ urlencode($property->title . ' ' . url()->current()) }}" target="_blank" class="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-500 flex items-center justify-center hover:bg-emerald-500 hover:text-white transition">
-                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12.01 2.01C6.48 2.01 2 6.48 2 12.01c0 2.17.69 4.19 1.86 5.83L2.5 21.5l3.86-1.27c1.55.93 3.37 1.48 5.65 1.48 5.53 0 10-4.47 10-10s-4.47-10-10-10zm5.66 14.16c-.23.65-1.34 1.25-1.85 1.32-.47.06-.93.07-3.41-.92-3.12-1.25-5.11-4.38-5.27-4.59-.16-.21-1.3-1.72-1.3-3.29 0-1.57.82-2.34 1.11-2.65.29-.31.64-.39.85-.39.21 0 .42.01.6.01.19.01.44-.07.69.53.25.6 1.03 2.51 1.12 2.69.09.18.15.39.03.62-.12.23-.26.39-.42.56-.16.18-.34.39-.49.53-.16.16-.33.34-.14.66.19.32.85 1.4 1.82 2.27.97.87 1.79 1.14 2.11 1.27.32.13.51.11.7-.1.19-.22.82-.95 1.04-1.27.22-.32.44-.27.75-.16.31.11 1.99.98 2.33 1.15.34.17.57.25.65.39.09.14.09.81-.14 1.46z"/></svg>
-                        </a>
-                        <button onclick="copyToClipboard('{{ url()->current() }}')" class="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 flex items-center justify-center hover:bg-gray-200 transition" title="کپی لینک">
-                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/></svg>
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        {{-- نوار شناور رزرواسیون در موبایل (Mobile Floating Booking Bar) --}}
-        <div class="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-gray-900/95 backdrop-blur-md border-t border-gray-200 dark:border-gray-800 p-3.5 px-5 shadow-2xl flex items-center justify-between">
-            <div>
-                <div class="flex items-center gap-1.5">
-                    <span class="text-xs text-gray-400 block font-bold">شروع هر شب:</span>
-                    @if($config && $config->instant_booking)
-                        <span class="px-1.5 py-0.5 rounded-md bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 text-[10px] font-black flex items-center gap-0.5">
-                            <svg class="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clip-rule="evenodd"/></svg>
-                            <span>آنی</span>
-                        </span>
-                    @endif
-                </div>
-                <span class="text-lg font-black text-indigo-600 dark:text-indigo-400" x-text="formatNumber(basePrice) + ' ' + currencyLabel"></span>
-            </div>
+            {{-- دکمه مشاهده همه تصاویر دسکتاپ --}}
             <button type="button" 
-                    @click="openBookingModal()"
-                    class="px-5 py-2.5 rounded-xl {{ ($config && $config->instant_booking) ? 'bg-amber-500 hover:bg-amber-600 shadow-amber-500/30' : 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-600/30' }} text-white font-black text-xs shadow-md">
-                {{ ($config && $config->instant_booking) ? 'رزرو آنی ⚡' : 'ادامه فرایند رزرو' }}
+                    onclick="openLightbox(0)" 
+                    class="hidden sm:flex absolute bottom-5 left-5 px-4 py-2.5 rounded-2xl bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md border border-gray-200 dark:border-zinc-700 hover:bg-white dark:hover:bg-zinc-800 text-xs font-bold text-gray-900 dark:text-white transition-all shadow-md items-center gap-2">
+                <svg class="w-4 h-4 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                <span>مشاهده همه {{ count($allGalleryUrls) }} تصویر</span>
             </button>
         </div>
 
+        {{-- ساختار اصلی: محتوای جزئیات در راست، ویجت رزرو در چپ --}}
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+            
+            {{-- ستون راست: محتوا و سکشن‌های اقامتگاه به سبک نمونه ضمیمه --}}
+            <div class="lg:col-span-7 xl:col-span-8 space-y-7">
+
+                {{-- ۲. عنوان اقامتگاه، کد، موقعیت و امتیاز --}}
+                <div class="space-y-2 border-b border-gray-100 dark:border-zinc-800 pb-5">
+                    <div class="flex items-center gap-2 flex-wrap">
+                        @if($hasDiscount)
+                            <span class="px-2.5 py-0.5 rounded-lg bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-800/50 text-xs font-bold">
+                                🔥 {{ $discountBadge }}
+                            </span>
+                        @endif
+                        @if($isInstant)
+                            <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 text-xs font-bold border border-indigo-200 dark:border-indigo-800/40">
+                                ⚡ رزرو آنی
+                            </span>
+                        @endif
+                    </div>
+
+                    <h1 class="text-xl sm:text-2xl lg:text-3xl font-black text-gray-900 dark:text-white tracking-tight leading-snug">
+                        {{ $property->title }}
+                    </h1>
+
+                    <div class="flex items-center gap-2.5 text-xs text-gray-500 dark:text-gray-400 flex-wrap pt-1">
+                        @if(!empty($property->rating))
+                            <span class="inline-flex items-center gap-1 font-bold text-gray-900 dark:text-gray-200">
+                                <span class="text-amber-500 text-sm">★</span>
+                                <span>{{ number_format($property->rating, 1) }}</span>
+                                @if(!empty($property->reviews_count))
+                                    <span class="text-gray-400 font-normal">({{ $property->reviews_count }} نظر مسافران)</span>
+                                @endif
+                            </span>
+                            <span class="text-gray-300 dark:text-gray-700">•</span>
+                        @endif
+                        <span>کد اقامتگاه: <strong class="text-gray-700 dark:text-gray-300 font-sans">{{ $property->code }}</strong></span>
+                        @if(!empty($property->province) || !empty($property->city))
+                            <span class="text-gray-300 dark:text-gray-700">•</span>
+                            <span class="flex items-center gap-1 text-gray-700 dark:text-gray-300">
+                                <svg class="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/></svg>
+                                <span>{{ implode('، ', array_filter([$property->province, $property->city])) }}</span>
+                            </span>
+                        @endif
+                    </div>
+                </div>
+
+                {{-- ۳. نوار خلاصه میزبان (اطلاعات واقعی میزبان) --}}
+                @if($canShowHostBox && $host)
+                    <div class="flex items-center justify-between gap-4 py-2 border-b border-gray-100 dark:border-zinc-800 pb-5">
+                        <div class="flex items-center gap-3 min-w-0">
+                            @if($canShowHostAvatar && $host->avatar)
+                                <img src="{{ asset('storage/' . $host->avatar) }}" alt="{{ $host->display_name }}" class="w-12 h-12 rounded-full object-cover border border-gray-200 dark:border-zinc-700 shrink-0">
+                            @else
+                                <div class="w-12 h-12 rounded-full bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 font-black text-sm flex items-center justify-center shrink-0 border border-emerald-200 dark:border-emerald-800">
+                                    {{ mb_substr($host->display_name ?: 'م', 0, 1) }}
+                                </div>
+                            @endif
+                            <div class="truncate space-y-0.5">
+                                <h3 class="text-sm font-bold text-gray-900 dark:text-white truncate">
+                                    میزبان: {{ $host->display_name ?: ($host->user?->name ?: 'میزبان اقامتگاه') }}
+                                </h3>
+                                @php
+                                    $hostMeta = [];
+                                    if (!empty($host->created_at)) {
+                                        try {
+                                            $yearVal = function_exists('jdate') ? jdate($host->created_at)->format('Y') : \Morilog\Jalali\Jalalian::fromCarbon(\Carbon\Carbon::parse($host->created_at))->format('Y');
+                                            $hostMeta[] = 'عضویت از سال ' . \Morilog\Jalali\CalendarUtils::convertNumbers($yearVal);
+                                        } catch (\Throwable $e) {
+                                            $hostMeta[] = 'عضویت از سال ' . date('Y', strtotime($host->created_at));
+                                        }
+                                    }
+                                    if (!empty($host->response_rate)) {
+                                        $hostMeta[] = 'نرخ پاسخگویی ' . $host->response_rate . '٪';
+                                    }
+                                    if (!empty($host->is_superhost)) {
+                                        $hostMeta[] = 'میزبان برگزیده';
+                                    }
+                                @endphp
+                                @if(!empty($hostMeta))
+                                    <p class="text-xs text-gray-400 dark:text-gray-500 truncate">
+                                        {{ implode(' • ', $hostMeta) }}
+                                    </p>
+                                @endif
+                            </div>
+                        </div>
+
+                        @if($canShowDirectCall && $hostPhone)
+                            <a href="tel:{{ $hostPhone }}" class="px-3.5 py-2 rounded-xl bg-gray-50 dark:bg-zinc-800 hover:bg-gray-100 dark:hover:bg-zinc-700 text-xs font-bold text-gray-800 dark:text-gray-200 transition shrink-0 border border-gray-200 dark:border-zinc-700">
+                                تماس مستقیم
+                            </a>
+                        @endif
+                    </div>
+                @endif
+
+                {{-- ۴. مشخصه‌های اصلی اقامتگاه (تنها کارت‌های دارای دیتای واقعی نمایش داده می‌شوند) --}}
+                @php
+                    $mainSpecs = [];
+                    if (!empty($config?->base_guests) || !empty($config?->max_guests) || !empty($property->max_guests)) {
+                        $maxCapacity = $config?->max_guests ?? $property->max_guests ?? $config?->base_guests ?? 1;
+                        $capText = "تا " . $maxCapacity . " نفر";
+                        $mainSpecs[] = [
+                            'label' => 'ظرفیت',
+                            'value' => $capText,
+                            'iconBg' => 'bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400',
+                            'svg' => '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />'
+                        ];
+                    }
+                    if (!empty($bedroomsCount) && $bedroomsCount > 0) {
+                        $mainSpecs[] = [
+                            'label' => 'تعداد اتاق',
+                            'value' => "{$bedroomsCount} اتاق خواب",
+                            'iconBg' => 'bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400',
+                            'svg' => '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />'
+                        ];
+                    }
+                    if (!empty($property->property_type_name) || !empty($property->propertyType?->name)) {
+                        $mainSpecs[] = [
+                            'label' => 'نوع اقامتگاه',
+                            'value' => $property->property_type_name ?? $property->propertyType?->name,
+                            'iconBg' => 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400',
+                            'svg' => '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />'
+                        ];
+                    }
+                    if (!empty($areaValue)) {
+                        $mainSpecs[] = [
+                            'label' => 'متراژ زیربنا',
+                            'value' => $areaValue,
+                            'iconBg' => 'bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400',
+                            'svg' => '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />'
+                        ];
+                    }
+                @endphp
+
+                @if(!empty($mainSpecs))
+                    <div class="grid grid-cols-2 sm:grid-cols-{{ min(count($mainSpecs), 4) }} gap-2.5 py-1">
+                        @foreach($mainSpecs as $spec)
+                            <div class="p-3.5 rounded-2xl bg-gray-50/70 dark:bg-zinc-900/60 border border-gray-200/60 dark:border-zinc-800/60 text-center space-y-1">
+                                <div class="w-7 h-7 mx-auto rounded-xl {{ $spec['iconBg'] }} flex items-center justify-center">
+                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">{!! $spec['svg'] !!}</svg>
+                                </div>
+                                <span class="text-[11px] text-gray-400 block font-medium">{{ $spec['label'] }}</span>
+                                <strong class="text-xs sm:text-sm font-black text-gray-900 dark:text-white block">{{ $spec['value'] }}</strong>
+                            </div>
+                        @endforeach
+                    </div>
+                @endif
+
+                {{-- ۵. بنر رزرو آنی با رنگ بنفش/ایندیگو جذاب (دقیقاً مثل نمونه ضمیمه) --}}
+                @if($isInstant)
+                    <div class="p-4 rounded-2xl bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-indigo-500/5 dark:from-indigo-950/40 dark:via-purple-950/40 dark:to-zinc-900 border border-indigo-200/70 dark:border-indigo-800/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shrink-0 shadow-sm shadow-indigo-600/30">
+                                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                            </div>
+                            <div>
+                                <h4 class="text-xs sm:text-sm font-black text-indigo-950 dark:text-indigo-200">
+                                    رزرو آنی و قطعی
+                                </h4>
+                                <p class="text-[11px] text-indigo-800/80 dark:text-indigo-300/80 mt-0.5">
+                                    با انتخاب تاریخ در تقویم، اقامت شما بلافاصله در سامانه ثبت و قطعی خواهد شد.
+                                </p>
+                            </div>
+                        </div>
+
+                        <button type="button" 
+                                @click="document.getElementById('calendar-section')?.scrollIntoView({ behavior: 'smooth' })"
+                                class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition shadow-sm shrink-0 self-start sm:self-center">
+                            انتخاب تاریخ و رزرو
+                        </button>
+                    </div>
+                @endif
+
+                {{-- ۶. مشخصات کلی اقامتگاه (کاملاً داینامیک و بر اساس ساختار نمونه ضمیمه) --}}
+                @php
+                    $generalSpecs = [];
+                    if (!empty($property->property_type_name) || !empty($areaValue)) {
+                        $parts = [];
+                        if (!empty($areaValue)) $parts[] = $areaValue . ' زیربنا';
+                        if (!empty($property->property_type_name)) $parts[] = $property->property_type_name;
+                        if (!empty($property->city)) $parts[] = 'محدوده ' . $property->city;
+                        $typeName = !empty($property->property_type_name) ? $property->property_type_name : 'اقامتگاه';
+                        $generalSpecs[] = [
+                            'svg' => '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>',
+                            'title' => 'درباره ' . $typeName,
+                            'desc' => implode(' • ', $parts)
+                        ];
+                    }
+                    if (!empty($config?->base_guests) || !empty($config?->max_guests)) {
+                        $baseGuests = (int) ($config->base_guests ?? $property->base_guests ?? 1);
+                        $maxGuests = (int) ($config->max_guests ?? $property->max_guests ?? $baseGuests);
+                        $extraGuests = max(0, $maxGuests - $baseGuests);
+                        $guestDesc = "{$baseGuests} نفر استاندارد + {$extraGuests} نفر اضافه";
+                        $generalSpecs[] = [
+                            'svg' => '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>',
+                            'title' => 'ظرفیت',
+                            'desc' => $guestDesc
+                        ];
+                    }
+                    if (!empty($bedroomsCount) || !empty($doubleBeds) || !empty($singleBeds)) {
+                        $roomDesc = [];
+                        if (!empty($bedroomsCount)) $roomDesc[] = "دارای {$bedroomsCount} اتاق خواب";
+                        if (!empty($doubleBeds)) $roomDesc[] = "{$doubleBeds} تخت دو نفره";
+                        if (!empty($singleBeds)) $roomDesc[] = "{$singleBeds} تخت یک نفره";
+                        $generalSpecs[] = [
+                            'svg' => '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M3 7v11m0-4h18m0-7v11M3 10a2 2 0 012-2h4a2 2 0 012 2v4H3v-4zm14 0a2 2 0 012-2h0a2 2 0 012 2v4h-4v-4z"/>',
+                            'title' => 'سرویس‌های خواب',
+                            'desc' => implode(' • ', $roomDesc)
+                        ];
+                    }
+                    if (!empty($bathroomsCount)) {
+                        $generalSpecs[] = [
+                            'svg' => '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1M4 12h16M7 12V8a5 5 0 0110 0v4"/>',
+                            'title' => 'سرویس‌های بهداشتی',
+                            'desc' => "{$bathroomsCount} سرویس بهداشتی و حمام"
+                        ];
+                    }
+                    if (!empty($checkInTimeFormatted) || !empty($checkOutTimeFormatted)) {
+                        $timeDesc = [];
+                        if (!empty($checkInTimeFormatted)) {
+                            $timeDesc[] = 'تحویل اقامتگاه از ساعت ' . $checkInTimeFormatted;
+                        }
+                        if (!empty($checkOutTimeFormatted)) {
+                            $timeDesc[] = 'تخلیه اقامتگاه تا ساعت ' . $checkOutTimeFormatted;
+                        }
+                        $generalSpecs[] = [
+                            'svg' => '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>',
+                            'title' => 'ساعت ورود و خروج',
+                            'desc' => implode(' • ', $timeDesc)
+                        ];
+                    }
+                @endphp
+
+                @if(!empty($generalSpecs))
+                    <div class="space-y-4 pt-4 border-t border-gray-100 dark:border-zinc-800">
+                        <h3 class="text-base sm:text-lg font-black text-gray-900 dark:text-white">
+                            مشخصات کلی اقامتگاه
+                        </h3>
+
+                        <div class="space-y-4.5">
+                            @foreach($generalSpecs as $gSpec)
+                                <div class="flex items-start gap-3.5">
+                                    <div class="w-6 h-6 text-gray-800 dark:text-zinc-200 shrink-0 mt-0.5 select-none">
+                                        <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">{!! $gSpec['svg'] !!}</svg>
+                                    </div>
+                                    <div class="space-y-0.5">
+                                        <h4 class="text-sm sm:text-base font-bold text-gray-900 dark:text-white font-sans">{{ $gSpec['title'] }}</h4>
+                                        <p class="text-xs sm:text-sm text-gray-500 dark:text-gray-400 font-sans leading-relaxed">{{ $gSpec['desc'] }}</p>
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
+                @endif
+
+
+                {{-- ۸. درباره این اقامتگاه (تنها در صورت وجود توضیحات ثبت شده نمایش داده می‌شود) --}}
+                @if(!empty(trim($property->description ?? '')))
+                    <div class="space-y-3 pt-4 border-t border-gray-100 dark:border-zinc-800" x-data="{ expanded: false }">
+                        <h3 class="text-base sm:text-lg font-black text-gray-900 dark:text-white">
+                            درباره این اقامتگاه
+                        </h3>
+                        <div class="text-xs sm:text-sm leading-relaxed text-gray-600 dark:text-gray-300 relative transition-all"
+                             :class="expanded ? '' : 'line-clamp-4'">
+                            {!! nl2br(e($property->description)) !!}
+                        </div>
+                        @if(mb_strlen($property->description) > 200)
+                            <button type="button" 
+                                    @click="expanded = !expanded" 
+                                    class="text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:underline inline-flex items-center gap-1 pt-1">
+                                <span x-text="expanded ? '− بستن توضیحات' : '+ مشاهده توضیحات کامل'"></span>
+                            </button>
+                        @endif
+                    </div>
+                @endif
+
+                {{-- ۹. امکانات رفاهی و اقامتی (تنها در صورت ثبت امکانات برای اقامتگاه نمایش داده می‌شود) --}}
+                @if($features->isNotEmpty())
+                    <div class="space-y-4 pt-4 border-t border-gray-100 dark:border-zinc-800" x-data="{ showAmenitiesModal: false }">
+                        <div class="flex items-center justify-between">
+                            <h3 class="text-base sm:text-lg font-black text-gray-900 dark:text-white">
+                                امکانات اقامتگاه
+                            </h3>
+                        </div>
+
+                        <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                            @foreach($features->take(9) as $feat)
+                                <div class="flex items-center gap-2.5 p-3 rounded-2xl bg-gray-50/70 dark:bg-zinc-900/60 border border-gray-200/60 dark:border-zinc-800/60 text-xs font-bold text-gray-800 dark:text-gray-200">
+                                    <span class="text-base select-none">{{ $feat->attribute->icon ?: '✨' }}</span>
+                                    <span class="truncate">{{ $feat->attribute->name }}</span>
+                                </div>
+                            @endforeach
+                        </div>
+
+                        @if($features->count() > 9)
+                            <div class="pt-2">
+                                <button type="button" 
+                                        @click="showAmenitiesModal = true" 
+                                        class="w-full py-3 rounded-2xl border border-gray-200 dark:border-zinc-800 hover:bg-gray-50 dark:hover:bg-zinc-800 text-xs font-bold text-gray-900 dark:text-white transition shadow-2xs">
+                                    مشاهده همه امکانات اقامتگاه ({{ $features->count() }} مورد)
+                                </button>
+                            </div>
+                        @endif
+
+                        {{-- مودال همه امکانات --}}
+                        <div x-show="showAmenitiesModal" 
+                             x-transition 
+                             class="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+                            <div @click.away="showAmenitiesModal = false" 
+                                 class="w-full max-w-lg bg-white dark:bg-zinc-900 rounded-3xl p-6 shadow-2xl border border-gray-200 dark:border-zinc-800 max-h-[85vh] overflow-y-auto space-y-4">
+                                <div class="flex items-center justify-between border-b border-gray-100 dark:border-zinc-800 pb-3">
+                                    <h4 class="text-base font-black text-gray-900 dark:text-white">امکانات کامل اقامتگاه ({{ $features->count() }} مورد)</h4>
+                                    <button type="button" @click="showAmenitiesModal = false" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-xl font-bold">✕</button>
+                                </div>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-2">
+                                    @foreach($features as $feat)
+                                        <div class="flex items-center gap-2.5 p-3 rounded-xl bg-gray-50 dark:bg-zinc-800 text-xs font-bold text-gray-800 dark:text-gray-200">
+                                            <span class="text-base select-none">{{ $feat->attribute->icon ?: '✨' }}</span>
+                                            <span>{{ $feat->attribute->name }}</span>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                @endif
+
+                {{-- ۱۰. تقویم رزرو و قیمت‌ها (شبیه نمونه ضمیمه‌شده) --}}
+                <div id="calendar-section" class="p-5 sm:p-7 rounded-3xl bg-white dark:bg-zinc-900 border border-gray-200/80 dark:border-zinc-800 shadow-sm space-y-6">
+                    <div class="flex items-center justify-between border-b border-gray-100 dark:border-zinc-800 pb-4">
+                        <div>
+                            <h3 class="text-base sm:text-xl font-black text-gray-900 dark:text-white">
+                                تقویم رزرو و قیمت‌ها
+                            </h3>
+                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                تاریخ ورود و خروج خود را با لمس روزها انتخاب نمایید.
+                            </p>
+                        </div>
+                        <button type="button" 
+                                @click="clearDates()" 
+                                class="text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 transition">
+                            پاک کردن تاریخ‌ها
+                        </button>
+                    </div>
+
+                    @if(isset($calendarData['months']) && count($calendarData['months']) > 0)
+                        {{-- الف) نسخه موبایل: نمایش تک‌ماه با سوئیچر ورق زدن ماه (دقیقاً مشابه نمونه تصویر ارسالی) --}}
+                        <div class="block md:hidden">
+                            {{-- نوار ناوبری ماه در موبایل --}}
+                            <div class="flex items-center justify-between mb-5">
+                                {{-- دکمه ماه قبل (سمت راست در RTL) --}}
+                                <button type="button" 
+                                        @click="prevMonthMobile()" 
+                                        :disabled="mobileMonthIndex <= 0"
+                                        :class="mobileMonthIndex <= 0 ? 'opacity-25 cursor-not-allowed' : 'hover:bg-gray-100 dark:hover:bg-zinc-800 text-gray-800 dark:text-gray-200'"
+                                        class="w-10 h-10 rounded-full flex items-center justify-center border border-gray-200 dark:border-zinc-700 transition font-bold"
+                                        title="ماه قبل">
+                                    <svg class="w-5 h-5 rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7" /></svg>
+                                </button>
+
+                                {{-- کپسول عنوان ماه --}}
+                                @foreach($calendarData['months'] as $mIdx => $m)
+                                    <div x-show="mobileMonthIndex === {{ $mIdx }}" 
+                                         class="px-7 py-2 rounded-full bg-gray-100 dark:bg-zinc-800 text-sm font-black text-gray-900 dark:text-white font-sans shadow-2xs">
+                                        {{ $m['month_title'] ?? (($m['month_name'] ?? '') . ' ' . ($m['year'] ?? '')) }}
+                                    </div>
+                                @endforeach
+
+                                {{-- دکمه ماه بعد (سمت چپ در RTL) --}}
+                                <button type="button" 
+                                        @click="nextMonthMobile()" 
+                                        :disabled="mobileMonthIndex >= {{ count($calendarData['months']) - 1 }}"
+                                        :class="mobileMonthIndex >= {{ count($calendarData['months']) - 1 }} ? 'opacity-25 cursor-not-allowed' : 'hover:bg-gray-100 dark:hover:bg-zinc-800 text-gray-800 dark:text-gray-200'"
+                                        class="w-10 h-10 rounded-full flex items-center justify-center border border-gray-200 dark:border-zinc-700 transition font-bold"
+                                        title="ماه بعد">
+                                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7" /></svg>
+                                </button>
+                            </div>
+
+                            {{-- شبکه‌های ماه‌ها در موبایل --}}
+                            @foreach($calendarData['months'] as $mIdx => $m)
+                                <div x-show="mobileMonthIndex === {{ $mIdx }}" x-transition:enter="transition ease-out duration-150" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100">
+                                    {{-- هدر روزهای هفته --}}
+                                    <div class="grid grid-cols-7 gap-1 text-center text-xs font-bold text-gray-400 dark:text-gray-500 py-2.5 border-b border-gray-200 dark:border-zinc-800 mb-4">
+                                        <span>ش</span><span>ی</span><span>د</span><span>س</span><span>چ</span><span>پ</span><span class="text-rose-500">ج</span>
+                                    </div>
+
+                                    {{-- سلول‌های روزهای ماه --}}
+                                    <div class="grid grid-cols-7 gap-1.5 text-center text-xs">
+                                        @for($e = 0; $e < ($m['empty_cells_start'] ?? ($m['first_day_of_week'] ?? 0)); $e++)
+                                            <div class="h-16"></div>
+                                        @endfor
+
+                                        @foreach($m['days'] as $day)
+                                            @php
+                                                $isPast = !empty($day['is_past']);
+                                                $isBlocked = !empty($day['is_blocked']);
+                                                $iso = $day['carbon_date'];
+                                                $dayNum = $day['day_num'] ?? ($day['day'] ?? '');
+                                                $priceVal = !empty($day['price']) ? (float) $day['price'] : 0;
+                                                $priceThousands = $priceVal > 0 ? number_format(round($priceVal / 1000)) : '';
+                                                $isHoliday = !empty($day['is_holiday']);
+                                                $isFriday = ($day['day_of_week'] ?? 0) == 6;
+                                                $isHolidayOrFriday = $isHoliday || $isFriday;
+                                                $isWeekend = !empty($day['is_weekend']);
+                                                $isPeakOrWeekend = in_array($day['price_type'] ?? '', ['weekend', 'holiday', 'custom']) || !empty($day['is_weekend']) || !empty($day['is_holiday']);
+                                            @endphp
+
+                                            @if($isPast)
+                                                <div class="h-16 flex items-center justify-center text-sm font-sans {{ $isHolidayOrFriday ? 'text-rose-300 dark:text-rose-900/60' : 'text-gray-300 dark:text-zinc-600' }}">
+                                                    {{ $dayNum }}
+                                                </div>
+                                            @else
+                                                <button type="button" 
+                                                        @if(!$isBlocked) @click="selectCalendarDate('{{ $iso }}')" @endif
+                                                        :class="getDayClasses('{{ $iso }}', false, {{ $isBlocked ? 'true' : 'false' }})"
+                                                        class="relative rounded-2xl border border-dashed border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800/80 hover:border-emerald-500 transition-all flex flex-col items-center justify-center py-1 px-0.5 min-h-[64px] font-sans shadow-2xs {{ $isBlocked ? 'opacity-35 cursor-not-allowed bg-gray-50 dark:bg-zinc-800/40' : 'cursor-pointer' }}">
+                                                    
+                                                    @if(!$isBlocked && $isPeakOrWeekend)
+                                                        <span :class="(checkIn === '{{ $iso }}' || checkOut === '{{ $iso }}') ? 'hidden' : ''" 
+                                                              class="absolute top-0 right-0 w-2.5 h-2.5 bg-amber-400 rounded-bl-md"></span>
+                                                    @endif
+
+                                                    <span class="text-xs sm:text-sm font-black font-sans {{ $isHolidayOrFriday ? 'text-rose-600 dark:text-rose-400' : 'text-gray-800 dark:text-gray-100' }}"
+                                                          :class="(checkIn === '{{ $iso }}' || checkOut === '{{ $iso }}') ? '!text-white' : ''">
+                                                        {{ $dayNum }}
+                                                    </span>
+
+                                                    @if($isBlocked)
+                                                        <span class="text-[9px] text-gray-400 line-through mt-0.5">مسدود</span>
+                                                    @elseif($priceVal > 0)
+                                                        <span class="text-[11px] sm:text-xs font-black font-sans mt-0.5 tracking-tight text-gray-900 dark:text-white"
+                                                              :class="(checkIn === '{{ $iso }}' || checkOut === '{{ $iso }}') ? '!text-white' : ''">
+                                                            {{ $priceThousands }}
+                                                        </span>
+                                                    @endif
+                                                </button>
+                                            @endif
+                                        @endforeach
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+
+                        {{-- ب) نسخه دسکتاپ: نمایش دو ماه در کنار هم با کلیدهای ورق‌زدن (دقیقاً مشابه نمونه تصویر اول) --}}
+                        <div class="hidden md:block">
+                            <div class="grid grid-cols-2 gap-8">
+                                {{-- ستون راست: ماه اول --}}
+                                <div class="space-y-3">
+                                    @foreach($calendarData['months'] as $mIdx => $m)
+                                        @if($mIdx < count($calendarData['months']) - 1)
+                                            <div x-show="desktopMonthIndex === {{ $mIdx }}">
+                                                <div class="flex items-center justify-between mb-4 px-1">
+                                                    <button type="button" 
+                                                            @click="prevMonthDesktop()" 
+                                                            :disabled="desktopMonthIndex <= 0"
+                                                            :class="desktopMonthIndex <= 0 ? 'opacity-20 cursor-not-allowed' : 'hover:bg-gray-100 dark:hover:bg-zinc-800 text-gray-800 dark:text-gray-200'"
+                                                            class="w-9 h-9 rounded-full flex items-center justify-center border border-gray-200 dark:border-zinc-700 transition font-bold"
+                                                            title="ماه قبل">
+                                                        <svg class="w-4 h-4 rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7" /></svg>
+                                                    </button>
+                                                    <span class="text-base font-black text-gray-900 dark:text-white font-sans">
+                                                        {{ $m['month_title'] ?? (($m['month_name'] ?? '') . ' ' . ($m['year'] ?? '')) }}
+                                                    </span>
+                                                    <div class="w-9"></div>
+                                                </div>
+
+                                                <div class="grid grid-cols-7 gap-1 text-center text-xs font-bold text-gray-400 dark:text-gray-500 py-2.5 border-b border-gray-200 dark:border-zinc-800 mb-4">
+                                                    <span>ش</span><span>ی</span><span>د</span><span>س</span><span>چ</span><span>پ</span><span class="text-rose-500">ج</span>
+                                                </div>
+
+                                                <div class="grid grid-cols-7 gap-1.5 lg:gap-2 text-center text-xs">
+                                                    @for($e = 0; $e < ($m['empty_cells_start'] ?? ($m['first_day_of_week'] ?? 0)); $e++)
+                                                        <div class="h-16 lg:h-18"></div>
+                                                    @endfor
+
+                                                    @foreach($m['days'] as $day)
+                                                        @php
+                                                            $isPast = !empty($day['is_past']);
+                                                            $isBlocked = !empty($day['is_blocked']);
+                                                            $iso = $day['carbon_date'];
+                                                            $dayNum = $day['day_num'] ?? ($day['day'] ?? '');
+                                                            $priceVal = !empty($day['price']) ? (float) $day['price'] : 0;
+                                                            $priceThousands = $priceVal > 0 ? number_format(round($priceVal / 1000)) : '';
+                                                            $isHoliday = !empty($day['is_holiday']);
+                                                            $isFriday = ($day['day_of_week'] ?? 0) == 6;
+                                                            $isHolidayOrFriday = $isHoliday || $isFriday;
+                                                            $isPeakOrWeekend = in_array($day['price_type'] ?? '', ['weekend', 'holiday', 'custom']) || !empty($day['is_weekend']) || !empty($day['is_holiday']);
+                                                        @endphp
+
+                                                        @if($isPast)
+                                                            <div class="h-16 lg:h-18 flex items-center justify-center text-sm font-sans {{ $isHolidayOrFriday ? 'text-rose-300 dark:text-rose-900/60' : 'text-gray-300 dark:text-zinc-600' }}">
+                                                                {{ $dayNum }}
+                                                            </div>
+                                                        @else
+                                                            <button type="button" 
+                                                                    @if(!$isBlocked) @click="selectCalendarDate('{{ $iso }}')" @endif
+                                                                    :class="getDayClasses('{{ $iso }}', false, {{ $isBlocked ? 'true' : 'false' }})"
+                                                                    class="relative rounded-2xl border border-dashed border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800/80 hover:border-emerald-500 transition-all flex flex-col items-center justify-center py-2 px-1 min-h-[66px] lg:min-h-[72px] font-sans shadow-2xs {{ $isBlocked ? 'opacity-35 cursor-not-allowed bg-gray-50 dark:bg-zinc-800/40' : 'cursor-pointer' }}">
+                                                                
+                                                                @if(!$isBlocked && $isPeakOrWeekend)
+                                                                    <span :class="(checkIn === '{{ $iso }}' || checkOut === '{{ $iso }}') ? 'hidden' : ''" 
+                                                                          class="absolute top-0 right-0 w-2.5 h-2.5 bg-amber-400 rounded-bl-md"></span>
+                                                                @endif
+
+                                                                <span class="text-xs sm:text-sm font-black font-sans {{ $isHolidayOrFriday ? 'text-rose-600 dark:text-rose-400' : 'text-gray-800 dark:text-gray-100' }}"
+                                                                      :class="(checkIn === '{{ $iso }}' || checkOut === '{{ $iso }}') ? '!text-white' : ''">
+                                                                    {{ $dayNum }}
+                                                                </span>
+
+                                                                @if($isBlocked)
+                                                                    <span class="text-[9px] text-gray-400 line-through mt-0.5">مسدود</span>
+                                                                @elseif($priceVal > 0)
+                                                                    <span class="text-[11px] sm:text-xs font-black font-sans mt-0.5 tracking-tight text-gray-900 dark:text-white"
+                                                                          :class="(checkIn === '{{ $iso }}' || checkOut === '{{ $iso }}') ? '!text-white' : ''">
+                                                                        {{ $priceThousands }}
+                                                                    </span>
+                                                                @endif
+                                                            </button>
+                                                        @endif
+                                                    @endforeach
+                                                </div>
+                                            </div>
+                                        @endif
+                                    @endforeach
+                                </div>
+
+                                {{-- ستون چپ: ماه دوم --}}
+                                <div class="space-y-3">
+                                    @foreach($calendarData['months'] as $mIdx => $m)
+                                        @if($mIdx > 0)
+                                            <div x-show="desktopMonthIndex + 1 === {{ $mIdx }}">
+                                                <div class="flex items-center justify-between mb-4 px-1">
+                                                    <div class="w-9"></div>
+                                                    <span class="text-base font-black text-gray-900 dark:text-white font-sans">
+                                                        {{ $m['month_title'] ?? (($m['month_name'] ?? '') . ' ' . ($m['year'] ?? '')) }}
+                                                    </span>
+                                                    <button type="button" 
+                                                            @click="nextMonthDesktop()" 
+                                                            :disabled="desktopMonthIndex >= {{ count($calendarData['months']) - 2 }}"
+                                                            :class="desktopMonthIndex >= {{ count($calendarData['months']) - 2 }} ? 'opacity-20 cursor-not-allowed' : 'hover:bg-gray-100 dark:hover:bg-zinc-800 text-gray-800 dark:text-gray-200'"
+                                                            class="w-9 h-9 rounded-full flex items-center justify-center border border-gray-200 dark:border-zinc-700 transition font-bold"
+                                                            title="ماه بعد">
+                                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7" /></svg>
+                                                    </button>
+                                                </div>
+
+                                                <div class="grid grid-cols-7 gap-1 text-center text-xs font-bold text-gray-400 dark:text-gray-500 py-2.5 border-b border-gray-200 dark:border-zinc-800 mb-4">
+                                                    <span>ش</span><span>ی</span><span>د</span><span>س</span><span>چ</span><span>پ</span><span class="text-rose-500">ج</span>
+                                                </div>
+
+                                                <div class="grid grid-cols-7 gap-1.5 lg:gap-2 text-center text-xs">
+                                                    @for($e = 0; $e < ($m['empty_cells_start'] ?? ($m['first_day_of_week'] ?? 0)); $e++)
+                                                        <div class="h-16 lg:h-18"></div>
+                                                    @endfor
+
+                                                    @foreach($m['days'] as $day)
+                                                        @php
+                                                            $isPast = !empty($day['is_past']);
+                                                            $isBlocked = !empty($day['is_blocked']);
+                                                            $iso = $day['carbon_date'];
+                                                            $dayNum = $day['day_num'] ?? ($day['day'] ?? '');
+                                                            $priceVal = !empty($day['price']) ? (float) $day['price'] : 0;
+                                                            $priceThousands = $priceVal > 0 ? number_format(round($priceVal / 1000)) : '';
+                                                            $isHoliday = !empty($day['is_holiday']);
+                                                            $isFriday = ($day['day_of_week'] ?? 0) == 6;
+                                                            $isHolidayOrFriday = $isHoliday || $isFriday;
+                                                            $isPeakOrWeekend = in_array($day['price_type'] ?? '', ['weekend', 'holiday', 'custom']) || !empty($day['is_weekend']) || !empty($day['is_holiday']);
+                                                        @endphp
+
+                                                        @if($isPast)
+                                                            <div class="h-16 lg:h-18 flex items-center justify-center text-sm font-sans {{ $isHolidayOrFriday ? 'text-rose-300 dark:text-rose-900/60' : 'text-gray-300 dark:text-zinc-600' }}">
+                                                                {{ $dayNum }}
+                                                            </div>
+                                                        @else
+                                                            <button type="button" 
+                                                                    @if(!$isBlocked) @click="selectCalendarDate('{{ $iso }}')" @endif
+                                                                    :class="getDayClasses('{{ $iso }}', false, {{ $isBlocked ? 'true' : 'false' }})"
+                                                                    class="relative rounded-2xl border border-dashed border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800/80 hover:border-emerald-500 transition-all flex flex-col items-center justify-center py-2 px-1 min-h-[66px] lg:min-h-[72px] font-sans shadow-2xs {{ $isBlocked ? 'opacity-35 cursor-not-allowed bg-gray-50 dark:bg-zinc-800/40' : 'cursor-pointer' }}">
+                                                                
+                                                                @if(!$isBlocked && $isPeakOrWeekend)
+                                                                    <span :class="(checkIn === '{{ $iso }}' || checkOut === '{{ $iso }}') ? 'hidden' : ''" 
+                                                                          class="absolute top-0 right-0 w-2.5 h-2.5 bg-amber-400 rounded-bl-md"></span>
+                                                                @endif
+
+                                                                <span class="text-xs sm:text-sm font-black font-sans {{ $isHolidayOrFriday ? 'text-rose-600 dark:text-rose-400' : 'text-gray-800 dark:text-gray-100' }}"
+                                                                      :class="(checkIn === '{{ $iso }}' || checkOut === '{{ $iso }}') ? '!text-white' : ''">
+                                                                    {{ $dayNum }}
+                                                                </span>
+
+                                                                @if($isBlocked)
+                                                                    <span class="text-[9px] text-gray-400 line-through mt-0.5">مسدود</span>
+                                                                @elseif($priceVal > 0)
+                                                                    <span class="text-[11px] sm:text-xs font-black font-sans mt-0.5 tracking-tight text-gray-900 dark:text-white"
+                                                                          :class="(checkIn === '{{ $iso }}' || checkOut === '{{ $iso }}') ? '!text-white' : ''">
+                                                                        {{ $priceThousands }}
+                                                                    </span>
+                                                                @endif
+                                                            </button>
+                                                        @endif
+                                                    @endforeach
+                                                </div>
+                                            </div>
+                                        @endif
+                                    @endforeach
+                                </div>
+                            </div>
+                        </div>
+
+                        {{-- راهنمای رنگ‌های تقویم و واحد پولی --}}
+                        <div class="flex items-center justify-between flex-wrap gap-3 pt-4 border-t border-gray-100 dark:border-zinc-800 text-xs text-gray-500 dark:text-gray-400 font-sans">
+                            <div class="hidden md:flex items-center gap-5 flex-wrap">
+                                <span class="flex items-center gap-1.5">
+                                    <span class="w-3.5 h-3.5 rounded-lg bg-emerald-600 shadow-2xs"></span>
+                                    <span class="font-bold text-gray-800 dark:text-gray-200">تاریخ انتخابی شما</span>
+                                </span>
+                                <span class="flex items-center gap-1.5">
+                                    <span class="w-2.5 h-2.5 rounded-bl-md bg-amber-400"></span>
+                                    <span>نرخ آخر هفته و پیک</span>
+                                </span>
+                                <span class="flex items-center gap-1.5">
+                                    <span class="w-3.5 h-3.5 rounded-lg bg-rose-500 shadow-2xs"></span>
+                                    <span>جمعه و تعطیلات رسمی</span>
+                                </span>
+                                <span class="flex items-center gap-1.5">
+                                    <span class="w-3.5 h-3.5 rounded-lg border border-dashed border-gray-300 dark:border-zinc-700 bg-gray-100 dark:bg-zinc-800"></span>
+                                    <span>غیرقابل رزرو</span>
+                                </span>
+                            </div>
+
+                            <span class="text-[11px] text-gray-400 font-medium">
+                                * مبالغ داخل تقویم بر حسب هزار {{ $currencyLabel }} است.
+                            </span>
+                        </div>
+                    @endif
+                </div>
+
+                {{-- ۱۱. محدوده مکانی و حریم خصوصی نقشه --}}
+                @if($canShowMap && $property->latitude && $property->longitude)
+                    <div class="space-y-3 pt-4 border-t border-gray-100 dark:border-zinc-800">
+                        <div class="flex items-center justify-between">
+                            <h3 class="text-base sm:text-lg font-black text-gray-900 dark:text-white">
+                                موقعیت و دسترسی
+                            </h3>
+                            <span class="text-xs text-gray-400">
+                                {{ $isMapExact ? 'موقعیت دقیق اقامتگاه' : 'محدوده تقریبی اقامتگاه' }}
+                            </span>
+                        </div>
+                        <div id="map" class="w-full h-72 rounded-2xl overflow-hidden border border-gray-200 dark:border-zinc-800 z-10 shadow-xs"></div>
+                        <p class="text-[11px] text-gray-400 leading-relaxed">
+                            جهت حفظ امنیت و حریم خصوصی میزبان، آدرس و لوکیشن دقیق پس از نهایی شدن رزرو در پیش‌فاکتور و پیامک ارسال می‌گردد.
+                        </p>
+                    </div>
+                @endif
+
+                {{-- ۱۲. قوانین و مقررات پذیرش و کنسلی --}}
+                <div class="space-y-4 pt-4 border-t border-gray-100 dark:border-zinc-800">
+                    <h3 class="text-base sm:text-lg font-black text-gray-900 dark:text-white">
+                        قوانین و مقررات اقامتگاه
+                    </h3>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
+                        <div class="p-3 rounded-xl bg-gray-50/70 dark:bg-zinc-900/60 border border-gray-200/60 dark:border-zinc-800/60 flex items-center justify-between">
+                            <span class="text-gray-500">استعمال دخانیات</span>
+                            <span class="font-bold {{ $smokingAllowed ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400' }}">
+                                {{ $smokingAllowed ? 'مجاز' : 'ممنوع در فضای بسته' }}
+                            </span>
+                        </div>
+                        <div class="p-3 rounded-xl bg-gray-50/70 dark:bg-zinc-900/60 border border-gray-200/60 dark:border-zinc-800/60 flex items-center justify-between">
+                            <span class="text-gray-500">ورود حیوانات خانگی</span>
+                            <span class="font-bold {{ $petsAllowed ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400' }}">
+                                {{ $petsAllowed ? 'مجاز' : 'ممنوع' }}
+                            </span>
+                        </div>
+                        <div class="p-3 rounded-xl bg-gray-50/70 dark:bg-zinc-900/60 border border-gray-200/60 dark:border-zinc-800/60 flex items-center justify-between">
+                            <span class="text-gray-500">برگزاری جشن و مهمانی</span>
+                            <span class="font-bold {{ $partiesAllowed ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400' }}">
+                                {{ $partiesAllowed ? 'مجاز با هماهنگی' : 'ممنوع' }}
+                            </span>
+                        </div>
+                        <div class="p-3 rounded-xl bg-gray-50/70 dark:bg-zinc-900/60 border border-gray-200/60 dark:border-zinc-800/60 flex items-center justify-between">
+                            <span class="text-gray-500">ارائه مدارک شناسایی</span>
+                            <span class="font-bold text-emerald-600 dark:text-emerald-400">
+                                {{ $idRequired ? 'الزامی (کارت ملی هوشمند)' : 'طبق ضوابط میزبان' }}
+                            </span>
+                        </div>
+                    </div>
+
+                    {{-- مقررات لغو رزرو (تنها در صورت ثبت و تعیین در تنظیمات نمایش داده می‌شود) --}}
+                    @if(!empty(trim($config?->cancellation_policy ?? '')))
+                        <div class="p-4 rounded-2xl bg-amber-50/60 dark:bg-amber-950/30 border border-amber-200/70 dark:border-amber-800/50 text-xs space-y-1.5">
+                            <div class="flex items-center gap-2">
+                                <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+                                <strong class="text-amber-900 dark:text-amber-200 block font-bold text-xs sm:text-sm">مقررات لغو رزرو:</strong>
+                            </div>
+                            <p class="text-amber-800/90 dark:text-amber-300/90 leading-relaxed font-sans whitespace-pre-line text-xs sm:text-sm">
+                                {{ trim($config->cancellation_policy) }}
+                            </p>
+                        </div>
+                    @endif
+                </div>
+
+                {{-- ۱۳. اقامتگاه‌های مشابه در لفور --}}
+                @if($similarList->isNotEmpty())
+                    <div class="space-y-4 pt-6 border-t border-gray-100 dark:border-zinc-800">
+                        <h3 class="text-base sm:text-lg font-black text-gray-900 dark:text-white">
+                            اقامتگاه‌های مشابه در لفور
+                        </h3>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            @foreach($similarList as $sim)
+                                @php
+                                    $simPrice = $sim->rentalConfig?->price_per_night ?? $sim->rent_price ?? $sim->price ?? null;
+                                    $simCover = $sim->cover_image ? (str_starts_with($sim->cover_image, 'http') ? $sim->cover_image : asset('storage/' . $sim->cover_image)) : asset('images/property-placeholder.svg');
+                                    $simGuests = $sim->rentalConfig?->max_guests ?? $sim->max_guests ?? null;
+                                @endphp
+                                <a href="{{ route('properties.show', $sim->slug ?: $sim->id) }}" class="group block p-3 rounded-2xl border border-gray-200/80 dark:border-zinc-800 hover:border-emerald-500 transition-all bg-white dark:bg-zinc-900 shadow-2xs">
+                                    <div class="aspect-[16/10] rounded-xl overflow-hidden mb-2.5">
+                                        <img src="{{ $simCover }}" alt="{{ $sim->title }}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
+                                    </div>
+                                    <h4 class="text-xs font-bold text-gray-900 dark:text-white line-clamp-1 group-hover:text-emerald-600 transition">
+                                        {{ $sim->title }}
+                                    </h4>
+                                    <div class="flex items-center justify-between text-[11px] text-gray-500 mt-1">
+                                        <span>{{ $simGuests ? 'تا ' . $simGuests . ' نفر' : ($sim->city ?? '') }}</span>
+                                        <span class="font-bold text-emerald-600 dark:text-emerald-400 font-sans">
+                                            @if($simPrice && $simPrice > 0)
+                                                {{ number_format($simPrice) }} {{ $currencyLabel }}
+                                            @else
+                                                استعلام قیمت
+                                            @endif
+                                        </span>
+                                    </div>
+                                </a>
+                            @endforeach
+                        </div>
+                    </div>
+                @endif
+
+            </div>
+
+            {{-- ستون چپ: ویجت چسبان استعلام نرخ و رزرو (دسکتاپ) --}}
+            <div class="hidden lg:block lg:col-span-5 xl:col-span-4 sticky top-24">
+                <div class="max-w-[380px] w-full ms-auto border border-gray-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 rounded-3xl p-6 shadow-xl shadow-gray-200/50 dark:shadow-none space-y-5">
+                    
+                    {{-- هدر قیمت و تخفیف --}}
+                    <div class="pb-4 border-b border-gray-100 dark:border-zinc-800">
+                        <div class="flex items-baseline justify-between">
+                            <div>
+                                @if($hasDiscount)
+                                    <div class="flex items-center gap-2 mb-1">
+                                        <span class="text-xs text-gray-400 line-through">{{ number_format($baseNightPrice) }}</span>
+                                        <span class="px-2 py-0.5 rounded-md bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 text-[11px] font-bold border border-rose-200/60 dark:border-rose-800/40">
+                                            {{ $discountBadge }}
+                                        </span>
+                                    </div>
+                                    <div class="flex items-baseline gap-1">
+                                        <span class="text-2xl font-black text-emerald-600 dark:text-emerald-400">
+                                            {{ number_format($payablePrice) }}
+                                        </span>
+                                        <span class="text-xs font-bold text-gray-400 mr-1">{{ $currencyLabel }} / هر شب</span>
+                                    </div>
+                                @else
+                                    <span class="text-2xl font-black text-gray-900 dark:text-white">
+                                        {{ number_format($baseNightPrice) }}
+                                    </span>
+                                    <span class="text-xs font-bold text-gray-400 mr-1">{{ $currencyLabel }} / هر شب</span>
+                                @endif
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- انتخابگر تاریخ ورود و خروج --}}
+                    <div class="grid grid-cols-2 gap-2 p-3 bg-gray-50 dark:bg-zinc-800/70 rounded-2xl border border-gray-200/60 dark:border-zinc-700/60 text-xs">
+                        <button type="button" 
+                                @click="document.getElementById('calendar-section')?.scrollIntoView({ behavior: 'smooth' })" 
+                                class="text-right space-y-1 p-1 hover:opacity-80 transition cursor-pointer">
+                            <span class="text-[10px] text-gray-400 block font-medium">تاریخ ورود</span>
+                            <span class="font-bold text-gray-900 dark:text-white block truncate text-xs font-sans" x-text="formatDateDisplay(checkIn)"></span>
+                        </button>
+                        <button type="button" 
+                                @click="document.getElementById('calendar-section')?.scrollIntoView({ behavior: 'smooth' })" 
+                                class="text-right space-y-1 p-1 border-r border-gray-200 dark:border-zinc-700 pr-3 hover:opacity-80 transition cursor-pointer">
+                            <span class="text-[10px] text-gray-400 block font-medium">تاریخ خروج</span>
+                            <span class="font-bold text-gray-900 dark:text-white block truncate text-xs font-sans" x-text="formatDateDisplay(checkOut)"></span>
+                        </button>
+                    </div>
+
+                    {{-- انتخابگر تعداد مهمانان --}}
+                    <div class="flex items-center justify-between p-3.5 bg-gray-50 dark:bg-zinc-800/70 rounded-2xl border border-gray-200/60 dark:border-zinc-700/60 text-xs">
+                        <div>
+                            <span class="text-[10px] text-gray-400 block font-medium">تعداد مهمانان</span>
+                            <span class="font-bold text-gray-900 dark:text-white text-xs mt-0.5 block" x-text="formatNumber(guests) + ' نفر (حداکثر ' + formatNumber(maxGuests) + ' نفر)'"></span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button type="button" 
+                                    @click="decreaseGuests()" 
+                                    :disabled="guests <= 1"
+                                    :class="guests <= 1 ? 'opacity-40 cursor-not-allowed' : 'hover:bg-gray-100 dark:hover:bg-zinc-700'"
+                                    class="w-8 h-8 rounded-xl bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 text-gray-700 dark:text-gray-300 font-bold flex items-center justify-center transition shadow-2xs">
+                                −
+                            </button>
+                            <span class="w-6 text-center font-bold text-gray-900 dark:text-white" x-text="formatNumber(guests)"></span>
+                            <button type="button" 
+                                    @click="increaseGuests()" 
+                                    :disabled="guests >= maxGuests"
+                                    :class="guests >= maxGuests ? 'opacity-40 cursor-not-allowed' : 'hover:bg-gray-100 dark:hover:bg-zinc-700'"
+                                    class="w-8 h-8 rounded-xl bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 text-gray-700 dark:text-gray-300 font-bold flex items-center justify-center transition shadow-2xs">
+                                +
+                            </button>
+                        </div>
+                    </div>
+
+                    {{-- ریزمحاسبات فاکتور پس از انتخاب تاریخ --}}
+                    <div x-show="nightsCount > 0" x-transition class="space-y-2.5 pt-4 border-t border-gray-100 dark:border-zinc-800 text-xs">
+                        <div class="flex items-center justify-between text-gray-600 dark:text-gray-400">
+                            <span x-text="'مجموع هزینه ' + formatNumber(nightsCount) + ' شب اقامت:'"></span>
+                            <span class="font-bold text-gray-900 dark:text-white" x-text="formatNumber(originalNightsTotal) + ' ' + currencyLabel"></span>
+                        </div>
+
+                        <div x-show="totalDiscount > 0" class="flex items-center justify-between text-emerald-600 dark:text-emerald-400 font-bold">
+                            <span>تخفیف لحظه آخری اعمال‌شده:</span>
+                            <span x-text="'- ' + formatNumber(totalDiscount) + ' ' + currencyLabel"></span>
+                        </div>
+
+                        <div x-show="extraGuestsFeeTotal > 0" class="flex items-center justify-between text-gray-600 dark:text-gray-400">
+                            <span>هزینه نفرات اضافه:</span>
+                            <span class="font-bold text-gray-900 dark:text-white" x-text="formatNumber(extraGuestsFeeTotal) + ' ' + currencyLabel"></span>
+                        </div>
+
+                        <div x-show="cleaningFee > 0" class="flex items-center justify-between text-gray-600 dark:text-gray-400">
+                            <span>هزینه نظافت اقامتگاه:</span>
+                            <span class="font-bold text-gray-900 dark:text-white" x-text="formatNumber(cleaningFee) + ' ' + currencyLabel"></span>
+                        </div>
+
+                        <div class="flex items-center justify-between pt-3 border-t border-gray-100 dark:border-zinc-800 text-sm font-black text-gray-900 dark:text-white">
+                            <span>مبلغ نهایی قابل پرداخت:</span>
+                            <span class="text-base text-emerald-600 dark:text-emerald-400" x-text="formatNumber(grandTotal) + ' ' + currencyLabel"></span>
+                        </div>
+                    </div>
+
+                    {{-- دکمه ثبت درخواست و نهایی‌سازی رزرو --}}
+                    <div class="space-y-3 pt-2">
+                        <button type="button" 
+                                @click="goToBooking()" 
+                                class="w-full py-4 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs sm:text-sm transition-all shadow-lg shadow-emerald-600/25 flex items-center justify-center gap-2 active:scale-[0.99]">
+                            <span x-text="nightsCount > 0 ? 'ادامه و صدور پیش‌فاکتور (' + formatNumber(nightsCount) + ' شب)' : 'ثبت درخواست رزرو اقامتگاه'"></span>
+                            <svg class="w-4 h-4 rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+                        </button>
+
+                        <p class="text-[11px] text-gray-400 text-center font-medium">
+                            پرداخت وجه پس از صدور پیش‌فاکتور و تایید نهایی انجام می‌شود.
+                        </p>
+                    </div>
+
+                    {{-- تضمین‌های مستر ویلا لفور --}}
+                    <div class="pt-4 border-t border-gray-100 dark:border-zinc-800 space-y-2 text-[11px] text-gray-500 dark:text-gray-400">
+                        <div class="flex items-center gap-2">
+                            <span class="text-emerald-500 font-bold">✓</span>
+                            <span>ضمانت تطابق ۱۰۰٪ اقامتگاه با تصاویر و مشخصات</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="text-emerald-500 font-bold">✓</span>
+                            <span>پشتیبانی شبانه‌روزی و پیگیری از لحظه رزرو تا خروج</span>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+        </div>
+
+        {{-- نوار شناور پایین صفحه برای موبایل (Mobile Sticky Bar) --}}
+        <div class="lg:hidden fixed bottom-0 inset-x-0 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md border-t border-gray-200 dark:border-zinc-800 px-4 pt-3.5 pb-[calc(0.875rem+env(safe-area-inset-bottom,0px))] z-40 shadow-2xl">
+            <div class="flex items-center justify-between gap-4">
+                <div>
+                    <span class="text-[10px] text-gray-400 block font-medium">مبلغ هر شب</span>
+                    <div class="flex items-baseline gap-1">
+                        <span class="text-lg font-black text-emerald-600 dark:text-emerald-400 font-sans" x-text="nightsCount > 0 ? formatNumber(grandTotal) + ' ' + currencyLabel : '{{ number_format($payablePrice) }} {{ $currencyLabel }}'">
+                            {{ number_format($payablePrice) }} {{ $currencyLabel }}
+                        </span>
+                    </div>
+                </div>
+
+                <button type="button" 
+                        @click="goToBooking()" 
+                        class="px-6 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition-colors shadow-md shadow-emerald-600/20 flex items-center gap-1.5 shrink-0">
+                    <span x-text="nightsCount > 0 ? 'صدور پیش‌فاکتور' : 'انتخاب تاریخ و رزرو'"></span>
+                    <svg class="w-3.5 h-3.5 rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+                </button>
+            </div>
+        </div>
+
     </div>
 
-    {{-- مدال لایت‌باکس بزرگ‌نمایی تصاویر --}}
-    <div id="lightbox" class="fixed inset-0 z-[100] bg-black/95 hidden flex items-center justify-center opacity-0 transition-opacity duration-300 backdrop-blur-sm">
-        <button onclick="closeLightbox()" class="absolute top-6 right-6 text-white/50 hover:text-white z-[101] bg-white/10 hover:bg-white/20 p-2.5 rounded-2xl backdrop-blur transition-all">
-            <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-        </button>
-        <button onclick="prevImage()" class="absolute left-6 top-1/2 -translate-y-1/2 text-white/50 hover:text-white z-[101] p-4 bg-white/10 hover:bg-white/20 rounded-2xl backdrop-blur transition-all hidden md:block">
-            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
-        </button>
-        <button onclick="nextImage()" class="absolute right-6 top-1/2 -translate-y-1/2 text-white/50 hover:text-white z-[101] p-4 bg-white/10 hover:bg-white/20 rounded-2xl backdrop-blur transition-all hidden md:block">
-            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
-        </button>
-        <img id="lightbox-image" src="" class="max-h-[90vh] max-w-[90vw] object-contain rounded-2xl shadow-2xl" alt="تصویر اقامتگاه">
+    {{-- مودال لایت‌باکس نمایش گالری تصاویر --}}
+    <div id="lightbox" class="hidden fixed inset-0 z-[99999] bg-black/95 backdrop-blur-md flex flex-col items-center justify-between p-4 opacity-0 transition-opacity duration-300">
+        <div class="w-full flex items-center justify-between px-4 py-2 z-10">
+            <span id="lightbox-counter" class="text-white text-xs font-bold bg-white/10 px-3 py-1.5 rounded-full font-sans"></span>
+            <button type="button" onclick="closeLightbox()" class="text-white text-lg font-bold w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition">✕</button>
+        </div>
+
+        <div class="relative w-full max-w-5xl flex items-center justify-center flex-1">
+            {{-- دکمه بعدی (سمت راست با فلش راست) --}}
+            <button type="button" 
+                    onclick="nextImage()" 
+                    class="absolute right-4 text-white w-12 h-12 rounded-full bg-black/50 hover:bg-black/75 flex items-center justify-center transition text-xl font-bold z-10" 
+                    title="تصویر بعدی" 
+                    aria-label="تصویر بعدی">
+                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+            </button>
+            {{-- دکمه قبلی (سمت چپ با فلش چپ) --}}
+            <button type="button" 
+                    onclick="prevImage()" 
+                    class="absolute left-4 text-white w-12 h-12 rounded-full bg-black/50 hover:bg-black/75 flex items-center justify-center transition text-xl font-bold z-10" 
+                    title="تصویر قبلی" 
+                    aria-label="تصویر قبلی">
+                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+            </button>
+            <img id="lightbox-image" src="" alt="{{ $property->title }}" class="max-h-[75vh] max-w-[90vw] object-contain rounded-2xl shadow-2xl transition-all duration-200">
+        </div>
+
+        {{-- نوار بندانگشتی تصاویر --}}
+        <div class="w-full max-w-4xl overflow-x-auto scrollbar-hide py-3 flex items-center gap-2 justify-center">
+            @foreach($allGalleryUrls as $idx => $url)
+                <button type="button" onclick="openLightbox({{ $idx }})" class="w-14 h-14 rounded-xl overflow-hidden border-2 border-transparent hover:border-emerald-500 shrink-0 transition-all opacity-70 hover:opacity-100">
+                    <img src="{{ $url }}" alt="بندانگشتی {{ $idx + 1 }}" class="w-full h-full object-cover">
+                </button>
+            @endforeach
+        </div>
     </div>
 
-    @includeIf('partials.jalali-date-picker')
-@endsection
-
-@push('scripts')
+    {{-- موتور جاوااسکریپت تعاملی صفحه اقامتگاه --}}
     <script>
-        // اپلیکیشن آلپاین محاسبه‌گر زنده رزرواسیون
-        function rentalBookingApp(flatDates, config, currencyLabel, propertyTitle, propertyCode, clientData, bookUrl) {
+        function rentalBookingApp(flatDates, config, currencyLabel, propertyTitle, propertyCode, clientPayload, checkoutBaseUrl, hasDiscountInitial, discountType, discountValue) {
             return {
                 flatDates: flatDates || {},
                 config: config || {},
                 currencyLabel: currencyLabel,
                 propertyTitle: propertyTitle,
                 propertyCode: propertyCode,
-                bookUrl: bookUrl || '',
-
-                // مشخصات مهمان و وضعیت مدال رزرو
-                showBookingModal: false,
-                bookingLoading: false,
-                bookingErrorMessage: '',
-                bookingSuccessMessage: '',
-                isClientLoggedIn: !!(clientData && clientData.is_logged_in),
-                guestFullName: (clientData && clientData.name) ? clientData.name : '',
-                guestPhone: (clientData && clientData.phone) ? clientData.phone : '',
-                guestNationalCode: (clientData && clientData.national_code) ? clientData.national_code : '',
-                bookingNotes: '',
-
-                basePrice: config ? Number(config.price_per_night || 0) : 0,
-                baseGuests: config ? Number(config.base_guests || 2) : 2,
-                maxGuests: config ? Number(config.max_guests || 4) : 4,
-                extraGuestFee: config ? Number(config.extra_guest_fee || 0) : 0,
-                cleaningFee: config ? Number(config.cleaning_fee || 0) : 0,
-                minStayNights: config ? Number(config.min_stay_nights || 1) : 1,
+                client: clientPayload,
+                checkoutBaseUrl: checkoutBaseUrl,
 
                 checkIn: '',
                 checkOut: '',
-                guests: config ? Number(config.base_guests || 2) : 2,
+                guests: Number(config?.base_guests || 1),
+                baseGuests: Number(config?.base_guests || 1),
+                maxGuests: Number(config?.max_guests || config?.base_guests || 1),
+                basePrice: Number(config?.price_per_night || {{ (float)$baseNightPrice }}),
+                extraGuestFee: Number(config?.extra_guest_fee || 0),
+                cleaningFee: Number(config?.cleaning_fee || 0),
+                minStayNights: Number(config?.min_stay_nights || 1),
+
+                hasDiscount: hasDiscountInitial,
+                discountType: discountType || 'percent',
+                discountValue: Number(discountValue || 0),
+
+                mobileMonthIndex: 0,
+                desktopMonthIndex: 0,
+                totalMonthsCount: {{ count($calendarData['months'] ?? []) }},
+
+                prevMonthMobile() {
+                    if (this.mobileMonthIndex > 0) {
+                        this.mobileMonthIndex--;
+                    }
+                },
+                nextMonthMobile() {
+                    if (this.mobileMonthIndex < this.totalMonthsCount - 1) {
+                        this.mobileMonthIndex++;
+                    }
+                },
+                prevMonthDesktop() {
+                    if (this.desktopMonthIndex > 0) {
+                        this.desktopMonthIndex--;
+                    }
+                },
+                nextMonthDesktop() {
+                    if (this.desktopMonthIndex < this.totalMonthsCount - 2) {
+                        this.desktopMonthIndex++;
+                    }
+                },
 
                 nightsCount: 0,
                 nightsTotal: 0,
+                originalNightsTotal: 0,
+                totalDiscount: 0,
                 extraGuestsFeeTotal: 0,
                 grandTotal: 0,
                 hasBlockedDays: false,
 
-                init() {
-                    this.$nextTick(() => {
-                        if (window.jalaliDatepicker) {
-                            try {
-                                window.jalaliDatepicker.startWatch({
-                                    selector: '[data-jdp-only-date]',
-                                    date: true,
-                                    time: false,
-                                    autoHide: true,
-                                    hideAfterChange: true
-                                });
-                            } catch (e) {}
-                        }
-
-                        // شنود رویداد تغییر تاریخ‌ها از ورودی‌های دیت‌پیکر هسته
-                        const inEl = document.getElementById('rental_checkin');
-                        const outEl = document.getElementById('rental_checkout');
-                        if (inEl) {
-                            const handlerIn = (e) => {
-                                this.checkIn = this.normalizeDate(e.target.value);
-                                this.calculateInvoice();
-                            };
-                            inEl.addEventListener('change', handlerIn);
-                            inEl.addEventListener('input', handlerIn);
-                        }
-                        if (outEl) {
-                            const handlerOut = (e) => {
-                                this.checkOut = this.normalizeDate(e.target.value);
-                                this.calculateInvoice();
-                            };
-                            outEl.addEventListener('change', handlerOut);
-                            outEl.addEventListener('input', handlerOut);
-                        }
-                    });
-                },
-
-                // استانداردسازی تاریخ جلالی به فرمت YYYY/MM/DD با اعداد انگلیسی
                 normalizeDate(d) {
-                    if (!d) return '';
-                    let clean = String(d).trim().replace(/[۰-۹]/g, w => '۰۱۲۳۴۵۶۷۸۹'.indexOf(w));
-                    let parts = clean.split('/');
-                    if (parts.length === 3) {
-                        let y = parts[0];
-                        let m = parts[1].padStart(2, '0');
-                        let day = parts[2].padStart(2, '0');
-                        return `${y}/${m}/${day}`;
-                    }
-                    return clean;
+                    return d ? d.trim() : '';
                 },
 
-                isStartDate(dateStr) {
-                    if (!this.checkIn) return false;
-                    return this.normalizeDate(this.checkIn) === this.normalizeDate(dateStr);
-                },
-
-                isEndDate(dateStr) {
-                    if (!this.checkOut) return false;
-                    return this.normalizeDate(this.checkOut) === this.normalizeDate(dateStr);
-                },
-
-                isInRange(dateStr) {
-                    if (!this.checkIn || !this.checkOut) return false;
+                getDayClasses(dateStr, isPast, isBlocked) {
+                    if (isPast || isBlocked) return '';
+                    let d = this.normalizeDate(dateStr);
                     let cIn = this.normalizeDate(this.checkIn);
                     let cOut = this.normalizeDate(this.checkOut);
-                    let curr = this.normalizeDate(dateStr);
-                    return curr > cIn && curr < cOut;
-                },
 
-                getDayClasses(dateStr) {
-                    if (this.isStartDate(dateStr)) {
-                        return '!bg-indigo-600 !border-indigo-600 !text-white shadow-md z-10 ' + (this.checkOut ? '!rounded-r-xl !rounded-l-none' : '!rounded-xl');
+                    if (d === cIn) {
+                        return '!bg-emerald-600 !border-emerald-600 !text-white font-black shadow-md z-10 ' + (cOut ? '!rounded-r-2xl !rounded-l-none' : '!rounded-2xl');
                     }
-                    if (this.isEndDate(dateStr)) {
-                        return '!bg-indigo-600 !border-indigo-600 !text-white shadow-md z-10 !rounded-l-xl !rounded-r-none';
+                    if (d === cOut) {
+                        return '!bg-emerald-600 !border-emerald-600 !text-white font-black shadow-md z-10 !rounded-l-2xl !rounded-r-none';
                     }
-                    if (this.isInRange(dateStr)) {
-                        return '!bg-indigo-50 dark:!bg-indigo-950/40 !border-y !border-x-0 !border-indigo-200 dark:!border-indigo-800/60 !rounded-none';
+                    if (cIn && cOut && d > cIn && d < cOut) {
+                        return '!bg-emerald-50 dark:!bg-emerald-950/40 !border-y !border-x-0 !border-emerald-200 dark:!border-emerald-800/60 !text-emerald-700 dark:!text-emerald-300 font-bold !rounded-none';
                     }
                     return '';
                 },
@@ -1267,37 +1335,28 @@
                     this.hasBlockedDays = false;
                     this.nightsCount = 0;
                     this.nightsTotal = 0;
+                    this.originalNightsTotal = 0;
+                    this.totalDiscount = 0;
                     this.extraGuestsFeeTotal = 0;
                     this.grandTotal = 0;
 
                     let cIn = this.normalizeDate(this.checkIn);
                     let cOut = this.normalizeDate(this.checkOut);
 
-                    if (!cIn || !cOut) {
-                        return;
-                    }
+                    if (!cIn || !cOut || cOut <= cIn) return;
 
-                    if (cOut <= cIn) {
-                        return;
-                    }
-
-                    // جستجو در دیکشنری تاریخ‌ها
                     let checkInDay = this.flatDates[cIn];
                     let checkOutDay = this.flatDates[cOut];
-
-                    if (!checkInDay || !checkOutDay) {
-                        return;
-                    }
+                    if (!checkInDay || !checkOutDay) return;
 
                     let startCarbon = new Date(checkInDay.carbon_date);
                     let endCarbon = new Date(checkOutDay.carbon_date);
-                    let timeDiff = endCarbon.getTime() - startCarbon.getTime();
-                    let daysDiff = Math.round(timeDiff / (1000 * 3600 * 24));
-
+                    let daysDiff = Math.round((endCarbon - startCarbon) / (1000 * 3600 * 24));
                     if (daysDiff <= 0) return;
 
                     this.nightsCount = daysDiff;
-                    let totalNightsPrice = 0;
+                    let sumEffective = 0;
+                    let sumOriginal = 0;
                     let blocked = false;
 
                     let curr = new Date(startCarbon);
@@ -1309,44 +1368,49 @@
 
                         let dayData = this.flatDates[isoKey];
                         if (dayData) {
-                            if (dayData.is_blocked) {
-                                blocked = true;
-                            }
-                            totalNightsPrice += Number(dayData.price || this.basePrice);
+                            if (dayData.is_blocked) blocked = true;
+                            let p = Number(dayData.price || this.basePrice);
+                            let origP = Number(dayData.original_price || dayData.price || this.basePrice);
+                            sumEffective += p;
+                            sumOriginal += origP;
                         } else {
-                            totalNightsPrice += this.basePrice;
+                            sumEffective += this.basePrice;
+                            sumOriginal += this.basePrice;
                         }
                         curr.setDate(curr.getDate() + 1);
                     }
 
                     this.hasBlockedDays = blocked;
-                    this.nightsTotal = totalNightsPrice;
+                    this.nightsTotal = sumEffective;
+                    this.originalNightsTotal = sumOriginal;
+                    this.totalDiscount = Math.max(0, sumOriginal - sumEffective);
 
-                    // محاسبه نفرات اضافه
                     let extraGuests = Math.max(0, this.guests - this.baseGuests);
                     this.extraGuestsFeeTotal = extraGuests * this.extraGuestFee * this.nightsCount;
-
                     this.grandTotal = this.nightsTotal + this.extraGuestsFeeTotal + this.cleaningFee;
                 },
 
-                openBookingModal() {
+                goToBooking() {
                     let cIn = this.normalizeDate(this.checkIn);
                     let cOut = this.normalizeDate(this.checkOut);
                     if (!cIn || !cOut) {
-                        alert('لطفاً ابتدا تاریخ ورود و خروج را در تقویم رزرو انتخاب نمایید.');
+                        const cal = document.getElementById('calendar-section');
+                        if (cal) {
+                            cal.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        }
+                        alert('لطفاً ابتدا تاریخ ورود و تاریخ خروج خود را از تقویم مشخص فرمایید.');
                         return;
                     }
                     if (this.hasBlockedDays) {
-                        alert('برخی از روزهای انتخابی شما مسدود یا رزرو شده است. لطفاً تاریخ دیگری انتخاب کنید.');
+                        alert('برخی از تاریخ‌های انتخابی شما در تقویم مسدود یا رزرو شده هستند. لطفاً بازه دیگری را انتخاب فرمایید.');
                         return;
                     }
                     if (this.nightsCount < this.minStayNights) {
-                        alert('حداقل مدت اقامت در این اقامتگاه ' + this.minStayNights + ' شب می‌باشد.');
+                        alert('حداقل مدت اقامت در این اقامتگاه ' + this.formatNumber(this.minStayNights) + ' شب می‌باشد.');
                         return;
                     }
 
-                    // هدایت مستقیم و مطمئن به سبد خرید و پیش‌فاکتور نهایی
-                    let checkoutUrl = '{{ route("properties.checkout", $property->slug ?: $property->code) }}'
+                    let checkoutUrl = this.checkoutBaseUrl
                         + '?check_in=' + encodeURIComponent(cIn)
                         + '&check_out=' + encodeURIComponent(cOut)
                         + '&guests=' + encodeURIComponent(this.guests);
@@ -1354,54 +1418,67 @@
                     window.location.href = checkoutUrl;
                 },
 
-                submitBookingInquiry() {
-                    if (this.hasBlockedDays) {
-                        alert('برخی از شب‌های انتخابی شما مسدود است. لطفاً تاریخ دیگری انتخاب کنید.');
-                        return;
-                    }
-
-                    let msg = `سلام، مایل به رزرو اقامتگاه «${this.propertyTitle}» (کد فایل: ${this.propertyCode}) هستم.`;
-                    if (this.checkIn && this.checkOut) {
-                        msg += `\nاز تاریخ ${this.checkIn} تا ${this.checkOut} (${this.nightsCount} شب)`;
-                    }
-                    msg += `\nتعداد مهمانان: ${this.guests} نفر`;
-                    if (this.grandTotal > 0) {
-                        msg += `\nبرآورد مبلغ: ${this.formatNumber(this.grandTotal)} ${this.currencyLabel}`;
-                    }
-
-                    // هدایت به تماس یا واتساپ میزبان
-                    @php
-                        $waPhone = preg_replace('/[^0-9]/', '', (string)$hostPhone);
-                        if (str_starts_with($waPhone, '0')) {
-                            $waPhone = '98' . substr($waPhone, 1);
+                formatDateDisplay(dateStr, formatType = 'full') {
+                    if (!dateStr) return 'انتخاب از تقویم';
+                    let normalized = this.normalizeDate(dateStr);
+                    let dayData = this.flatDates[normalized];
+                    if (dayData) {
+                        if (formatType === 'full' && dayData.human_jalali_full) {
+                            return dayData.human_jalali_full;
                         }
-                    @endphp
-                    let waUrl = `https://api.whatsapp.com/send?phone={{ $waPhone }}&text=${encodeURIComponent(msg)}`;
-                    window.open(waUrl, '_blank');
+                        if (formatType === 'short' && dayData.human_jalali) {
+                            return dayData.human_jalali;
+                        }
+                        if (dayData.human_jalali) {
+                            return dayData.human_jalali;
+                        }
+                        if (dayData.jalali_date) {
+                            return dayData.jalali_date;
+                        }
+                    }
+                    try {
+                        let parts = normalized.split('-');
+                        if (parts.length === 3) {
+                            let d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+                            if (!isNaN(d.getTime())) {
+                                if (formatType === 'full') {
+                                    return new Intl.DateTimeFormat('fa-IR-u-nu-arabext', { weekday: 'short', day: 'numeric', month: 'long' }).format(d);
+                                }
+                                return new Intl.DateTimeFormat('fa-IR-u-nu-arabext', { day: 'numeric', month: 'long' }).format(d);
+                            }
+                        }
+                    } catch (e) {}
+                    return dateStr;
+                },
+
+                toPersianDigits(str) {
+                    if (!str && str !== 0) return '';
+                    const persianDigits = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
+                    return String(str).replace(/\d/g, x => persianDigits[x]);
                 },
 
                 formatNumber(val) {
                     if (!val && val !== 0) return '۰';
-                    return Number(val).toLocaleString('fa-IR');
+                    const persianDigits = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
+                    const formatted = Math.round(val).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+                    return formatted.replace(/\d/g, x => persianDigits[x]);
                 }
             }
         }
 
-        // اسلایدر و لایت باکس تصاویر
-        const galleryImages = [
-            @if(isset($allGalleryUrls))
-                @foreach($allGalleryUrls as $url)
-                    '{{ $url }}',
-                @endforeach
-            @endif
-        ];
+        const galleryImages = @json($allGalleryUrls);
         let currentImageIndex = 0;
 
         function openLightbox(index = 0) {
             if (galleryImages.length === 0) return;
             currentImageIndex = index;
-            document.getElementById('lightbox-image').src = galleryImages[currentImageIndex];
+            updateLightbox();
             const lb = document.getElementById('lightbox');
+            if (lb && lb.parentElement !== document.body) {
+                document.body.appendChild(lb);
+            }
+            const headerEl = document.querySelector('header');
+            if (headerEl) headerEl.classList.add('invisible');
             lb.classList.remove('hidden');
             setTimeout(() => { lb.classList.remove('opacity-0'); }, 10);
             document.body.style.overflow = 'hidden';
@@ -1410,69 +1487,83 @@
         function closeLightbox() {
             const lb = document.getElementById('lightbox');
             lb.classList.add('opacity-0');
+            const headerEl = document.querySelector('header');
+            if (headerEl) headerEl.classList.remove('invisible');
             setTimeout(() => { lb.classList.add('hidden'); }, 300);
             document.body.style.overflow = 'auto';
+        }
+
+        function updateLightbox() {
+            document.getElementById('lightbox-image').src = galleryImages[currentImageIndex];
+            const counter = document.getElementById('lightbox-counter');
+            if (counter) {
+                const persianDigits = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
+                let cur = String(currentImageIndex + 1).replace(/\d/g, x => persianDigits[x]);
+                let tot = String(galleryImages.length).replace(/\d/g, x => persianDigits[x]);
+                counter.innerText = 'تصویر ' + cur + ' از ' + tot;
+            }
         }
 
         function nextImage() {
             if (galleryImages.length <= 1) return;
             currentImageIndex = (currentImageIndex + 1) % galleryImages.length;
-            document.getElementById('lightbox-image').src = galleryImages[currentImageIndex];
+            updateLightbox();
         }
 
         function prevImage() {
             if (galleryImages.length <= 1) return;
             currentImageIndex = (currentImageIndex - 1 + galleryImages.length) % galleryImages.length;
-            document.getElementById('lightbox-image').src = galleryImages[currentImageIndex];
+            updateLightbox();
         }
 
-        document.addEventListener('keydown', (e) => {
-            if (document.getElementById('lightbox').classList.contains('hidden')) return;
+        document.addEventListener('keydown', function(e) {
+            const lb = document.getElementById('lightbox');
+            if (!lb || lb.classList.contains('hidden')) return;
             if (e.key === 'Escape') closeLightbox();
             if (e.key === 'ArrowRight') nextImage();
             if (e.key === 'ArrowLeft') prevImage();
         });
 
-        function copyToClipboard(text) {
-            navigator.clipboard.writeText(text).then(() => {
-                alert('لینک اقامتگاه با موفقیت کپی شد.');
-            }).catch(() => {});
+        function shareProperty() {
+            if (navigator.share) {
+                navigator.share({
+                    title: '{{ addslashes($property->title) }}',
+                    text: 'مشاهده و رزرو آنلاین اقامتگاه در لفور',
+                    url: window.location.href,
+                }).catch(() => {});
+            } else {
+                navigator.clipboard.writeText(window.location.href).then(() => {
+                    alert('لینک این اقامتگاه با موفقیت در کلیپ‌بورد کپی شد.');
+                }).catch(() => {});
+            }
         }
 
-        // نقشه Leaflet
         @if($canShowMap && $property->latitude && $property->longitude)
             document.addEventListener('DOMContentLoaded', function() {
                 if (typeof L !== 'undefined') {
                     const lat = {{ $property->latitude }};
                     const lng = {{ $property->longitude }};
                     @if($isMapExact)
-                        const map = L.map('map').setView([lat, lng], 16);
+                        const map = L.map('map').setView([lat, lng], 15);
                         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                             attribution: '&copy; OpenStreetMap'
                         }).addTo(map);
-
-                        // موقعیت دقیق اقامتگاه
-                        L.marker([lat, lng]).addTo(map)
-                            .bindPopup('<div class="p-2 text-center font-sans font-bold text-xs text-gray-800">موقعیت دقیق اقامتگاه</div>')
-                            .openPopup();
+                        L.marker([lat, lng]).addTo(map).bindPopup('موقعیت دقیق اقامتگاه').openPopup();
                     @else
                         const map = L.map('map').setView([lat, lng], 14);
                         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                             attribution: '&copy; OpenStreetMap'
                         }).addTo(map);
-
-                        // محدوده تقریبی اقامتگاه با شعاع تنظیمی
-                        const circle = L.circle([lat, lng], {
-                            color: '#4f46e5',
-                            fillColor: '#6366f1',
-                            fillOpacity: 0.22,
+                        L.circle([lat, lng], {
+                            color: '#059669',
+                            fillColor: '#10b981',
+                            fillOpacity: 0.25,
                             weight: 2,
                             radius: {{ $circleRadius }}
-                        }).addTo(map);
-                        circle.bindPopup('<div class="p-2 text-center font-sans font-bold text-xs text-gray-800">محدوده تقریبی اقامتگاه</div>');
+                        }).addTo(map).bindPopup('محدوده تقریبی اقامتگاه');
                     @endif
                 }
             });
         @endif
     </script>
-@endpush
+@endsection

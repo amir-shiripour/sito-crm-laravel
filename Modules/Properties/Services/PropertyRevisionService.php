@@ -566,7 +566,7 @@ class PropertyRevisionService
                     'price_weekend', 'price_holiday', 'has_discount', 'discount_type', 'discount_value', 'discount_percent', 'old_daily_rate',
                     'extra_guest_fee', 'cleaning_fee',
                     'check_in_time', 'check_out_time', 'min_stay_nights', 'instant_booking',
-                    'house_rules'
+                    'house_rules', 'cancellation_policy'
                 ];
 
                 foreach ($validConfigKeys as $key) {

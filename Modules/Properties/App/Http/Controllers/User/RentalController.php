@@ -190,6 +190,7 @@ class RentalController extends Controller
             'house_rules' => 'nullable|array',
             'custom_rules' => 'nullable|array',
             'custom_rules.*' => 'nullable|string|max:255',
+            'cancellation_policy' => 'nullable|string',
             'special_prices' => 'nullable|array',
         ]);
 

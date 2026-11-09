@@ -563,6 +563,24 @@
                             قانون اختصاصی ثبت نشده است. در صورت تمایل از کادر بالا اضافه نمایید.
                         </div>
                     </div>
+
+                    {{-- ۳. مقررات لغو رزرو --}}
+                    <div class="pt-3.5 border-t border-slate-100 dark:border-slate-700/60 space-y-2">
+                        <div class="flex items-center justify-between gap-2">
+                            <h3 class="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5 font-sans">
+                                <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+                                مقررات لغو رزرو
+                            </h3>
+                            <span class="text-[11px] text-slate-400 dark:text-slate-500 font-sans">اختیاری</span>
+                        </div>
+                        <p class="text-[11px] text-slate-500 dark:text-slate-400 font-sans leading-relaxed">
+                            شرایط و قوانین استرداد وجه در صورت انصراف یا کنسلی مسافر را بنویسید. در صورت خالی بودن، این بخش در صفحه اقامتگاه نمایش داده نمی‌شود.
+                        </p>
+                        <textarea name="cancellation_policy" 
+                                  rows="3" 
+                                  placeholder="شرایط استرداد وجه و کنسلی رزرو را وارد کنید..." 
+                                  class="{{ $inputClass }} text-xs py-2.5 font-sans leading-relaxed">{{ old('cancellation_policy', $rentalConfig->cancellation_policy ?? '') }}</textarea>
+                    </div>
                 </div>
 
             </div>

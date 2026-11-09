@@ -44,6 +44,7 @@ class PropertyRentalConfig extends Model
         'check_out_time',
         'min_stay_nights',
         'house_rules',
+        'cancellation_policy',
         'instant_booking',
     ];
 
