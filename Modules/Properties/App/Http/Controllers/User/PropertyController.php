@@ -230,8 +230,9 @@ class PropertyController extends Controller
         $rentalBuildingEnabled = (bool) PropertySetting::get('rental_building_enabled', 1);
         $rentalPropertyTypes = Property::getRentalPropertyTypes(true);
         $provincesData = \App\Helpers\ProvinceCity::getAll();
+        $mapBoundsConfig = PropertySetting::getMapBoundsConfig();
 
-        return view('properties::user.create', compact('maxGalleryImages', 'maxFileSize', 'allowedFileTypes', 'maxVideoSize', 'allowedVideoTypes', 'statuses', 'agents', 'owners', 'hosts', 'currentUserHost', 'preselectedHost', 'rentalVideoEnabled', 'rentalBuildingEnabled', 'rentalPropertyTypes', 'rentalMultiHostEnabled', 'provincesData'));
+        return view('properties::user.create', compact('maxGalleryImages', 'maxFileSize', 'allowedFileTypes', 'maxVideoSize', 'allowedVideoTypes', 'statuses', 'agents', 'owners', 'hosts', 'currentUserHost', 'preselectedHost', 'rentalVideoEnabled', 'rentalBuildingEnabled', 'rentalPropertyTypes', 'rentalMultiHostEnabled', 'provincesData', 'mapBoundsConfig'));
     }
 
     public function store(Request $request)
@@ -799,8 +800,9 @@ class PropertyController extends Controller
         $provincesData = \App\Helpers\ProvinceCity::getAll();
         $currency = PropertySetting::getCurrency();
         $currencyLabel = PropertySetting::getCurrencyLabel();
+        $mapBoundsConfig = PropertySetting::getMapBoundsConfig();
 
-        return view('properties::user.edit', compact('property', 'maxGalleryImages', 'maxFileSize', 'allowedFileTypes', 'maxVideoSize', 'allowedVideoTypes', 'customDetails', 'customFeatures', 'owners', 'statuses', 'agents', 'hosts', 'currentUserHost', 'rentalVideoEnabled', 'rentalBuildingEnabled', 'rentalPropertyTypes', 'rentalMultiHostEnabled', 'provincesData', 'currency', 'currencyLabel'));
+        return view('properties::user.edit', compact('property', 'maxGalleryImages', 'maxFileSize', 'allowedFileTypes', 'maxVideoSize', 'allowedVideoTypes', 'customDetails', 'customFeatures', 'owners', 'statuses', 'agents', 'hosts', 'currentUserHost', 'rentalVideoEnabled', 'rentalBuildingEnabled', 'rentalPropertyTypes', 'rentalMultiHostEnabled', 'provincesData', 'currency', 'currencyLabel', 'mapBoundsConfig'));
     }
 
     public function update(Request $request, Property $property)

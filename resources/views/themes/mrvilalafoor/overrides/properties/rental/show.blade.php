@@ -185,7 +185,7 @@
         $similarList = $similarProperties ?? collect([]);
     @endphp
 
-    <div class="max-w-[1360px] mx-auto px-4 sm:px-8 py-5 w-full font-sans pb-28 lg:pb-12" 
+    <div class="max-w-[1360px] mx-auto px-4 sm:px-8 py-5 w-full font-sans pb-0 sm:pb-2 lg:pb-6" 
          x-data="rentalBookingApp(@js($calendarData['flatDates'] ?? []), @js($config), '{{ $currencyLabel }}', '{{ addslashes($property->title) }}', '{{ $property->code }}', @js($clientPayload), '{{ $checkoutUrlBase }}', {{ $hasDiscount ? 'true' : 'false' }}, '{{ $config?->discount_type ?? 'percent' }}', {{ (float)($config?->discount_value ?? 0) }})">
 
         {{-- ۱. بخش گالری و تصاویر شاخص (در موبایل تمام‌عرض با اسلایدر، در دسکتاپ موزاییکی شکیل) --}}
@@ -412,7 +412,7 @@
                 @endphp
 
                 @if(!empty($mainSpecs))
-                    <div class="grid grid-cols-2 sm:grid-cols-{{ min(count($mainSpecs), 4) }} gap-2.5 py-1">
+                    <div class="hidden sm:grid grid-cols-2 sm:grid-cols-{{ min(count($mainSpecs), 4) }} gap-2.5 py-1">
                         @foreach($mainSpecs as $spec)
                             <div class="p-3.5 rounded-2xl bg-gray-50/70 dark:bg-zinc-900/60 border border-gray-200/60 dark:border-zinc-800/60 text-center space-y-1">
                                 <div class="w-7 h-7 mx-auto rounded-xl {{ $spec['iconBg'] }} flex items-center justify-center">
@@ -522,8 +522,8 @@
                                     <div class="w-6 h-6 text-gray-800 dark:text-zinc-200 shrink-0 mt-0.5 select-none">
                                         <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">{!! $gSpec['svg'] !!}</svg>
                                     </div>
-                                    <div class="space-y-0.5">
-                                        <h4 class="text-sm sm:text-base font-bold text-gray-900 dark:text-white font-sans">{{ $gSpec['title'] }}</h4>
+                                    <div class="space-y-1.5">
+                                        <h4 class="text-sm sm:text-base font-bold text-gray-900 dark:text-white font-sans leading-snug">{{ $gSpec['title'] }}</h4>
                                         <p class="text-xs sm:text-sm text-gray-500 dark:text-gray-400 font-sans leading-relaxed">{{ $gSpec['desc'] }}</p>
                                     </div>
                                 </div>
@@ -533,25 +533,38 @@
                 @endif
 
 
-                {{-- ۸. درباره این اقامتگاه (تنها در صورت وجود توضیحات ثبت شده نمایش داده می‌شود) --}}
-                @if(!empty(trim($property->description ?? '')))
-                    <div class="space-y-3 pt-4 border-t border-gray-100 dark:border-zinc-800" x-data="{ expanded: false }">
-                        <h3 class="text-base sm:text-lg font-black text-gray-900 dark:text-white">
-                            درباره این اقامتگاه
-                        </h3>
-                        <div class="text-xs sm:text-sm leading-relaxed text-gray-600 dark:text-gray-300 relative transition-all"
-                             :class="expanded ? '' : 'line-clamp-4'">
-                            {!! nl2br(e($property->description)) !!}
-                        </div>
-                        @if(mb_strlen($property->description) > 200)
-                            <button type="button" 
-                                    @click="expanded = !expanded" 
-                                    class="text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:underline inline-flex items-center gap-1 pt-1">
-                                <span x-text="expanded ? '− بستن توضیحات' : '+ مشاهده توضیحات کامل'"></span>
-                            </button>
-                        @endif
+                {{-- ۸. درباره این اقامتگاه (توضیحات اقامتگاه) --}}
+                @php
+                    $propertyDesc = trim($property->description ?? '');
+                    if (empty($propertyDesc)) {
+                        $descParts = [];
+                        $descParts[] = "این اقامتگاه با عنوان «{$property->title}»";
+                        if (!empty($areaValue)) {
+                            $descParts[] = "با زیربنای {$areaValue}";
+                        }
+                        if (!empty($property->city)) {
+                            $descParts[] = "در منطقه خوش‌آب‌وهوای {$property->city}";
+                        }
+                        $descParts[] = "با امکانات رفاهی استاندارد و محیطی آرام، آماده میزبانی و پذیرایی از مسافران و مهمانان گرامی می‌باشد.";
+                        $propertyDesc = implode(' ', $descParts);
+                    }
+                @endphp
+                <div class="space-y-3 pt-4 border-t border-gray-100 dark:border-zinc-800" x-data="{ expanded: false }">
+                    <h3 class="text-base sm:text-lg font-black text-gray-900 dark:text-white">
+                        درباره این اقامتگاه
+                    </h3>
+                    <div class="text-xs sm:text-sm leading-relaxed text-gray-600 dark:text-gray-300 relative transition-all font-sans"
+                         :class="expanded ? '' : 'line-clamp-4'">
+                        {!! nl2br(e($propertyDesc)) !!}
                     </div>
-                @endif
+                    @if(mb_strlen($propertyDesc) > 200)
+                        <button type="button" 
+                                @click="expanded = !expanded" 
+                                class="text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:underline inline-flex items-center gap-1 pt-1 font-sans">
+                            <span x-text="expanded ? '− بستن توضیحات' : '+ مشاهده توضیحات کامل'"></span>
+                        </button>
+                    @endif
+                </div>
 
                 {{-- ۹. امکانات رفاهی و اقامتی (تنها در صورت ثبت امکانات برای اقامتگاه نمایش داده می‌شود) --}}
                 @if($features->isNotEmpty())
@@ -1102,7 +1115,7 @@
                         </div>
 
                         <div x-show="extraGuestsFeeTotal > 0" class="flex items-center justify-between text-gray-600 dark:text-gray-400">
-                            <span>هزینه نفرات اضافه:</span>
+                            <span x-text="'هزینه ' + formatNumber(extraGuestsCount) + ' نفر اضافه:'">هزینه نفرات اضافه:</span>
                             <span class="font-bold text-gray-900 dark:text-white" x-text="formatNumber(extraGuestsFeeTotal) + ' ' + currencyLabel"></span>
                         </div>
 
@@ -1122,7 +1135,7 @@
                         <button type="button" 
                                 @click="goToBooking()" 
                                 class="w-full py-4 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs sm:text-sm transition-all shadow-lg shadow-emerald-600/25 flex items-center justify-center gap-2 active:scale-[0.99]">
-                            <span x-text="nightsCount > 0 ? 'ادامه و صدور پیش‌فاکتور (' + formatNumber(nightsCount) + ' شب)' : 'ثبت درخواست رزرو اقامتگاه'"></span>
+                            <span x-text="nightsCount > 0 ? 'ادامه و صدور پیش‌فاکتور' : 'ثبت درخواست رزرو اقامتگاه'"></span>
                             <svg class="w-4 h-4 rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
                         </button>
 
@@ -1222,7 +1235,7 @@
 
                 checkIn: '',
                 checkOut: '',
-                guests: Number(config?.base_guests || 1),
+                guests: {{ (int) request('guests', 1) ?: 1 }},
                 baseGuests: Number(config?.base_guests || 1),
                 maxGuests: Number(config?.max_guests || config?.base_guests || 1),
                 basePrice: Number(config?.price_per_night || {{ (float)$baseNightPrice }}),
@@ -1263,6 +1276,7 @@
                 nightsTotal: 0,
                 originalNightsTotal: 0,
                 totalDiscount: 0,
+                extraGuestsCount: 0,
                 extraGuestsFeeTotal: 0,
                 grandTotal: 0,
                 hasBlockedDays: false,
@@ -1337,6 +1351,7 @@
                     this.nightsTotal = 0;
                     this.originalNightsTotal = 0;
                     this.totalDiscount = 0;
+                    this.extraGuestsCount = 0;
                     this.extraGuestsFeeTotal = 0;
                     this.grandTotal = 0;
 
@@ -1385,8 +1400,8 @@
                     this.originalNightsTotal = sumOriginal;
                     this.totalDiscount = Math.max(0, sumOriginal - sumEffective);
 
-                    let extraGuests = Math.max(0, this.guests - this.baseGuests);
-                    this.extraGuestsFeeTotal = extraGuests * this.extraGuestFee * this.nightsCount;
+                    this.extraGuestsCount = Math.max(0, this.guests - this.baseGuests);
+                    this.extraGuestsFeeTotal = this.extraGuestsCount * this.extraGuestFee * this.nightsCount;
                     this.grandTotal = this.nightsTotal + this.extraGuestsFeeTotal + this.cleaningFee;
                 },
 
@@ -1543,14 +1558,20 @@
                 if (typeof L !== 'undefined') {
                     const lat = {{ $property->latitude }};
                     const lng = {{ $property->longitude }};
+                    const mapBoundsConfig = @js(\Modules\Properties\Entities\PropertySetting::getMapBoundsConfig());
+                    const mapOptions = {
+                        maxBounds: mapBoundsConfig?.bounds || [[25.0, 44.0], [39.8, 63.5]],
+                        maxBoundsViscosity: 1.0,
+                        minZoom: mapBoundsConfig?.minZoom || 5,
+                    };
                     @if($isMapExact)
-                        const map = L.map('map').setView([lat, lng], 15);
+                        const map = L.map('map', mapOptions).setView([lat, lng], 15);
                         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                             attribution: '&copy; OpenStreetMap'
                         }).addTo(map);
                         L.marker([lat, lng]).addTo(map).bindPopup('موقعیت دقیق اقامتگاه').openPopup();
                     @else
-                        const map = L.map('map').setView([lat, lng], 14);
+                        const map = L.map('map', mapOptions).setView([lat, lng], 14);
                         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                             attribution: '&copy; OpenStreetMap'
                         }).addTo(map);

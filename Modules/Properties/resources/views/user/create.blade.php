@@ -1145,15 +1145,16 @@
                 galleryFiles: [],
                 videoPreview: null,
 
-                // تنظیمات نقشه
+                // تنظیمات نقشه و مرزبندی
                 mapService: '{{ $mapService }}',
                 mapIrApiKey: '{{ $mapIrApiKey }}',
+                mapBoundsConfig: @js($mapBoundsConfig ?? \Modules\Properties\Entities\PropertySetting::getMapBoundsConfig()),
 
                 // نقشه
                 map: null,
                 marker: null,
-                lat: 35.6892,
-                lng: 51.3890,
+                lat: {{ old('latitude') ? (float)old('latitude') : (($mapBoundsConfig['center'][0] ?? 32.4279)) }},
+                lng: {{ old('longitude') ? (float)old('longitude') : (($mapBoundsConfig['center'][1] ?? 53.6880)) }},
                 address: '',
 
                 // سیستم استان و شهر
@@ -1697,7 +1698,14 @@
                 initLeaflet() {
                     if (typeof L === 'undefined') return;
 
-                    this.map = L.map('map').setView([this.lat, this.lng], 13);
+                    const mapOptions = {
+                        maxBounds: this.mapBoundsConfig?.bounds || [[25.0, 44.0], [39.8, 63.5]],
+                        maxBoundsViscosity: 1.0,
+                        minZoom: this.mapBoundsConfig?.minZoom || 5,
+                    };
+
+                    const initialZoom = this.mapBoundsConfig?.zoom || 13;
+                    this.map = L.map('map', mapOptions).setView([this.lat, this.lng], initialZoom);
                     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                         attribution: '© OpenStreetMap contributors'
                     }).addTo(this.map);

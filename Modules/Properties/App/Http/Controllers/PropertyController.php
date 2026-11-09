@@ -33,8 +33,7 @@ class PropertyController extends Controller
             ->whereHas('status', function ($q) {
                 $q->where('show_in_crm', true);
             })
-            ->with(['status', 'attributeValues', 'category', 'building'])
-            ->latest();
+            ->with(['status', 'attributeValues', 'category', 'building', 'rentalConfig', 'host']);
 
         // Check if user has permission to see all properties and requested to do so
         $user = auth()->user();
@@ -101,7 +100,12 @@ class PropertyController extends Controller
         $currency = PropertySetting::getCurrency();
         $currencyLabel = PropertySetting::getCurrencyLabel();
 
-        return view('properties::index', compact('properties', 'showFeatures', 'filterableAttributes', 'features', 'categories', 'buildings', 'visibilitySettings', 'availableDestinations', 'currency', 'currencyLabel'));
+        $rentalModeEnabled = (bool) PropertySetting::get('rental_mode_enabled', 1);
+        $multiHostEnabled = (bool) PropertySetting::get('rental_multi_host_enabled', 0);
+        $rentalPropertyTypes = Property::getRentalPropertyTypes(true);
+        $activeHosts = $multiHostEnabled ? \Modules\Properties\Entities\PropertyHost::where('status', 'active')->get() : collect();
+
+        return view('properties::index', compact('properties', 'showFeatures', 'filterableAttributes', 'features', 'categories', 'buildings', 'visibilitySettings', 'availableDestinations', 'currency', 'currencyLabel', 'rentalModeEnabled', 'multiHostEnabled', 'rentalPropertyTypes', 'activeHosts'));
     }
 
     public function map(Request $request)
@@ -118,8 +122,7 @@ class PropertyController extends Controller
             ->whereHas('status', function ($q) {
                 $q->where('show_in_crm', true);
             })
-            ->with(['status', 'attributeValues', 'category', 'building'])
-            ->latest();
+            ->with(['status', 'attributeValues', 'category', 'building', 'rentalConfig', 'host']);
 
         // Check if user has permission to see all properties and requested to do so
         $user = auth()->user();
@@ -256,26 +259,34 @@ class PropertyController extends Controller
 
         // 5. فیلتر قیمت
         $listingType = $request->get('listing_type');
+        $cleanNumber = function($val) {
+            if ($val === null || $val === '') return null;
+            $p = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
+            $e = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
+            $v = str_replace($p, $e, (string)$val);
+            $v = preg_replace('/[^0-9]/', '', $v);
+            return $v !== '' ? (int)$v : null;
+        };
 
         if ($listingType === 'rent') {
-            if ($request->filled('min_deposit_price')) {
-                $query->where('deposit_price', '>=', $request->min_deposit_price);
+            if ($request->filled('min_deposit_price') && ($v = $cleanNumber($request->min_deposit_price)) !== null) {
+                $query->where('deposit_price', '>=', $v);
             }
-            if ($request->filled('max_deposit_price')) {
-                $query->where('deposit_price', '<=', $request->max_deposit_price);
+            if ($request->filled('max_deposit_price') && ($v = $cleanNumber($request->max_deposit_price)) !== null) {
+                $query->where('deposit_price', '<=', $v);
             }
-            if ($request->filled('min_rent_price')) {
-                $query->where('rent_price', '>=', $request->min_rent_price);
+            if ($request->filled('min_rent_price') && ($v = $cleanNumber($request->min_rent_price)) !== null) {
+                $query->where('rent_price', '>=', $v);
             }
-            if ($request->filled('max_rent_price')) {
-                $query->where('rent_price', '<=', $request->max_rent_price);
+            if ($request->filled('max_rent_price') && ($v = $cleanNumber($request->max_rent_price)) !== null) {
+                $query->where('rent_price', '<=', $v);
             }
         } else {
-            if ($request->filled('min_price')) {
-                $query->where('price', '>=', $request->min_price);
+            if ($request->filled('min_price') && ($v = $cleanNumber($request->min_price)) !== null) {
+                $query->where('price', '>=', $v);
             }
-            if ($request->filled('max_price')) {
-                $query->where('price', '<=', $request->max_price);
+            if ($request->filled('max_price') && ($v = $cleanNumber($request->max_price)) !== null) {
+                $query->where('price', '<=', $v);
             }
         }
 
@@ -355,6 +366,75 @@ class PropertyController extends Controller
         // 10. Building
         if ($request->filled('building_id')) {
             $query->where('building_id', $request->building_id);
+        }
+
+        // 11. Multi-Host Filter
+        if ($request->filled('host_id')) {
+            $query->where('host_id', $request->host_id);
+        }
+
+        // 12. Guests / Capacity Filter
+        if ($request->filled('guests') && (int)$request->guests > 0) {
+            $guestsCount = (int)$request->guests;
+            $query->where(function($q) use ($guestsCount) {
+                $q->whereHas('rentalConfig', function($rq) use ($guestsCount) {
+                    $rq->where('max_guests', '>=', $guestsCount);
+                })->orWhere('meta->max_guests', '>=', $guestsCount);
+            });
+        }
+
+        // 13. Bedrooms / Rooms Filter
+        if ($request->filled('rooms') && (int)$request->rooms > 0) {
+            $roomsCount = (int)$request->rooms;
+            $query->where(function($q) use ($roomsCount) {
+                $q->where('meta->rooms', '>=', $roomsCount)
+                  ->orWhere('meta->bedrooms', '>=', $roomsCount)
+                  ->orWhereHas('attributeValues', function($aq) use ($roomsCount) {
+                      $aq->whereHas('attribute', function($attrQ) {
+                          $attrQ->where('name', 'like', '%خواب%')
+                                ->orWhere('name', 'like', '%اتاق%');
+                      })->whereRaw('CAST(value AS DECIMAL) >= ?', [$roomsCount]);
+                  });
+            });
+        }
+
+        // 14. Discounted Properties Filter
+        if ($request->filled('has_discount') && ($request->has_discount == '1' || $request->has_discount === 'true')) {
+            $query->whereHas('rentalConfig', function($rq) {
+                $rq->where(function($dq) {
+                    $dq->where('has_discount', true)
+                       ->orWhereNotNull('old_daily_rate');
+                });
+            });
+        }
+
+        // 15. Sorting
+        $sort = $request->get('sort', 'newest');
+        switch ($sort) {
+            case 'price_asc':
+                $query->orderBy('price', 'asc')->orderBy('id', 'desc');
+                break;
+            case 'price_desc':
+                $query->orderBy('price', 'desc')->orderBy('id', 'desc');
+                break;
+            case 'rating':
+                if (\Illuminate\Support\Facades\Schema::hasColumn('properties', 'rating')) {
+                    $query->orderByDesc('rating')->orderByDesc('id');
+                } else {
+                    $query->latest();
+                }
+                break;
+            case 'popular':
+                if (\Illuminate\Support\Facades\Schema::hasColumn('properties', 'rating')) {
+                    $query->orderByDesc('rating')->orderByDesc('created_at');
+                } else {
+                    $query->latest();
+                }
+                break;
+            case 'newest':
+            default:
+                $query->latest();
+                break;
         }
     }
 

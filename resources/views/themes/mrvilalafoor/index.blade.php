@@ -246,12 +246,26 @@
                 <!-- Left: Login / Profile Link -->
                 <div class="shrink-0">
                     @if(auth()->check())
-                        <a href="{{ route('user.dashboard') }}" class="flex items-center gap-1.5 text-xs font-bold text-zinc-700 dark:text-zinc-200 bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-2.5 py-1.5">
+                        @php
+                            $u = auth()->user();
+                            $isSuperAdmin = ($u->is_super_admin ?? false) || (method_exists($u, 'hasRole') && ($u->hasRole('super-admin') || $u->hasRole('Super Admin')));
+                            $uDash = $isSuperAdmin ? url('/admin') : url('/user');
+                        @endphp
+                        <a href="{{ $uDash }}" class="flex items-center gap-1.5 text-xs font-bold text-zinc-700 dark:text-zinc-200 bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-2.5 py-1.5">
                             <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
-                            <span class="max-w-[90px] truncate">{{ auth()->user()->name ?: 'حساب کاربری' }}</span>
+                            <span class="max-w-[90px] truncate">{{ $u->name ?: ($isSuperAdmin ? 'مدیریت کل' : 'حساب کاربری') }}</span>
+                        </a>
+                    @elseif(auth('client')->check())
+                        @php
+                            $c = auth('client')->user();
+                            $cName = trim(($c->first_name ?? '') . ' ' . ($c->last_name ?? '')) ?: ($c->full_name ?? ($c->name ?? 'حساب من'));
+                        @endphp
+                        <a href="{{ url('/clients/dashboard') }}" class="flex items-center gap-1.5 text-xs font-bold text-zinc-700 dark:text-zinc-200 bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-2.5 py-1.5">
+                            <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                            <span class="max-w-[90px] truncate">{{ $cName }}</span>
                         </a>
                     @else
-                        <a href="{{ route('login') }}" class="flex items-center gap-1.5 text-xs font-bold text-[#18181B] dark:text-zinc-200 hover:text-[#007A5E] dark:hover:text-emerald-400 transition-colors py-1 px-1">
+                        <a href="{{ url('/clients/dashboard') }}" class="flex items-center gap-1.5 text-xs font-bold text-[#18181B] dark:text-zinc-200 hover:text-[#007A5E] dark:hover:text-emerald-400 transition-colors py-1 px-1">
                             <span>ورود یا ثبت‌نام</span>
                             <svg class="w-4 h-4 text-zinc-600 dark:text-zinc-300 rotate-180 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9"/>
@@ -1172,11 +1186,43 @@
             <h2 class="text-lg font-extrabold text-[#18181B] dark:text-zinc-100 mb-6">حساب کاربری</h2>
 
             <div class="border border-[#ECECEE] dark:border-zinc-800 rounded-2xl p-5 mb-4 text-center bg-white dark:bg-zinc-900 shadow-sm">
-                <div class="w-16 h-16 rounded-full bg-[#ECFDF5] dark:bg-emerald-950/40 text-[#007A5E] dark:text-emerald-400 flex items-center justify-center font-bold text-xl mx-auto mb-3">
-                    {{ auth()->check() ? mb_substr(auth()->user()->name ?? 'م', 0, 1) : 'م' }}
-                </div>
-                <h3 class="text-sm font-bold text-[#18181B] dark:text-zinc-100">{{ auth()->check() ? auth()->user()->name : 'کاربر مهمان' }}</h3>
-                <span class="text-xs text-zinc-400 mt-0.5 block">{{ auth()->check() ? (auth()->user()->mobile ?? auth()->user()->phone ?? auth()->user()->email) : 'جهت دسترسی به امکانات کامل وارد شوید' }}</span>
+                @if(auth()->check())
+                    @php
+                        $u = auth()->user();
+                        $isSuperAdmin = ($u->is_super_admin ?? false) || (method_exists($u, 'hasRole') && ($u->hasRole('super-admin') || $u->hasRole('Super Admin')));
+                        $uDash = $isSuperAdmin ? url('/admin') : url('/user');
+                    @endphp
+                    <div class="w-16 h-16 rounded-full bg-[#ECFDF5] dark:bg-emerald-950/40 text-[#007A5E] dark:text-emerald-400 flex items-center justify-center font-bold text-xl mx-auto mb-3">
+                        {{ mb_substr($u->name ?? 'ک', 0, 1) }}
+                    </div>
+                    <h3 class="text-sm font-bold text-[#18181B] dark:text-zinc-100">{{ $u->name }}</h3>
+                    <span class="text-xs text-zinc-400 mt-0.5 block">{{ $u->mobile ?? $u->phone ?? $u->email }}</span>
+                    <a href="{{ $uDash }}" class="inline-block mt-3 px-4 py-1.5 rounded-xl bg-[#007A5E] text-white text-xs font-bold shadow-xs">
+                        {{ $isSuperAdmin ? 'ورود به پنل مدیریت کل' : 'ورود به پنل کاربری' }}
+                    </a>
+                @elseif(auth('client')->check())
+                    @php
+                        $c = auth('client')->user();
+                        $cName = trim(($c->first_name ?? '') . ' ' . ($c->last_name ?? '')) ?: ($c->full_name ?? ($c->name ?? 'مسافر گرامی'));
+                    @endphp
+                    <div class="w-16 h-16 rounded-full bg-[#ECFDF5] dark:bg-emerald-950/40 text-[#007A5E] dark:text-emerald-400 flex items-center justify-center font-bold text-xl mx-auto mb-3">
+                        {{ mb_substr($cName, 0, 1) }}
+                    </div>
+                    <h3 class="text-sm font-bold text-[#18181B] dark:text-zinc-100">{{ $cName }}</h3>
+                    <span class="text-xs text-zinc-400 mt-0.5 block">{{ $c->phone ?? $c->email }}</span>
+                    <a href="{{ url('/clients/dashboard') }}" class="inline-block mt-3 px-4 py-1.5 rounded-xl bg-[#007A5E] text-white text-xs font-bold shadow-xs">
+                        ورود به داشبورد من
+                    </a>
+                @else
+                    <div class="w-16 h-16 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-400 flex items-center justify-center font-bold text-xl mx-auto mb-3">
+                        م
+                    </div>
+                    <h3 class="text-sm font-bold text-[#18181B] dark:text-zinc-100">کاربر مهمان</h3>
+                    <span class="text-xs text-zinc-400 mt-0.5 block">جهت دسترسی به امکانات کامل وارد شوید</span>
+                    <a href="{{ url('/clients/dashboard') }}" class="inline-block mt-3 px-4 py-1.5 rounded-xl bg-[#007A5E] text-white text-xs font-bold shadow-xs">
+                        ورود / ثبت‌نام
+                    </a>
+                @endif
             </div>
 
             {{-- Multi-Host Marketplace Card (سیستم چندمیزبانی) --}}
@@ -1189,7 +1235,7 @@
                     <p class="text-[11px] text-[#007A5E]/90 dark:text-emerald-400/80 mb-3 leading-relaxed">
                         اقامتگاه، ویلا یا کلبه جنگلی خود را ثبت کنید و به شبکه میزبانان حرفه‌ای مستر ویلا لفور بپیوندید.
                     </p>
-                    <a href="{{ $isHostRegistered ? route('user.properties.hosts.dashboard') : route('user.properties.hosts.register') }}" 
+                    <a href="{{ $isHostRegistered ? route('user.properties.hosts.dashboard') : url('/register') }}" 
                        class="w-full inline-flex items-center justify-center gap-1.5 py-2.5 px-4 rounded-xl bg-[#007A5E] hover:bg-[#005F48] text-white text-xs font-bold transition-colors shadow-sm">
                         <span>{{ $isHostRegistered ? 'داشبورد اختصاصی میزبانی شما' : 'میزبان شوید — ثبت اقامتگاه' }}</span>
                         <span>←</span>
@@ -3758,7 +3804,7 @@
     }
 
     function openAuthModal() {
-        window.location.href = '{{ route("login") }}';
+        window.location.href = '{{ url("/clients/dashboard") }}';
     }
 
     // Live Countdown Timer for Last-Minute Section

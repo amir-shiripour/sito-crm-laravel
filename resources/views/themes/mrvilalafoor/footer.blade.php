@@ -61,7 +61,7 @@
 <!-- ============================================================= -->
 <!-- MR. VILA LAFOOR MODERN RESPONSIVE FOOTER (DESKTOP & MOBILE)   -->
 <!-- ============================================================= -->
-<footer class="border-t border-[#ECECEE] dark:border-zinc-800 bg-white/70 dark:bg-zinc-950 mt-12 sm:mt-16 lg:mt-20 pt-10 sm:pt-14 pb-28 sm:pb-24 md:pb-12 text-zinc-600 dark:text-zinc-300 transition-colors font-sans relative overflow-hidden">
+<footer class="border-t border-[#ECECEE] dark:border-zinc-800 bg-white/70 dark:bg-zinc-950 mt-8 sm:mt-12 lg:mt-16 pt-8 sm:pt-12 pb-28 sm:pb-24 md:pb-12 text-zinc-600 dark:text-zinc-300 transition-colors font-sans relative overflow-hidden">
     
     {{-- Decorative Ambient Glow --}}
     <div class="absolute -top-32 right-1/4 w-96 h-96 bg-emerald-500/5 dark:bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
@@ -177,9 +177,9 @@
                 </h4>
 
                 <ul class="space-y-2.5 text-xs font-sans">
-                    @if($rentalMultiHostEnabled && Route::has('user.properties.hosts.register'))
+                    @if($rentalMultiHostEnabled)
                         <li>
-                            <a href="{{ $isHostRegistered ? route('user.properties.hosts.dashboard') : route('user.properties.hosts.register') }}" 
+                            <a href="{{ $isHostRegistered ? route('user.properties.hosts.dashboard') : url('/register') }}" 
                                class="inline-flex items-center gap-2 font-bold text-[#007A5E] dark:text-emerald-400 hover:underline">
                                 <span class="w-1.5 h-1.5 rounded-full bg-[#007A5E] dark:bg-emerald-400"></span>
                                 <span>{{ $isHostRegistered ? 'داشبورد مدیریت میزبانی' : 'ثبت اقامتگاه (میزبان شوید)' }}</span>
@@ -189,24 +189,36 @@
                     <li>
                         <a href="{{ route('properties.index') }}" class="group inline-flex items-center gap-1.5 text-zinc-600 dark:text-zinc-300 hover:text-[#007A5E] dark:hover:text-emerald-400 transition-colors">
                             <span class="text-zinc-300 dark:text-zinc-600 group-hover:text-[#007A5E] dark:group-hover:text-emerald-400 transition-colors text-[10px]">‹</span>
-                            <span>کاوش اقامتگاه‌ها</span>
+                            <span>اقامتگاه‌ها</span>
                         </a>
                     </li>
-                    @auth
+                    @if(auth()->check())
+                        @php
+                            $u = auth()->user();
+                            $isSuperAdmin = ($u->is_super_admin ?? false) || (method_exists($u, 'hasRole') && ($u->hasRole('super-admin') || $u->hasRole('Super Admin')));
+                            $uDash = $isSuperAdmin ? url('/admin') : url('/user');
+                        @endphp
                         <li>
-                            <a href="{{ route('user.dashboard') }}" class="group inline-flex items-center gap-1.5 text-zinc-600 dark:text-zinc-300 hover:text-[#007A5E] dark:hover:text-emerald-400 transition-colors">
+                            <a href="{{ $uDash }}" class="group inline-flex items-center gap-1.5 text-zinc-600 dark:text-zinc-300 hover:text-[#007A5E] dark:hover:text-emerald-400 transition-colors">
                                 <span class="text-zinc-300 dark:text-zinc-600 group-hover:text-[#007A5E] dark:group-hover:text-emerald-400 transition-colors text-[10px]">‹</span>
-                                <span>پنل کاربری من</span>
+                                <span>{{ $isSuperAdmin ? 'پنل مدیریت کل' : 'پنل کاربری من' }}</span>
+                            </a>
+                        </li>
+                    @elseif(auth('client')->check())
+                        <li>
+                            <a href="{{ url('/clients/dashboard') }}" class="group inline-flex items-center gap-1.5 text-zinc-600 dark:text-zinc-300 hover:text-[#007A5E] dark:hover:text-emerald-400 transition-colors">
+                                <span class="text-zinc-300 dark:text-zinc-600 group-hover:text-[#007A5E] dark:group-hover:text-emerald-400 transition-colors text-[10px]">‹</span>
+                                <span>داشبورد کاربری من</span>
                             </a>
                         </li>
                     @else
                         <li>
-                            <a href="{{ route('login') }}" class="group inline-flex items-center gap-1.5 text-zinc-600 dark:text-zinc-300 hover:text-[#007A5E] dark:hover:text-emerald-400 transition-colors">
+                            <a href="{{ url('/clients/dashboard') }}" class="group inline-flex items-center gap-1.5 text-zinc-600 dark:text-zinc-300 hover:text-[#007A5E] dark:hover:text-emerald-400 transition-colors">
                                 <span class="text-zinc-300 dark:text-zinc-600 group-hover:text-[#007A5E] dark:group-hover:text-emerald-400 transition-colors text-[10px]">‹</span>
                                 <span>ورود / ثبت‌نام</span>
                             </a>
                         </li>
-                    @endauth
+                    @endif
                     <li>
                         <a href="#trust-guarantees-section" class="group inline-flex items-center gap-1.5 text-zinc-600 dark:text-zinc-300 hover:text-[#007A5E] dark:hover:text-emerald-400 transition-colors">
                             <span class="text-zinc-300 dark:text-zinc-600 group-hover:text-[#007A5E] dark:group-hover:text-emerald-400 transition-colors text-[10px]">‹</span>

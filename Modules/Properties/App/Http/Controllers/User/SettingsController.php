@@ -81,6 +81,16 @@ class SettingsController extends Controller
         // Map Service Settings
         $map_service = PropertySetting::get('map_service', 'leaflet');
         $map_ir_api_key = PropertySetting::get('map_ir_api_key');
+        $map_boundary_scope = PropertySetting::get('map_boundary_scope', 'iran');
+        $rawMapProvinces = PropertySetting::get('map_selected_provinces');
+        $map_selected_provinces = is_array($rawMapProvinces) 
+            ? $rawMapProvinces 
+            : (!empty($rawMapProvinces) ? json_decode($rawMapProvinces, true) : []);
+        if (!is_array($map_selected_provinces)) {
+            $map_selected_provinces = [];
+        }
+        $map_all_provinces = \Modules\Properties\Services\MapBoundaryService::getProvinceNames();
+        $map_bounds_config = \Modules\Properties\Services\MapBoundaryService::getBoundsConfig();
 
         // Rental Mode & Multi-Host Settings
         $rental_mode_enabled = PropertySetting::get('rental_mode_enabled', 0);
@@ -220,6 +230,10 @@ class SettingsController extends Controller
             'office_location_title',
             'map_service',
             'map_ir_api_key',
+            'map_boundary_scope',
+            'map_selected_provinces',
+            'map_all_provinces',
+            'map_bounds_config',
             'rental_mode_enabled',
             'rental_video_enabled',
             'rental_building_enabled',
@@ -291,6 +305,9 @@ class SettingsController extends Controller
             'office_location_title' => 'nullable|string|max:255',
             'map_service' => 'required|in:leaflet,map_ir',
             'map_ir_api_key' => 'nullable|string',
+            'map_boundary_scope' => 'required|in:iran,custom_provinces',
+            'map_selected_provinces' => 'nullable|array',
+            'map_selected_provinces.*' => 'string',
             'rental_mode_enabled' => 'nullable|boolean',
             'rental_video_enabled' => 'nullable|boolean',
             'rental_building_enabled' => 'nullable|boolean',
@@ -384,6 +401,14 @@ class SettingsController extends Controller
         // Save Map Service Settings
         PropertySetting::set('map_service', $request->map_service);
         PropertySetting::set('map_ir_api_key', $request->map_ir_api_key);
+        PropertySetting::set('map_boundary_scope', $request->input('map_boundary_scope', 'iran'));
+        $selectedProvinces = $request->input('map_selected_provinces', []);
+        if (is_array($selectedProvinces)) {
+            $selectedProvinces = array_values(array_filter($selectedProvinces));
+        } else {
+            $selectedProvinces = [];
+        }
+        PropertySetting::set('map_selected_provinces', json_encode($selectedProvinces, JSON_UNESCAPED_UNICODE));
 
         // Save Rental & Multi-Host Settings
         PropertySetting::set('rental_mode_enabled', $request->has('rental_mode_enabled') ? 1 : 0);

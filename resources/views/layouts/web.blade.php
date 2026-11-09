@@ -224,7 +224,7 @@
     @includeFirst($themeManager->resolveViewChain('header'), ['appName' => $appName, 'appLogo' => $appLogo])
 
     {{-- Main Content --}}
-    <main class="flex-grow flex flex-col relative z-10 w-full pb-16 md:pb-0">
+    <main class="flex-grow flex flex-col relative z-10 w-full">
         @yield('content')
     </main>
 

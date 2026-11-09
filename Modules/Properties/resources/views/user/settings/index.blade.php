@@ -67,6 +67,10 @@
     mapService: '{{ $map_service ?? 'leaflet' }}',
     officeLat: {{ $office_location_lat ?? 35.6892 }},
     officeLng: {{ $office_location_lng ?? 51.3890 }},
+    mapBoundaryScope: '{{ $map_boundary_scope ?? 'iran' }}',
+    mapSelectedProvinces: @js($map_selected_provinces ?? []),
+    mapAllProvinces: @js($map_all_provinces ?? []),
+    mapBoundsConfig: @js($map_bounds_config ?? []),
     rulesTitle: @js($rental_settlement_rules_title ?? 'قوانین و رویه تسویه حساب درآمد:'),
     rules: @js($rental_settlement_rules ?? []),
     hostTipsEnabled: {{ ($rental_host_tips_enabled ?? 1) ? 'true' : 'false' }},
@@ -2054,6 +2058,83 @@
                         </p>
                     </div>
 
+                    {{-- بخش مرزبندی جغرافیایی نقشه و محدودسازی استانی --}}
+                    <div class="bg-gray-50/70 dark:bg-gray-900/40 rounded-2xl p-4 sm:p-5 border border-gray-100 dark:border-gray-700/50 space-y-4">
+                        <div class="flex items-center justify-between border-b border-gray-200/60 dark:border-gray-700/60 pb-3">
+                            <div>
+                                <h3 class="text-xs sm:text-sm font-black text-gray-900 dark:text-white flex items-center gap-2 font-sans">
+                                    <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                                    محدوده مجاز جغرافیایی نقشه‌ها (مرزهای ملی و استانی)
+                                </h3>
+                                <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 font-sans">
+                                    محدود کردن کادر پَن و زوم نقشه به مرزهای ایران یا استان‌های فعال جهت بهینه‌سازی بارگذاری تایل‌ها و کاهش مصرف ترافیک
+                                </p>
+                            </div>
+                            <span class="text-[11px] bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 px-2.5 py-0.5 rounded-full font-bold border border-emerald-200/60 dark:border-emerald-800/40 font-sans shrink-0">
+                                بهینه‌سازی منابع
+                            </span>
+                        </div>
+
+                        {{-- انتخاب دامنه: کل کشور یا استان‌های منتخب --}}
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <label class="flex items-center gap-3 p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 cursor-pointer transition hover:border-indigo-500 select-none">
+                                <div class="relative flex items-center">
+                                    <input type="radio" name="map_boundary_scope" value="iran" x-model="mapBoundaryScope" class="peer sr-only">
+                                    <div class="w-5 h-5 border-2 border-gray-300 dark:border-gray-600 rounded-full peer-checked:border-indigo-600 peer-checked:bg-indigo-600 transition-all"></div>
+                                    <div class="absolute inset-0 m-auto w-2 h-2 rounded-full bg-white opacity-0 peer-checked:opacity-100 transition-opacity"></div>
+                                </div>
+                                <div>
+                                    <span class="text-xs font-bold text-gray-800 dark:text-gray-200 block font-sans">سراسر کشور (ایران)</span>
+                                    <span class="text-[10px] text-gray-500 dark:text-gray-400 block mt-0.5 font-sans">محدود کردن نقشه به مرزهای کشور ایران (پیش‌فرض سیستم)</span>
+                                </div>
+                            </label>
+
+                            <label class="flex items-center gap-3 p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 cursor-pointer transition hover:border-indigo-500 select-none">
+                                <div class="relative flex items-center">
+                                    <input type="radio" name="map_boundary_scope" value="custom_provinces" x-model="mapBoundaryScope" class="peer sr-only">
+                                    <div class="w-5 h-5 border-2 border-gray-300 dark:border-gray-600 rounded-full peer-checked:border-indigo-600 peer-checked:bg-indigo-600 transition-all"></div>
+                                    <div class="absolute inset-0 m-auto w-2 h-2 rounded-full bg-white opacity-0 peer-checked:opacity-100 transition-opacity"></div>
+                                </div>
+                                <div>
+                                    <span class="text-xs font-bold text-gray-800 dark:text-gray-200 block font-sans">محدود به استان‌های منتخب (چند استانه)</span>
+                                    <span class="text-[10px] text-gray-500 dark:text-gray-400 block mt-0.5 font-sans">قفل کردن کادر جابجایی نقشه روی یک یا چند استان مشخص</span>
+                                </div>
+                            </label>
+                        </div>
+
+                        {{-- بخش انتخاب استان‌ها (تنها در حالت custom_provinces) --}}
+                        <div x-show="mapBoundaryScope === 'custom_provinces'" x-transition class="space-y-3 pt-2">
+                            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                                <label class="text-xs font-bold text-gray-700 dark:text-gray-300 flex items-center gap-1.5 font-sans">
+                                    <span>انتخاب استان‌های مجاز پلتفرم:</span>
+                                    <span class="text-[11px] text-indigo-600 dark:text-indigo-400 font-bold font-sans bg-indigo-50 dark:bg-indigo-950/40 px-2 py-0.5 rounded-md border border-indigo-200/60 dark:border-indigo-800/40" x-text="`${mapSelectedProvinces.length} استان انتخاب‌شده`"></span>
+                                </label>
+                                <div class="relative w-full sm:w-64">
+                                    <input type="text" x-model="provinceSearch" placeholder="جستجوی سریع استان..." class="{{ $inputClass }} text-xs py-1.5 font-sans">
+                                </div>
+                            </div>
+
+                            {{-- چیپ‌های استان‌ها --}}
+                            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 max-h-56 overflow-y-auto p-2.5 bg-white dark:bg-gray-800/80 rounded-xl border border-gray-200 dark:border-gray-700">
+                                <template x-for="prov in filteredProvinces" :key="prov">
+                                    <label class="flex items-center gap-2 p-2 rounded-lg border text-xs cursor-pointer select-none transition"
+                                           :class="mapSelectedProvinces.includes(prov) 
+                                               ? 'border-indigo-500 bg-indigo-50/70 dark:bg-indigo-950/40 text-indigo-800 dark:text-indigo-200 font-bold' 
+                                               : 'border-gray-100 dark:border-gray-700/80 hover:bg-gray-50 dark:hover:bg-gray-700/50 text-gray-700 dark:text-gray-300'">
+                                        <input type="checkbox" name="map_selected_provinces[]" :value="prov"
+                                               :checked="mapSelectedProvinces.includes(prov)"
+                                               @change="toggleProvince(prov)"
+                                               class="w-3.5 h-3.5 rounded text-indigo-600 focus:ring-indigo-500 dark:bg-gray-900 dark:border-gray-600">
+                                        <span x-text="prov" class="truncate font-sans"></span>
+                                    </label>
+                                </template>
+                            </div>
+                            <p class="text-[11px] text-slate-500 dark:text-slate-400 font-sans">
+                                * در صورت عدم انتخاب هیچ استانی، نقشه به صورت خودکار به مرزهای سراسر کشور ایران محدود می‌گردد.
+                            </p>
+                        </div>
+                    </div>
+
                     {{-- فرم دفتر مرکزی و نقشه تعاملی --}}
                     <div class="space-y-3 pt-2">
                         <div>
@@ -2249,6 +2330,25 @@
             mapService: config.mapService,
             officeLat: config.officeLat,
             officeLng: config.officeLng,
+            mapBoundaryScope: config.mapBoundaryScope || 'iran',
+            mapSelectedProvinces: Array.isArray(config.mapSelectedProvinces) ? config.mapSelectedProvinces : [],
+            mapAllProvinces: config.mapAllProvinces || [],
+            mapBoundsConfig: config.mapBoundsConfig || {},
+            provinceSearch: '',
+            toggleProvince(prov) {
+                if (this.mapSelectedProvinces.includes(prov)) {
+                    this.mapSelectedProvinces = this.mapSelectedProvinces.filter(p => p !== prov);
+                } else {
+                    this.mapSelectedProvinces.push(prov);
+                }
+            },
+            get filteredProvinces() {
+                if (!this.provinceSearch || !this.provinceSearch.trim()) {
+                    return this.mapAllProvinces || [];
+                }
+                const q = this.provinceSearch.trim();
+                return (this.mapAllProvinces || []).filter(p => p.includes(q));
+            },
             rulesTitle: config.rulesTitle,
             rules: config.rules && config.rules.length > 0 ? config.rules : [
                 {
@@ -2536,7 +2636,13 @@
                     const el = document.getElementById('office-map');
                     if (!el) return;
 
-                    this.mapInstance = L.map('office-map').setView([parseFloat(this.officeLat), parseFloat(this.officeLng)], 13);
+                    const mapOptions = {
+                        maxBounds: this.mapBoundsConfig?.bounds || [[25.0, 44.0], [39.8, 63.5]],
+                        maxBoundsViscosity: 1.0,
+                        minZoom: this.mapBoundsConfig?.minZoom || 5,
+                    };
+
+                    this.mapInstance = L.map('office-map', mapOptions).setView([parseFloat(this.officeLat), parseFloat(this.officeLng)], 13);
                     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(this.mapInstance);
 
                     this.markerInstance = L.marker([parseFloat(this.officeLat), parseFloat(this.officeLng)], {draggable: true}).addTo(this.mapInstance);

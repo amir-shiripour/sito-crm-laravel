@@ -1137,15 +1137,16 @@
                 customDetails: @json($customDetails),
                 customFeatures: @json($customFeatures),
 
-                // تنظیمات نقشه
+                // تنظیمات نقشه و مرزبندی
                 mapService: '{{ $mapService }}',
                 mapIrApiKey: '{{ $mapIrApiKey }}',
+                mapBoundsConfig: @js($mapBoundsConfig ?? \Modules\Properties\Entities\PropertySetting::getMapBoundsConfig()),
 
                 // Map
                 map: null,
                 marker: null,
-                lat: {{ $property->latitude ?? 35.6892 }},
-                lng: {{ $property->longitude ?? 51.3890 }},
+                lat: {{ $property->latitude ?? ($mapBoundsConfig['center'][0] ?? 32.4279) }},
+                lng: {{ $property->longitude ?? ($mapBoundsConfig['center'][1] ?? 53.6880) }},
                 address: '{{ $property->address }}',
 
                 // سیستم استان و شهر
@@ -1830,7 +1831,13 @@
                 initLeaflet() {
                     if (typeof L === 'undefined') return;
 
-                    this.map = L.map('map').setView([this.lat, this.lng], 13);
+                    const mapOptions = {
+                        maxBounds: this.mapBoundsConfig?.bounds || [[25.0, 44.0], [39.8, 63.5]],
+                        maxBoundsViscosity: 1.0,
+                        minZoom: this.mapBoundsConfig?.minZoom || 5,
+                    };
+
+                    this.map = L.map('map', mapOptions).setView([this.lat, this.lng], 13);
                     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                         attribution: '© OpenStreetMap contributors'
                     }).addTo(this.map);

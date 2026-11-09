@@ -178,7 +178,7 @@
 
                         @if(!empty($quote['extra_guests_fee_total']) && $quote['extra_guests_fee_total'] > 0)
                             <div class="flex items-center justify-between text-zinc-600 dark:text-zinc-400">
-                                <span>هزینه نفرات اضافه:</span>
+                                <span>{{ !empty($quote['extra_guests_count']) ? 'هزینه ' . number_format($quote['extra_guests_count']) . ' نفر اضافه:' : 'هزینه نفرات اضافه:' }}</span>
                                 <span class="font-bold text-[#18181B] dark:text-zinc-200">{{ number_format($quote['extra_guests_fee_total']) }} {{ $currencyLabel }}</span>
                             </div>
                         @endif
