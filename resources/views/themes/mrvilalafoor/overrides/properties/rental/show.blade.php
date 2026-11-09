@@ -185,7 +185,7 @@
         $similarList = $similarProperties ?? collect([]);
     @endphp
 
-    <div class="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8 py-5 w-full font-sans pb-28 lg:pb-12" 
+    <div class="max-w-[1360px] mx-auto px-4 sm:px-8 py-5 w-full font-sans pb-28 lg:pb-12" 
          x-data="rentalBookingApp(@js($calendarData['flatDates'] ?? []), @js($config), '{{ $currencyLabel }}', '{{ addslashes($property->title) }}', '{{ $property->code }}', @js($clientPayload), '{{ $checkoutUrlBase }}', {{ $hasDiscount ? 'true' : 'false' }}, '{{ $config?->discount_type ?? 'percent' }}', {{ (float)($config?->discount_value ?? 0) }})">
 
         {{-- ۱. بخش گالری و تصاویر شاخص (در موبایل تمام‌عرض با اسلایدر، در دسکتاپ موزاییکی شکیل) --}}
@@ -376,9 +376,8 @@
                 @php
                     $mainSpecs = [];
                     if (!empty($config?->base_guests) || !empty($config?->max_guests) || !empty($property->max_guests)) {
-                        $capText = (!empty($config?->base_guests) && !empty($config?->max_guests) && $config->base_guests != $config->max_guests)
-                            ? "{$config->base_guests} تا {$config->max_guests} نفر"
-                            : "تا " . ($config?->max_guests ?? $property->max_guests ?? $config?->base_guests) . " نفر";
+                        $maxCapacity = $config?->max_guests ?? $property->max_guests ?? $config?->base_guests ?? 1;
+                        $capText = "تا " . $maxCapacity . " نفر";
                         $mainSpecs[] = [
                             'label' => 'ظرفیت',
                             'value' => $capText,
@@ -435,7 +434,7 @@
                             </div>
                             <div>
                                 <h4 class="text-xs sm:text-sm font-black text-indigo-950 dark:text-indigo-200">
-                                    رزرو آنی و قطعی (بدون نیاز به تأیید میزبان)
+                                    رزرو آنی و قطعی
                                 </h4>
                                 <p class="text-[11px] text-indigo-800/80 dark:text-indigo-300/80 mt-0.5">
                                     با انتخاب تاریخ در تقویم، اقامت شما بلافاصله در سامانه ثبت و قطعی خواهد شد.
@@ -451,29 +450,48 @@
                     </div>
                 @endif
 
-                {{-- ۶. مشخصات کلی اقامتگاه (کاملاً داینامیک و تنها در صورت وجود اطلاعات) --}}
+                {{-- ۶. مشخصات کلی اقامتگاه (کاملاً داینامیک و بر اساس ساختار نمونه ضمیمه) --}}
                 @php
                     $generalSpecs = [];
                     if (!empty($property->property_type_name) || !empty($areaValue)) {
                         $parts = [];
+                        if (!empty($areaValue)) $parts[] = $areaValue . ' زیربنا';
                         if (!empty($property->property_type_name)) $parts[] = $property->property_type_name;
-                        if (!empty($areaValue)) $parts[] = 'با متراژ ' . $areaValue . ' زیربنا';
-                        if (!empty($property->city)) $parts[] = 'در محدوده ' . $property->city;
+                        if (!empty($property->city)) $parts[] = 'محدوده ' . $property->city;
+                        $typeName = !empty($property->property_type_name) ? $property->property_type_name : 'اقامتگاه';
                         $generalSpecs[] = [
-                            'icon' => '🏡',
-                            'title' => 'درباره فضا و ساختمان',
-                            'desc' => implode(' ', $parts)
+                            'svg' => '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>',
+                            'title' => 'درباره ' . $typeName,
+                            'desc' => implode(' • ', $parts)
                         ];
                     }
                     if (!empty($config?->base_guests) || !empty($config?->max_guests)) {
-                        $guestDesc = 'ظرفیت استاندارد ' . ($config->base_guests ?? $config->max_guests) . ' نفر';
-                        if (!empty($config->max_guests) && $config->max_guests > ($config->base_guests ?? 1)) {
-                            $guestDesc .= ' (امکان پذیرش تا ' . $config->max_guests . ' نفر مهمان با هزینه نفر اضافه)';
-                        }
+                        $baseGuests = (int) ($config->base_guests ?? $property->base_guests ?? 1);
+                        $maxGuests = (int) ($config->max_guests ?? $property->max_guests ?? $baseGuests);
+                        $extraGuests = max(0, $maxGuests - $baseGuests);
+                        $guestDesc = "{$baseGuests} نفر استاندارد + {$extraGuests} نفر اضافه";
                         $generalSpecs[] = [
-                            'icon' => '👥',
-                            'title' => 'ظرفیت مسافران',
+                            'svg' => '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>',
+                            'title' => 'ظرفیت',
                             'desc' => $guestDesc
+                        ];
+                    }
+                    if (!empty($bedroomsCount) || !empty($doubleBeds) || !empty($singleBeds)) {
+                        $roomDesc = [];
+                        if (!empty($bedroomsCount)) $roomDesc[] = "دارای {$bedroomsCount} اتاق خواب";
+                        if (!empty($doubleBeds)) $roomDesc[] = "{$doubleBeds} تخت دو نفره";
+                        if (!empty($singleBeds)) $roomDesc[] = "{$singleBeds} تخت یک نفره";
+                        $generalSpecs[] = [
+                            'svg' => '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M3 7v11m0-4h18m0-7v11M3 10a2 2 0 012-2h4a2 2 0 012 2v4H3v-4zm14 0a2 2 0 012-2h0a2 2 0 012 2v4h-4v-4z"/>',
+                            'title' => 'سرویس‌های خواب',
+                            'desc' => implode(' • ', $roomDesc)
+                        ];
+                    }
+                    if (!empty($bathroomsCount)) {
+                        $generalSpecs[] = [
+                            'svg' => '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1M4 12h16M7 12V8a5 5 0 0110 0v4"/>',
+                            'title' => 'سرویس‌های بهداشتی',
+                            'desc' => "{$bathroomsCount} سرویس بهداشتی و حمام"
                         ];
                     }
                     if (!empty($checkInTimeFormatted) || !empty($checkOutTimeFormatted)) {
@@ -485,21 +503,9 @@
                             $timeDesc[] = 'تخلیه اقامتگاه تا ساعت ' . $checkOutTimeFormatted;
                         }
                         $generalSpecs[] = [
-                            'icon' => '🕒',
+                            'svg' => '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>',
                             'title' => 'ساعت ورود و خروج',
                             'desc' => implode(' • ', $timeDesc)
-                        ];
-                    }
-                    if (!empty($bedroomsCount) || !empty($bathroomsCount) || !empty($doubleBeds) || !empty($singleBeds)) {
-                        $roomDesc = [];
-                        if (!empty($bedroomsCount)) $roomDesc[] = "دارای {$bedroomsCount} اتاق خواب";
-                        if (!empty($doubleBeds)) $roomDesc[] = "{$doubleBeds} تخت دو نفره";
-                        if (!empty($singleBeds)) $roomDesc[] = "{$singleBeds} تخت یک نفره";
-                        if (!empty($bathroomsCount)) $roomDesc[] = "{$bathroomsCount} سرویس بهداشتی و حمام";
-                        $generalSpecs[] = [
-                            'icon' => '🛏️',
-                            'title' => 'فضای خواب و سرویس بهداشتی',
-                            'desc' => implode('، ', $roomDesc)
                         ];
                     }
                 @endphp
@@ -510,15 +516,15 @@
                             مشخصات کلی اقامتگاه
                         </h3>
 
-                        <div class="space-y-3.5 text-xs">
+                        <div class="space-y-4.5">
                             @foreach($generalSpecs as $gSpec)
-                                <div class="flex items-start gap-3">
-                                    <span class="w-5 h-5 text-gray-400 mt-0.5 shrink-0 text-base select-none">{{ $gSpec['icon'] }}</span>
-                                    <div>
-                                        <strong class="text-gray-900 dark:text-white block font-bold">{{ $gSpec['title'] }}</strong>
-                                        <span class="text-gray-500 dark:text-gray-400 mt-0.5 block leading-relaxed">
-                                            {{ $gSpec['desc'] }}
-                                        </span>
+                                <div class="flex items-start gap-3.5">
+                                    <div class="w-6 h-6 text-gray-800 dark:text-zinc-200 shrink-0 mt-0.5 select-none">
+                                        <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">{!! $gSpec['svg'] !!}</svg>
+                                    </div>
+                                    <div class="space-y-0.5">
+                                        <h4 class="text-sm sm:text-base font-bold text-gray-900 dark:text-white font-sans">{{ $gSpec['title'] }}</h4>
+                                        <p class="text-xs sm:text-sm text-gray-500 dark:text-gray-400 font-sans leading-relaxed">{{ $gSpec['desc'] }}</p>
                                     </div>
                                 </div>
                             @endforeach
@@ -526,64 +532,6 @@
                     </div>
                 @endif
 
-                {{-- ۷. فضای خواب و اتاق‌ها (فقط در صورت وجود اطلاعات واقعی اتاق یا تخت‌ها نمایش داده می‌شود) --}}
-                @php
-                    $roomCards = [];
-                    if (!empty($bedroomsCount) && $bedroomsCount > 0) {
-                        for ($r = 1; $r <= min($bedroomsCount, 6); $r++) {
-                            $rDesc = [];
-                            if ($r === 1 && !empty($doubleBeds)) {
-                                $rDesc[] = $doubleBeds . ' تخت ۲ نفره';
-                            } elseif ($r > 1 && !empty($singleBeds)) {
-                                $rDesc[] = ceil($singleBeds / max(1, $bedroomsCount - 1)) . ' تخت ۱ نفره';
-                            } else {
-                                $rDesc[] = 'سرویس خواب استاندارد و تمیز';
-                            }
-                            $roomCards[] = [
-                                'title' => 'اتاق خواب ' . $r,
-                                'desc' => implode(' • ', $rDesc),
-                                'icon' => '🚪'
-                            ];
-                        }
-                    } elseif (!empty($doubleBeds) || !empty($singleBeds)) {
-                        if (!empty($doubleBeds)) {
-                            $roomCards[] = [
-                                'title' => 'تخت دو نفره',
-                                'desc' => $doubleBeds . ' عدد تخت ۲ نفره استاندارد',
-                                'icon' => '🛏️'
-                            ];
-                        }
-                        if (!empty($singleBeds)) {
-                            $roomCards[] = [
-                                'title' => 'تخت یک نفره',
-                                'desc' => $singleBeds . ' عدد تخت ۱ نفره استاندارد',
-                                'icon' => '🛋️'
-                            ];
-                        }
-                    }
-                @endphp
-
-                @if(!empty($roomCards))
-                    <div class="space-y-4 pt-4 border-t border-gray-100 dark:border-zinc-800">
-                        <h3 class="text-base sm:text-lg font-black text-gray-900 dark:text-white">
-                            فضای خواب و تخت‌ها
-                        </h3>
-
-                        <div class="grid grid-cols-1 sm:grid-cols-{{ min(count($roomCards), 3) }} gap-3">
-                            @foreach($roomCards as $rc)
-                                <div class="p-4 rounded-2xl bg-gray-50/70 dark:bg-zinc-900/60 border border-gray-200/60 dark:border-zinc-800/60 space-y-2">
-                                    <div class="flex items-center gap-2 text-indigo-600 dark:text-indigo-400">
-                                        <span class="text-base select-none">{{ $rc['icon'] }}</span>
-                                        <span class="text-xs font-black text-gray-900 dark:text-white">{{ $rc['title'] }}</span>
-                                    </div>
-                                    <p class="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
-                                        {{ $rc['desc'] }}
-                                    </p>
-                                </div>
-                            @endforeach
-                        </div>
-                    </div>
-                @endif
 
                 {{-- ۸. درباره این اقامتگاه (تنها در صورت وجود توضیحات ثبت شده نمایش داده می‌شود) --}}
                 @if(!empty(trim($property->description ?? '')))
@@ -734,6 +682,7 @@
                                                 $isFriday = ($day['day_of_week'] ?? 0) == 6;
                                                 $isHolidayOrFriday = $isHoliday || $isFriday;
                                                 $isWeekend = !empty($day['is_weekend']);
+                                                $isPeakOrWeekend = in_array($day['price_type'] ?? '', ['weekend', 'holiday', 'custom']) || !empty($day['is_weekend']) || !empty($day['is_holiday']);
                                             @endphp
 
                                             @if($isPast)
@@ -746,7 +695,7 @@
                                                         :class="getDayClasses('{{ $iso }}', false, {{ $isBlocked ? 'true' : 'false' }})"
                                                         class="relative rounded-2xl border border-dashed border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800/80 hover:border-emerald-500 transition-all flex flex-col items-center justify-center py-1 px-0.5 min-h-[64px] font-sans shadow-2xs {{ $isBlocked ? 'opacity-35 cursor-not-allowed bg-gray-50 dark:bg-zinc-800/40' : 'cursor-pointer' }}">
                                                     
-                                                    @if(!$isBlocked)
+                                                    @if(!$isBlocked && $isPeakOrWeekend)
                                                         <span :class="(checkIn === '{{ $iso }}' || checkOut === '{{ $iso }}') ? 'hidden' : ''" 
                                                               class="absolute top-0 right-0 w-2.5 h-2.5 bg-amber-400 rounded-bl-md"></span>
                                                     @endif
@@ -815,6 +764,7 @@
                                                             $isHoliday = !empty($day['is_holiday']);
                                                             $isFriday = ($day['day_of_week'] ?? 0) == 6;
                                                             $isHolidayOrFriday = $isHoliday || $isFriday;
+                                                            $isPeakOrWeekend = in_array($day['price_type'] ?? '', ['weekend', 'holiday', 'custom']) || !empty($day['is_weekend']) || !empty($day['is_holiday']);
                                                         @endphp
 
                                                         @if($isPast)
@@ -827,7 +777,7 @@
                                                                     :class="getDayClasses('{{ $iso }}', false, {{ $isBlocked ? 'true' : 'false' }})"
                                                                     class="relative rounded-2xl border border-dashed border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800/80 hover:border-emerald-500 transition-all flex flex-col items-center justify-center py-2 px-1 min-h-[66px] lg:min-h-[72px] font-sans shadow-2xs {{ $isBlocked ? 'opacity-35 cursor-not-allowed bg-gray-50 dark:bg-zinc-800/40' : 'cursor-pointer' }}">
                                                                 
-                                                                @if(!$isBlocked)
+                                                                @if(!$isBlocked && $isPeakOrWeekend)
                                                                     <span :class="(checkIn === '{{ $iso }}' || checkOut === '{{ $iso }}') ? 'hidden' : ''" 
                                                                           class="absolute top-0 right-0 w-2.5 h-2.5 bg-amber-400 rounded-bl-md"></span>
                                                                 @endif
@@ -894,6 +844,7 @@
                                                             $isHoliday = !empty($day['is_holiday']);
                                                             $isFriday = ($day['day_of_week'] ?? 0) == 6;
                                                             $isHolidayOrFriday = $isHoliday || $isFriday;
+                                                            $isPeakOrWeekend = in_array($day['price_type'] ?? '', ['weekend', 'holiday', 'custom']) || !empty($day['is_weekend']) || !empty($day['is_holiday']);
                                                         @endphp
 
                                                         @if($isPast)
@@ -906,7 +857,7 @@
                                                                     :class="getDayClasses('{{ $iso }}', false, {{ $isBlocked ? 'true' : 'false' }})"
                                                                     class="relative rounded-2xl border border-dashed border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800/80 hover:border-emerald-500 transition-all flex flex-col items-center justify-center py-2 px-1 min-h-[66px] lg:min-h-[72px] font-sans shadow-2xs {{ $isBlocked ? 'opacity-35 cursor-not-allowed bg-gray-50 dark:bg-zinc-800/40' : 'cursor-pointer' }}">
                                                                 
-                                                                @if(!$isBlocked)
+                                                                @if(!$isBlocked && $isPeakOrWeekend)
                                                                     <span :class="(checkIn === '{{ $iso }}' || checkOut === '{{ $iso }}') ? 'hidden' : ''" 
                                                                           class="absolute top-0 right-0 w-2.5 h-2.5 bg-amber-400 rounded-bl-md"></span>
                                                                 @endif
@@ -936,8 +887,8 @@
                         </div>
 
                         {{-- راهنمای رنگ‌های تقویم و واحد پولی --}}
-                        <div class="flex items-center justify-between flex-wrap gap-4 pt-4 border-t border-gray-100 dark:border-zinc-800 text-xs text-gray-500 dark:text-gray-400 font-sans">
-                            <div class="flex items-center gap-5 flex-wrap">
+                        <div class="flex items-center justify-between flex-wrap gap-3 pt-4 border-t border-gray-100 dark:border-zinc-800 text-xs text-gray-500 dark:text-gray-400 font-sans">
+                            <div class="hidden md:flex items-center gap-5 flex-wrap">
                                 <span class="flex items-center gap-1.5">
                                     <span class="w-3.5 h-3.5 rounded-lg bg-emerald-600 shadow-2xs"></span>
                                     <span class="font-bold text-gray-800 dark:text-gray-200">تاریخ انتخابی شما</span>
@@ -947,7 +898,7 @@
                                     <span>نرخ آخر هفته و پیک</span>
                                 </span>
                                 <span class="flex items-center gap-1.5">
-                                    <span class="text-rose-600 font-black text-sm">۱۵</span>
+                                    <span class="w-3.5 h-3.5 rounded-lg bg-rose-500 shadow-2xs"></span>
                                     <span>جمعه و تعطیلات رسمی</span>
                                 </span>
                                 <span class="flex items-center gap-1.5">
@@ -1014,13 +965,18 @@
                         </div>
                     </div>
 
-                    {{-- مقررات کنسلی شفاف --}}
-                    <div class="p-4 rounded-2xl bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200/60 dark:border-amber-800/40 text-xs space-y-1">
-                        <strong class="text-amber-900 dark:text-amber-200 block font-bold">مقررات لغو رزرو (شفاف و منصفانه):</strong>
-                        <p class="text-amber-800/80 dark:text-amber-300/80 leading-relaxed">
-                            تا ۷۲ ساعت قبل از تاریخ ورود، کل وجه پرداختی با کسر کارمزد بانکی بازگردانده می‌شود. کمتر از ۴۸ ساعت تا موعد ورود، هزینه شب اول کسر و مابقی مسترد می‌گردد.
-                        </p>
-                    </div>
+                    {{-- مقررات لغو رزرو (تنها در صورت ثبت و تعیین در تنظیمات نمایش داده می‌شود) --}}
+                    @if(!empty(trim($config?->cancellation_policy ?? '')))
+                        <div class="p-4 rounded-2xl bg-amber-50/60 dark:bg-amber-950/30 border border-amber-200/70 dark:border-amber-800/50 text-xs space-y-1.5">
+                            <div class="flex items-center gap-2">
+                                <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+                                <strong class="text-amber-900 dark:text-amber-200 block font-bold text-xs sm:text-sm">مقررات لغو رزرو:</strong>
+                            </div>
+                            <p class="text-amber-800/90 dark:text-amber-300/90 leading-relaxed font-sans whitespace-pre-line text-xs sm:text-sm">
+                                {{ trim($config->cancellation_policy) }}
+                            </p>
+                        </div>
+                    @endif
                 </div>
 
                 {{-- ۱۳. اقامتگاه‌های مشابه در لفور --}}
@@ -1063,7 +1019,7 @@
 
             {{-- ستون چپ: ویجت چسبان استعلام نرخ و رزرو (دسکتاپ) --}}
             <div class="hidden lg:block lg:col-span-5 xl:col-span-4 sticky top-24">
-                <div class="border border-gray-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 rounded-3xl p-6 shadow-xl shadow-gray-200/50 dark:shadow-none space-y-5">
+                <div class="max-w-[380px] w-full ms-auto border border-gray-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 rounded-3xl p-6 shadow-xl shadow-gray-200/50 dark:shadow-none space-y-5">
                     
                     {{-- هدر قیمت و تخفیف --}}
                     <div class="pb-4 border-b border-gray-100 dark:border-zinc-800">
@@ -1089,10 +1045,6 @@
                                     <span class="text-xs font-bold text-gray-400 mr-1">{{ $currencyLabel }} / هر شب</span>
                                 @endif
                             </div>
-
-                            <span class="px-2.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 text-xs font-bold">
-                                تضمین بهترین نرخ
-                            </span>
                         </div>
                     </div>
 
@@ -1140,10 +1092,7 @@
                     {{-- ریزمحاسبات فاکتور پس از انتخاب تاریخ --}}
                     <div x-show="nightsCount > 0" x-transition class="space-y-2.5 pt-4 border-t border-gray-100 dark:border-zinc-800 text-xs">
                         <div class="flex items-center justify-between text-gray-600 dark:text-gray-400">
-                            <div>
-                                <span x-text="'مجموع هزینه ' + formatNumber(nightsCount) + ' شب اقامت:'"></span>
-                                <span class="block text-[11px] text-gray-400 dark:text-gray-500 font-sans mt-0.5" x-text="formatDateDisplay(checkIn, 'short') + ' الی ' + formatDateDisplay(checkOut, 'short')"></span>
-                            </div>
+                            <span x-text="'مجموع هزینه ' + formatNumber(nightsCount) + ' شب اقامت:'"></span>
                             <span class="font-bold text-gray-900 dark:text-white" x-text="formatNumber(originalNightsTotal) + ' ' + currencyLabel"></span>
                         </div>
 
@@ -1200,7 +1149,7 @@
         </div>
 
         {{-- نوار شناور پایین صفحه برای موبایل (Mobile Sticky Bar) --}}
-        <div class="lg:hidden fixed bottom-0 inset-x-0 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md border-t border-gray-200 dark:border-zinc-800 p-3.5 z-40 pb-safe shadow-2xl">
+        <div class="lg:hidden fixed bottom-0 inset-x-0 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md border-t border-gray-200 dark:border-zinc-800 px-4 pt-3.5 pb-[calc(0.875rem+env(safe-area-inset-bottom,0px))] z-40 shadow-2xl">
             <div class="flex items-center justify-between gap-4">
                 <div>
                     <span class="text-[10px] text-gray-400 block font-medium">مبلغ هر شب</span>
@@ -1223,7 +1172,7 @@
     </div>
 
     {{-- مودال لایت‌باکس نمایش گالری تصاویر --}}
-    <div id="lightbox" class="hidden fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex flex-col items-center justify-between p-4 opacity-0 transition-opacity duration-300">
+    <div id="lightbox" class="hidden fixed inset-0 z-[99999] bg-black/95 backdrop-blur-md flex flex-col items-center justify-between p-4 opacity-0 transition-opacity duration-300">
         <div class="w-full flex items-center justify-between px-4 py-2 z-10">
             <span id="lightbox-counter" class="text-white text-xs font-bold bg-white/10 px-3 py-1.5 rounded-full font-sans"></span>
             <button type="button" onclick="closeLightbox()" class="text-white text-lg font-bold w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition">✕</button>
@@ -1525,6 +1474,11 @@
             currentImageIndex = index;
             updateLightbox();
             const lb = document.getElementById('lightbox');
+            if (lb && lb.parentElement !== document.body) {
+                document.body.appendChild(lb);
+            }
+            const headerEl = document.querySelector('header');
+            if (headerEl) headerEl.classList.add('invisible');
             lb.classList.remove('hidden');
             setTimeout(() => { lb.classList.remove('opacity-0'); }, 10);
             document.body.style.overflow = 'hidden';
@@ -1533,6 +1487,8 @@
         function closeLightbox() {
             const lb = document.getElementById('lightbox');
             lb.classList.add('opacity-0');
+            const headerEl = document.querySelector('header');
+            if (headerEl) headerEl.classList.remove('invisible');
             setTimeout(() => { lb.classList.add('hidden'); }, 300);
             document.body.style.overflow = 'auto';
         }
