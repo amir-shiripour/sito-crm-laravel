@@ -9,7 +9,7 @@ class Category extends Model
     protected $table = 'market_categories';
 
     protected $fillable = [
-        'parent_id', 'brand_id', 'name', 'slug', 'code_offset',
+        'parent_id', 'brand_id', 'name', 'slug', 'code_offset', 'vision_code',
         'description', 'icon', 'meta_title', 'meta_description', 'sort_order', 'target_attributes', 'variant_fields', 'is_active',
     ];
     protected $casts = [

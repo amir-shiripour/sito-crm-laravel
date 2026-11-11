@@ -103,19 +103,19 @@
                     <div class="flex flex-col gap-6">
                         <div>
                             <label class="block text-xs font-bold text-indigo-600 dark:text-indigo-400 mb-2">شناسه هوشمند (Smart SKU)</label>
-                            <div class="{{ $inputClass }} bg-indigo-50 text-indigo-700 font-mono text-center font-bold dark:bg-indigo-900/20 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800/50 cursor-not-allowed">{{ $crm_code }}</div>
+                            <div class="{{ $inputClass }} bg-indigo-50 text-indigo-700 font-sans text-center font-bold dark:bg-indigo-900/20 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800/50 cursor-not-allowed">{{ $crm_code }}</div>
                             @error('crm_code') <span class="text-xs text-red-500 mt-1 block">{{ $message }}</span> @enderror
                         </div>
 
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
                                 <label class="{{ $labelClass }}">شناسه جهانی کالا (GTIN/UPC/EAN)</label>
-                                <input type="text" wire:model.defer="gtin" class="{{ $inputClass }} font-mono dir-ltr text-left" placeholder="کد EAN/UPC">
+                                <input type="text" wire:model.defer="gtin" class="{{ $inputClass }} font-sans dir-ltr text-left" placeholder="کد EAN/UPC">
                                 @error('gtin') <span class="text-xs text-red-500 mt-1 block">{{ $message }}</span> @enderror
                             </div>
                             <div>
                                 <label class="{{ $labelClass }}">شناسه محصول (کد داخلی / بارکد)</label>
-                                <input type="text" wire:model.defer="barcode" class="{{ $inputClass }} font-mono dir-ltr text-left" placeholder="بارکد یا کد داخلی">
+                                <input type="text" wire:model.defer="barcode" class="{{ $inputClass }} font-sans dir-ltr text-left" placeholder="بارکد یا کد داخلی">
                                 @error('barcode') <span class="text-xs text-red-500 mt-1 block">{{ $message }}</span> @enderror
                             </div>
                         </div>
@@ -718,7 +718,7 @@
                                                             <input type="text"
                                                                    x-model="formattedVal"
                                                                    @input="update()"
-                                                                   class="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 px-2 py-1 text-xs focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 dark:text-gray-100 transition-all outline-none text-center font-mono font-bold"
+                                                                   class="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 px-2 py-1 text-xs focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 dark:text-gray-100 transition-all outline-none text-center font-sans font-bold"
                                                                    placeholder="تعیین قیمت...">
                                                         </div>
                                                     </div>

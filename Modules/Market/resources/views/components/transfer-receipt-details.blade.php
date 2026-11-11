@@ -43,7 +43,7 @@
         @if($refNumber)
             <div class="bg-gray-50 dark:bg-gray-900/40 p-3.5 rounded-2xl border border-gray-100 dark:border-gray-700/50">
                 <span class="text-gray-400 block mb-1">شماره مرجع / پیگیری:</span>
-                <span class="font-mono font-bold text-indigo-600 dark:text-indigo-400 text-sm dir-ltr text-right">{{ $refNumber }}</span>
+                <span class="font-sans font-bold text-indigo-600 dark:text-indigo-400 text-sm dir-ltr text-right">{{ $refNumber }}</span>
             </div>
         @endif
 

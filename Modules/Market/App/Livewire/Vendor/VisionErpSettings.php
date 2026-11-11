@@ -341,6 +341,30 @@ class VisionErpSettings extends Component
     }
 
     /**
+     * Synchronize commodity groups to Brands (/user/market/brands)
+     * and subgroups to Categories (/user/market/categories) based on Layer 1 Whitelist
+     */
+    public function syncBrandsAndCategoriesNow(): void
+    {
+        $this->syncMessage = null;
+        $this->syncSuccess = null;
+
+        $setting = VendorVisionSetting::where('vendor_id', $this->vendorId)->first();
+        if (!$setting || !$setting->is_active) {
+            $this->syncSuccess = false;
+            $this->syncMessage = 'اتصال وب‌سرویس جامع ویژن (نسخه ۳.۶.۱) فعال نیست یا ذخیره نشده است.';
+            return;
+        }
+
+        $catalogService = new VisionCatalogSyncService($setting);
+        $res = $catalogService->syncBrandsAndCategories();
+
+        $this->syncSuccess = $res['success'];
+        $this->syncMessage = $res['message'];
+        $this->loadSettings();
+    }
+
+    /**
      * Sync catalog goods strictly respecting Layer 1 active groups
      */
     public function syncSelectedCatalog(): void
@@ -356,6 +380,8 @@ class VisionErpSettings extends Component
         }
 
         $catalogService = new VisionCatalogSyncService($setting);
+        // Ensure brands and categories structure is synced first
+        $catalogService->syncBrandsAndCategories();
         $res = $catalogService->syncBaseData(3, 500, 1);
 
         $this->syncSuccess = $res['success'];

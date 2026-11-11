@@ -171,7 +171,7 @@
 
                     <div class="md:col-span-3">
                         <label class="{{ $labelClass }}">آفست سیستمی (Offset Code) <span class="text-red-500">*</span></label>
-                        <input type="number" wire:model.defer="code_offset" class="{{ $inputClass }} bg-gray-100 dark:bg-gray-900 text-center font-mono font-bold text-gray-500 cursor-not-allowed" readonly>
+                        <input type="number" wire:model.defer="code_offset" class="{{ $inputClass }} bg-gray-100 dark:bg-gray-900 text-center font-sans font-bold text-gray-500 cursor-not-allowed" readonly>
                     </div>
                 </div>
             </div>

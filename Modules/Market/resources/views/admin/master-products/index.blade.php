@@ -170,7 +170,15 @@
                             <td class="px-4 py-3 text-center">
                                 <input type="checkbox" value="{{ $product->id }}" x-model="selectedIds" class="rounded border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-indigo-600 focus:ring-indigo-500 focus:ring-offset-0 dark:focus:ring-offset-gray-900">
                             </td>
-                            <td class="px-4 py-3 font-mono text-indigo-600 dark:text-indigo-400 font-bold">{{ $product->crm_code }}</td>
+                            <td class="px-4 py-3 font-sans">
+                                <div class="font-bold text-indigo-600 dark:text-indigo-400">{{ $product->crm_code }}</div>
+                                @if($product->barcode)
+                                    <div class="text-[11px] text-slate-500 dark:text-slate-400 font-sans mt-0.5 flex items-center gap-1">
+                                        <span class="text-slate-400 dark:text-slate-500">کد ویژن:</span>
+                                        <span class="font-bold text-slate-700 dark:text-slate-300">{{ $product->barcode }}</span>
+                                    </div>
+                                @endif
+                            </td>
                             <td class="px-4 py-3 font-medium text-gray-900 dark:text-white">{{ $product->title }}</td>
                             <td class="px-4 py-3 text-gray-500 text-xs">
                                 <span class="block text-gray-800 dark:text-gray-300">{{ optional($product->brand)->name ?? '-' }}</span>

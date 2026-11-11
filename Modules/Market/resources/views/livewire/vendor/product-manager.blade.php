@@ -41,7 +41,10 @@
                     <div>
                         <h3 class="font-bold text-gray-900 dark:text-white">{{ $master->title }}</h3>
                         <div class="flex items-center gap-2 mt-1">
-                            <span class="text-[10px] font-mono bg-gray-100 dark:bg-gray-900 px-2 py-0.5 rounded text-gray-500 dark:text-gray-400">{{ $master->crm_code }}</span>
+                            <span class="text-[10px] font-sans bg-gray-100 dark:bg-gray-900 px-2 py-0.5 rounded text-gray-500 dark:text-gray-400">{{ $master->crm_code }}</span>
+                            @if($master->barcode)
+                                <span class="text-[10px] font-sans bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 px-2 py-0.5 rounded font-bold">کد ویژن: {{ $master->barcode }}</span>
+                            @endif
                             <span class="text-xs font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 px-2 py-0.5 rounded">
                                 {{ $master->variants->count() }} تنوع
                             </span>
