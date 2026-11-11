@@ -285,6 +285,9 @@ class MarketSettings extends Component
 
         $this->autoProvisionForSingleVendor();
 
+        // Also trigger save on Vision ERP settings component if mounted
+        $this->dispatch('save-vision-settings');
+
         $this->dispatch('notify', type: 'success', text: 'تنظیمات پیشرفته فروشگاه با موفقیت بروزرسانی شد.');
     }
 
