@@ -30,6 +30,14 @@ class VisionStockSyncService
      */
     public function syncStock(): array
     {
+        if (!$this->setting->is_active) {
+            return [
+                'success' => false,
+                'updated_count' => 0,
+                'message' => 'تنظیمات وب‌سرویس جامع ویژن غیرفعال است.',
+            ];
+        }
+
         try {
             $buyerCode = (string)($this->setting->ws_username ?: '10100177');
 
@@ -107,8 +115,9 @@ class VisionStockSyncService
                 $goodCode = (string)($item['GoodCode'] ?? $item['Code'] ?? $item['good_code'] ?? '');
                 $qty = (float)($item['AllT'] ?? $item['Stock'] ?? $item['Qty'] ?? $item['stock'] ?? 0);
                 $groupCode = (string)($item['Gorohk'] ?? '');
+                $rootGroup = str_contains($groupCode, ',') ? explode(',', $groupCode)[0] : $groupCode;
 
-                if ($hasGroupFilter && !in_array($groupCode, $selectedGroups, true)) {
+                if ($hasGroupFilter && !in_array($rootGroup, $selectedGroups, true)) {
                     continue;
                 }
 
@@ -116,8 +125,10 @@ class VisionStockSyncService
                     continue;
                 }
 
-                // Find MasterProduct by crm_code
-                $master = MasterProduct::where('crm_code', $goodCode)->first();
+                // Find MasterProduct by barcode (Vision GoodCode / کد داخلی) or crm_code
+                $master = MasterProduct::where('barcode', $goodCode)
+                    ->orWhere('crm_code', $goodCode)
+                    ->first();
                 if (!$master) {
                     continue;
                 }

@@ -235,12 +235,18 @@
                 </div>
             </div>
 
-            <div class="flex items-center gap-2">
+            <div class="flex flex-wrap items-center gap-2">
                 @if(!empty($cached_metadata))
                     <span class="text-xs font-bold text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-700/60 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-600/50">
                         {{ count($selected_groups) }} گروه فعال از {{ $cached_metadata['groups_count'] ?? 0 }}
                     </span>
                 @endif
+
+                <button type="button" wire:click="syncBrandsAndCategoriesNow" wire:loading.attr="disabled" class="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold shadow-md shadow-purple-500/20 transition-all">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+                    <span wire:loading.remove wire:target="syncBrandsAndCategoriesNow">همگام‌سازی برندها و دسته‌ها</span>
+                    <span wire:loading wire:target="syncBrandsAndCategoriesNow">در حال ثبت ساختار...</span>
+                </button>
 
                 <button type="button" wire:click="syncSelectedCatalog" wire:loading.attr="disabled" class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-md shadow-indigo-500/20 transition-all">
                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
@@ -516,16 +522,30 @@
                                                 @php
                                                     $sCode = (string)($sub['CodeG'] ?? '');
                                                     $sName = (string)($sub['NameG'] ?? '');
+                                                    $level = (int)($sub['LevelH'] ?? 1);
                                                     $isSubSel = in_array($sCode, $selected_subgroups, true);
+                                                    $marginClass = match($level) {
+                                                        2 => 'ms-5 border-s-2 border-s-purple-400',
+                                                        3 => 'ms-10 border-s-2 border-s-purple-500',
+                                                        4 => 'ms-14 border-s-2 border-s-purple-600',
+                                                        default => 'ms-0',
+                                                    };
                                                 @endphp
 
-                                                <label class="flex items-center justify-between p-3 rounded-xl border transition-all cursor-pointer {{ $isSubSel ? 'bg-purple-50/80 dark:bg-purple-950/30 border-purple-300 dark:border-purple-800/70 shadow-sm' : 'bg-white dark:bg-gray-800/70 border-gray-200 dark:border-gray-700 hover:border-gray-300' }}">
+                                                <label class="flex items-center justify-between p-3 rounded-xl border transition-all cursor-pointer {{ $marginClass }} {{ $isSubSel ? 'bg-purple-50/80 dark:bg-purple-950/30 border-purple-300 dark:border-purple-800/70 shadow-sm' : 'bg-white dark:bg-gray-800/70 border-gray-200 dark:border-gray-700 hover:border-gray-300' }}">
                                                     <div class="flex items-center gap-3">
                                                         <input type="checkbox" wire:click="toggleSubgroup('{{ $sCode }}', '{{ $actCode }}')" {{ $isSubSel ? 'checked' : '' }} class="{{ $checkboxClass }}">
                                                         <div>
-                                                            <span class="text-xs font-bold block text-gray-900 dark:text-white">
-                                                                {{ $sName }}
-                                                            </span>
+                                                            <div class="flex items-center gap-2">
+                                                                <span class="text-xs font-bold block text-gray-900 dark:text-white">
+                                                                    {{ $sName }}
+                                                                </span>
+                                                                @if($level > 1)
+                                                                    <span class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300">
+                                                                        سطح {{ $level }}
+                                                                    </span>
+                                                                @endif
+                                                            </div>
                                                             <span class="text-[10px] text-slate-500 dark:text-slate-400 block mt-0.5">
                                                                 کد زیرگروه: {{ $sCode }}
                                                             </span>

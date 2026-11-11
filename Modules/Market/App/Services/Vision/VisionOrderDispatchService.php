@@ -79,8 +79,8 @@ class VisionOrderDispatchService
                 $variant = $item->vendorProduct?->productVariant;
                 $master = $variant?->masterProduct;
 
-                // Priority: crm_code on master product, or SKU, or barcode (gtin)
-                $goodCode = $master?->crm_code ?: ($variant?->sku ?: $master?->gtin);
+                // Priority: barcode ("شناسه محصول (کد داخلی / بارکد)" containing Vision GoodCode), or variant_code, or crm_code
+                $goodCode = $master?->barcode ?: ($variant?->variant_code ?: ($master?->crm_code ?: $master?->gtin));
 
                 $factorItems[] = [
                     'GoodCode' => (string)($goodCode ?: $item->vendor_product_id),

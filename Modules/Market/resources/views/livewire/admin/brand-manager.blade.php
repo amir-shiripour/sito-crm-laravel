@@ -62,7 +62,7 @@
                     </div>
                     <div>
                         <label class="{{ $labelClass }}">کد پیش‌وند (سیستمی) <span class="text-red-500">*</span></label>
-                        <input type="number" wire:model.defer="code_prefix" class="{{ $inputClass }} text-center font-mono font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50/50 dark:bg-indigo-900/10" @if($brand_id) disabled @endif>
+                        <input type="number" wire:model.defer="code_prefix" class="{{ $inputClass }} text-center font-sans font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50/50 dark:bg-indigo-900/10" @if($brand_id) disabled @endif>
                         <p class="text-[10px] text-gray-400 mt-1 block">تولید خودکار - غیرقابل تغییر</p>
                     </div>
                     <div class="flex items-center pt-5">
@@ -113,7 +113,12 @@
                                 </div>
                             @endif
                         </td>
-                        <td class="px-6 py-4 font-mono font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50/30 dark:bg-transparent">{{ $brand->code_prefix }}</td>
+                        <td class="px-6 py-4 font-sans font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50/30 dark:bg-transparent">
+                            {{ $brand->code_prefix }}
+                            @if($brand->vision_code)
+                                <span class="ms-1.5 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-50 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300" title="کد گروه در نرم‌افزار ویژن">ویژن: {{ $brand->vision_code }}</span>
+                            @endif
+                        </td>
                         <td class="px-6 py-4 font-bold text-gray-900 dark:text-white">{{ $brand->name }}</td>
                         <td class="px-6 py-4">
                             @if($brand->is_active)
