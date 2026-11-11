@@ -36,7 +36,7 @@
                         <div class="flex-1 bg-gray-100 dark:bg-gray-800 rounded-full h-2">
                             <div class="bg-amber-500 h-2 rounded-full transition-all" style="width: {{ $data['percent'] }}%"></div>
                         </div>
-                        <span class="text-[10px] font-mono text-gray-400 dark:text-gray-500 w-8 text-left">
+                        <span class="text-[10px] font-sans text-gray-400 dark:text-gray-500 w-8 text-left">
                             {{ $data['percent'] }}%
                         </span>
                     </div>

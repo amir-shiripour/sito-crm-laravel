@@ -133,7 +133,7 @@
                     <div>
                         <label class="{{ $labelClass }}">شماره شبا <span class="text-red-500">*</span></label>
                         <div class="relative">
-                            <input type="text" wire:model.defer="shaba_number" class="{{ $baseInputClass }} dir-ltr pl-12 font-mono text-lg tracking-widest" maxlength="24">
+                            <input type="text" wire:model.defer="shaba_number" class="{{ $baseInputClass }} dir-ltr pl-12 font-sans text-lg tracking-widest" maxlength="24">
                             <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-400 font-bold">IR</div>
                         </div>
                         @error('shaba_number') <span class="text-xs text-red-500 mt-1">{{ $message }}</span> @enderror

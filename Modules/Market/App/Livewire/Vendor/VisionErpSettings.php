@@ -29,11 +29,13 @@ class VisionErpSettings extends Component
     public bool $auto_sync_stock = false;
     public bool $auto_dispatch_order = false;
 
-    // Layer 1: Scope, Category Whitelist & Price Mapping
+    // Layer 1: Scope, Category Whitelist, Price & Warehouse Mapping
     public array $selected_groups = [];
     public array $selected_subgroups = [];
     public string $price_field = 'Pricef1';
     public ?string $compare_price_field = 'PriceF';
+    public string $stock_field = 'AllT';
+    public ?int $crm_warehouse_id = null;
     public array $selected_warehouses = [];
     public string $initial_product_status = 'draft';
     public ?array $cached_metadata = null;
@@ -96,6 +98,8 @@ class VisionErpSettings extends Component
             $this->selected_subgroups = (array)($setting->selected_subgroups ?: []);
             $this->price_field = (string)($setting->price_field ?: 'Pricef1');
             $this->compare_price_field = $setting->compare_price_field ?: 'PriceF';
+            $this->stock_field = (string)($setting->stock_field ?: 'AllT');
+            $this->crm_warehouse_id = $setting->crm_warehouse_id ? (int)$setting->crm_warehouse_id : null;
             $this->selected_warehouses = (array)($setting->selected_warehouses ?: []);
             $this->initial_product_status = (string)($setting->initial_product_status ?: 'draft');
             $this->cached_metadata = $setting->cached_metadata;
@@ -122,6 +126,8 @@ class VisionErpSettings extends Component
             'default_customer_code' => 'nullable|string|max:50',
             'price_field' => 'nullable|string|max:30',
             'compare_price_field' => 'nullable|string|max:30',
+            'stock_field' => 'nullable|string|max:30',
+            'crm_warehouse_id' => 'nullable|integer',
             'initial_product_status' => 'required|in:draft,published',
         ]);
 
@@ -131,6 +137,7 @@ class VisionErpSettings extends Component
             'ws_username' => $this->ws_username,
             'default_visitor_code' => $this->default_visitor_code,
             'default_warehouse_code' => $this->default_warehouse_code,
+            'crm_warehouse_id' => $this->crm_warehouse_id ?: null,
             'default_customer_code' => $this->default_customer_code,
             'auto_sync_stock' => $this->auto_sync_stock,
             'auto_dispatch_order' => $this->auto_dispatch_order,
@@ -138,6 +145,7 @@ class VisionErpSettings extends Component
             'selected_subgroups' => array_values(array_unique($this->selected_subgroups)),
             'price_field' => $this->price_field ?: 'Pricef1',
             'compare_price_field' => $this->compare_price_field ?: null,
+            'stock_field' => $this->stock_field ?: 'AllT',
             'selected_warehouses' => $this->selected_warehouses,
             'initial_product_status' => $this->initial_product_status ?: 'draft',
         ];
@@ -454,10 +462,16 @@ class VisionErpSettings extends Component
 
     public function render()
     {
-        $warehouses = Warehouse::where('vendor_id', $this->vendorId)->get();
+        $warehouses = Warehouse::where('vendor_id', $this->vendorId)
+            ->orWhereNull('vendor_id')
+            ->where('is_active', true)
+            ->get();
+
+        $isWmsActive = (bool) \Modules\Market\Entities\MarketSetting::getValue('wms.enabled', false);
 
         return view('market::livewire.vendor.vision-erp-settings', [
             'warehouses' => $warehouses,
+            'isWmsActive' => $isWmsActive,
         ]);
     }
 }

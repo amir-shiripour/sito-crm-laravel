@@ -92,20 +92,48 @@ class VisionStockSyncService
             $updatedCount = 0;
             $vendorId = $this->setting->vendor_id;
 
-            // Target warehouse for this vendor
-            $targetWarehouse = null;
-            if ($this->setting->default_warehouse_code) {
-                $targetWarehouse = Warehouse::where('vendor_id', $vendorId)
-                    ->where('code', $this->setting->default_warehouse_code)
-                    ->first();
-            }
+            $isWmsActive = (bool) \Modules\Market\Entities\MarketSetting::getValue('wms.enabled', false);
 
-            if (!$targetWarehouse) {
-                $targetWarehouse = Warehouse::where('vendor_id', $vendorId)->first();
+            // Target warehouse for this vendor when WMS is active
+            $targetWarehouse = null;
+            if ($isWmsActive) {
+                if ($this->setting->crm_warehouse_id) {
+                    $targetWarehouse = Warehouse::find($this->setting->crm_warehouse_id);
+                }
+                if (!$targetWarehouse && $this->setting->default_warehouse_code) {
+                    $targetWarehouse = Warehouse::where('vendor_id', $vendorId)
+                        ->where('code', $this->setting->default_warehouse_code)
+                        ->first();
+                }
+                if (!$targetWarehouse) {
+                    $targetWarehouse = Warehouse::where('vendor_id', $vendorId)->where('is_active', true)->first();
+                }
+                if (!$targetWarehouse) {
+                    $targetWarehouse = Warehouse::whereNull('vendor_id')->where('is_active', true)->first();
+                }
+                if (!$targetWarehouse && $vendorId) {
+                    $vendor = $this->setting->vendor;
+                    $storeName = $vendor ? ($vendor->store_name ?: ($vendor->user->name ?? 'فروشنده ' . $vendorId)) : 'فروشنده ' . $vendorId;
+                    $slugPrefix = ($vendor && $vendor->slug) ? strtoupper(substr($vendor->slug, 0, 10)) : 'VND' . $vendorId;
+                    $targetWarehouse = Warehouse::firstOrCreate(
+                        ['vendor_id' => $vendorId],
+                        [
+                            'name' => 'انبار اصلی ' . $storeName,
+                            'code' => 'WH-' . $slugPrefix,
+                            'is_active' => true,
+                        ]
+                    );
+                }
             }
 
             $selectedGroups = (array)($this->setting->selected_groups ?: []);
+            $selectedSubgroups = (array)($this->setting->selected_subgroups ?: []);
             $hasGroupFilter = !empty($selectedGroups);
+            $hasSubgroupFilter = !empty($selectedSubgroups);
+
+            $priceField = $this->setting->price_field ?: 'Pricef1';
+            $comparePriceField = $this->setting->compare_price_field;
+            $stockField = $this->setting->stock_field ?: 'AllT';
 
             foreach ($items as $item) {
                 if (!is_array($item)) {
@@ -113,17 +141,48 @@ class VisionStockSyncService
                 }
 
                 $goodCode = (string)($item['GoodCode'] ?? $item['Code'] ?? $item['good_code'] ?? '');
-                $qty = (float)($item['AllT'] ?? $item['Stock'] ?? $item['Qty'] ?? $item['stock'] ?? 0);
                 $groupCode = (string)($item['Gorohk'] ?? '');
-                $rootGroup = str_contains($groupCode, ',') ? explode(',', $groupCode)[0] : $groupCode;
-
-                if ($hasGroupFilter && !in_array($rootGroup, $selectedGroups, true)) {
-                    continue;
-                }
 
                 if (empty($goodCode)) {
                     continue;
                 }
+
+                // Layer 1 Quarantine Whitelist Check
+                if (str_contains($groupCode, ',')) {
+                    $rootGroup = explode(',', $groupCode)[0];
+                    if ($hasGroupFilter && !in_array($rootGroup, $selectedGroups, true)) {
+                        continue;
+                    }
+                    if ($hasSubgroupFilter && !in_array($groupCode, $selectedSubgroups, true)) {
+                        continue;
+                    }
+                } else {
+                    $rootGroup = $groupCode;
+                    if ($hasGroupFilter && !in_array($rootGroup, $selectedGroups, true)) {
+                        continue;
+                    }
+                }
+
+                // Quantity from selected Vision stock model
+                $qty = (float)($item[$stockField] ?? $item['AllT'] ?? $item['Stock'] ?? $item['Qty'] ?? 0);
+                $stockQty = max(0, (int)$qty);
+
+                // Price calculation based on Layer 1 mapping
+                $basePrice = (float)($item[$priceField] ?? 0);
+                if ($basePrice <= 0) {
+                    $basePrice = (float)($item['PriceF'] ?? $item['Expr1'] ?? 0);
+                }
+
+                $comparePrice = null;
+                if ($comparePriceField && isset($item[$comparePriceField])) {
+                    $cp = (float)$item[$comparePriceField];
+                    if ($cp > $basePrice) {
+                        $comparePrice = $cp;
+                    }
+                }
+
+                $regularPrice = $comparePrice ?: $basePrice;
+                $discountPrice = $comparePrice ? $basePrice : null;
 
                 // Find MasterProduct by barcode (Vision GoodCode / کد داخلی) or crm_code
                 $master = MasterProduct::where('barcode', $goodCode)
@@ -134,28 +193,66 @@ class VisionStockSyncService
                 }
 
                 // Get all variants of this master product
-                $variantIds = ProductVariant::where('master_product_id', $master->id)->pluck('id');
-                if ($variantIds->isEmpty()) {
+                $variants = ProductVariant::where('master_product_id', $master->id)->get();
+                if ($variants->isEmpty()) {
                     continue;
                 }
 
-                // Update VendorProduct stock directly
-                VendorProduct::where('vendor_id', $vendorId)
-                    ->whereIn('product_variant_id', $variantIds)
-                    ->update(['stock' => max(0, (int)$qty)]);
+                foreach ($variants as $variant) {
+                    // Update variant price & stock
+                    $vUpdates = ['stock' => $stockQty];
+                    if ($regularPrice > 0) {
+                        $vUpdates['price'] = $regularPrice;
+                    }
+                    $vUpdates['discount_price'] = $discountPrice;
+                    $variant->update($vUpdates);
 
-                // Also update WarehouseStock if warehouse exists
-                if ($targetWarehouse) {
-                    foreach ($variantIds as $vId) {
-                        WarehouseStock::updateOrCreate(
-                            [
+                    // Update VendorProduct price & stock
+                    if ($vendorId) {
+                        $vendorProduct = VendorProduct::firstOrNew([
+                            'vendor_id' => $vendorId,
+                            'product_variant_id' => $variant->id,
+                        ]);
+
+                        if ($regularPrice > 0) {
+                            $vendorProduct->price = $regularPrice;
+                        }
+                        $vendorProduct->discount_price = $discountPrice;
+                        $vendorProduct->stock = $stockQty;
+                        if (!$vendorProduct->exists) {
+                            $vendorProduct->status = 'published';
+                        }
+                        $vendorProduct->save();
+
+                        // WMS inventory update & transaction
+                        if ($isWmsActive && $targetWarehouse) {
+                            $warehouseStock = WarehouseStock::firstOrNew([
                                 'warehouse_id' => $targetWarehouse->id,
-                                'product_variant_id' => $vId,
-                            ],
-                            [
-                                'quantity' => max(0, (int)$qty),
-                            ]
-                        );
+                                'product_variant_id' => $variant->id,
+                                'vendor_product_id' => $vendorProduct->id,
+                            ]);
+
+                            $oldPhysical = (int)($warehouseStock->physical_stock ?? 0);
+                            $diff = $stockQty - $oldPhysical;
+
+                            $warehouseStock->physical_stock = $stockQty;
+                            $warehouseStock->online_stock = $stockQty;
+                            $warehouseStock->save();
+
+                            if ($diff !== 0) {
+                                \Modules\Market\Entities\WarehouseTransaction::create([
+                                    'warehouse_id' => $targetWarehouse->id,
+                                    'product_variant_id' => $variant->id,
+                                    'vendor_product_id' => $vendorProduct->id,
+                                    'type' => 'adjustment',
+                                    'quantity' => $diff,
+                                    'reference_type' => VendorVisionSetting::class,
+                                    'reference_id' => $this->setting->id,
+                                    'description' => "به‌روزرسانی خودکار موجودی از وب‌سرویس جامع ویژن (موجودی قبلی: {$oldPhysical}، موجودی جدید: {$stockQty})",
+                                    'user_id' => auth()->id() ?? $this->setting->vendor?->user_id,
+                                ]);
+                            }
+                        }
                     }
                 }
 

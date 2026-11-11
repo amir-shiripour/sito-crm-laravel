@@ -53,12 +53,34 @@
                                     رزروهای اقامتگاه
                                 </a>
                             @endif
-                            @if(class_exists('\Modules\Services\App\Http\Models\Invoice') && \Illuminate\Support\Facades\Schema::hasTable('service_invoices'))
+                            @php
+                                $isServicesActiveNav = class_exists('\Nwidart\Modules\Facades\Module') &&
+                                    \Nwidart\Modules\Facades\Module::has('Services') &&
+                                    \Nwidart\Modules\Facades\Module::isEnabled('Services') &&
+                                    \Illuminate\Support\Facades\Schema::hasTable('service_invoices') &&
+                                    (!class_exists(\App\Services\Modules\BaseModuleInstaller::class) || \App\Services\Modules\BaseModuleInstaller::isInstalled('Services')) &&
+                                    (!class_exists(\App\Models\Module::class) || !\Illuminate\Support\Facades\Schema::hasTable('modules') || (
+                                        ($dbServicesMod = \App\Models\Module::where('slug', 'services')->orWhere('name', 'Services')->first()) &&
+                                        (bool)$dbServicesMod->installed && (bool)$dbServicesMod->active
+                                    ));
+                            @endphp
+                            @if($isServicesActiveNav)
                                 <a href="{{ route('client.invoices.index') }}" class="px-3 py-1.5 rounded-xl transition {{ request()->routeIs('client.invoices.*') ? 'bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 font-black' : 'hover:bg-gray-100 dark:hover:bg-gray-800' }}">
                                     فاکتورها
                                 </a>
                             @endif
-                            @if(class_exists('\Modules\Booking\Entities\Appointment') && \Illuminate\Support\Facades\Schema::hasTable('appointments'))
+                            @php
+                                $isBookingActiveNav = class_exists('\Nwidart\Modules\Facades\Module') &&
+                                    \Nwidart\Modules\Facades\Module::has('Booking') &&
+                                    \Nwidart\Modules\Facades\Module::isEnabled('Booking') &&
+                                    \Illuminate\Support\Facades\Schema::hasTable('appointments') &&
+                                    (!class_exists(\App\Services\Modules\BaseModuleInstaller::class) || \App\Services\Modules\BaseModuleInstaller::isInstalled('Booking')) &&
+                                    (!class_exists(\App\Models\Module::class) || !\Illuminate\Support\Facades\Schema::hasTable('modules') || (
+                                        ($dbBookingMod = \App\Models\Module::where('slug', 'booking')->orWhere('name', 'Booking')->first()) &&
+                                        (bool)$dbBookingMod->installed && (bool)$dbBookingMod->active
+                                    ));
+                            @endphp
+                            @if($isBookingActiveNav)
                                 <a href="{{ route('client.appointments.index') }}" class="px-3 py-1.5 rounded-xl transition {{ request()->routeIs('client.appointments.*') ? 'bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 font-black' : 'hover:bg-gray-100 dark:hover:bg-gray-800' }}">
                                     نوبت‌ها
                                 </a>

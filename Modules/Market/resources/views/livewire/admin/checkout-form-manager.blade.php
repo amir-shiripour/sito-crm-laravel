@@ -39,7 +39,7 @@
                     </div>
                     <div>
                         <label for="form-key" class="{{ $labelClass }}">کلید (Key)</label>
-                        <input id="form-key" type="text" wire:model.defer="key" class="{{ $inputClass }} text-left dir-ltr font-mono">
+                        <input id="form-key" type="text" wire:model.defer="key" class="{{ $inputClass }} text-left dir-ltr font-sans">
                         @error('key') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
                     </div>
                     <div>

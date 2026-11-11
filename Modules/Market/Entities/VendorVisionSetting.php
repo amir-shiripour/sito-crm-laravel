@@ -20,11 +20,13 @@ class VendorVisionSetting extends Model
         'admin_pass',
         'default_visitor_code',
         'default_warehouse_code',
+        'crm_warehouse_id',
         'default_customer_code',
         'selected_groups',
         'selected_subgroups',
         'price_field',
         'compare_price_field',
+        'stock_field',
         'selected_warehouses',
         'initial_product_status',
         'cached_metadata',
@@ -51,5 +53,10 @@ class VendorVisionSetting extends Model
     public function vendor()
     {
         return $this->belongsTo(Vendor::class, 'vendor_id');
+    }
+
+    public function crmWarehouse()
+    {
+        return $this->belongsTo(Warehouse::class, 'crm_warehouse_id');
     }
 }

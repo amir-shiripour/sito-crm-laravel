@@ -247,7 +247,7 @@
                         <div class="flex items-center gap-2">
                             <h3 class="font-bold text-gray-900 dark:text-white">{{ $attr->name }}</h3>
                             @if($attr->unit)
-                                <span class="text-[9px] font-mono bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 px-1.5 py-0.5 rounded dir-ltr">{{ $attr->unit }}</span>
+                                <span class="text-[9px] font-sans bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 px-1.5 py-0.5 rounded dir-ltr">{{ $attr->unit }}</span>
                             @endif
                         </div>
                         <span class="text-[10px] text-gray-500 bg-gray-100 dark:bg-gray-900 px-2 py-0.5 rounded-full mt-1.5 inline-block">

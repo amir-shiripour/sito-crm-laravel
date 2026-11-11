@@ -1522,8 +1522,8 @@
                         <div class="p-3.5 rounded-xl border border-gray-200/60 dark:border-gray-700/60 bg-white dark:bg-gray-800/90 space-y-2">
                             <label class="block text-xs font-bold text-gray-800 dark:text-gray-200">نمایش متن آدرس اقامتگاه</label>
                             <select name="rental_show_address" class="{{ $inputClass }} font-bold text-xs">
-                                <option value="all" {{ ($rental_show_address ?? 'all') === 'all' ? 'selected' : '' }}>نمایش عمومی آدرس برای همه</option>
-                                <option value="confirmed_booking" {{ ($rental_show_address ?? '') === 'confirmed_booking' ? 'selected' : '' }}>نمایش آدرس دقیق فقط پس از پرداخت و قطعی شدن رزرو (تسویه)</option>
+                                <option value="confirmed_booking" {{ ($rental_show_address ?? 'confirmed_booking') === 'confirmed_booking' ? 'selected' : '' }}>نمایش آدرس دقیق فقط پس از پرداخت و قطعی شدن رزرو (تسویه)</option>
+                                <option value="all" {{ ($rental_show_address ?? '') === 'all' ? 'selected' : '' }}>نمایش عمومی آدرس برای همه</option>
                                 <option value="none" {{ ($rental_show_address ?? '') === 'none' ? 'selected' : '' }}>عدم نمایش آدرس متنی</option>
                             </select>
                             <span class="text-[10px] text-slate-500 dark:text-slate-400 block">در صورت انتخاب «پس از پرداخت و قطعی شدن رزرو»، آدرس متنی تا زمان پرداخت صورت‌حساب مخفی خواهد ماند.</span>

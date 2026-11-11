@@ -132,7 +132,7 @@ class SettingsController extends Controller
         $rental_host_show_about = PropertySetting::get('rental_host_show_about', 1);
         $rental_host_show_phone = PropertySetting::get('rental_host_show_phone', 'confirmed_booking');
 
-        $rental_show_address = PropertySetting::get('rental_show_address', 'all');
+        $rental_show_address = PropertySetting::get('rental_show_address', 'confirmed_booking');
         $rental_show_map = PropertySetting::get('rental_show_map', 'all');
         $rental_map_display_type = PropertySetting::get('rental_map_display_type', 'circle_then_exact');
         $rental_map_circle_radius = PropertySetting::get('rental_map_circle_radius', 300);
@@ -491,7 +491,7 @@ class SettingsController extends Controller
         PropertySetting::set('rental_host_show_about', $request->has('rental_host_show_about') ? 1 : 0);
         PropertySetting::set('rental_host_show_phone', $request->input('rental_host_show_phone', 'confirmed_booking'));
 
-        PropertySetting::set('rental_show_address', $request->input('rental_show_address', 'all'));
+        PropertySetting::set('rental_show_address', $request->input('rental_show_address', 'confirmed_booking'));
         PropertySetting::set('rental_show_map', $request->input('rental_show_map', 'all'));
         PropertySetting::set('rental_map_display_type', $request->input('rental_map_display_type', 'circle_then_exact'));
         PropertySetting::set('rental_map_circle_radius', (int) $request->input('rental_map_circle_radius', 300));

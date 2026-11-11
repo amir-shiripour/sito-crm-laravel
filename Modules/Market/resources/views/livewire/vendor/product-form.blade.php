@@ -44,7 +44,7 @@
                                     <div>
                                         <h4 class="font-bold text-gray-900 dark:text-white text-sm">{{ $res->title }}</h4>
                                         <div class="flex items-center gap-2 mt-1 text-xs text-gray-500 dark:text-gray-400">
-                                            <span class="font-mono">{{ $res->crm_code }}</span>
+                                            <span class="font-sans">{{ $res->crm_code }}</span>
                                             <span>•</span>
                                             <span>{{ $res->category->name ?? 'بدون دسته' }}</span>
                                         </div>
@@ -70,7 +70,7 @@
                         <div>
                             <h3 class="font-bold text-indigo-900 dark:text-indigo-100 text-lg">{{ $selectedMasterProduct->title }}</h3>
                             <div class="flex items-center gap-2 mt-1 text-xs text-indigo-600 dark:text-indigo-400 font-medium">
-                                <span class="font-mono bg-white dark:bg-gray-800 px-2 py-0.5 rounded shadow-sm">{{ $selectedMasterProduct->crm_code }}</span>
+                                <span class="font-sans bg-white dark:bg-gray-800 px-2 py-0.5 rounded shadow-sm">{{ $selectedMasterProduct->crm_code }}</span>
                                 <span>{{ $selectedMasterProduct->brand->name ?? '' }}</span>
                             </div>
                         </div>
@@ -125,7 +125,7 @@
                                 }">
                                     <label class="{{ $labelClass }}">قیمت برای مصرف‌کننده <span class="text-red-500">*</span></label>
                                     <div class="relative">
-                                        <input type="text" x-model="formattedPrice" @input="updatePrice()" class="{{ $inputClass }} font-mono dir-ltr text-center font-bold text-indigo-700 dark:text-indigo-300 pr-10 {{ !$vendorCanManagePrices ? 'bg-gray-100/50 cursor-not-allowed text-gray-500' : '' }}" placeholder="مثلا 1,500,000" @if(!$vendorCanManagePrices) readonly @endif>
+                                        <input type="text" x-model="formattedPrice" @input="updatePrice()" class="{{ $inputClass }} font-sans dir-ltr text-center font-bold text-indigo-700 dark:text-indigo-300 pr-10 {{ !$vendorCanManagePrices ? 'bg-gray-100/50 cursor-not-allowed text-gray-500' : '' }}" placeholder="مثلا 1,500,000" @if(!$vendorCanManagePrices) readonly @endif>
                                         <span class="absolute inset-y-0 right-3 flex items-center text-[10px] text-gray-400">{{ \Modules\Market\Entities\MarketSetting::getValue('general.currency') === 'rial' ? 'ریال' : 'تومان' }}</span>
                                     </div>
                                 </div>
@@ -185,7 +185,7 @@
                                         </div>
                                         <div>
                                             <label class="{{ $labelClass }} !text-rose-600 dark:!text-rose-400">قیمت نهایی</label>
-                                            <input type="text" x-model="formattedDiscount" @input="updateFromPrice()" class="{{ $inputClass }} font-mono dir-ltr text-center font-bold text-rose-600 dark:text-rose-400 !border-rose-200 focus:!border-rose-500 focus:!ring-rose-500/20 dark:!border-rose-800 {{ !$vendorCanManagePrices ? 'bg-gray-100/50 cursor-not-allowed text-gray-500' : '' }}" placeholder="قیمت با تخفیف" @if(!$vendorCanManagePrices) readonly @endif>
+                                            <input type="text" x-model="formattedDiscount" @input="updateFromPrice()" class="{{ $inputClass }} font-sans dir-ltr text-center font-bold text-rose-600 dark:text-rose-400 !border-rose-200 focus:!border-rose-500 focus:!ring-rose-500/20 dark:!border-rose-800 {{ !$vendorCanManagePrices ? 'bg-gray-100/50 cursor-not-allowed text-gray-500' : '' }}" placeholder="قیمت با تخفیف" @if(!$vendorCanManagePrices) readonly @endif>
                                         </div>
                                     </div>
                                 @endif
@@ -229,7 +229,7 @@
                                 }">
                                     <label class="{{ $labelClass }}">مبنای مبلغ سبد خرید (برای محدودیت خرید)</label>
                                     <div class="relative">
-                                        <input type="text" x-model="formattedAmount" @input="updateAmount()" class="{{ $inputClass }} font-mono dir-ltr text-center {{ !$vendorCanManagePrices ? 'bg-gray-100/50 cursor-not-allowed text-gray-500' : '' }}" placeholder="مثلا 1,000,000" @if(!$vendorCanManagePrices) readonly @endif>
+                                        <input type="text" x-model="formattedAmount" @input="updateAmount()" class="{{ $inputClass }} font-sans dir-ltr text-center {{ !$vendorCanManagePrices ? 'bg-gray-100/50 cursor-not-allowed text-gray-500' : '' }}" placeholder="مثلا 1,000,000" @if(!$vendorCanManagePrices) readonly @endif>
                                         <span class="absolute inset-y-0 right-3 flex items-center text-[10px] text-gray-400">{{ \Modules\Market\Entities\MarketSetting::getValue('general.currency') === 'rial' ? 'ریال' : 'تومان' }} سبد خرید</span>
                                     </div>
                                 </div>
@@ -333,7 +333,7 @@
                                     }" x-init="$watch('val', () => format())">
                                         <label class="block text-[10px] font-bold text-gray-500 dark:text-gray-400 mb-1">قیمت مصرف‌کننده گروهی</label>
                                         <div class="relative">
-                                            <input type="text" x-on:input="val = $event.target.value.replace(/\D/g, '')" class="w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2 text-xs font-mono text-center font-bold text-indigo-700 dark:text-indigo-300 pr-10" placeholder="مثلا 1,500,000">
+                                            <input type="text" x-on:input="val = $event.target.value.replace(/\D/g, '')" class="w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2 text-xs font-sans text-center font-bold text-indigo-700 dark:text-indigo-300 pr-10" placeholder="مثلا 1,500,000">
                                             <span class="absolute inset-y-0 right-3 flex items-center text-[10px] text-gray-400">{{ \Modules\Market\Entities\MarketSetting::getValue('general.currency') === 'rial' ? 'ریال' : 'تومان' }}</span>
                                         </div>
                                     </div>
@@ -342,7 +342,7 @@
                                     <div>
                                         <label class="block text-[10px] font-bold text-rose-600 dark:text-rose-400 mb-1">درصد تخفیف گروهی</label>
                                         <div class="relative">
-                                            <input type="number" wire:model.defer="batchDiscountPercent" class="w-full bg-white dark:bg-gray-800 border border-rose-200 dark:border-rose-800 rounded-xl px-3 py-2 text-xs font-mono text-center font-bold text-rose-600 dark:text-rose-400 pr-8" placeholder="مثلا 15">
+                                            <input type="number" wire:model.defer="batchDiscountPercent" class="w-full bg-white dark:bg-gray-800 border border-rose-200 dark:border-rose-800 rounded-xl px-3 py-2 text-xs font-sans text-center font-bold text-rose-600 dark:text-rose-400 pr-8" placeholder="مثلا 15">
                                             <span class="absolute inset-y-0 right-3 flex items-center text-[10px] text-rose-400">٪</span>
                                         </div>
                                     </div>
@@ -356,7 +356,7 @@
                                     }" x-init="$watch('val', () => format())">
                                         <label class="block text-[10px] font-bold text-rose-600 dark:text-rose-400 mb-1">قیمت نهایی تخفیف گروهی</label>
                                         <div class="relative">
-                                            <input type="text" x-on:input="val = $event.target.value.replace(/\D/g, '')" class="w-full bg-white dark:bg-gray-800 border border-rose-200 dark:border-rose-800 rounded-xl px-3 py-2 text-xs font-mono text-center font-bold text-rose-600 dark:text-rose-400 pr-10" placeholder="قیمت مستقیم با تخفیف">
+                                            <input type="text" x-on:input="val = $event.target.value.replace(/\D/g, '')" class="w-full bg-white dark:bg-gray-800 border border-rose-200 dark:border-rose-800 rounded-xl px-3 py-2 text-xs font-sans text-center font-bold text-rose-600 dark:text-rose-400 pr-10" placeholder="قیمت مستقیم با تخفیف">
                                             <span class="absolute inset-y-0 right-3 flex items-center text-[10px] text-rose-400">{{ \Modules\Market\Entities\MarketSetting::getValue('general.currency') === 'rial' ? 'ریال' : 'تومان' }}</span>
                                         </div>
                                     </div>
@@ -365,7 +365,7 @@
                                 {{-- موجودی انبار گروهی --}}
                                 <div class="{{ !$vendorCanManagePrices ? 'sm:col-span-2 lg:col-span-4' : '' }}">
                                     <label class="block text-[10px] font-bold text-gray-500 dark:text-gray-400 mb-1">موجودی انبار گروهی</label>
-                                    <input type="number" wire:model.defer="batchStock" class="w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2 text-xs text-center font-mono" placeholder="فقط در صورت غیرفعال بودن انبارداری" @if($isWmsActive) disabled @endif>
+                                    <input type="number" wire:model.defer="batchStock" class="w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2 text-xs text-center font-sans" placeholder="فقط در صورت غیرفعال بودن انبارداری" @if($isWmsActive) disabled @endif>
                                 </div>
                             </div>
 
@@ -423,7 +423,7 @@
                                 }" x-init="$watch('val', () => format())">
                                     <label class="block text-[10px] font-bold text-gray-500 dark:text-gray-400 mb-1">مبنای مبلغ سبد خرید گروهی ({{ \Modules\Market\Entities\MarketSetting::getValue('general.currency') === 'rial' ? 'ریال' : 'تومان' }})</label>
                                     <div class="relative">
-                                        <input type="text" x-on:input="val = $event.target.value.replace(/\D/g, '')" class="w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2 text-xs font-mono text-center" placeholder="مثلا 1,000,000">
+                                        <input type="text" x-on:input="val = $event.target.value.replace(/\D/g, '')" class="w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2 text-xs font-sans text-center" placeholder="مثلا 1,000,000">
                                         <span class="absolute inset-y-0 right-3 flex items-center text-[10px] text-gray-400">{{ \Modules\Market\Entities\MarketSetting::getValue('general.currency') === 'rial' ? 'ریال' : 'تومان' }}</span>
                                     </div>
                                 </div>
@@ -453,7 +453,7 @@
                                     <span class="font-bold text-gray-900 dark:text-white text-sm" :class="sell ? 'text-indigo-700 dark:text-indigo-300' : ''">
                                         {{ $vendor_variants[$variant->id]['display_name'] ?? 'تنوع استاندارد' }}
                                     </span>
-                                    <span class="font-mono text-[10px] text-gray-400 dark:text-gray-500">{{ $variant->variant_code }}</span>
+                                    <span class="font-sans text-[10px] text-gray-400 dark:text-gray-500">{{ $variant->variant_code }}</span>
                                 </div>
                             </label>
 
@@ -477,7 +477,7 @@
                                         }">
                                             <label class="{{ $labelClass }}">قیمت برای مصرف‌کننده <span class="text-red-500">*</span></label>
                                             <div class="relative">
-                                                <input type="text" x-model="formattedPrice" @input="updatePrice()" class="{{ $inputClass }} font-mono dir-ltr text-center font-bold text-indigo-700 dark:text-indigo-300 pr-10 {{ !$vendorCanManagePrices ? 'bg-gray-100/50 cursor-not-allowed text-gray-500' : '' }}" placeholder="مثلا 1,500,000" @if(!$vendorCanManagePrices) readonly @endif>
+                                                <input type="text" x-model="formattedPrice" @input="updatePrice()" class="{{ $inputClass }} font-sans dir-ltr text-center font-bold text-indigo-700 dark:text-indigo-300 pr-10 {{ !$vendorCanManagePrices ? 'bg-gray-100/50 cursor-not-allowed text-gray-500' : '' }}" placeholder="مثلا 1,500,000" @if(!$vendorCanManagePrices) readonly @endif>
                                                 <span class="absolute inset-y-0 right-3 flex items-center text-[10px] text-gray-400">{{ \Modules\Market\Entities\MarketSetting::getValue('general.currency') === 'rial' ? 'ریال' : 'تومان' }}</span>
                                             </div>
                                         </div>
@@ -537,7 +537,7 @@
                                                 </div>
                                                 <div>
                                                     <label class="{{ $labelClass }} !text-rose-600 dark:!text-rose-400">قیمت نهایی</label>
-                                                    <input type="text" x-model="formattedDiscount" @input="updateFromPrice()" class="{{ $inputClass }} font-mono dir-ltr text-center font-bold text-rose-600 dark:text-rose-400 !border-rose-200 focus:!border-rose-500 focus:!ring-rose-500/20 dark:!border-rose-800 {{ !$vendorCanManagePrices ? 'bg-gray-100/50 cursor-not-allowed text-gray-500' : '' }}" placeholder="قیمت با تخفیف" @if(!$vendorCanManagePrices) readonly @endif>
+                                                    <input type="text" x-model="formattedDiscount" @input="updateFromPrice()" class="{{ $inputClass }} font-sans dir-ltr text-center font-bold text-rose-600 dark:text-rose-400 !border-rose-200 focus:!border-rose-500 focus:!ring-rose-500/20 dark:!border-rose-800 {{ !$vendorCanManagePrices ? 'bg-gray-100/50 cursor-not-allowed text-gray-500' : '' }}" placeholder="قیمت با تخفیف" @if(!$vendorCanManagePrices) readonly @endif>
                                                 </div>
                                             </div>
                                         @endif
@@ -581,7 +581,7 @@
                                         }">
                                             <label class="{{ $labelClass }}">مبنای مبلغ سبد خرید (برای محدودیت خرید)</label>
                                             <div class="relative">
-                                                <input type="text" x-model="formattedAmount" @input="updateAmount()" class="{{ $inputClass }} font-mono dir-ltr text-center {{ !$vendorCanManagePrices ? 'bg-gray-100/50 cursor-not-allowed text-gray-500' : '' }}" placeholder="مثلا 1,000,000" @if(!$vendorCanManagePrices) readonly @endif>
+                                                <input type="text" x-model="formattedAmount" @input="updateAmount()" class="{{ $inputClass }} font-sans dir-ltr text-center {{ !$vendorCanManagePrices ? 'bg-gray-100/50 cursor-not-allowed text-gray-500' : '' }}" placeholder="مثلا 1,000,000" @if(!$vendorCanManagePrices) readonly @endif>
                                                 <span class="absolute inset-y-0 right-3 flex items-center text-[10px] text-gray-400">{{ \Modules\Market\Entities\MarketSetting::getValue('general.currency') === 'rial' ? 'ریال' : 'تومان' }} سبد خرید</span>
                                             </div>
                                         </div>
@@ -682,7 +682,7 @@
                                     }">
                                         <label class="{{ $labelClass }}">قیمت برای مصرف‌کننده <span class="text-red-500">*</span></label>
                                         <div class="relative">
-                                            <input type="text" x-model="formattedPrice" @input="updatePrice()" class="{{ $inputClass }} font-mono dir-ltr text-center font-bold text-indigo-700 dark:text-indigo-300 pr-10 {{ !$vendorCanManagePrices ? 'bg-gray-100/50 cursor-not-allowed text-gray-500' : '' }}" placeholder="مثلا 1,500,000" @if(!$vendorCanManagePrices) readonly @endif>
+                                            <input type="text" x-model="formattedPrice" @input="updatePrice()" class="{{ $inputClass }} font-sans dir-ltr text-center font-bold text-indigo-700 dark:text-indigo-300 pr-10 {{ !$vendorCanManagePrices ? 'bg-gray-100/50 cursor-not-allowed text-gray-500' : '' }}" placeholder="مثلا 1,500,000" @if(!$vendorCanManagePrices) readonly @endif>
                                             <span class="absolute inset-y-0 right-3 flex items-center text-[10px] text-gray-400">{{ \Modules\Market\Entities\MarketSetting::getValue('general.currency') === 'rial' ? 'ریال' : 'تومان' }}</span>
                                         </div>
                                     </div>
@@ -742,7 +742,7 @@
                                             </div>
                                             <div>
                                                 <label class="{{ $labelClass }} !text-rose-600 dark:!text-rose-400">قیمت نهایی</label>
-                                                <input type="text" x-model="formattedDiscount" @input="updateFromPrice()" class="{{ $inputClass }} font-mono dir-ltr text-center font-bold text-rose-600 dark:text-rose-400 !border-rose-200 focus:!border-rose-500 focus:!ring-rose-500/20 dark:!border-rose-800 {{ !$vendorCanManagePrices ? 'bg-gray-100/50 cursor-not-allowed text-gray-500' : '' }}" placeholder="قیمت با تخفیف" @if(!$vendorCanManagePrices) readonly @endif>
+                                                <input type="text" x-model="formattedDiscount" @input="updateFromPrice()" class="{{ $inputClass }} font-sans dir-ltr text-center font-bold text-rose-600 dark:text-rose-400 !border-rose-200 focus:!border-rose-500 focus:!ring-rose-500/20 dark:!border-rose-800 {{ !$vendorCanManagePrices ? 'bg-gray-100/50 cursor-not-allowed text-gray-500' : '' }}" placeholder="قیمت با تخفیف" @if(!$vendorCanManagePrices) readonly @endif>
                                             </div>
                                         </div>
                                     @endif
@@ -781,7 +781,7 @@
                                     }">
                                         <label class="{{ $labelClass }}">مبنای مبلغ سبد خرید (برای محدودیت خرید)</label>
                                         <div class="relative">
-                                            <input type="text" x-model="formattedAmount" @input="updateAmount()" class="{{ $inputClass }} font-mono dir-ltr text-center bg-white dark:bg-gray-800 {{ !$vendorCanManagePrices ? 'bg-gray-100/50 cursor-not-allowed text-gray-500' : '' }}" placeholder="مثلا 1,000,000" @if(!$vendorCanManagePrices) readonly @endif>
+                                            <input type="text" x-model="formattedAmount" @input="updateAmount()" class="{{ $inputClass }} font-sans dir-ltr text-center bg-white dark:bg-gray-800 {{ !$vendorCanManagePrices ? 'bg-gray-100/50 cursor-not-allowed text-gray-500' : '' }}" placeholder="مثلا 1,000,000" @if(!$vendorCanManagePrices) readonly @endif>
                                             <span class="absolute inset-y-0 right-3 flex items-center text-[10px] text-gray-400">{{ \Modules\Market\Entities\MarketSetting::getValue('general.currency') === 'rial' ? 'ریال' : 'تومان' }} سبد خرید</span>
                                         </div>
                                     </div>
@@ -894,7 +894,7 @@
                                                     </p>
                                                     
                                                     <div class="flex flex-wrap gap-1.5 mt-2">
-                                                        <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[9px] font-mono font-bold bg-gray-100 dark:bg-gray-900 text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-800">
+                                                        <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[9px] font-sans font-bold bg-gray-100 dark:bg-gray-900 text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-800">
                                                             {{ $data['variant_code'] }}
                                                         </span>
                                                         @foreach(($data['attributes'] ?? []) as $key => $val)
@@ -940,7 +940,7 @@
                                                 }">
                                                     <label class="{{ $labelClass }}">قیمت مرجع مصرف‌کننده <span class="text-red-500">*</span></label>
                                                     <div class="relative">
-                                                        <input type="text" x-model="formattedPrice" @input="updatePrice()" class="{{ $inputClass }} font-mono dir-ltr text-center font-bold text-indigo-700 dark:text-indigo-300 pr-10" placeholder="مثلا 1,500,000">
+                                                        <input type="text" x-model="formattedPrice" @input="updatePrice()" class="{{ $inputClass }} font-sans dir-ltr text-center font-bold text-indigo-700 dark:text-indigo-300 pr-10" placeholder="مثلا 1,500,000">
                                                         <span class="absolute inset-y-0 right-3 flex items-center text-[10px] text-gray-400">{{ \Modules\Market\Entities\MarketSetting::getValue('general.currency') === 'rial' ? 'ریال' : 'تومان' }}</span>
                                                     </div>
                                                 </div>
@@ -996,7 +996,7 @@
                                                     </div>
                                                     <div>
                                                         <label class="{{ $labelClass }} !text-rose-600 dark:!text-rose-400">قیمت با تخفیف</label>
-                                                        <input type="text" x-model="formattedDiscount" @input="updateFromPrice()" class="{{ $inputClass }} font-mono dir-ltr text-center text-rose-600 dark:text-rose-400 !border-rose-200 focus:!border-rose-500 focus:!ring-rose-500/20 dark:!border-rose-800 bg-white dark:bg-gray-900/50" placeholder="بدون تخفیف">
+                                                        <input type="text" x-model="formattedDiscount" @input="updateFromPrice()" class="{{ $inputClass }} font-sans dir-ltr text-center text-rose-600 dark:text-rose-400 !border-rose-200 focus:!border-rose-500 focus:!ring-rose-500/20 dark:!border-rose-800 bg-white dark:bg-gray-900/50" placeholder="بدون تخفیف">
                                                     </div>
                                                 </div>
 
@@ -1033,7 +1033,7 @@
                                                 }">
                                                     <label class="{{ $labelClass }}">مبنای مبلغ سبد خرید ({{ \Modules\Market\Entities\MarketSetting::getValue('general.currency') === 'rial' ? 'ریال' : 'تومان' }})</label>
                                                     <div class="relative">
-                                                        <input type="text" x-model="formattedAmount" @input="updateAmount()" class="{{ $inputClass }} font-mono dir-ltr text-center bg-white dark:bg-gray-900/50 pr-10" placeholder="مثلا 1,000,000">
+                                                        <input type="text" x-model="formattedAmount" @input="updateAmount()" class="{{ $inputClass }} font-sans dir-ltr text-center bg-white dark:bg-gray-900/50 pr-10" placeholder="مثلا 1,000,000">
                                                         <span class="absolute inset-y-0 right-3 flex items-center text-[10px] text-gray-400">{{ \Modules\Market\Entities\MarketSetting::getValue('general.currency') === 'rial' ? 'ریال' : 'تومان' }}</span>
                                                     </div>
                                                 </div>
