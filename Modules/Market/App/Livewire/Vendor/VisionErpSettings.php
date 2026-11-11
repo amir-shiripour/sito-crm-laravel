@@ -3,6 +3,7 @@
 namespace Modules\Market\App\Livewire\Vendor;
 
 use Exception;
+use Livewire\Attributes\On;
 use Livewire\Component;
 use Modules\Market\App\Services\Vision\VisionCatalogSyncService;
 use Modules\Market\App\Services\Vision\VisionSoapClient;
@@ -37,6 +38,8 @@ class VisionErpSettings extends Component
     public string $initial_product_status = 'draft';
     public ?array $cached_metadata = null;
     public string $groupSearch = '';
+    public string $groupFilterTab = 'all'; // all, selected, with_subs
+    public ?string $activeGroupCode = null;
     public bool $fetchingMetadata = false;
 
     // Status
@@ -103,6 +106,7 @@ class VisionErpSettings extends Component
         }
     }
 
+    #[On('save-vision-settings')]
     public function saveSettings(): void
     {
         if (!$this->vendorId) {
@@ -242,21 +246,98 @@ class VisionErpSettings extends Component
     }
 
     /**
-     * Get filtered groups for UI search
+     * Select a group to inspect its details and subgroups on the left panel
+     */
+    public function selectGroupForInspection(string $groupCode): void
+    {
+        $this->activeGroupCode = $groupCode;
+    }
+
+    /**
+     * Toggle all subgroups of a specific group at once
+     */
+    public function toggleAllSubgroupsOfGroup(string $parentGroupCode): void
+    {
+        $group = null;
+        foreach ($this->cached_metadata['groups'] ?? [] as $g) {
+            if ((string)$g['CodeG'] === (string)$parentGroupCode) {
+                $group = $g;
+                break;
+            }
+        }
+
+        if (!$group || empty($group['subgroups'])) {
+            return;
+        }
+
+        $subCodes = array_map(fn($s) => (string)$s['CodeG'], $group['subgroups']);
+        $allSelected = count(array_intersect($subCodes, $this->selected_subgroups)) === count($subCodes);
+
+        if ($allSelected) {
+            $this->selected_subgroups = array_values(array_diff($this->selected_subgroups, $subCodes));
+        } else {
+            $this->selected_subgroups = array_values(array_unique(array_merge($this->selected_subgroups, $subCodes)));
+            if (!in_array($parentGroupCode, $this->selected_groups, true)) {
+                $this->selected_groups[] = $parentGroupCode;
+            }
+        }
+        $this->saveSettings();
+    }
+
+    /**
+     * Get active group data for inspection panel
+     */
+    public function getActiveGroupDataProperty(): ?array
+    {
+        $groups = $this->cached_metadata['groups'] ?? [];
+        if (empty($groups)) {
+            return null;
+        }
+
+        if ($this->activeGroupCode) {
+            foreach ($groups as $g) {
+                if ((string)$g['CodeG'] === (string)$this->activeGroupCode) {
+                    return $g;
+                }
+            }
+        }
+
+        // Prefer first group with subgroups if available, or first group
+        foreach ($groups as $g) {
+            if (!empty($g['subgroups'])) {
+                $this->activeGroupCode = (string)$g['CodeG'];
+                return $g;
+            }
+        }
+
+        $this->activeGroupCode = (string)($groups[0]['CodeG'] ?? '');
+        return $groups[0] ?? null;
+    }
+
+    /**
+     * Get filtered groups for UI search and tabs
      */
     public function getFilteredGroupsProperty(): array
     {
         $groups = $this->cached_metadata['groups'] ?? [];
-        if (empty($this->groupSearch)) {
-            return $groups;
+
+        // Tab filter
+        if ($this->groupFilterTab === 'with_subs') {
+            $groups = array_filter($groups, fn($g) => !empty($g['subgroups']));
+        } elseif ($this->groupFilterTab === 'selected') {
+            $groups = array_filter($groups, fn($g) => in_array((string)$g['CodeG'], $this->selected_groups, true));
         }
 
-        $term = trim(mb_strtolower($this->groupSearch));
-        return array_values(array_filter($groups, function ($g) use ($term) {
-            $name = mb_strtolower($g['NameG'] ?? '');
-            $code = mb_strtolower((string)($g['CodeG'] ?? ''));
-            return str_contains($name, $term) || str_contains($code, $term);
-        }));
+        if (!empty($this->groupSearch)) {
+            $term = trim(mb_strtolower($this->groupSearch));
+            $groups = array_filter($groups, function ($g) use ($term) {
+                $name = mb_strtolower($g['NameG'] ?? '');
+                $code = mb_strtolower((string)($g['CodeG'] ?? ''));
+                return str_contains($name, $term) || str_contains($code, $term);
+            });
+        }
+
+        return array_values($groups);
     }
 
     /**

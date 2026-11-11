@@ -178,24 +178,23 @@
                 </div>
             @endif
 
-            {{-- دکمه‌های عملیات --}}
+            {{-- دکمه‌های عملیات کارت اول --}}
             <div class="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-gray-100 dark:border-gray-700">
                 <div class="flex flex-wrap items-center gap-2">
-                    {{-- دکمه ذخیره تنظیمات --}}
-                    <button type="button" wire:click="saveSettings" wire:loading.attr="disabled" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-md shadow-indigo-500/25 transition-all">
-                        <span wire:loading.remove wire:target="saveSettings">ذخیره تنظیمات</span>
-                        <span wire:loading wire:target="saveSettings">در حال ذخیره...</span>
-                    </button>
-
                     {{-- دکمه تست اتصال آنی --}}
                     <button type="button" wire:click="testConnection" wire:loading.attr="disabled" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-100 text-xs font-bold transition-all">
                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
                         <span wire:loading.remove wire:target="testConnection">تست ارتباط با وب‌سرویس</span>
                         <span wire:loading wire:target="testConnection">در حال بررسی...</span>
                     </button>
+
+                    <button type="button" wire:click="fetchDiscoveryMetadata" wire:loading.attr="disabled" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold shadow-md shadow-purple-500/20 transition-all">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2 1.5 3 3.5 3h9c2 0 3.5-1 3.5-3V7c0-2-1.5-3-3.5-3h-9C5.5 4 4 5 4 7zm0 4h16M9 4v16"/></svg>
+                        <span wire:loading.remove wire:target="fetchDiscoveryMetadata">واکشی و بروزرسانی ساختار از ویژن</span>
+                        <span wire:loading wire:target="fetchDiscoveryMetadata">در حال دریافت ساختار...</span>
+                    </button>
                 </div>
 
-                {{-- عملیات دستی --}}
                 <div class="flex flex-wrap items-center gap-2">
                     <button type="button" wire:click="syncStockNow" wire:loading.attr="disabled" class="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 border border-indigo-500/30 text-xs font-bold transition-all">
                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
@@ -203,11 +202,9 @@
                         <span wire:loading wire:target="syncStockNow">در حال واکشی...</span>
                     </button>
 
-                    <button type="button" wire:click="fetchDiscoveryMetadata" wire:loading.attr="disabled" class="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-md shadow-indigo-500/20 transition-all">
-                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2 1.5 3 3.5 3h9c2 0 3.5-1 3.5-3V7c0-2-1.5-3-3.5-3h-9C5.5 4 4 5 4 7zm0 4h16M9 4v16"/></svg>
-                        <span wire:loading.remove wire:target="fetchDiscoveryMetadata">واکشی ساختار دسته‌ها و قیمت‌ها</span>
-                        <span wire:loading wire:target="fetchDiscoveryMetadata">در حال دریافت ساختار...</span>
-                    </button>
+                    <span class="text-[11px] text-slate-500 dark:text-slate-400 hidden sm:inline">
+                        ذخیره تنظیمات با دکمه شناور پایین صفحه هماهنگ است
+                    </span>
                 </div>
             </div>
 
@@ -215,7 +212,7 @@
     </div>
 
     {{-- ========================================================================= --}}
-    {{-- لایه ۱: هاب قرنطینه، انتخاب دسته‌های فعال و نگاشت قیمت و انبار --}}
+    {{-- لایه ۱: هاب قرنطینه و کاوشگر دو ستونه گروه‌ها و زیرگروه‌های ویژن --}}
     {{-- ========================================================================= --}}
     <div class="{{ $cardClass }}">
         <div class="{{ $headerClass }}">
@@ -233,22 +230,22 @@
                         </span>
                     </div>
                     <p class="text-xs text-slate-600 dark:text-slate-300 mt-0.5">
-                        تعیین کنید کدام گروه‌ها، با چه کلاس قیمتی و از کدام انبار به سایت متصل شوند بدون ورود اطلاعات ناخواسته.
+                        فقط گروه‌ها و زیرگروه‌های انتخابی شما به کاتالوگ سایت متصل و وارد چرخه سفارش‌گیری می‌شوند.
                     </p>
                 </div>
             </div>
 
             <div class="flex items-center gap-2">
                 @if(!empty($cached_metadata))
-                    <span class="text-xs font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-700/60 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-600/50">
+                    <span class="text-xs font-bold text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-700/60 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-600/50">
                         {{ count($selected_groups) }} گروه فعال از {{ $cached_metadata['groups_count'] ?? 0 }}
                     </span>
                 @endif
 
-                <button type="button" wire:click="fetchDiscoveryMetadata" wire:loading.attr="disabled" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-purple-50 dark:bg-purple-950/40 hover:bg-purple-100 dark:hover:bg-purple-900/40 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800/50 text-xs font-bold transition-all">
-                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-                    <span wire:loading.remove wire:target="fetchDiscoveryMetadata">به‌روزرسانی ساختار</span>
-                    <span wire:loading wire:target="fetchDiscoveryMetadata">در حال استعلام...</span>
+                <button type="button" wire:click="syncSelectedCatalog" wire:loading.attr="disabled" class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-md shadow-indigo-500/20 transition-all">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+                    <span wire:loading.remove wire:target="syncSelectedCatalog">همگام‌سازی کالاهای گروه‌های فعال</span>
+                    <span wire:loading wire:target="syncSelectedCatalog">در حال همگام‌سازی...</span>
                 </button>
             </div>
         </div>
@@ -312,6 +309,12 @@
 
             {{-- بخش ۲: آمار کشف ساختار و کالاها --}}
             @if(!empty($cached_metadata))
+                @php
+                    $allGroups = $cached_metadata['groups'] ?? [];
+                    $groupsWithSubsCount = count(array_filter($allGroups, fn($g) => !empty($g['subgroups'])));
+                    $activeGroup = $this->activeGroupData;
+                @endphp
+
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div class="p-4 rounded-xl bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/30 flex items-center gap-3">
                         <div class="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-bold text-sm">
@@ -319,7 +322,7 @@
                         </div>
                         <div>
                             <div class="text-xs font-bold text-gray-900 dark:text-white">گروه‌های اصلی ویژن</div>
-                            <div class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">{{ count($selected_groups) }} گروه در کاتالوگ فعال شده</div>
+                            <div class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">{{ count($selected_groups) }} گروه فعال‌شده</div>
                         </div>
                     </div>
 
@@ -328,8 +331,8 @@
                             {{ $cached_metadata['subgroups_count'] ?? 0 }}
                         </div>
                         <div>
-                            <div class="text-xs font-bold text-gray-900 dark:text-white">زیرگروه‌های شناسایی‌شده</div>
-                            <div class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">تفکیک‌شده ذیل گروه‌های والد</div>
+                            <div class="text-xs font-bold text-gray-900 dark:text-white">زیرگروه‌ها در {{ $groupsWithSubsCount }} گروه</div>
+                            <div class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">{{ count($selected_subgroups) }} زیرگروه فعال‌شده</div>
                         </div>
                     </div>
 
@@ -339,128 +342,233 @@
                         </div>
                         <div>
                             <div class="text-xs font-bold text-gray-900 dark:text-white">کل اقلام در سرور ویژن</div>
-                            <div class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">قابل فیلتر و همگام‌سازی گزینشی</div>
+                            <div class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">آماده فیلتر و همگام‌سازی</div>
                         </div>
                     </div>
                 </div>
 
-                {{-- بخش ۳: درختواره انتخاب گروه‌ها و زیرگروه‌ها --}}
-                <div class="space-y-3 pt-2">
+                {{-- بخش ۳: کاوشگر دو ستونه تعاملی (Master-Detail Two-Column Explorer) --}}
+                <div class="space-y-4 pt-2">
                     <div class="flex flex-wrap items-center justify-between gap-3">
                         <div>
-                            <h4 class="text-xs font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                                <svg class="w-4 h-4 text-indigo-600 dark:text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                            <h4 class="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                                <svg class="w-4 h-4 text-purple-600 dark:text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
                                 </svg>
-                                انتخاب گروه‌های مجاز جهت فعال‌سازی در سایت
+                                کاوشگر گروه‌ها و زیرگروه‌های ویژن
                             </h4>
-                            <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                                فقط کالاهای متعلق به گروه‌های تیک‌خورده در فروشگاه درج یا آپدیت می‌شوند.
+                            <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                                با کلیک روی هر گروه در ستون راست، زیرگروه‌ها و جزئیات آن در ستون چپ باز می‌شود.
                             </p>
                         </div>
 
                         <div class="flex items-center gap-2">
-                            <button type="button" wire:click="selectAllGroups" class="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 dark:bg-indigo-950/50 dark:hover:bg-indigo-900/50 dark:text-indigo-300 transition-colors">
-                                انتخاب همه
+                            <button type="button" wire:click="selectAllGroups" class="px-3 py-1.5 text-xs font-bold rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 dark:bg-indigo-950/50 dark:hover:bg-indigo-900/50 dark:text-indigo-300 transition-colors">
+                                انتخاب همه گروه‌ها
                             </button>
-                            <button type="button" wire:click="deselectAllGroups" class="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-300 transition-colors">
+                            <button type="button" wire:click="deselectAllGroups" class="px-3 py-1.5 text-xs font-bold rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-300 transition-colors">
                                 لغو همه
                             </button>
                         </div>
                     </div>
 
-                    {{-- فیلد جستجوی زنده بین گروه‌ها --}}
-                    <div>
-                        <div class="relative">
-                            <input type="text" wire:model.debounce.250ms="groupSearch" placeholder="جستجو در نام یا کد گروه ویژن (مثلاً: آفتاب، پرارین، ۱۲۵...)" class="{{ $inputClass }} ps-10 text-xs">
-                            <span class="absolute inset-y-0 start-0 flex items-center ps-3.5 pointer-events-none text-slate-400">
-                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-                            </span>
-                        </div>
-                    </div>
+                    {{-- کاوشگر دو ستونه --}}
+                    <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 rounded-2xl border border-gray-200 dark:border-gray-700/80 bg-white dark:bg-gray-800/50 overflow-hidden shadow-sm">
 
-                    {{-- لیست شبکه کارتی گروه‌ها با پشتیبانی از زیرگروه --}}
-                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-96 overflow-y-auto p-1 border border-gray-200 dark:border-gray-700/70 rounded-2xl bg-gray-50/50 dark:bg-gray-900/20">
-                        @forelse($this->filteredGroups as $group)
-                            @php
-                                $gCode = (string)($group['CodeG'] ?? '');
-                                $gName = (string)($group['NameG'] ?? '');
-                                $subs = $group['subgroups'] ?? [];
-                                $isSelected = in_array($gCode, $selected_groups, true);
-                            @endphp
-
-                            <div x-data="{ expanded: false }" class="p-3.5 rounded-xl border transition-all {{ $isSelected ? 'bg-indigo-50/70 dark:bg-indigo-950/30 border-indigo-300 dark:border-indigo-800/80 shadow-sm' : 'bg-white dark:bg-gray-800/70 border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600' }}">
-                                <div class="flex items-start justify-between gap-2">
-                                    <label class="flex items-start gap-2.5 cursor-pointer select-none flex-1">
-                                        <input type="checkbox" wire:click="toggleGroup('{{ $gCode }}')" {{ $isSelected ? 'checked' : '' }} class="{{ $checkboxClass }} mt-0.5">
-                                        <div class="min-w-0">
-                                            <span class="text-xs font-bold block truncate {{ $isSelected ? 'text-indigo-950 dark:text-indigo-200' : 'text-gray-900 dark:text-white' }}">
-                                                {{ $gName }}
-                                            </span>
-                                            <div class="flex items-center gap-1.5 mt-1">
-                                                <span class="inline-flex items-center px-1.5 py-0.2 rounded text-[10px] font-bold bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300">
-                                                    کد: {{ $gCode }}
-                                                </span>
-                                                @if(count($subs) > 0)
-                                                    <span class="inline-flex items-center px-1.5 py-0.2 rounded text-[10px] font-bold bg-purple-100 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300">
-                                                        {{ count($subs) }} زیرگروه
-                                                    </span>
-                                                @endif
-                                            </div>
-                                        </div>
-                                    </label>
-
-                                    @if(count($subs) > 0)
-                                        <button type="button" @click="expanded = !expanded" class="p-1 rounded text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
-                                            <svg class="w-4 h-4 transition-transform duration-200" :class="expanded ? 'rotate-180' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                                            </svg>
+                        {{-- ستون راست: لیست گروه‌های اصلی (Width: 6/12) --}}
+                        <div class="lg:col-span-6 border-b lg:border-b-0 lg:border-e border-gray-200 dark:border-gray-700/80 flex flex-col h-[520px]">
+                            {{-- نوار ابزار جستجو و تب‌های فیلتر --}}
+                            <div class="p-3.5 bg-gray-50/70 dark:bg-gray-900/40 border-b border-gray-200 dark:border-gray-700/60 space-y-2.5">
+                                <div class="relative">
+                                    <input type="text" wire:model.live.debounce.200ms="groupSearch" placeholder="جستجو در نام یا کد گروه..." class="{{ $inputClass }} ps-9 text-xs">
+                                    <span class="absolute inset-y-0 start-0 flex items-center ps-3 pointer-events-none text-slate-400">
+                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                                    </span>
+                                    @if($groupSearch)
+                                        <button type="button" wire:click="$set('groupSearch', '')" class="absolute inset-y-0 end-0 flex items-center pe-3 text-slate-400 hover:text-slate-600">
+                                            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                                         </button>
                                     @endif
                                 </div>
 
-                                {{-- زیرگروه‌ها در صورت وجود --}}
-                                @if(count($subs) > 0)
-                                    <div x-show="expanded" x-collapse class="mt-2.5 pt-2.5 border-t border-gray-100 dark:border-gray-700/60 space-y-1.5 ps-6">
-                                        @foreach($subs as $sub)
-                                            @php
-                                                $sCode = (string)($sub['CodeG'] ?? '');
-                                                $sName = (string)($sub['NameG'] ?? '');
-                                                $isSubSelected = in_array($sCode, $selected_subgroups, true);
-                                            @endphp
-                                            <label class="flex items-center gap-2 cursor-pointer select-none text-[11px] text-slate-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white">
-                                                <input type="checkbox" wire:click="toggleSubgroup('{{ $sCode }}', '{{ $gCode }}')" {{ $isSubSelected ? 'checked' : '' }} class="w-3.5 h-3.5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:bg-gray-800 dark:border-gray-600">
-                                                <span class="truncate">{{ $sName }}</span>
-                                                <span class="text-[9px] text-slate-400">({{ $sCode }})</span>
-                                            </label>
-                                        @endforeach
+                                {{-- تب‌های دسته‌بندی گروه‌ها --}}
+                                <div class="flex items-center gap-1.5">
+                                    <button type="button" wire:click="$set('groupFilterTab', 'all')"
+                                            class="px-2.5 py-1 rounded-lg text-xs font-bold transition-all {{ $groupFilterTab === 'all' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:bg-gray-200/60 dark:hover:bg-gray-700/60' }}">
+                                        همه ({{ $cached_metadata['groups_count'] ?? 0 }})
+                                    </button>
+
+                                    <button type="button" wire:click="$set('groupFilterTab', 'selected')"
+                                            class="px-2.5 py-1 rounded-lg text-xs font-bold transition-all {{ $groupFilterTab === 'selected' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:bg-gray-200/60 dark:hover:bg-gray-700/60' }}">
+                                        فعال‌شده‌ها ({{ count($selected_groups) }})
+                                    </button>
+
+                                    <button type="button" wire:click="$set('groupFilterTab', 'with_subs')"
+                                            class="px-2.5 py-1 rounded-lg text-xs font-bold transition-all {{ $groupFilterTab === 'with_subs' ? 'bg-purple-600 text-white shadow-sm' : 'text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/40 hover:bg-purple-100 dark:hover:bg-purple-900/40' }}">
+                                        دارای زیرگروه ({{ $groupsWithSubsCount }})
+                                    </button>
+                                </div>
+                            </div>
+
+                            {{-- فهرست اسکرول‌شونده گروه‌ها --}}
+                            <div class="flex-1 overflow-y-auto divide-y divide-gray-100 dark:divide-gray-700/50">
+                                @forelse($this->filteredGroups as $group)
+                                    @php
+                                        $gCode = (string)($group['CodeG'] ?? '');
+                                        $gName = (string)($group['NameG'] ?? '');
+                                        $subs = $group['subgroups'] ?? [];
+                                        $subsCount = count($subs);
+                                        $isSelected = in_array($gCode, $selected_groups, true);
+                                        $isActive = ($activeGroup && (string)$activeGroup['CodeG'] === $gCode);
+                                    @endphp
+
+                                    <div class="flex items-center justify-between p-3 transition-colors {{ $isActive ? 'bg-indigo-50/80 dark:bg-indigo-950/40 border-s-4 border-indigo-600 dark:border-indigo-400' : 'hover:bg-gray-50 dark:hover:bg-gray-800/60' }}">
+                                        {{-- چک‌باکس فعال‌سازی --}}
+                                        <div class="flex items-center gap-2.5 flex-1 min-w-0">
+                                            <input type="checkbox" wire:click="toggleGroup('{{ $gCode }}')" {{ $isSelected ? 'checked' : '' }} class="{{ $checkboxClass }}">
+                                            <button type="button" wire:click="selectGroupForInspection('{{ $gCode }}')" class="flex-1 text-start truncate">
+                                                <span class="text-xs font-bold block truncate {{ $isActive ? 'text-indigo-900 dark:text-indigo-200' : 'text-gray-900 dark:text-white' }}">
+                                                    {{ $gName }}
+                                                </span>
+                                                <span class="text-[10px] text-slate-500 dark:text-slate-400 block mt-0.5">
+                                                    کد ویژن: {{ $gCode }}
+                                                </span>
+                                            </button>
+                                        </div>
+
+                                        {{-- برچسب زیرگروه‌ها و نشانگر انتخاب --}}
+                                        <div class="flex items-center gap-2">
+                                            @if($subsCount > 0)
+                                                <button type="button" wire:click="selectGroupForInspection('{{ $gCode }}')"
+                                                        class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-800 dark:bg-purple-950/80 dark:text-purple-300 border border-purple-200 dark:border-purple-800/60">
+                                                    <span>{{ $subsCount }} زیرگروه</span>
+                                                    <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                                                </button>
+                                            @endif
+
+                                            <button type="button" wire:click="selectGroupForInspection('{{ $gCode }}')" class="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+                                                <svg class="w-4 h-4 {{ $isActive ? 'text-indigo-600 dark:text-indigo-400 rotate-180' : '' }}" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                                            </button>
+                                        </div>
                                     </div>
-                                @endif
+                                @empty
+                                    <div class="p-8 text-center text-xs text-slate-500 dark:text-slate-400">
+                                        گروهی با مشخصات واردشده یافت نشد.
+                                    </div>
+                                @endforelse
                             </div>
-                        @empty
-                            <div class="col-span-full py-8 text-center text-xs text-slate-500 dark:text-slate-400">
-                                هیچ گروهی با عبارت جستجوی «{{ $groupSearch }}» یافت نشد.
-                            </div>
-                        @endforelse
-                    </div>
-                </div>
+                        </div>
 
-                {{-- دکمه ذخیره و اجرای همگام‌سازی گزینشی --}}
-                <div class="pt-4 border-t border-gray-100 dark:border-gray-700 flex flex-wrap items-center justify-between gap-3">
-                    <div class="text-xs text-slate-500 dark:text-slate-400">
-                        تنظیمات انتخاب‌شده به صورت خودکار ذخیره می‌شوند و برای همگام‌سازی‌های بعدی پس‌زمینه نیز ملاک عمل خواهند بود.
-                    </div>
+                        {{-- ستون چپ: پنل جزئیات و زیرگروه‌های گروه انتخابی (Width: 6/12) --}}
+                        <div class="lg:col-span-6 flex flex-col h-[520px] bg-gray-50/30 dark:bg-gray-900/20">
+                            @if($activeGroup)
+                                @php
+                                    $actCode = (string)($activeGroup['CodeG'] ?? '');
+                                    $actName = (string)($activeGroup['NameG'] ?? '');
+                                    $actSubs = $activeGroup['subgroups'] ?? [];
+                                    $isActSelected = in_array($actCode, $selected_groups, true);
+                                    $actSubsCount = count($actSubs);
+                                @endphp
 
-                    <div class="flex items-center gap-2">
-                        <button type="button" wire:click="saveSettings" wire:loading.attr="disabled" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-black dark:bg-slate-700 dark:hover:bg-slate-600 text-white text-xs font-bold transition-all">
-                            <span>ذخیره فیلترها و نگاشت</span>
-                        </button>
+                                {{-- هدر گروه انتخابی در پنل چپ --}}
+                                <div class="p-4 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700/80 flex items-center justify-between gap-3">
+                                    <div>
+                                        <div class="flex items-center gap-2">
+                                            <span class="w-2.5 h-2.5 rounded-full {{ $isActSelected ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-600' }}"></span>
+                                            <h5 class="text-sm font-bold text-gray-900 dark:text-white">{{ $actName }}</h5>
+                                            <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300">
+                                                کد: {{ $actCode }}
+                                            </span>
+                                        </div>
+                                        <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+                                            {{ $actSubsCount > 0 ? "دارای {$actSubsCount} زیرگروه تفکیک‌شده در سیستم ویژن" : "فاقد زیرگروه مجزا (کالاها مستقیماً ذیل گروه اصلی هستند)" }}
+                                        </p>
+                                    </div>
 
-                        <button type="button" wire:click="syncSelectedCatalog" wire:loading.attr="disabled" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold shadow-md shadow-purple-500/25 transition-all">
-                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
-                            <span wire:loading.remove wire:target="syncSelectedCatalog">همگام‌سازی کالاهای گروه‌های فعال</span>
-                            <span wire:loading wire:target="syncSelectedCatalog">در حال همگام‌سازی...</span>
-                        </button>
+                                    <div>
+                                        <button type="button" wire:click="toggleGroup('{{ $actCode }}')"
+                                                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all {{ $isActSelected ? 'bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300 border border-rose-200 dark:border-rose-800/40 hover:bg-rose-100' : 'bg-emerald-600 text-white shadow-sm hover:bg-emerald-700' }}">
+                                            @if($isActSelected)
+                                                <span>غیرفعال کردن گروه</span>
+                                            @else
+                                                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                                <span>فعال‌سازی در سایت</span>
+                                            @endif
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {{-- بدنه پنل چپ: زیرگروه‌ها یا پیام شفاف --}}
+                                <div class="flex-1 overflow-y-auto p-4 space-y-3">
+                                    @if($actSubsCount > 0)
+                                        <div class="flex items-center justify-between pb-2 border-b border-gray-200 dark:border-gray-700/60">
+                                            <span class="text-xs font-bold text-purple-900 dark:text-purple-200">
+                                                فهرست زیرگروه‌های «{{ $actName }}»:
+                                            </span>
+                                            <button type="button" wire:click="toggleAllSubgroupsOfGroup('{{ $actCode }}')"
+                                                    class="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline">
+                                                تغییر وضعیت همه زیرگروه‌ها
+                                            </button>
+                                        </div>
+
+                                        <div class="grid grid-cols-1 gap-2.5">
+                                            @foreach($actSubs as $sub)
+                                                @php
+                                                    $sCode = (string)($sub['CodeG'] ?? '');
+                                                    $sName = (string)($sub['NameG'] ?? '');
+                                                    $isSubSel = in_array($sCode, $selected_subgroups, true);
+                                                @endphp
+
+                                                <label class="flex items-center justify-between p-3 rounded-xl border transition-all cursor-pointer {{ $isSubSel ? 'bg-purple-50/80 dark:bg-purple-950/30 border-purple-300 dark:border-purple-800/70 shadow-sm' : 'bg-white dark:bg-gray-800/70 border-gray-200 dark:border-gray-700 hover:border-gray-300' }}">
+                                                    <div class="flex items-center gap-3">
+                                                        <input type="checkbox" wire:click="toggleSubgroup('{{ $sCode }}', '{{ $actCode }}')" {{ $isSubSel ? 'checked' : '' }} class="{{ $checkboxClass }}">
+                                                        <div>
+                                                            <span class="text-xs font-bold block text-gray-900 dark:text-white">
+                                                                {{ $sName }}
+                                                            </span>
+                                                            <span class="text-[10px] text-slate-500 dark:text-slate-400 block mt-0.5">
+                                                                کد زیرگروه: {{ $sCode }}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+
+                                                    <span class="text-[10px] font-bold px-2 py-0.5 rounded-full {{ $isSubSel ? 'bg-purple-200 text-purple-900 dark:bg-purple-900/60 dark:text-purple-200' : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300' }}">
+                                                        {{ $isSubSel ? 'فعال در همگام‌سازی' : 'غیرفعال' }}
+                                                    </span>
+                                                </label>
+                                            @endforeach
+                                        </div>
+                                    @else
+                                        <div class="h-full flex flex-col items-center justify-center text-center p-6 space-y-3">
+                                            <div class="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+                                                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                                                </svg>
+                                            </div>
+                                            <div class="max-w-xs">
+                                                <h6 class="text-xs font-bold text-gray-900 dark:text-white">این گروه فاقد زیرگروه مجزاست</h6>
+                                                <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+                                                    در سیستم حسابداری ویژن، کالاهای این گروه به‌طور مستقیم ذیل همین عنوان قرار دارند.
+                                                </p>
+                                            </div>
+                                            <div class="p-3 rounded-xl bg-slate-100/80 dark:bg-slate-800/80 text-[11px] text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                                                وضعیت:
+                                                @if($isActSelected)
+                                                    <span class="font-bold text-emerald-600 dark:text-emerald-400">کالاهای این گروه مجاز به ورود به سایت هستند.</span>
+                                                @else
+                                                    <span class="font-bold text-slate-500">غیرفعال است و کالاهای آن وارد کاتالوگ نمی‌شوند.</span>
+                                                @endif
+                                            </div>
+                                        </div>
+                                    @endif
+                                </div>
+                            @else
+                                <div class="h-full flex items-center justify-center text-xs text-slate-400 p-8 text-center">
+                                    یک گروه را از ستون راست انتخاب کنید تا جزئیات و زیرگروه‌های آن نمایش داده شود.
+                                </div>
+                            @endif
+                        </div>
+
                     </div>
                 </div>
 
