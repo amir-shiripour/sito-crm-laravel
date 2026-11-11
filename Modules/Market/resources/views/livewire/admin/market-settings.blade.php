@@ -204,7 +204,7 @@
                         <div class="bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 p-5 rounded-2xl">
                             <label class="{{ $labelClass }}">پیش‌وند کدهای محصول (Product Prefix)</label>
                             <div class="relative">
-                                <input type="text" wire:model.defer="system_product_prefix" class="{{ $inputClass }} font-mono uppercase text-left dir-ltr pl-4" placeholder="SIT">
+                                <input type="text" wire:model.defer="system_product_prefix" class="{{ $inputClass }} font-sans uppercase text-left dir-ltr pl-4" placeholder="SIT">
                             </div>
                             <p class="text-[10px] text-gray-500 dark:text-gray-400 mt-2">
                                 این حروف در ابتدای کد هوشمند (Smart SKU) تمام محصولات مرجع قرار می‌گیرد. توصیه می‌شود حداکثر 3 الی 4 حرف انگلیسی باشد.
@@ -422,7 +422,7 @@
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 p-5 bg-gray-50 dark:bg-gray-900/30 border border-gray-100 dark:border-gray-700 rounded-xl animate-in fade-in slide-in-from-top-4">
                         <div>
                             <label class="{{ $labelClass }}">نرخ پیش‌فرض مالیات (%)</label>
-                            <input type="number" wire:model.defer="default_tax_rate" class="{{ $inputClass }} text-center font-mono dir-ltr" placeholder="9">
+                            <input type="number" wire:model.defer="default_tax_rate" class="{{ $inputClass }} text-center font-sans dir-ltr" placeholder="9">
                         </div>
 
                         <div>
@@ -508,7 +508,7 @@
                         <div>
                             <label class="{{ $labelClass }}">کمیسیون پایه سیستم (%)</label>
                             <div class="relative">
-                                <input type="number" wire:model.defer="default_commission_rate" class="{{ $inputClass }} dir-ltr text-center font-mono">
+                                <input type="number" wire:model.defer="default_commission_rate" class="{{ $inputClass }} dir-ltr text-center font-sans">
                                 <div class="absolute inset-y-0 left-4 flex items-center pointer-events-none text-gray-400 text-xs">%</div>
                             </div>
                             <p class="text-[10px] text-gray-500 mt-1">این درصد روی تمام فروشندگان اعمال می‌شود مگر اینکه برای یک فروشنده خاص درصد متفاوتی ست شود.</p>
@@ -516,7 +516,7 @@
 
                         <div>
                             <label class="{{ $labelClass }}">حداکثر تعداد آدرس/انبار برای هر فروشنده</label>
-                            <input type="number" wire:model.defer="max_vendor_addresses" class="{{ $inputClass }} dir-ltr text-center font-mono">
+                            <input type="number" wire:model.defer="max_vendor_addresses" class="{{ $inputClass }} dir-ltr text-center font-sans">
                         </div>
                     </div>
                 </div>
@@ -556,7 +556,7 @@
                     <div>
                         <label class="{{ $labelClass }}">حداقل مبلغ کل سبد خرید برای ثبت سفارش</label>
                         <div class="relative">
-                            <input type="text" wire:model.defer="min_order_amount" class="{{ $inputClass }} dir-ltr text-center font-mono">
+                            <input type="text" wire:model.defer="min_order_amount" class="{{ $inputClass }} dir-ltr text-center font-sans">
                             <div class="absolute inset-y-0 right-4 flex items-center pointer-events-none text-gray-400 text-xs">تومان / ریال</div>
                         </div>
                         <p class="text-[10px] text-gray-500 mt-1">عدد 0 به معنای عدم محدودیت است.</p>
@@ -564,13 +564,13 @@
 
                     <div>
                         <label class="{{ $labelClass }}">پیش‌وند شماره فاکتور (Invoice Prefix)</label>
-                        <input type="text" wire:model.defer="invoice_prefix" class="{{ $inputClass }} dir-ltr text-center font-mono" placeholder="INV-">
+                        <input type="text" wire:model.defer="invoice_prefix" class="{{ $inputClass }} dir-ltr text-center font-sans" placeholder="INV-">
                     </div>
 
                     <div>
                         <label class="{{ $labelClass }}">لغو خودکار سفارشات پرداخت نشده (ساعت)</label>
                         <div class="relative">
-                            <input type="number" wire:model.defer="auto_cancel_unpaid_orders_hours" class="{{ $inputClass }} dir-ltr text-center font-mono">
+                            <input type="number" wire:model.defer="auto_cancel_unpaid_orders_hours" class="{{ $inputClass }} dir-ltr text-center font-sans">
                             <div class="absolute inset-y-0 left-4 flex items-center pointer-events-none text-gray-400 text-xs">ساعت</div>
                         </div>
                         <p class="text-[10px] text-gray-500 mt-1">موجودی محصول پس از این زمان آزاد می‌شود.</p>
@@ -579,7 +579,7 @@
                     <div>
                         <label class="{{ $labelClass }}">مهلت ضمانت بازگشت کالا / مرجوعی (روز)</label>
                         <div class="relative">
-                            <input type="number" wire:model.defer="return_policy_days" class="{{ $inputClass }} dir-ltr text-center font-mono">
+                            <input type="number" wire:model.defer="return_policy_days" class="{{ $inputClass }} dir-ltr text-center font-sans">
                             <div class="absolute inset-y-0 left-4 flex items-center pointer-events-none text-gray-400 text-xs">روز</div>
                         </div>
                     </div>
@@ -713,7 +713,7 @@
                     <div>
                         <label class="{{ $labelClass }}">حداقل مبلغ درخواست تسویه حساب</label>
                         <div class="relative">
-                            <input type="text" wire:model.defer="min_withdrawal_amount" class="{{ $inputClass }} dir-ltr text-center font-mono">
+                            <input type="text" wire:model.defer="min_withdrawal_amount" class="{{ $inputClass }} dir-ltr text-center font-sans">
                             <div class="absolute inset-y-0 right-4 flex items-center pointer-events-none text-gray-400 text-xs">تومان/ریال</div>
                         </div>
                     </div>

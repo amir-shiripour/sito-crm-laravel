@@ -52,7 +52,7 @@
 @endphp
 
 @section('content')
-<div x-data="clientPaymentModal()" class="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700 max-w-4xl mx-auto">
+<div x-data="clientPaymentModal()" class="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700 w-full font-sans">
 
     {{-- هدر صفحه --}}
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">

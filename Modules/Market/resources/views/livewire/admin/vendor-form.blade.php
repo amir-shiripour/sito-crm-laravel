@@ -53,7 +53,7 @@
                         <h4 class="text-sm font-bold text-amber-800 dark:text-amber-400">یادآوری برای مدیریت:</h4>
                         <p class="text-sm text-amber-700 dark:text-amber-300 mt-1">
                             این فروشگاه قبلاً توسط شما رد شده بود. دلیل رد ثبت شده: <br>
-                            <span class="font-mono bg-white/60 dark:bg-black/20 px-2 py-1 rounded mt-1 inline-block text-amber-900 dark:text-amber-200 shadow-sm">«{{ $kyc_rejection_reason }}»</span>
+                            <span class="font-sans bg-white/60 dark:bg-black/20 px-2 py-1 rounded mt-1 inline-block text-amber-900 dark:text-amber-200 shadow-sm">«{{ $kyc_rejection_reason }}»</span>
                         </p>
                         <p class="text-xs text-amber-600 dark:text-amber-500 mt-2 font-medium">لطفاً بررسی کنید که آیا فروشنده موارد فوق را در این درخواست اصلاح کرده است یا خیر.</p>
                     </div>
@@ -189,7 +189,7 @@
                                          :class="isSelected(user.id) ? 'bg-indigo-50/50 dark:bg-indigo-950/20 text-indigo-700 dark:text-indigo-400 font-semibold' : ''">
                                         <div class="flex flex-col">
                                             <span x-text="user.name"></span>
-                                            <span class="text-[10px] text-gray-400 dark:text-gray-500 font-mono mt-0.5" x-text="user.mobile"></span>
+                                            <span class="text-[10px] text-gray-400 dark:text-gray-500 font-sans mt-0.5" x-text="user.mobile"></span>
                                         </div>
                                         <template x-if="isSelected(user.id)">
                                             <svg class="w-4 h-4 text-indigo-600 dark:text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
@@ -277,7 +277,7 @@
                         <label class="{{ $labelClass }}">شماره شبا بانکی (بدون IR)</label>
                         <div class="relative">
                             <input type="text" wire:model.defer="shaba_number" class="{{ $baseInputClass }} dir-ltr pl-10" placeholder="000000000000000000000000" maxlength="24">
-                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-500 font-mono font-bold">IR</div>
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-500 font-sans font-bold">IR</div>
                         </div>
                         @error('shaba_number') <span class="text-xs text-red-500 mt-1">{{ $message }}</span> @enderror
                     </div>

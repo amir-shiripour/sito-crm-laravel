@@ -171,7 +171,7 @@
                                             <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4" />
                                             </svg>
-                                            <span class="font-mono text-xs font-semibold">{{ $status->sort_order }}</span>
+                                            <span class="font-sans text-xs font-semibold">{{ $status->sort_order }}</span>
                                         </div>
                                     </td>
                                     <td class="py-4 px-5">

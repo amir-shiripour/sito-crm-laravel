@@ -353,7 +353,7 @@
                         <div class="space-y-1">
                             <span class="text-xs text-gray-400 dark:text-gray-500 block">کد رهگیری مرسوله:</span>
                             @if($order->tracking_code)
-                                <span class="font-extrabold text-indigo-600 dark:text-indigo-400 select-all font-mono">
+                                <span class="font-extrabold text-indigo-600 dark:text-indigo-400 select-all font-sans">
                                     {{ $order->tracking_code }}
                                 </span>
                             @else

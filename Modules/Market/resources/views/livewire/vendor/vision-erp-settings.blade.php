@@ -259,11 +259,16 @@
         <div class="p-6 space-y-6">
 
             {{-- بخش ۱: تنظیمات قیمت، وضعیت اولیه و انبار --}}
-            <div class="p-5 rounded-2xl bg-slate-50/70 dark:bg-slate-900/40 border border-slate-200/80 dark:border-slate-800 space-y-4">
-                <h4 class="text-xs font-bold text-slate-700 dark:text-slate-200 flex items-center gap-2">
-                    <span class="w-2 h-2 rounded-full bg-indigo-600 dark:bg-indigo-400"></span>
-                    نگاشت قیمت‌ها و سیاست انتشار در فروشگاه
-                </h4>
+            <div class="p-5 rounded-2xl bg-slate-50/70 dark:bg-slate-900/40 border border-slate-200/80 dark:border-slate-800 space-y-5">
+                <div>
+                    <h4 class="text-xs font-bold text-slate-700 dark:text-slate-200 flex items-center gap-2">
+                        <span class="w-2 h-2 rounded-full bg-indigo-600 dark:bg-indigo-400"></span>
+                        نگاشت قیمت‌ها و سیاست انتشار (هماهنگ با بخش محصولات و تنوع‌ها)
+                    </h4>
+                    <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+                        قیمت‌های دریافتی از ویژن دقیقاً با ساختار قیمت اصلی و تخفیف‌دار در <span class="font-bold text-indigo-600 dark:text-indigo-400">«محصولات من» (/user/market/vendor/products)</span> تنظیم می‌شوند.
+                    </p>
+                </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                     {{-- کلاس قیمت فروش اصلی --}}
@@ -281,7 +286,7 @@
                                 <option value="PriceF">قیمت مصرف‌کننده (PriceF)</option>
                             @endif
                         </select>
-                        <span class="text-[11px] text-slate-500 dark:text-slate-400 mt-1 block">ملاک محاسبه قیمت نهایی فاکتور و فروش محصول</span>
+                        <span class="text-[11px] text-slate-500 dark:text-slate-400 mt-1 block">ملاک قیمت نهایی و قابل پرداخت توسط خریدار</span>
                     </div>
 
                     {{-- قیمت خط‌خورده / مصرف‌کننده --}}
@@ -298,7 +303,7 @@
                                 <option value="Pricef1">کلاس قیمت ۱</option>
                             @endif
                         </select>
-                        <span class="text-[11px] text-slate-500 dark:text-slate-400 mt-1 block">جهت نمایش تخفیف در ویترین و کارت محصول</span>
+                        <span class="text-[11px] text-slate-500 dark:text-slate-400 mt-1 block">در صورت بیشتر بودن، به عنوان قیمت پایه و قیمت فروش به عنوان قیمت تخفیف‌دار ثبت می‌شود</span>
                     </div>
 
                     {{-- وضعیت اولیه کالاهای جدید --}}
@@ -309,6 +314,79 @@
                             <option value="published">فعال و آماده فروش مستقیم</option>
                         </select>
                         <span class="text-[11px] text-slate-500 dark:text-slate-400 mt-1 block">جلوگیری از انتشار ناخواسته پیش از افزودن تصاویر و سئو</span>
+                    </div>
+                </div>
+
+                {{-- بخش تفکیک انبارداری و مدل‌های موجودی --}}
+                <div class="pt-5 border-t border-slate-200/80 dark:border-slate-800 space-y-4">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <h4 class="text-xs font-bold text-slate-700 dark:text-slate-200 flex items-center gap-2">
+                            <svg class="w-4 h-4 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
+                            مدیریت انبارداری و مدل‌های موجودی ویژن
+                        </h4>
+
+                        @if($isWmsActive)
+                            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                                سیستم انبارداری (WMS) فعال است
+                            </span>
+                        @else
+                            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+                                <span class="w-2 h-2 rounded-full bg-indigo-500"></span>
+                                سیستم انبارداری ساده (موجودی مستقیم در محصولات)
+                            </span>
+                        @endif
+                    </div>
+
+                    @if($isWmsActive)
+                        <div class="p-3.5 rounded-xl bg-emerald-50/60 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/40 text-xs text-emerald-900 dark:text-emerald-300 leading-relaxed">
+                            <strong>معماری انبارداری پیشرفته:</strong> موجودی دریافتی از ویژن مستقیماً در انبار اختصاصی انتخابی شما در <a href="{{ route('user.market.vendor.warehouses.index') }}" target="_blank" class="underline font-bold text-emerald-700 dark:text-emerald-400">«انبارهای من» (/user/market/vendor/warehouses)</a> ذخیره شده و تراکنش تعدیل انبار (Warehouse Transaction) به صورت رسمی ثبت می‌گردد.
+                        </div>
+                    @else
+                        <div class="p-3.5 rounded-xl bg-slate-100/70 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 text-xs text-slate-700 dark:text-slate-300 leading-relaxed">
+                            <strong>معماری موجودی ساده:</strong> چون گزینه «فعال‌سازی سیستم انبارداری (WMS) مجزا» در تنظیمات اصلی مارکت غیرفعال است، موجودی اقلام مستقیماً در فیلد موجودی بخش <a href="{{ route('user.market.vendor.products.index') }}" target="_blank" class="underline font-bold text-indigo-600 dark:text-indigo-400">«محصولات و تنوع‌ها» (/user/market/vendor/products)</a> قرار می‌گیرد.
+                        </div>
+                    @endif
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 pt-1">
+                        {{-- مدل موجودی ویژن --}}
+                        <div>
+                            <label class="{{ $labelClass }}">مدل محاسبه موجودی از ویژن</label>
+                            <select wire:model.defer="stock_field" class="{{ $inputClass }}">
+                                <option value="AllT">مجموع کل موجودی کالا (AllT - استاندارد)</option>
+                                <option value="SlaveT">موجودی جزء / بسته فرعی (SlaveT)</option>
+                                <option value="MasterT">موجودی عمده / کارتن اصلی (MasterT)</option>
+                                <option value="Sahmieh">موجودی سهمیه‌بندی آنلاین (Sahmieh)</option>
+                            </select>
+                            <span class="text-[11px] text-slate-500 dark:text-slate-400 mt-1 block">فیلد مبنای دریافت تعداد موجودی از اقلام وب‌سرویس</span>
+                        </div>
+
+                        {{-- انبار مقصد در مارکت (WMS) --}}
+                        @if($isWmsActive)
+                            <div>
+                                <label class="{{ $labelClass }}">انبار مقصد در مارکت (/user/market/vendor/warehouses)</label>
+                                <select wire:model.defer="crm_warehouse_id" class="{{ $inputClass }}">
+                                    <option value="">پیش‌فرض سیستم (اولین انبار فعال فروشگاه)</option>
+                                    @foreach($warehouses as $wh)
+                                        <option value="{{ $wh->id }}">{{ $wh->name }} ({{ $wh->code }})</option>
+                                    @endforeach
+                                </select>
+                                <span class="text-[11px] text-slate-500 dark:text-slate-400 mt-1 block">انباری که موجودی فیزیکی و آنلاین به آن اضافه می‌شود</span>
+                            </div>
+                        @else
+                            <div>
+                                <label class="{{ $labelClass }}">نحوه اعمال موجودی</label>
+                                <input type="text" disabled value="مستقیم در موجودی محصولات فروشنده" class="{{ $inputClass }} bg-gray-100 dark:bg-gray-800 opacity-80 cursor-not-allowed">
+                                <span class="text-[11px] text-slate-500 dark:text-slate-400 mt-1 block">در حالت بدون WMS، موجودی مستقیماً روی تنوع اعمال می‌شود</span>
+                            </div>
+                        @endif
+
+                        {{-- کد انبار در ویژن --}}
+                        <div>
+                            <label class="{{ $labelClass }}">کد انبار ویژن (WarehouseCode جهت صدور فاکتور)</label>
+                            <input type="text" dir="ltr" wire:model.defer="default_warehouse_code" placeholder="مثال: 1" class="{{ $inputClass }}">
+                            <span class="text-[11px] text-slate-500 dark:text-slate-400 mt-1 block">کد انباری در سیستم ویژن که حواله فاکتور از آن صادر می‌شود</span>
+                        </div>
                     </div>
                 </div>
             </div>

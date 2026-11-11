@@ -86,7 +86,7 @@
                                                 <span class="text-sm font-bold text-gray-800 dark:text-gray-200">{{ $varName }}</span>
                                             </div>
                                             <div class="flex items-center gap-2 mt-1">
-                                                <span class="text-[10px] text-gray-400 dark:text-gray-500 font-mono">{{ $variant->variant_code }}</span>
+                                                <span class="text-[10px] text-gray-400 dark:text-gray-500 font-sans">{{ $variant->variant_code }}</span>
                                                 {{-- 💡 نمایش وضعیت محصول --}}
                                                 <span class="text-[9px] px-1.5 py-0.5 rounded border font-bold {{ $statusColors[$vp->status] ?? $statusColors['draft'] }}">
                                                     {{ $statusLabels[$vp->status] ?? 'نامشخص' }}
@@ -155,7 +155,7 @@
                                             update() { this.raw = this.formatted.replace(/,/g, ''); }
                                         }">
                                             <label class="{{ $labelClass }}">قیمت ({{ \Modules\Market\Entities\MarketSetting::getValue('general.currency') === 'rial' ? 'ریال' : 'تومان' }})</label>
-                                            <input type="text" x-model="formatted" @input="update()" class="{{ $inputClass }} font-mono dir-ltr text-center font-bold text-indigo-700 dark:text-indigo-400">
+                                            <input type="text" x-model="formatted" @input="update()" class="{{ $inputClass }} font-sans dir-ltr text-center font-bold text-indigo-700 dark:text-indigo-400">
                                             @error('editForm.price') <span class="text-[10px] text-red-500">{{ $message }}</span> @enderror
                                         </div>
 
@@ -209,7 +209,7 @@
                                             </div>
                                             <div>
                                                 <label class="{{ $labelClass }} !text-rose-600 dark:!text-rose-400">قیمت با تخفیف</label>
-                                                <input type="text" x-model="formattedDiscount" @input="updateFromPrice()" class="{{ $inputClass }} font-mono dir-ltr text-center text-rose-600 dark:text-rose-400 !border-rose-200 focus:!border-rose-500 focus:!ring-rose-500/20 dark:!border-rose-800" placeholder="بدون تخفیف">
+                                                <input type="text" x-model="formattedDiscount" @input="updateFromPrice()" class="{{ $inputClass }} font-sans dir-ltr text-center text-rose-600 dark:text-rose-400 !border-rose-200 focus:!border-rose-500 focus:!ring-rose-500/20 dark:!border-rose-800" placeholder="بدون تخفیف">
                                             </div>
                                         </div>
 
@@ -249,7 +249,7 @@
                                             }">
                                                 <label class="{{ $labelClass }}">مبنای مبلغ سبد خرید</label>
                                                 <div class="relative">
-                                                    <input type="text" x-model="formattedAmount" @input="updateAmount()" class="{{ $inputClass }} font-mono dir-ltr text-center" placeholder="مثلا 1,000,000">
+                                                    <input type="text" x-model="formattedAmount" @input="updateAmount()" class="{{ $inputClass }} font-sans dir-ltr text-center" placeholder="مثلا 1,000,000">
                                                     <span class="absolute inset-y-0 right-3 flex items-center text-[9px] text-gray-400">{{ \Modules\Market\Entities\MarketSetting::getValue('general.currency') === 'rial' ? 'ریال' : 'تومان' }} سبد</span>
                                                 </div>
                                                 @error('editForm.cart_amount_step') <span class="text-[10px] text-red-500">{{ $message }}</span> @enderror

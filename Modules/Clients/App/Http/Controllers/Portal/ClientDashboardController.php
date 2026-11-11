@@ -55,8 +55,14 @@ class ClientDashboardController extends Controller
             ->values()
             ->take(5);
 
+        $themeChain = class_exists(\App\Services\ThemeManager::class)
+            ? app(\App\Services\ThemeManager::class)->getThemeChain()
+            : [];
+        $isMrvilaTheme = in_array('mrvilalafoor', $themeChain, true);
+
         return view('clients::portal.dashboard', [
             'client'                  => $client,
+            'isMrvilaTheme'           => $isMrvilaTheme,
             'showBookingFeatures'     => $isBookingActive,
             'showMarketFeatures'      => $isMarketActive,
             'showInvoiceFeatures'     => $isServicesActive,
@@ -86,8 +92,15 @@ class ClientDashboardController extends Controller
             'recentOrders'            => $servicesOrderData['recent'] ?? collect(),
 
             // داده‌های رزرو اقامتگاه
-            'activeRentalBookingsCount' => $rentalData['activeCount'] ?? 0,
-            'recentRentalBookings'      => $rentalData['recent'] ?? collect(),
+            'activeRentalBookingsCount'    => $rentalData['activeCount'] ?? 0,
+            'pendingRentalBookingsCount'   => $rentalData['pendingActionCount'] ?? 0,
+            'completedRentalBookingsCount' => $rentalData['completedCount'] ?? 0,
+            'totalRentalNightsCount'       => $rentalData['totalNightsCount'] ?? 0,
+            'totalRentalBookingsCount'     => $rentalData['totalBookingsCount'] ?? 0,
+            'recentRentalBookings'         => $rentalData['recent'] ?? collect(),
+
+            // اطلاعات تماس و پشتیبانی
+            'contactPhone'            => $this->getContactPhone(),
 
             // داده‌های مالی ترکیبی
             'unpaidInvoicesSum'       => $unpaidInvoicesSum,
@@ -96,14 +109,48 @@ class ClientDashboardController extends Controller
     }
 
     /**
-     * بررسی فعال بودن یک ماژول و وجود جدول آن
+     * دریافت شماره تماس پشتیبانی از تنظیمات سیستم
+     */
+    private function getContactPhone(): ?string
+    {
+        $phone = function_exists('get_setting') ? get_setting('contact_phone') : null;
+        if (empty($phone) && class_exists(\Modules\Settings\Entities\Setting::class)) {
+            $phone = \Modules\Settings\Entities\Setting::where('key', 'contact_phone')->value('value');
+        }
+        $phone = !empty(trim((string)$phone)) ? trim((string)$phone) : null;
+        return $phone;
+    }
+
+    /**
+     * بررسی فعال بودن و نصب بودن یک ماژول و وجود جدول آن
      */
     private function isModuleActive(string $moduleName, string $tableName): bool
     {
-        return class_exists('\Nwidart\Modules\Facades\Module') &&
-            Module::has($moduleName) &&
-            Module::isEnabled($moduleName) &&
-            Schema::hasTable($tableName);
+        if (!class_exists('\Nwidart\Modules\Facades\Module') ||
+            !Module::has($moduleName) ||
+            !Module::isEnabled($moduleName) ||
+            !Schema::hasTable($tableName)) {
+            return false;
+        }
+
+        // بررسی وضعیت قطعی نصب و فعال بودن در دیتابیس CRM (جدول modules)
+        if (class_exists(\App\Models\Module::class) && Schema::hasTable('modules')) {
+            $dbModule = \App\Models\Module::where('slug', strtolower($moduleName))
+                ->orWhere('name', $moduleName)
+                ->first();
+            if ($dbModule && (!$dbModule->installed || !$dbModule->active)) {
+                return false;
+            }
+        }
+
+        // بررسی وضعیت فایل‌های نصب ماژول
+        if (class_exists(\App\Services\Modules\BaseModuleInstaller::class)) {
+            if (!\App\Services\Modules\BaseModuleInstaller::isInstalled($moduleName)) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /**
@@ -343,18 +390,48 @@ class ClientDashboardController extends Controller
     private function getRentalData($client): array
     {
         $activeCount = 0;
+        $pendingActionCount = 0;
+        $completedCount = 0;
+        $totalNightsCount = 0;
+        $totalBookingsCount = 0;
         $recent = collect();
         $payments = collect();
 
         if (class_exists(\Modules\Properties\Entities\PropertyRentalBooking::class)) {
-            $activeCount = \Modules\Properties\Entities\PropertyRentalBooking::where('client_id', $client->id)
+            $baseQuery = \Modules\Properties\Entities\PropertyRentalBooking::where('client_id', $client->id);
+            $totalBookingsCount = (clone $baseQuery)->count();
+
+            // اقامت‌های جاری / قطعی
+            $activeCount = (clone $baseQuery)
                 ->whereIn('status', [
-                    \Modules\Properties\Entities\PropertyRentalBooking::STATUS_PENDING_HOST,
-                    \Modules\Properties\Entities\PropertyRentalBooking::STATUS_AWAITING_PAYMENT,
                     \Modules\Properties\Entities\PropertyRentalBooking::STATUS_CONFIRMED,
                     \Modules\Properties\Entities\PropertyRentalBooking::STATUS_CHECKED_IN,
                 ])
                 ->count();
+
+            // در انتظار پرداخت یا تایید میزبان
+            $pendingActionCount = (clone $baseQuery)
+                ->whereIn('status', [
+                    \Modules\Properties\Entities\PropertyRentalBooking::STATUS_PENDING_HOST,
+                    \Modules\Properties\Entities\PropertyRentalBooking::STATUS_AWAITING_PAYMENT,
+                ])
+                ->count();
+
+            // اقامت‌های تکمیل شده
+            $completedCount = (clone $baseQuery)
+                ->where('status', \Modules\Properties\Entities\PropertyRentalBooking::STATUS_COMPLETED)
+                ->count();
+
+            // مجموع شب‌های اقامت
+            $totalNightsCount = (int) (clone $baseQuery)
+                ->whereNotIn('status', [
+                    \Modules\Properties\Entities\PropertyRentalBooking::STATUS_REJECTED,
+                    \Modules\Properties\Entities\PropertyRentalBooking::STATUS_CANCELLED_BY_GUEST,
+                    \Modules\Properties\Entities\PropertyRentalBooking::STATUS_CANCELLED_BY_HOST,
+                    \Modules\Properties\Entities\PropertyRentalBooking::STATUS_CANCELLED_BY_ADMIN,
+                    \Modules\Properties\Entities\PropertyRentalBooking::STATUS_EXPIRED,
+                ])
+                ->sum('nights_count');
 
             $recent = \Modules\Properties\Entities\PropertyRentalBooking::with(['property.primaryImage', 'host'])
                 ->where('client_id', $client->id)
@@ -406,9 +483,13 @@ class ClientDashboardController extends Controller
         }
 
         return [
-            'activeCount' => $activeCount,
-            'recent'      => $recent,
-            'payments'    => $payments,
+            'activeCount'        => $activeCount,
+            'pendingActionCount' => $pendingActionCount,
+            'completedCount'     => $completedCount,
+            'totalNightsCount'   => $totalNightsCount,
+            'totalBookingsCount' => $totalBookingsCount,
+            'recent'             => $recent,
+            'payments'           => $payments,
         ];
     }
 
@@ -418,9 +499,13 @@ class ClientDashboardController extends Controller
     private function getEmptyModuleData(): array
     {
         return [
-            'activeCount' => 0,
-            'recent'      => collect(),
-            'payments'    => collect(),
+            'activeCount'        => 0,
+            'pendingActionCount' => 0,
+            'completedCount'     => 0,
+            'totalNightsCount'   => 0,
+            'totalBookingsCount' => 0,
+            'recent'             => collect(),
+            'payments'           => collect(),
         ];
     }
 }

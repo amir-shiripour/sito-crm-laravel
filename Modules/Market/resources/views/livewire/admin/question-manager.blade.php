@@ -58,7 +58,7 @@
                                     </div>
                                     <div class="flex flex-col">
                                         <span class="text-sm font-bold text-gray-800 dark:text-gray-200">{{ $question->client->full_name ?? 'کاربر مهمان' }}</span>
-                                        <span class="text-[10px] font-mono text-gray-400 mt-0.5">{{ $question->client->phone ?? $question->client->username ?? '' }}</span>
+                                        <span class="text-[10px] font-sans text-gray-400 mt-0.5">{{ $question->client->phone ?? $question->client->username ?? '' }}</span>
                                     </div>
                                 </div>
                             </td>
@@ -75,7 +75,7 @@
                                     </div>
                                     <div class="flex flex-col">
                                         <span class="text-sm font-bold text-gray-800 dark:text-gray-200 line-clamp-1" style="max-width: 180px;" title="{{ $question->masterProduct->title ?? '' }}">{{ $question->masterProduct->title ?? 'محصول نامشخص' }}</span>
-                                        <span class="text-[10px] font-mono text-gray-400 mt-0.5">{{ $question->masterProduct->crm_code ?? '' }}</span>
+                                        <span class="text-[10px] font-sans text-gray-400 mt-0.5">{{ $question->masterProduct->crm_code ?? '' }}</span>
                                     </div>
                                 </div>
                             </td>

@@ -3,7 +3,7 @@
         <div class="flex items-center gap-3">
             <span class="text-sm font-bold text-gray-800 dark:text-gray-200">{{ $field['label'] }}</span>
             @if($field['is_system'] ?? false)
-                <span class="px-2 py-0.5 text-xs font-mono text-cyan-700 bg-cyan-100 rounded-full dark:bg-cyan-900 dark:text-cyan-300">سیستمی</span>
+                <span class="px-2 py-0.5 text-xs font-sans text-cyan-700 bg-cyan-100 rounded-full dark:bg-cyan-900 dark:text-cyan-300">سیستمی</span>
             @endif
         </div>
         <div class="flex items-center gap-2">

@@ -122,7 +122,7 @@
                     <tbody class="divide-y divide-gray-100 dark:divide-gray-700/50">
                     @forelse($vendors as $vendor)
                         <tr class="group hover:bg-gray-50 dark:hover:bg-gray-700/20 transition-colors duration-150">
-                            <td class="px-4 py-3 text-gray-400 font-mono text-xs">{{ $vendor->id }}</td>
+                            <td class="px-4 py-3 text-gray-400 font-sans text-xs">{{ $vendor->id }}</td>
                             <td class="px-4 py-3">
                                 <div class="flex flex-col">
                                     <span class="font-medium text-gray-900 dark:text-white">{{ $vendor->store_name }}</span>

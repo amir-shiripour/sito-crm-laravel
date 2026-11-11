@@ -55,7 +55,7 @@
                                 </div>
                                 <div class="flex flex-col">
                                     <span class="text-sm font-bold text-gray-800 dark:text-gray-200">{{ $product->vendor->store_name }}</span>
-                                    <span class="text-[10px] font-mono text-gray-500 dark:text-gray-400">{{ $product->vendor->user->mobile ?? '' }}</span>
+                                    <span class="text-[10px] font-sans text-gray-500 dark:text-gray-400">{{ $product->vendor->user->mobile ?? '' }}</span>
                                 </div>
                             </div>
                         </td>
@@ -174,7 +174,7 @@
                                                 </div>
                                                 <div class="flex justify-between items-center">
                                                     <span class="text-xs text-gray-500 dark:text-gray-400">سبد خرید (حداقل/حداکثر):</span>
-                                                    <div class="flex items-center gap-1.5 text-xs font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-100 dark:border-indigo-500/20 px-2.5 py-1 rounded-lg font-mono">
+                                                    <div class="flex items-center gap-1.5 text-xs font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-100 dark:border-indigo-500/20 px-2.5 py-1 rounded-lg font-sans">
                                                         <span>{{ $product->min_purchase_qty }}</span>
                                                         <span class="text-indigo-300 dark:text-indigo-600">/</span>
                                                         <span>{{ $product->max_purchase_qty ?: '∞' }}</span>
@@ -200,11 +200,11 @@
                                             <div class="space-y-4">
                                                 <div class="flex justify-between items-center">
                                                     <span class="text-xs text-gray-500 dark:text-gray-400">کد مرجع (CRM):</span>
-                                                    <span class="text-xs font-mono font-bold text-gray-800 dark:text-gray-200 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700/50 px-2.5 py-1 rounded-lg">{{ $master->crm_code ?? '-' }}</span>
+                                                    <span class="text-xs font-sans font-bold text-gray-800 dark:text-gray-200 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700/50 px-2.5 py-1 rounded-lg">{{ $master->crm_code ?? '-' }}</span>
                                                 </div>
                                                 <div class="flex justify-between items-center">
                                                     <span class="text-xs text-gray-500 dark:text-gray-400">کد تنوع (Variant):</span>
-                                                    <span class="text-xs font-mono font-bold text-gray-800 dark:text-gray-200 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700/50 px-2.5 py-1 rounded-lg">{{ $product->variant->variant_code ?? '-' }}</span>
+                                                    <span class="text-xs font-sans font-bold text-gray-800 dark:text-gray-200 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700/50 px-2.5 py-1 rounded-lg">{{ $product->variant->variant_code ?? '-' }}</span>
                                                 </div>
                                                 <div class="flex flex-col gap-2">
                                                     <span class="text-xs text-gray-500 dark:text-gray-400">ویژگی‌های این تنوع:</span>

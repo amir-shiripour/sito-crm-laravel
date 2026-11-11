@@ -576,6 +576,10 @@ class VisionCatalogSyncService
         $initialStatus = $this->setting->initial_product_status ?: 'draft';
         $vendorId = $this->setting->vendor_id;
 
+        $isWmsActive = (bool) \Modules\Market\Entities\MarketSetting::getValue('wms.enabled', false);
+        $targetWarehouse = $isWmsActive ? $this->resolveTargetWarehouse($vendorId) : null;
+        $stockField = $this->setting->stock_field ?: 'AllT';
+
         // Preload brands and categories with vision_code
         $brandsByVision = Brand::whereNotNull('vision_code')->get()->keyBy('vision_code');
         $categoriesByVision = Category::whereNotNull('vision_code')->get()->keyBy('vision_code');
@@ -633,22 +637,30 @@ class VisionCatalogSyncService
                 continue;
             }
 
-            // Calculate price based on selected price field
-            $price = (float)($item[$priceField] ?? 0);
-            if ($price <= 0) {
+            // Calculate price based on selected price field & consumer/compare price
+            // Coordination with /user/market/vendor/products architecture:
+            // - If compare price > selling price: price = compare_price (قیمت اصلی/خط‌خورده), discount_price = price (قیمت فروش تخفیف‌دار)
+            // - Else: price = price, discount_price = null
+            $basePrice = (float)($item[$priceField] ?? 0);
+            if ($basePrice <= 0) {
                 // Fallback to consumer price PriceF or Expr1 if Pricefx was 0
-                $price = (float)($item['PriceF'] ?? $item['Expr1'] ?? 0);
+                $basePrice = (float)($item['PriceF'] ?? $item['Expr1'] ?? 0);
             }
 
             $comparePrice = null;
             if ($comparePriceField && isset($item[$comparePriceField])) {
                 $cp = (float)$item[$comparePriceField];
-                if ($cp > $price) {
+                if ($cp > $basePrice) {
                     $comparePrice = $cp;
                 }
             }
 
-            $stock = (float)($item['AllT'] ?? $item['MasterT'] ?? $item['SlaveT'] ?? 0);
+            $regularPrice = $comparePrice ?: $basePrice;
+            $discountPrice = $comparePrice ? $basePrice : null;
+
+            // Stock from selected Vision stock model (AllT, SlaveT, MasterT, Sahmieh)
+            $stock = (float)($item[$stockField] ?? $item['AllT'] ?? $item['MasterT'] ?? $item['SlaveT'] ?? 0);
+            $stockQty = max(0, (int)$stock);
 
             // Find or initialize MasterProduct:
             // Match primarily on barcode ("شناسه محصول (کد داخلی / بارکد)"), or crm_code, or gtin
@@ -692,30 +704,33 @@ class VisionCatalogSyncService
                     [
                         'variant_code' => $goodCode ?: ($barcode ?: 'VIS-' . $masterProduct->id),
                         'variant_attributes' => ['title' => 'اصلی'],
-                        'price' => $price,
-                        'stock' => max(0, (int)$stock),
+                        'price' => $regularPrice,
+                        'discount_price' => $discountPrice,
+                        'stock' => $stockQty,
                         'is_active' => true,
                     ]
                 );
 
+                $vendorProduct = null;
                 if ($vendorId) {
                     $vendorProduct = VendorProduct::firstOrNew([
                         'vendor_id' => $vendorId,
                         'product_variant_id' => $variant->id,
                     ]);
-
-                    if ($price > 0) {
-                        $vendorProduct->price = $price;
-                    }
-                    if ($comparePrice) {
-                        $vendorProduct->discount_price = $price;
-                    }
-                    $vendorProduct->stock = max(0, (int)$stock);
                     if (!$vendorProduct->exists) {
                         $vendorProduct->status = ($initialStatus === 'published') ? 'published' : 'draft';
                     }
-                    $vendorProduct->save();
                 }
+
+                $this->syncVariantAndVendorProductStockAndPrice(
+                    $variant,
+                    $vendorProduct,
+                    $regularPrice,
+                    $discountPrice,
+                    $stockQty,
+                    $isWmsActive,
+                    $targetWarehouse
+                );
 
             } else {
                 // Generate Smart SKU (crm_code)
@@ -745,7 +760,7 @@ class VisionCatalogSyncService
                     'gtin' => $barcode ?: null, // Maps global barcode to "شناسه جهانی کالا (GTIN/UPC/EAN)"!
                     'brand_id' => $brandId,
                     'category_id' => $categoryId,
-                    'status' => $initialStatus,
+                    'status' => ($initialStatus === 'published' ? 'active' : 'draft'),
                     'weight' => (int)($item['Vazn'] ?? 0),
                 ]);
 
@@ -753,21 +768,33 @@ class VisionCatalogSyncService
                     'master_product_id' => $newMaster->id,
                     'variant_code' => $goodCode ?: 'VIS-' . $newMaster->id,
                     'variant_attributes' => ['title' => 'اصلی'],
-                    'price' => $price,
-                    'stock' => max(0, (int)$stock),
+                    'price' => $regularPrice,
+                    'discount_price' => $discountPrice,
+                    'stock' => $stockQty,
                     'is_active' => true,
                 ]);
 
+                $vendorProduct = null;
                 if ($vendorId) {
-                    VendorProduct::create([
+                    $vendorProduct = VendorProduct::create([
                         'vendor_id' => $vendorId,
                         'product_variant_id' => $variant->id,
-                        'price' => $price,
-                        'discount_price' => $comparePrice ? $price : null,
-                        'stock' => max(0, (int)$stock),
+                        'price' => $regularPrice,
+                        'discount_price' => $discountPrice,
+                        'stock' => $stockQty,
                         'status' => ($initialStatus === 'published') ? 'published' : 'draft',
                     ]);
                 }
+
+                $this->syncVariantAndVendorProductStockAndPrice(
+                    $variant,
+                    $vendorProduct,
+                    $regularPrice,
+                    $discountPrice,
+                    $stockQty,
+                    $isWmsActive,
+                    $targetWarehouse
+                );
 
                 $created++;
             }
@@ -782,6 +809,110 @@ class VisionCatalogSyncService
             'skipped' => $skipped,
             'message' => "همگام‌سازی کالاها انجام شد: {$matched} تطبیق‌یافته، {$created} جدید، {$updated} کد/برند اصلاح‌شده (تعداد {$skipped} قلم خارج از محدوده قرنطینه لایه ۱ نادیده گرفته شد).",
         ];
+    }
+
+    /**
+     * Resolve target warehouse for WMS inventory sync
+     */
+    protected function resolveTargetWarehouse(?int $vendorId): ?Warehouse
+    {
+        $targetWarehouse = null;
+        if ($this->setting->crm_warehouse_id) {
+            $targetWarehouse = Warehouse::find($this->setting->crm_warehouse_id);
+        }
+        if (!$targetWarehouse && $this->setting->default_warehouse_code) {
+            $targetWarehouse = Warehouse::where('vendor_id', $vendorId)
+                ->where('code', $this->setting->default_warehouse_code)
+                ->first();
+        }
+        if (!$targetWarehouse) {
+            $targetWarehouse = Warehouse::where('vendor_id', $vendorId)->where('is_active', true)->first();
+        }
+        if (!$targetWarehouse) {
+            $targetWarehouse = Warehouse::whereNull('vendor_id')->where('is_active', true)->first();
+        }
+        if (!$targetWarehouse && $vendorId) {
+            $vendor = $this->setting->vendor;
+            $storeName = $vendor ? ($vendor->store_name ?: ($vendor->user->name ?? 'فروشنده ' . $vendorId)) : 'فروشنده ' . $vendorId;
+            $slugPrefix = ($vendor && $vendor->slug) ? strtoupper(substr($vendor->slug, 0, 10)) : 'VND' . $vendorId;
+            $targetWarehouse = Warehouse::firstOrCreate(
+                ['vendor_id' => $vendorId],
+                [
+                    'name' => 'انبار اصلی ' . $storeName,
+                    'code' => 'WH-' . $slugPrefix,
+                    'is_active' => true,
+                ]
+            );
+        }
+        return $targetWarehouse;
+    }
+
+    /**
+     * Synchronize price and stock for variant and vendor product according to WMS and store architecture
+     */
+    protected function syncVariantAndVendorProductStockAndPrice(
+        ProductVariant $variant,
+        ?VendorProduct $vendorProduct,
+        float $regularPrice,
+        ?float $discountPrice,
+        int $stockQty,
+        bool $isWmsActive,
+        ?Warehouse $targetWarehouse
+    ): void {
+        // 1. Update Variant price and stock
+        $variantUpdates = [];
+        if ($regularPrice > 0 && (float)$variant->price !== (float)$regularPrice) {
+            $variantUpdates['price'] = $regularPrice;
+        }
+        if ($variant->discount_price != $discountPrice) {
+            $variantUpdates['discount_price'] = $discountPrice;
+        }
+        if ($variant->stock != $stockQty) {
+            $variantUpdates['stock'] = $stockQty;
+        }
+        if (!empty($variantUpdates)) {
+            $variant->update($variantUpdates);
+        }
+
+        // 2. Update Vendor Product price and stock
+        if ($vendorProduct) {
+            if ($regularPrice > 0) {
+                $vendorProduct->price = $regularPrice;
+            }
+            $vendorProduct->discount_price = $discountPrice;
+            $vendorProduct->stock = $stockQty;
+            $vendorProduct->save();
+        }
+
+        // 3. Coordinate with WMS if active
+        if ($isWmsActive && $targetWarehouse) {
+            $warehouseStock = \Modules\Market\Entities\WarehouseStock::firstOrNew([
+                'warehouse_id' => $targetWarehouse->id,
+                'product_variant_id' => $variant->id,
+                'vendor_product_id' => $vendorProduct?->id,
+            ]);
+
+            $oldPhysical = (int)($warehouseStock->physical_stock ?? 0);
+            $diff = $stockQty - $oldPhysical;
+
+            $warehouseStock->physical_stock = $stockQty;
+            $warehouseStock->online_stock = $stockQty;
+            $warehouseStock->save();
+
+            if ($diff !== 0) {
+                \Modules\Market\Entities\WarehouseTransaction::create([
+                    'warehouse_id' => $targetWarehouse->id,
+                    'product_variant_id' => $variant->id,
+                    'vendor_product_id' => $vendorProduct?->id,
+                    'type' => 'adjustment',
+                    'quantity' => $diff,
+                    'reference_type' => VendorVisionSetting::class,
+                    'reference_id' => $this->setting->id,
+                    'description' => "همگام‌سازی کاتالوگ و انبار از وب‌سرویس جامع ویژن (موجودی قبلی: {$oldPhysical}، موجودی جدید: {$stockQty})",
+                    'user_id' => auth()->id() ?? $this->setting->vendor?->user_id,
+                ]);
+            }
+        }
     }
 
     /**

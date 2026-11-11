@@ -5,16 +5,20 @@
 
     // دریافت وضعیت
     $status = optional($client->status);
-    $statusLabel = $status?->label ?? 'نامشخص';
+    $statusLabel = $status?->label;
     $statusKey   = $status?->key ?? 'unknown';
 
-    // تنظیم رنگ‌ها و آیکون‌ها بر اساس وضعیت
-    $statusConfig = match ($statusKey) {
-        'active'   => ['bg' => 'bg-emerald-500', 'text' => 'text-emerald-50', 'icon' => 'path/to/check', 'ring' => 'ring-emerald-400'],
-        'pending'  => ['bg' => 'bg-amber-500',   'text' => 'text-amber-50',   'icon' => 'path/to/clock', 'ring' => 'ring-amber-400'],
-        'blocked', 'cancelled', 'CANCELLED' => ['bg' => 'bg-red-500', 'text' => 'text-red-50', 'icon' => 'path/to/x', 'ring' => 'ring-red-400'],
-        default    => ['bg' => 'bg-gray-500',    'text' => 'text-gray-50',    'icon' => 'path/to/q', 'ring' => 'ring-gray-400'],
-    };
+    if (empty($statusLabel) || $statusLabel === 'نامشخص') {
+        $statusLabel = 'حساب فعال';
+        $statusConfig = ['bg' => 'bg-emerald-500', 'text' => 'text-emerald-50', 'ring' => 'ring-emerald-400'];
+    } else {
+        $statusConfig = match ($statusKey) {
+            'active'   => ['bg' => 'bg-emerald-500', 'text' => 'text-emerald-50', 'ring' => 'ring-emerald-400'],
+            'pending'  => ['bg' => 'bg-amber-500',   'text' => 'text-amber-50',   'ring' => 'ring-amber-400'],
+            'blocked', 'cancelled', 'CANCELLED' => ['bg' => 'bg-rose-500', 'text' => 'text-rose-50', 'ring' => 'ring-rose-400'],
+            default    => ['bg' => 'bg-emerald-500', 'text' => 'text-emerald-50', 'ring' => 'ring-emerald-400'],
+        };
+    }
 
     // کدهای چک کردن ماژول از اینجا حذف شد و جای آن متغیر $showMarketFeatures از کنترلر دریافت می‌شود (طبق معماری استاندارد)
 @endphp
@@ -36,16 +40,19 @@
         @endif
 
         @if(($showRentalFeatures ?? false) && isset($recentRentalBookings) && $recentRentalBookings->whereIn('status', [\Modules\Properties\Entities\PropertyRentalBooking::STATUS_AWAITING_PAYMENT, \Modules\Properties\Entities\PropertyRentalBooking::STATUS_PENDING_HOST])->count() > 0)
-            <div class="rounded-xl bg-amber-50 dark:bg-amber-950/30 p-4 border border-amber-200 dark:border-amber-800 shadow-sm flex items-start gap-3">
-                <div class="p-1 rounded-lg bg-amber-100 dark:bg-amber-900/50 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5">
-                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clip-rule="evenodd"/></svg>
+            <div class="relative overflow-hidden rounded-2xl bg-amber-50 dark:bg-amber-950/40 p-4 sm:p-5 border border-amber-200/90 dark:border-amber-800/80 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div class="flex items-start sm:items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-md shadow-amber-500/20">
+                        <svg class="w-5 h-5 animate-pulse" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clip-rule="evenodd"/></svg>
+                    </div>
+                    <div>
+                        <h3 class="text-sm sm:text-base font-black text-amber-950 dark:text-amber-200">شما رزرو اقامتگاه در انتظار تسویه و پرداخت دارید</h3>
+                        <p class="text-xs sm:text-sm text-amber-900/80 dark:text-amber-300/80 mt-0.5 leading-relaxed">جهت قطعی شدن رزرو اقامتگاه و صدور تأییدیه رسمی سفر، لطفاً نسبت به پرداخت صورتحساب اقدام فرمایید.</p>
+                    </div>
                 </div>
-                <div class="flex-1">
-                    <h3 class="text-sm font-bold text-amber-900 dark:text-amber-300">شما رزرو اقامتگاه در انتظار تسویه و پرداخت دارید</h3>
-                    <p class="text-sm text-amber-800/90 dark:text-amber-400 mt-1">جهت قطعی شدن رزرو اقامتگاه و صدور تأییدیه رسمی، لطفاً نسبت به پرداخت آنلاین اقدام فرمایید.</p>
-                </div>
-                <a href="{{ route('client.rental-bookings.index', ['status' => 'awaiting_payment']) }}" class="shrink-0 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white text-sm font-bold rounded-lg transition-colors shadow-sm">
-                    مشاهده رزروها
+                <a href="{{ route('client.rental-bookings.index', ['status' => 'awaiting_payment']) }}" class="shrink-0 inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-amber-500 hover:bg-amber-600 text-white text-xs sm:text-sm font-bold rounded-xl shadow-md shadow-amber-500/25 transition-all text-center">
+                    <span>مشاهده و پرداخت صورتحساب</span>
+                    <svg class="w-4 h-4 rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
                 </a>
             </div>
         @endif
@@ -67,7 +74,7 @@
                         {{ $client->full_name ?: $client->username }}
                     </h1>
                     <p class="text-indigo-100 text-sm max-w-lg leading-relaxed opacity-90">
-                        به پنل مدیریت {{ config('clients.labels.plural', 'مشتریان') }} خوش آمدید. از اینجا می‌توانید وضعیت حساب، سرویس‌ها و نوبت های خود را مشاهده کنید.
+                        به پنل مدیریت {{ config('clients.labels.plural', 'مشتریان') }} خوش آمدید. از اینجا می‌توانید وضعیت حساب@if($showOrderFeatures || $showInvoiceFeatures)، سرویس‌ها@endif @if($showBookingFeatures)و نوبت‌های@endif @if($showRentalFeatures)و رزروهای اقامتگاه@endif خود را مشاهده کنید.
                     </p>
                 </div>
 
@@ -87,7 +94,13 @@
 
         {{-- کارت‌های آمار و اطلاعات --}}
         @php
-            $activeCards = 2; // تیکت و صورت حساب همیشه هستند
+            $isMrvilaTheme = $isMrvilaTheme ?? (class_exists(\App\Services\ThemeManager::class) ? in_array('mrvilalafoor', app(\App\Services\ThemeManager::class)->getThemeChain(), true) : false);
+
+            $activeCards = 0;
+            // در تم‌های معمولی، کارت‌های تیکت و صورت‌حساب به صورت پیش‌فرض فعال هستند
+            if (!$isMrvilaTheme) {
+                $activeCards += 2;
+            }
             if ($showBookingFeatures) $activeCards++;
             if ($showMarketFeatures) $activeCards++;
             if ($showInvoiceFeatures ?? false) $activeCards++;
@@ -97,6 +110,7 @@
             $gridColsClass = match(true) {
                 $activeCards >= 4 => 'lg:grid-cols-4',
                 $activeCards === 3 => 'lg:grid-cols-3',
+                $activeCards === 2 => 'lg:grid-cols-2',
                 default => 'lg:grid-cols-2'
             };
         @endphp
@@ -104,95 +118,97 @@
 
             {{-- کارت رزروهای اقامتگاهی من --}}
             @if($showRentalFeatures ?? false)
-                <a href="{{ route('client.rental-bookings.index') }}" class="group bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700 shadow-sm hover:shadow-md transition-all cursor-pointer block">
-                    <div class="flex items-center justify-between mb-4">
-                        <div class="p-3 rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-900/20 dark:text-indigo-400 group-hover:scale-110 transition-transform">
-                            <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>
+                <a href="{{ route('client.rental-bookings.index') }}" class="group bg-white dark:bg-gray-800 rounded-2xl p-5 border border-gray-100 dark:border-gray-700 shadow-xs hover:shadow-md transition-all cursor-pointer block text-right">
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="text-xs font-bold text-gray-500 dark:text-gray-400">جاری و فعال</span>
+                        <div class="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-900/20 dark:text-indigo-400 flex items-center justify-center group-hover:scale-110 transition-transform">
+                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>
                         </div>
-                        <span class="text-xs text-gray-400 dark:text-gray-500">جاری و فعال</span>
                     </div>
-                    <div class="text-2xl font-bold text-gray-900 dark:text-white mb-1 font-sans">{{ \Morilog\Jalali\CalendarUtils::convertNumbers($activeRentalBookingsCount ?? 0) }}</div>
-                    <div class="text-sm text-gray-500 dark:text-gray-400 group-hover:text-indigo-600 transition-colors">رزروهای اقامتگاه من &larr;</div>
+                    <div class="text-2xl sm:text-3xl font-black text-gray-900 dark:text-white mb-1">{{ \Morilog\Jalali\CalendarUtils::convertNumbers($activeRentalBookingsCount ?? 0) }}</div>
+                    <div class="text-xs font-bold text-indigo-600 dark:text-indigo-400 group-hover:translate-x-[-2px] transition-transform">رزروهای اقامتگاه من &larr;</div>
                 </a>
             @endif
 
             {{-- کارت نوبت ها --}}
             @if($showBookingFeatures)
-                <div class="group bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700 shadow-sm hover:shadow-md transition-all">
-                    <div class="flex items-center justify-between mb-4">
-                        <div class="p-3 rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400 group-hover:scale-110 transition-transform">
-                            <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                <div class="group bg-white dark:bg-gray-800 rounded-2xl p-5 border border-gray-100 dark:border-gray-700 shadow-xs hover:shadow-md transition-all text-right">
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="text-xs font-bold text-gray-500 dark:text-gray-400">فعال و در انتظار</span>
+                        <div class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400 flex items-center justify-center group-hover:scale-110 transition-transform">
+                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
                         </div>
-                        <span class="text-xs text-gray-400 dark:text-gray-500">فعال و در انتظار</span>
                     </div>
-                    <div class="text-2xl font-bold text-gray-900 dark:text-white mb-1">{{ \Morilog\Jalali\CalendarUtils::convertNumbers($activeAppointmentsCount ?? 0) }}</div>
-                    <div class="text-sm text-gray-500 dark:text-gray-400">نوبت های من</div>
+                    <div class="text-2xl sm:text-3xl font-black text-gray-900 dark:text-white mb-1">{{ \Morilog\Jalali\CalendarUtils::convertNumbers($activeAppointmentsCount ?? 0) }}</div>
+                    <div class="text-xs font-bold text-gray-500 dark:text-gray-400">نوبت های من</div>
                 </div>
             @endif
 
             {{-- کارت سفارشات خدمات --}}
             @if($showOrderFeatures ?? false)
-                <a href="{{ route('client.orders.index') }}" class="group bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700 shadow-sm hover:shadow-md transition-all cursor-pointer block">
-                    <div class="flex items-center justify-between mb-4">
-                        <div class="p-3 rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400 group-hover:scale-110 transition-transform">
-                            <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>
+                <a href="{{ route('client.orders.index') }}" class="group bg-white dark:bg-gray-800 rounded-2xl p-5 border border-gray-100 dark:border-gray-700 shadow-xs hover:shadow-md transition-all cursor-pointer block text-right">
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="text-xs font-bold text-gray-500 dark:text-gray-400">فعال</span>
+                        <div class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400 flex items-center justify-center group-hover:scale-110 transition-transform">
+                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>
                         </div>
-                        <span class="text-xs text-gray-400 dark:text-gray-500">فعال</span>
                     </div>
-                    <div class="text-2xl font-bold text-gray-900 dark:text-white mb-1">{{ \Morilog\Jalali\CalendarUtils::convertNumbers($activeOrdersCount ?? 0) }}</div>
-                    <div class="text-sm text-gray-500 dark:text-gray-400 group-hover:text-blue-600 transition-colors">سفارش‌های من &larr;</div>
+                    <div class="text-2xl sm:text-3xl font-black text-gray-900 dark:text-white mb-1">{{ \Morilog\Jalali\CalendarUtils::convertNumbers($activeOrdersCount ?? 0) }}</div>
+                    <div class="text-xs font-bold text-gray-500 dark:text-gray-400 group-hover:text-blue-600 transition-colors">سفارش‌های من &larr;</div>
                 </a>
             @endif
 
             {{-- کارت فاکتورهای خدمات --}}
             @if($showInvoiceFeatures ?? false)
-                <a href="{{ route('client.invoices.index') }}" class="group bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700 shadow-sm hover:shadow-md transition-all cursor-pointer block">
-                    <div class="flex items-center justify-between mb-4">
-                        <div class="p-3 rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400 group-hover:scale-110 transition-transform">
-                            <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                <a href="{{ route('client.invoices.index') }}" class="group bg-white dark:bg-gray-800 rounded-2xl p-5 border border-gray-100 dark:border-gray-700 shadow-xs hover:shadow-md transition-all cursor-pointer block text-right">
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="text-xs font-bold text-gray-500 dark:text-gray-400">پرداخت نشده</span>
+                        <div class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400 flex items-center justify-center group-hover:scale-110 transition-transform">
+                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                         </div>
-                        <span class="text-xs text-gray-400 dark:text-gray-500">پرداخت نشده</span>
                     </div>
-                    <div class="text-2xl font-bold text-gray-900 dark:text-white mb-1">{{ \Morilog\Jalali\CalendarUtils::convertNumbers($unpaidInvoicesCount ?? 0) }}</div>
-                    <div class="text-sm text-gray-500 dark:text-gray-400 group-hover:text-blue-600 transition-colors">فاکتورهای من &larr;</div>
+                    <div class="text-2xl sm:text-3xl font-black text-gray-900 dark:text-white mb-1">{{ \Morilog\Jalali\CalendarUtils::convertNumbers($unpaidInvoicesCount ?? 0) }}</div>
+                    <div class="text-xs font-bold text-gray-500 dark:text-gray-400 group-hover:text-blue-600 transition-colors">فاکتورهای من &larr;</div>
                 </a>
             @endif
 
-            {{-- کارت تیکت‌ها --}}
-            <div class="group bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700 shadow-sm hover:shadow-md transition-all">
-                <div class="flex items-center justify-between mb-4">
-                    <div class="p-3 rounded-xl bg-amber-50 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400 group-hover:scale-110 transition-transform">
-                        <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" /></svg>
+            @if(!$isMrvilaTheme)
+                {{-- کارت تیکت‌ها --}}
+                <div class="group bg-white dark:bg-gray-800 rounded-2xl p-5 border border-gray-100 dark:border-gray-700 shadow-xs hover:shadow-md transition-all text-right">
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="text-xs font-bold text-gray-500 dark:text-gray-400">در انتظار</span>
+                        <div class="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400 flex items-center justify-center group-hover:scale-110 transition-transform">
+                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" /></svg>
+                        </div>
                     </div>
-                    <span class="text-xs text-gray-400 dark:text-gray-500">در انتظار</span>
+                    <div class="text-2xl sm:text-3xl font-black text-gray-900 dark:text-white mb-1">{{ \Morilog\Jalali\CalendarUtils::convertNumbers(0) }}</div>
+                    <div class="text-xs font-bold text-gray-500 dark:text-gray-400">تیکت‌های پشتیبانی</div>
                 </div>
-                <div class="text-2xl font-bold text-gray-900 dark:text-white mb-1">{{ \Morilog\Jalali\CalendarUtils::convertNumbers(0) }}</div>
-                <div class="text-sm text-gray-500 dark:text-gray-400">تیکت‌های پشتیبانی</div>
-            </div>
 
-            {{-- کارت صورت‌حساب --}}
-            <a href="{{ route('client.payments.index') }}" class="group bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700 shadow-sm hover:border-emerald-500 dark:hover:border-emerald-500 hover:shadow-md transition-all cursor-pointer block">
-                <div class="flex items-center justify-between mb-4">
-                    <div class="p-3 rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400 group-hover:scale-110 transition-transform">
-                        <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                {{-- کارت صورت‌حساب --}}
+                <a href="{{ route('client.payments.index') }}" class="group bg-white dark:bg-gray-800 rounded-2xl p-5 border border-gray-100 dark:border-gray-700 shadow-xs hover:border-emerald-500 dark:hover:border-emerald-500 hover:shadow-md transition-all cursor-pointer block text-right">
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="text-xs font-bold text-gray-500 dark:text-gray-400">پرداخت نشده</span>
+                        <div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400 flex items-center justify-center group-hover:scale-110 transition-transform">
+                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                        </div>
                     </div>
-                    <span class="text-xs text-gray-400 dark:text-gray-500">پرداخت نشده</span>
-                </div>
-                <div class="text-2xl font-bold text-gray-900 dark:text-white mb-1">{{ \Morilog\Jalali\CalendarUtils::convertNumbers(number_format($unpaidInvoicesSum ?? 0)) }} <span class="text-xs font-normal text-gray-400">ریال</span></div>
-                <div class="text-sm text-gray-500 dark:text-gray-400 group-hover:text-emerald-600 transition-colors">لیست صورت‌حساب‌ها &larr;</div>
-            </a>
+                    <div class="text-2xl sm:text-3xl font-black text-gray-900 dark:text-white mb-1">{{ \Morilog\Jalali\CalendarUtils::convertNumbers(number_format($unpaidInvoicesSum ?? 0)) }} <span class="text-xs font-normal text-gray-400">ریال</span></div>
+                    <div class="text-xs font-bold text-emerald-600 dark:text-emerald-400 group-hover:text-emerald-700 transition-colors">لیست صورت‌حساب‌ها &larr;</div>
+                </a>
+            @endif
 
             {{-- کارت سفارشات فروشگاه (نمایش مشروط) --}}
             @if($showMarketFeatures)
-                <a href="{{ Route::has('client.market.orders.index') ? route('client.market.orders.index') : '#' }}" class="group bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700 shadow-sm hover:border-purple-500 dark:hover:border-purple-500 hover:shadow-md transition-all cursor-pointer block">
-                    <div class="flex items-center justify-between mb-4">
-                        <div class="p-3 rounded-xl bg-purple-50 text-purple-600 dark:bg-purple-900/20 dark:text-purple-400 group-hover:scale-110 transition-transform">
-                            <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" /></svg>
+                <a href="{{ Route::has('client.market.orders.index') ? route('client.market.orders.index') : '#' }}" class="group bg-white dark:bg-gray-800 rounded-2xl p-5 border border-gray-100 dark:border-gray-700 shadow-xs hover:border-purple-500 dark:hover:border-purple-500 hover:shadow-md transition-all cursor-pointer block text-right">
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="text-xs font-bold text-gray-500 dark:text-gray-400">در حال پردازش</span>
+                        <div class="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 dark:bg-purple-900/20 dark:text-purple-400 flex items-center justify-center group-hover:scale-110 transition-transform">
+                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" /></svg>
                         </div>
-                        <span class="text-xs text-gray-400 dark:text-gray-500">در حال پردازش</span>
                     </div>
-                    <div class="text-2xl font-bold text-gray-900 dark:text-white mb-1">{{ $activeMarketOrdersCount ?? 0 }}</div>
-                    <div class="text-sm text-gray-500 dark:text-gray-400 group-hover:text-purple-600 transition-colors">سفارشات فروشگاه &larr;</div>
+                    <div class="text-2xl sm:text-3xl font-black text-gray-900 dark:text-white mb-1">{{ $activeMarketOrdersCount ?? 0 }}</div>
+                    <div class="text-xs font-bold text-purple-600 dark:text-purple-400 group-hover:text-purple-700 transition-colors">سفارشات فروشگاه &larr;</div>
                 </a>
             @endif
 
@@ -212,12 +228,14 @@
                     <span class="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-indigo-600">پروفایل من</span>
                 </a>
 
-                <a href="#" class="flex flex-col items-center justify-center gap-3 p-6 rounded-2xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-emerald-500 dark:hover:border-emerald-500 hover:shadow-md transition-all group">
-                    <div class="w-10 h-10 rounded-full bg-gray-50 dark:bg-gray-700 flex items-center justify-center text-gray-600 dark:text-gray-300 group-hover:bg-emerald-50 group-hover:text-emerald-600 transition-colors">
-                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
-                    </div>
-                    <span class="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-emerald-600">تیکت جدید</span>
-                </a>
+                @if(!$isMrvilaTheme)
+                    <a href="#" class="flex flex-col items-center justify-center gap-3 p-6 rounded-2xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-emerald-500 dark:hover:border-emerald-500 hover:shadow-md transition-all group">
+                        <div class="w-10 h-10 rounded-full bg-gray-50 dark:bg-gray-700 flex items-center justify-center text-gray-600 dark:text-gray-300 group-hover:bg-emerald-50 group-hover:text-emerald-600 transition-colors">
+                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
+                        </div>
+                        <span class="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-emerald-600">تیکت جدید</span>
+                    </a>
+                @endif
 
                 @if($showBookingFeatures)
                     <a href="{{ Route::has('booking.public.index') ? route('booking.public.index') : '#' }}" class="flex flex-col items-center justify-center gap-3 p-6 rounded-2xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-blue-500 dark:hover:border-blue-500 hover:shadow-md transition-all group">
@@ -252,6 +270,42 @@
                         </div>
                         <span class="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-indigo-600">رزروهای اقامتگاه</span>
                     </a>
+                @endif
+
+                {{-- دکمه پشتیبانی و تماس --}}
+                @php
+                    $phoneVal = $contactPhone ?? (function_exists('get_setting') ? get_setting('contact_phone') : null);
+                    if (empty($phoneVal) && class_exists(\Modules\Settings\Entities\Setting::class)) {
+                        $phoneVal = \Modules\Settings\Entities\Setting::where('key', 'contact_phone')->value('value');
+                    }
+                    $phoneVal = !empty(trim((string)$phoneVal)) ? trim((string)$phoneVal) : null;
+                @endphp
+
+                @if($phoneVal)
+                    <a href="tel:{{ $phoneVal }}" 
+                       class="flex flex-col items-center justify-center gap-3 p-6 rounded-2xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-violet-500 dark:hover:border-violet-500 hover:shadow-md transition-all group"
+                       title="تماس مستقیم با پشتیبانی: {{ $phoneVal }}">
+                        <div class="w-10 h-10 rounded-full bg-gray-50 dark:bg-gray-700 flex items-center justify-center text-gray-600 dark:text-gray-300 group-hover:bg-violet-50 group-hover:text-violet-600 transition-colors">
+                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/>
+                            </svg>
+                        </div>
+                        <span class="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-violet-600">پشتیبانی و تماس</span>
+                        <span class="text-xs font-black text-violet-600 dark:text-violet-400 dir-ltr tracking-wider">
+                            {{ \Morilog\Jalali\CalendarUtils::convertNumbers($phoneVal) }}
+                        </span>
+                    </a>
+                @else
+                    <div class="flex flex-col items-center justify-center gap-3 p-6 rounded-2xl bg-gray-50/60 dark:bg-gray-800/40 border border-dashed border-gray-200 dark:border-gray-700/60 opacity-60 cursor-not-allowed select-none"
+                         title="شماره تماسی در تنظیمات سیستم ثبت نشده است">
+                        <div class="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-700/50 flex items-center justify-center text-gray-400 dark:text-gray-500">
+                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/>
+                            </svg>
+                        </div>
+                        <span class="text-sm font-medium text-gray-400 dark:text-gray-500">پشتیبانی و تماس</span>
+                        <span class="text-[10px] text-gray-400 dark:text-gray-500 -mt-2">شماره ثبت نشده</span>
+                    </div>
                 @endif
 
                 @if(!$showBookingFeatures && !$showMarketFeatures && !($showInvoiceFeatures ?? false) && !($showRentalFeatures ?? false))
@@ -549,66 +603,131 @@
             @if(($showRentalFeatures ?? false) && isset($recentRentalBookings) && $recentRentalBookings->isNotEmpty())
                 <div class="lg:col-span-2">
                     <div class="flex items-center justify-between mb-4">
-                        <h2 class="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                            <span class="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
+                        <h2 class="text-base sm:text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                            <span class="w-2 h-2 rounded-full bg-indigo-600"></span>
                             آخرین رزروهای اقامتگاهی شما
                         </h2>
                         <a href="{{ route('client.rental-bookings.index') }}" class="text-xs text-indigo-600 dark:text-indigo-400 hover:underline font-bold">مشاهده همه</a>
                     </div>
-                    <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden">
-                        <div class="overflow-x-auto">
-                            <table class="w-full text-sm text-right">
-                                <thead class="text-xs text-gray-500 bg-gray-50/50 dark:bg-gray-900/50 dark:text-gray-400 border-b border-gray-100 dark:border-gray-700">
-                                <tr>
-                                    <th class="px-6 py-4 font-medium">اقامتگاه</th>
-                                    <th class="px-6 py-4 font-medium">کد رزرو</th>
-                                    <th class="px-6 py-4 font-medium">بازه اقامت</th>
-                                    <th class="px-6 py-4 font-medium">مبلغ کل</th>
-                                    <th class="px-6 py-4 font-medium">وضعیت</th>
-                                    <th class="px-6 py-4 font-medium"></th>
-                                </tr>
-                                </thead>
-                                <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
-                                @foreach($recentRentalBookings as $booking)
-                                    @php
-                                        $badge = $booking->status_badge ?: ['label' => $booking->status_label ?? 'نامشخص', 'class' => 'bg-gray-100 text-gray-700'];
-                                        $propCover = $booking->property?->primary_image_url ?? $booking->property?->primaryImage?->image_url ?? asset('assets/images/placeholder.jpg');
-                                    @endphp
-                                    <tr class="hover:bg-gray-50/50 dark:hover:bg-gray-700/50 transition-colors cursor-pointer" onclick="window.location.href='{{ route('client.rental-bookings.show', $booking->id) }}'">
-                                        <td class="px-6 py-4 text-gray-900 dark:text-white font-medium">
-                                            <div class="flex items-center gap-3">
-                                                <img src="{{ $propCover }}" alt="" class="w-10 h-10 rounded-xl object-cover shrink-0 border border-gray-100 dark:border-gray-700">
-                                                <div class="flex flex-col">
-                                                    <span class="font-bold text-gray-900 dark:text-white line-clamp-1 max-w-[220px]">{{ $booking->property?->title ?? 'اقامتگاه' }}</span>
-                                                    <span class="text-xs text-gray-400 font-normal mt-0.5">{{ $booking->nights_count }} شب • {{ $booking->guests_count }} نفر</span>
-                                                </div>
+
+                    {{-- حالت دسکتاپ --}}
+                    <div class="hidden md:block bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden">
+                        <table class="w-full text-sm text-right">
+                            <thead class="text-xs text-gray-500 bg-gray-50/50 dark:bg-gray-900/50 dark:text-gray-400 border-b border-gray-100 dark:border-gray-700">
+                            <tr>
+                                <th class="px-6 py-4 font-bold">اقامتگاه</th>
+                                <th class="px-5 py-4 font-bold">کد رزرو</th>
+                                <th class="px-5 py-4 font-bold">بازه اقامت</th>
+                                <th class="px-5 py-4 font-bold">مبلغ کل</th>
+                                <th class="px-5 py-4 font-bold">وضعیت</th>
+                                <th class="px-6 py-4 font-bold text-left">عملیات</th>
+                            </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
+                            @foreach($recentRentalBookings as $booking)
+                                @php
+                                    $badge = $booking->status_badge ?: ['label' => $booking->status_label ?? 'نامشخص', 'class' => 'bg-gray-100 text-gray-700'];
+                                    $propCover = $booking->property?->primary_image_url ?? $booking->property?->primaryImage?->image_url ?? asset('assets/images/placeholder.jpg');
+                                    $isAwaiting = ($booking->status === \Modules\Properties\Entities\PropertyRentalBooking::STATUS_AWAITING_PAYMENT);
+                                @endphp
+                                <tr class="hover:bg-gray-50/50 dark:hover:bg-gray-700/50 transition-colors">
+                                    <td class="px-6 py-4 text-gray-900 dark:text-white font-medium">
+                                        <div class="flex items-center gap-3">
+                                            <img src="{{ $propCover }}" alt="" class="w-12 h-12 rounded-xl object-cover shrink-0 border border-gray-100 dark:border-gray-700">
+                                            <div class="flex flex-col">
+                                                <a href="{{ route('client.rental-bookings.show', $booking->id) }}" class="font-bold text-gray-900 dark:text-white hover:text-indigo-600 transition-colors line-clamp-1 max-w-[240px]">
+                                                    {{ $booking->property?->title ?? 'اقامتگاه' }}
+                                                </a>
+                                                <span class="text-xs text-gray-400 font-normal mt-0.5">
+                                                    {{ \Morilog\Jalali\CalendarUtils::convertNumbers($booking->nights_count) }} شب • {{ \Morilog\Jalali\CalendarUtils::convertNumbers($booking->guests_count) }} نفر
+                                                </span>
                                             </div>
-                                        </td>
-                                        <td class="px-6 py-4 text-indigo-600 dark:text-indigo-400 font-black text-xs">
+                                        </div>
+                                    </td>
+                                    <td class="px-5 py-4 whitespace-nowrap">
+                                        <span class="inline-block px-2.5 py-1 rounded-lg bg-gray-100 dark:bg-gray-900/80 text-indigo-600 dark:text-indigo-400 font-bold text-xs dir-ltr">
                                             {{ $booking->booking_code }}
-                                        </td>
-                                        <td class="px-6 py-4 text-gray-700 dark:text-gray-300 text-xs font-bold">
-                                            <span>{{ \Morilog\Jalali\CalendarUtils::convertNumbers($booking->check_in) }}</span>
-                                            <span class="text-gray-400 mx-1">تا</span>
-                                            <span>{{ \Morilog\Jalali\CalendarUtils::convertNumbers($booking->check_out) }}</span>
-                                        </td>
-                                        <td class="px-6 py-4 text-gray-900 dark:text-white text-xs font-black">
-                                            {{ \Morilog\Jalali\CalendarUtils::convertNumbers(number_format($booking->total_price)) }}
-                                            <span class="text-[11px] font-normal text-gray-400">{{ $booking->currency === 'IRR' ? 'ریال' : 'تومان' }}</span>
-                                        </td>
-                                        <td class="px-6 py-4">
-                                            <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium {{ $badge['class'] ?? 'bg-gray-100 text-gray-700' }}">
-                                                {{ $badge['label'] ?? 'نامشخص' }}
+                                        </span>
+                                    </td>
+                                    <td class="px-5 py-4 whitespace-nowrap text-xs font-bold text-gray-700 dark:text-gray-300">
+                                        <span>{{ \Morilog\Jalali\CalendarUtils::convertNumbers($booking->check_in) }}</span>
+                                        <span class="text-gray-400 mx-1">تا</span>
+                                        <span>{{ \Morilog\Jalali\CalendarUtils::convertNumbers($booking->check_out) }}</span>
+                                    </td>
+                                    <td class="px-5 py-4 whitespace-nowrap text-xs font-black text-gray-900 dark:text-white">
+                                        {{ \Morilog\Jalali\CalendarUtils::convertNumbers(number_format($booking->total_price)) }}
+                                        <span class="text-[11px] font-normal text-gray-400">{{ $booking->currency === 'IRR' ? 'ریال' : 'تومان' }}</span>
+                                    </td>
+                                    <td class="px-5 py-4 whitespace-nowrap">
+                                        <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold {{ $badge['class'] ?? 'bg-gray-100 text-gray-700' }}">
+                                            {{ $badge['label'] ?? 'نامشخص' }}
+                                        </span>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-left">
+                                        @if($isAwaiting)
+                                            <a href="{{ route('client.rental-bookings.show', $booking->id) }}" class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold shadow-xs transition-all">
+                                                <span>پرداخت صورتحساب</span>
+                                                <svg class="w-3.5 h-3.5 rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+                                            </a>
+                                        @else
+                                            <a href="{{ route('client.rental-bookings.show', $booking->id) }}" class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 text-xs font-bold transition-all">
+                                                <span>مشاهده جزئیات</span>
+                                                <svg class="w-3.5 h-3.5 rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+                                            </a>
+                                        @endif
+                                    </td>
+                                </tr>
+                            @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+
+                    {{-- حالت موبایل --}}
+                    <div class="block md:hidden space-y-3">
+                        @foreach($recentRentalBookings as $booking)
+                            @php
+                                $badge = $booking->status_badge ?: ['label' => $booking->status_label ?? 'نامشخص', 'class' => 'bg-gray-100 text-gray-700'];
+                                $propCover = $booking->property?->primary_image_url ?? $booking->property?->primaryImage?->image_url ?? asset('assets/images/placeholder.jpg');
+                                $isAwaiting = ($booking->status === \Modules\Properties\Entities\PropertyRentalBooking::STATUS_AWAITING_PAYMENT);
+                            @endphp
+                            <div class="bg-white dark:bg-gray-800 rounded-2xl p-4 border border-gray-100 dark:border-gray-700 shadow-xs space-y-3">
+                                <div class="flex items-center gap-3">
+                                    <img src="{{ $propCover }}" alt="" class="w-13 h-13 rounded-xl object-cover shrink-0 border border-gray-100 dark:border-gray-700">
+                                    <div class="flex-1 min-w-0">
+                                        <h3 class="font-bold text-sm text-gray-900 dark:text-white truncate">
+                                            {{ $booking->property?->title ?? 'اقامتگاه' }}
+                                        </h3>
+                                        <div class="flex items-center gap-2 mt-1">
+                                            <span class="text-xs text-indigo-600 dark:text-indigo-400 font-bold dir-ltr">
+                                                {{ $booking->booking_code }}
                                             </span>
-                                        </td>
-                                        <td class="px-6 py-4 text-left">
-                                            <svg class="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
-                                        </td>
-                                    </tr>
-                                @endforeach
-                                </tbody>
-                            </table>
-                        </div>
+                                            <span class="text-gray-300 dark:text-gray-600">•</span>
+                                            <span class="text-xs text-gray-500 font-bold">
+                                                {{ \Morilog\Jalali\CalendarUtils::convertNumbers($booking->nights_count) }} شب
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded-lg text-[11px] font-bold shrink-0 {{ $badge['class'] ?? 'bg-gray-100 text-gray-700' }}">
+                                        {{ $badge['label'] ?? 'نامشخص' }}
+                                    </span>
+                                </div>
+
+                                <div class="flex items-center justify-between text-xs font-bold text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-gray-900/60 p-2.5 rounded-xl">
+                                    <span>{{ \Morilog\Jalali\CalendarUtils::convertNumbers($booking->check_in) }} تا {{ \Morilog\Jalali\CalendarUtils::convertNumbers($booking->check_out) }}</span>
+                                    <span class="text-gray-900 dark:text-white font-black">
+                                        {{ \Morilog\Jalali\CalendarUtils::convertNumbers(number_format($booking->total_price)) }} {{ $booking->currency === 'IRR' ? 'ریال' : 'تومان' }}
+                                    </span>
+                                </div>
+
+                                <a href="{{ route('client.rental-bookings.show', $booking->id) }}" 
+                                   class="w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl {{ $isAwaiting ? 'bg-amber-500 hover:bg-amber-600 text-white' : 'bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200' }} text-xs font-bold transition-all">
+                                    <span>{{ $isAwaiting ? 'مشاهده و پرداخت صورتحساب' : 'مشاهده جزئیات رزرو' }}</span>
+                                    <svg class="w-3.5 h-3.5 rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
+                                    </svg>
+                                </a>
+                            </div>
+                        @endforeach
                     </div>
                 </div>
             @endif

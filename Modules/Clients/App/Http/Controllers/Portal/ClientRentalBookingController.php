@@ -44,6 +44,21 @@ class ClientRentalBookingController extends Controller
                     PropertyRentalBooking::STATUS_CONFIRMED,
                     PropertyRentalBooking::STATUS_CHECKED_IN,
                 ]);
+            } elseif ($status === 'confirmed') {
+                $query->whereIn('status', [
+                    PropertyRentalBooking::STATUS_CONFIRMED,
+                    PropertyRentalBooking::STATUS_CHECKED_IN,
+                ]);
+            } elseif ($status === 'completed') {
+                $query->where('status', PropertyRentalBooking::STATUS_COMPLETED);
+            } elseif ($status === 'cancelled') {
+                $query->whereIn('status', [
+                    PropertyRentalBooking::STATUS_CANCELLED_BY_GUEST,
+                    PropertyRentalBooking::STATUS_CANCELLED_BY_HOST,
+                    PropertyRentalBooking::STATUS_CANCELLED_BY_ADMIN,
+                    PropertyRentalBooking::STATUS_REJECTED,
+                    PropertyRentalBooking::STATUS_EXPIRED,
+                ]);
             } elseif ($status === 'history') {
                 $query->whereIn('status', [
                     PropertyRentalBooking::STATUS_COMPLETED,
@@ -85,7 +100,20 @@ class ClientRentalBookingController extends Controller
             'awaiting_payment' => PropertyRentalBooking::where('client_id', $client->id)
                 ->where('status', PropertyRentalBooking::STATUS_AWAITING_PAYMENT)->count(),
             'confirmed' => PropertyRentalBooking::where('client_id', $client->id)
-                ->where('status', PropertyRentalBooking::STATUS_CONFIRMED)->count(),
+                ->whereIn('status', [
+                    PropertyRentalBooking::STATUS_CONFIRMED,
+                    PropertyRentalBooking::STATUS_CHECKED_IN,
+                ])->count(),
+            'completed' => PropertyRentalBooking::where('client_id', $client->id)
+                ->where('status', PropertyRentalBooking::STATUS_COMPLETED)->count(),
+            'cancelled' => PropertyRentalBooking::where('client_id', $client->id)
+                ->whereIn('status', [
+                    PropertyRentalBooking::STATUS_CANCELLED_BY_GUEST,
+                    PropertyRentalBooking::STATUS_CANCELLED_BY_HOST,
+                    PropertyRentalBooking::STATUS_CANCELLED_BY_ADMIN,
+                    PropertyRentalBooking::STATUS_REJECTED,
+                    PropertyRentalBooking::STATUS_EXPIRED,
+                ])->count(),
             'history' => PropertyRentalBooking::where('client_id', $client->id)
                 ->whereIn('status', [
                     PropertyRentalBooking::STATUS_COMPLETED,
@@ -195,7 +223,7 @@ class ClientRentalBookingController extends Controller
             'host_show_badge'      => (bool) PropertySetting::get('rental_host_show_badge', 1),
             'host_show_about'      => (bool) PropertySetting::get('rental_host_show_about', 1),
             'host_show_phone'      => PropertySetting::get('rental_host_show_phone', 'confirmed_booking'),
-            'show_address'         => PropertySetting::get('rental_show_address', 'all'),
+            'show_address'         => PropertySetting::get('rental_show_address', 'confirmed_booking'),
             'show_map'             => PropertySetting::get('rental_show_map', 'all'),
             'map_display_type'     => PropertySetting::get('rental_map_display_type', 'circle_then_exact'),
             'map_circle_radius'    => (int) PropertySetting::get('rental_map_circle_radius', 300),
@@ -234,12 +262,66 @@ class ClientRentalBookingController extends Controller
             abort(403);
         }
 
-        $booking->load(['property.rentalConfig', 'host']);
+        // دسترسی به برگه رسمی رزرو صرفاً پس از پرداخت و تسویه صورت‌حساب امکان‌پذیر است
+        $isPaid = ($booking->payment_status === PropertyRentalBooking::PAYMENT_PAID);
+        if (!$isPaid) {
+            return redirect()->route('client.rental-bookings.show', $booking->id)
+                ->with('error', 'امکان مشاهده و دریافت نسخه رسمی تأییدیه رزرو، تنها پس از پرداخت و تسویه صورت‌حساب امکان‌پذیر است.');
+        }
+
+        $booking->load(['property.primaryImage', 'property.rentalConfig', 'host']);
 
         $currency = PropertySetting::get('rental_currency', 'IRT');
         $currencyLabel = in_array(strtolower($currency), ['irr', 'rial', 'ریال']) ? 'ریال' : 'تومان';
 
-        return view('clients::portal.rental-bookings.print', compact('booking', 'currencyLabel'));
+        // عنوان سایت از تنظیمات کلی سیستم (/settings#general)
+        $siteTitle = function_exists('get_setting') ? get_setting('app_name', config('app.name')) : config('app.name');
+        if (empty($siteTitle) && class_exists(\Modules\Settings\Entities\Setting::class)) {
+            $siteTitle = \Modules\Settings\Entities\Setting::where('key', 'app_name')->value('value');
+        }
+        $siteTitle = !empty(trim((string)$siteTitle)) ? trim((string)$siteTitle) : config('app.name', 'سامانه رزرواسیون اقامتگاه');
+
+        // قوانین کنسلی اقامتگاه
+        $rentalConfig = $booking->property?->rentalConfig;
+        $propertyCancellation = trim($rentalConfig?->cancellation_policy ?? '');
+        $globalCancellation = trim(PropertySetting::get('rental_default_cancellation_policy', ''));
+        $cancellationRulesText = !empty($propertyCancellation) ? $propertyCancellation : (!empty($globalCancellation) ? $globalCancellation : null);
+
+        // تنظیمات حریم خصوصی و نمایش جزئیات اقامتگاه (/user/settings/properties#rentals)
+        $rentalDisplaySettings = [
+            'show_host_box'        => PropertySetting::get('rental_show_host_box', 'all'),
+            'host_show_avatar'     => (bool) PropertySetting::get('rental_host_show_avatar', 1),
+            'host_show_badge'      => (bool) PropertySetting::get('rental_host_show_badge', 1),
+            'host_show_about'      => (bool) PropertySetting::get('rental_host_show_about', 1),
+            'host_show_phone'      => PropertySetting::get('rental_host_show_phone', 'confirmed_booking'),
+            'show_address'         => PropertySetting::get('rental_show_address', 'confirmed_booking'),
+            'show_direct_call_btn' => PropertySetting::get('rental_show_direct_call_btn', 'all'),
+        ];
+
+        // ساعات ورود و خروج بدون ثانیه (HH:MM)
+        $rawCheckInTime = $rentalConfig?->check_in_time;
+        $checkInTime = $rawCheckInTime ? substr($rawCheckInTime, 0, 5) : '۱۴:۰۰';
+
+        $rawCheckOutTime = $rentalConfig?->check_out_time;
+        $checkOutTime = $rawCheckOutTime ? substr($rawCheckOutTime, 0, 5) : '۱۲:۰۰';
+
+        // شماره تماس پشتیبانی سیستم
+        $contactPhone = function_exists('get_setting') ? get_setting('contact_phone') : null;
+        if (empty($contactPhone) && class_exists(\Modules\Settings\Entities\Setting::class)) {
+            $contactPhone = \Modules\Settings\Entities\Setting::where('key', 'contact_phone')->value('value');
+        }
+        $contactPhone = !empty(trim((string)$contactPhone)) ? trim((string)$contactPhone) : null;
+
+        return view('clients::portal.rental-bookings.print', compact(
+            'booking',
+            'siteTitle',
+            'currencyLabel',
+            'rentalDisplaySettings',
+            'cancellationRulesText',
+            'checkInTime',
+            'checkOutTime',
+            'contactPhone'
+        ));
     }
 
     /**

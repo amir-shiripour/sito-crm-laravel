@@ -58,7 +58,7 @@
                                     </div>
                                     <div class="flex flex-col">
                                         <span class="text-sm font-bold text-gray-800 dark:text-gray-200">{{ $review->client->full_name ?? 'بدون نام' }}</span>
-                                        <span class="text-[10px] font-mono text-gray-400 mt-0.5">{{ $review->client->phone ?? $review->client->username ?? '' }}</span>
+                                        <span class="text-[10px] font-sans text-gray-400 mt-0.5">{{ $review->client->phone ?? $review->client->username ?? '' }}</span>
                                     </div>
                                 </div>
                             </td>
@@ -75,7 +75,7 @@
                                     </div>
                                     <div class="flex flex-col">
                                         <span class="text-sm font-bold text-gray-800 dark:text-gray-200 line-clamp-1" title="{{ $review->masterProduct->title ?? '' }}">{{ $review->masterProduct->title ?? 'محصول نامشخص' }}</span>
-                                        <span class="text-[10px] font-mono text-gray-400 mt-0.5">{{ $review->masterProduct->crm_code ?? '' }}</span>
+                                        <span class="text-[10px] font-sans text-gray-400 mt-0.5">{{ $review->masterProduct->crm_code ?? '' }}</span>
                                     </div>
                                 </div>
                             </td>

@@ -340,7 +340,7 @@
 
                         <div>
                             <label class="{{ $labelClass }}">کد پستی (۱۰ رقمی)</label>
-                            <input type="text" wire:model.defer="newPostalCode" class="{{ $baseInputClass }} font-mono text-center dir-ltr" placeholder="1234567890" maxlength="10">
+                            <input type="text" wire:model.defer="newPostalCode" class="{{ $baseInputClass }} font-sans text-center dir-ltr" placeholder="1234567890" maxlength="10">
                             @error('newPostalCode') <span class="text-xs text-red-500 mt-1 block font-semibold">{{ $message }}</span> @enderror
                         </div>
 

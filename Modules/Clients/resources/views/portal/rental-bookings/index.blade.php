@@ -47,11 +47,15 @@
                 </a>
                 <a href="{{ route('client.rental-bookings.index', array_filter(['status' => 'confirmed', 'search' => request('search')])) }}"
                    class="px-4 py-2 rounded-xl text-xs font-bold transition-colors whitespace-nowrap {{ $status === 'confirmed' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 font-black shadow-xs' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-700' }}">
-                    قطعی و تأیید شده ({{ CalendarUtils::convertNumbers($counts['confirmed'] ?? 0) }})
+                    اقامت‌های پیش‌رو / قطعی ({{ CalendarUtils::convertNumbers($counts['confirmed'] ?? 0) }})
                 </a>
-                <a href="{{ route('client.rental-bookings.index', array_filter(['status' => 'history', 'search' => request('search')])) }}"
-                   class="px-4 py-2 rounded-xl text-xs font-bold transition-colors whitespace-nowrap {{ $status === 'history' ? 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 font-black shadow-xs' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-700' }}">
-                    تاریخچه و لغو شده ({{ CalendarUtils::convertNumbers($counts['history'] ?? 0) }})
+                <a href="{{ route('client.rental-bookings.index', array_filter(['status' => 'completed', 'search' => request('search')])) }}"
+                   class="px-4 py-2 rounded-xl text-xs font-bold transition-colors whitespace-nowrap {{ $status === 'completed' ? 'bg-teal-50 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400 font-black shadow-xs' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-700' }}">
+                    اقامت‌های تکمیل‌شده ({{ CalendarUtils::convertNumbers($counts['completed'] ?? 0) }})
+                </a>
+                <a href="{{ route('client.rental-bookings.index', array_filter(['status' => 'cancelled', 'search' => request('search')])) }}"
+                   class="px-4 py-2 rounded-xl text-xs font-bold transition-colors whitespace-nowrap {{ in_array($status, ['cancelled', 'history']) ? 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 font-black shadow-xs' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-700' }}">
+                    لغو شده ({{ CalendarUtils::convertNumbers($counts['cancelled'] ?? 0) }})
                 </a>
             </div>
 
