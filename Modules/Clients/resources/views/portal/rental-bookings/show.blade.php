@@ -2,14 +2,16 @@
 @extends('clients::layouts.client')
 
 @php
-    $title = 'سند و جزئیات رزرو ' . $booking->booking_code;
+    $title = 'جزئیات رزرو ' . $booking->booking_code;
     $badge = $booking->status_badge ?? ['label' => $booking->status_label ?? 'نامشخص', 'class' => 'bg-gray-100 text-gray-700'];
     $payBadge = $booking->payment_status_badge ?? ['label' => $booking->payment_status_label ?? 'نامشخص', 'class' => 'bg-gray-100 text-gray-700'];
-    $isConfirmed = in_array($booking->status, [
-        \Modules\Properties\Entities\PropertyRentalBooking::STATUS_CONFIRMED,
-        \Modules\Properties\Entities\PropertyRentalBooking::STATUS_CHECKED_IN,
-        \Modules\Properties\Entities\PropertyRentalBooking::STATUS_COMPLETED
-    ]);
+    // قطعی شدن رزرو منوط به پرداخت صورت‌حساب و تسویه است (نه صرفاً تأیید اولیه میزبان)
+    $isConfirmed = ($booking->payment_status === \Modules\Properties\Entities\PropertyRentalBooking::PAYMENT_PAID)
+        || in_array($booking->status, [
+            \Modules\Properties\Entities\PropertyRentalBooking::STATUS_CONFIRMED,
+            \Modules\Properties\Entities\PropertyRentalBooking::STATUS_CHECKED_IN,
+            \Modules\Properties\Entities\PropertyRentalBooking::STATUS_COMPLETED
+        ]);
     $canPay = ($booking->status === \Modules\Properties\Entities\PropertyRentalBooking::STATUS_AWAITING_PAYMENT)
         && $booking->payment_status !== 'paid';
     $isPendingHost = ($booking->status === \Modules\Properties\Entities\PropertyRentalBooking::STATUS_PENDING_HOST);
@@ -167,7 +169,7 @@
                 <div class="min-w-0">
                     <div class="flex flex-wrap items-center gap-2 sm:gap-3">
                         <h1 class="text-xl sm:text-2xl font-black text-gray-900 dark:text-white whitespace-nowrap">
-                            سند و جزئیات رزرو
+                            جزئیات رزرو
                         </h1>
                         <span class="inline-flex items-center px-3 py-1 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200/80 dark:border-indigo-800/60 text-indigo-700 dark:text-indigo-300 text-xs sm:text-sm font-black font-sans dir-ltr tracking-wider whitespace-nowrap shadow-xs">
                             {{ $booking->booking_code }}
@@ -262,7 +264,7 @@
                                 <span class="text-xs">۳</span>
                             @endif
                         </div>
-                        <span class="text-xs font-black {{ $currentStep >= 3 ? 'text-gray-900 dark:text-white' : ($currentStep == 2 ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-400') }}">۳. پرداخت و صدور سند</span>
+                        <span class="text-xs font-black {{ $currentStep >= 3 ? 'text-gray-900 dark:text-white' : ($currentStep == 2 ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-400') }}">۳. پرداخت صورتحساب</span>
                         <span class="text-[10px] text-gray-400">{{ $currentStep >= 3 ? 'قطعی شد' : ($currentStep == 2 ? 'در انتظار پرداخت' : 'در انتظار') }}</span>
                     </div>
 
@@ -337,7 +339,7 @@
                     => 'مهلت قانونی پرداخت به پایان رسید و رزرو به صورت خودکار لغو گردید. در صورت تمایل می‌توانید مجدداً اقدام فرمایید.',
 
                 default
-                    => 'پیگیری وضعیت رزرو اقامتگاه از طریق این سند و پشتیبانی امکان‌پذیر است.',
+                    => 'پیگیری وضعیت رزرو اقامتگاه از طریق این سامانه و پشتیبانی امکان‌پذیر است.',
             };
 
             $financialText = match(true) {
@@ -430,55 +432,100 @@
                         </div>
                     </div>
 
-                    {{-- کارت آدرس دقیق و موقعیت مکانی --}}
+                    {{-- کارت آدرس دقیق و موقعیت مکانی بر اساس قوانین حریم خصوصی (/user/settings/properties#rentals) --}}
+                    @php
+                        $addressRule = $rentalDisplaySettings['show_address'] ?? 'all';
+                        $canSeeAddress = ($addressRule === 'all') || ($addressRule === 'confirmed_booking' && $isConfirmed);
+                    @endphp
                     <div class="p-4 rounded-2xl bg-gray-50 dark:bg-gray-900/50 border border-gray-200/80 dark:border-gray-700/80 space-y-3">
                         <div class="flex items-center justify-between">
                             <span class="text-xs font-black text-gray-900 dark:text-white flex items-center gap-1.5">
                                 <svg class="w-4 h-4 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
                                 <span>آدرس و موقعیت مکانی:</span>
                             </span>
-                            @if($isConfirmed)
+                            @if($addressRule === 'none')
+                                <span class="px-2 py-0.5 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 text-[11px] font-bold">
+                                    محدود به منطقه
+                                </span>
+                            @elseif($canSeeAddress)
                                 <span class="px-2 py-0.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 text-[11px] font-bold">
                                     تأیید شده و نمایان
                                 </span>
                             @else
                                 <span class="px-2 py-0.5 rounded-lg bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 text-[11px] font-bold">
-                                    نمایش آدرس دقیق پس از قطعی شدن رزرو
+                                    نمایش آدرس دقیق پس از پرداخت و قطعی شدن رزرو
                                 </span>
                             @endif
                         </div>
 
                         <p class="text-xs font-bold text-gray-700 dark:text-gray-300 leading-relaxed">
-                            @if($isConfirmed)
+                            @if($addressRule === 'none')
+                                {{ $booking->property?->city ?? 'منطقه اقامتگاه' }} (عدم نمایش آدرس متنی دقیق طبق تنظیمات حریم خصوصی سامانه)
+                            @elseif($canSeeAddress)
                                 {{ $booking->property?->address ?: 'آدرس توسط میزبان ثبت نشده است؛ لطفاً با شماره تماس میزبان هماهنگ فرمایید.' }}
                             @else
-                                {{ $booking->property?->city ?? 'منطقه اقامتگاه' }} (آدرس و پلاک دقیق پس از پرداخت و قطعی شدن رزرو در این سند برای شما نمایان می‌شود)
+                                {{ $booking->property?->city ?? 'منطقه اقامتگاه' }} (آدرس و پلاک دقیق پس از پرداخت و قطعی شدن رزرو در این صفحه برای شما نمایان می‌شود)
                             @endif
                         </p>
                     </div>
                 </div>
 
-                {{-- کارت مشخصات میزبان و مهمان اصلی --}}
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {{-- کارت مشخصات میزبان و مهمان اصلی بر اساس قوانین حریم خصوصی --}}
+                @php
+                    $hostBoxRule = $rentalDisplaySettings['show_host_box'] ?? 'all';
+                    $canSeeHostBox = ($hostBoxRule === 'all') || ($hostBoxRule === 'confirmed_booking' && $isConfirmed);
+                    $phoneRule = $rentalDisplaySettings['host_show_phone'] ?? 'confirmed_booking';
+                    $canSeePhone = ($phoneRule === 'all') || ($phoneRule === 'confirmed_booking' && $isConfirmed);
+                    $showCallBtn = ($rentalDisplaySettings['show_direct_call_btn'] ?? 'all') !== 'none';
+                @endphp
+                <div class="grid grid-cols-1 {{ $hostBoxRule !== 'none' ? 'sm:grid-cols-2' : '' }} gap-4">
+                    @if($hostBoxRule !== 'none')
                     {{-- اطلاعات میزبان --}}
                     <div class="bg-white dark:bg-gray-800 rounded-3xl p-5 border border-gray-100 dark:border-gray-700/80 shadow-xs space-y-3">
-                        <h3 class="text-xs font-black text-gray-400">اطلاعات میزبان</h3>
-                        <div class="flex items-center gap-3">
-                            <div class="w-10 h-10 rounded-2xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-black">
-                                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
-                            </div>
-                            <div>
-                                <h4 class="text-sm font-black text-gray-900 dark:text-white">{{ $booking->host?->display_name ?? 'میزبان اقامتگاه' }}</h4>
-                                <p class="text-xs text-gray-500 font-bold mt-0.5">
-                                    @if($isConfirmed || $booking->status === \Modules\Properties\Entities\PropertyRentalBooking::STATUS_AWAITING_PAYMENT)
-                                        تماس: <span class="font-black text-indigo-600 dark:text-indigo-400 dir-ltr">{{ $booking->host?->phone ?? '---' }}</span>
-                                    @else
-                                        شماره تماس پس از تأیید میزبان نمایان می‌شود
-                                    @endif
-                                </p>
-                            </div>
+                        <div class="flex items-center justify-between">
+                            <h3 class="text-xs font-black text-gray-400">اطلاعات میزبان</h3>
+                            @if(!empty($rentalDisplaySettings['host_show_badge']) && ($booking->host?->is_verified || $booking->host?->kyc_status === 'approved'))
+                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 text-[10px] font-bold">
+                                    <svg class="w-3 h-3 text-teal-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                                    تأیید هویت شده
+                                </span>
+                            @endif
                         </div>
+
+                        @if($canSeeHostBox)
+                            <div class="flex items-center gap-3">
+                                @if(!empty($rentalDisplaySettings['host_show_avatar']) && $booking->host?->avatar_url)
+                                    <img src="{{ $booking->host->avatar_url }}" alt="{{ $booking->host->display_name }}" class="w-10 h-10 rounded-2xl object-cover border border-gray-200 dark:border-gray-700">
+                                @else
+                                    <div class="w-10 h-10 rounded-2xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-black">
+                                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                                    </div>
+                                @endif
+                                <div class="flex-1 min-w-0">
+                                    <h4 class="text-sm font-black text-gray-900 dark:text-white truncate">{{ $booking->host?->display_name ?? 'میزبان اقامتگاه' }}</h4>
+                                    @if($phoneRule !== 'none')
+                                        <p class="text-xs text-gray-500 font-bold mt-0.5">
+                                            @if($canSeePhone)
+                                                تماس: <span class="font-black text-indigo-600 dark:text-indigo-400 dir-ltr">{{ $booking->host?->phone ?? '---' }}</span>
+                                            @else
+                                                شماره تماس پس از پرداخت و قطعی شدن رزرو نمایان می‌شود
+                                            @endif
+                                        </p>
+                                    @endif
+                                </div>
+                                @if($canSeePhone && $showCallBtn && !empty($booking->host?->phone))
+                                    <a href="tel:{{ $booking->host->phone }}" class="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 transition shrink-0" title="تماس مستقیم">
+                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg>
+                                    </a>
+                                @endif
+                            </div>
+                        @else
+                            <div class="p-3 rounded-2xl bg-amber-50/60 dark:bg-amber-950/30 text-amber-800 dark:text-amber-300 text-xs font-bold leading-relaxed">
+                                مشخصات و هویت میزبان پس از پرداخت و قطعی شدن رزرو نمایش داده خواهد شد.
+                            </div>
+                        @endif
                     </div>
+                    @endif
 
                     {{-- اطلاعات مهمان اصلی --}}
                     <div class="bg-white dark:bg-gray-800 rounded-3xl p-5 border border-gray-100 dark:border-gray-700/80 shadow-xs space-y-3">
@@ -506,24 +553,26 @@
                 <div class="bg-white dark:bg-gray-800 rounded-3xl p-6 border border-gray-100 dark:border-gray-700/80 shadow-xs space-y-4">
                     <h3 class="text-sm font-black text-gray-900 dark:text-white flex items-center gap-2">
                         <svg class="w-4 h-4 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
-                        <span>مقررات تحویل و شرایط کنسلی اقامتگاه</span>
+                        <span>مقررات تحویل @if(!empty($cancellationRulesText)) و شرایط کنسلی @endif اقامتگاه</span>
                     </h3>
 
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs font-bold">
                         <div class="p-3 rounded-2xl bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 space-y-1">
                             <span class="text-gray-400 block text-[11px]">ساعت ورود و تحویل کلید:</span>
-                            <span class="text-gray-900 dark:text-white font-black">از ساعت {{ $booking->property?->rentalConfig?->check_in_time ?? '۱۴:۰۰' }}</span>
+                            <span class="text-gray-900 dark:text-white font-black">از ساعت {{ CalendarUtils::convertNumbers($checkInTime) }}</span>
                         </div>
                         <div class="p-3 rounded-2xl bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700 space-y-1">
                             <span class="text-gray-400 block text-[11px]">ساعت تخلیه و خروج:</span>
-                            <span class="text-gray-900 dark:text-white font-black">تا ساعت {{ $booking->property?->rentalConfig?->check_out_time ?? '۱۲:۰۰' }}</span>
+                            <span class="text-gray-900 dark:text-white font-black">تا ساعت {{ CalendarUtils::convertNumbers($checkOutTime) }}</span>
                         </div>
                     </div>
 
-                    <div class="p-3.5 rounded-2xl bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200/60 dark:border-amber-800/40 text-amber-900 dark:text-amber-200 text-xs font-bold leading-relaxed space-y-1">
-                        <span class="font-black block">شرایط و قوانین کنسلی:</span>
-                        <p>{{ $cancellationRulesText }}</p>
-                    </div>
+                    @if(!empty($cancellationRulesText))
+                        <div class="p-3.5 rounded-2xl bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200/60 dark:border-amber-800/40 text-amber-900 dark:text-amber-200 text-xs font-bold leading-relaxed space-y-1">
+                            <span class="font-black block">شرایط و قوانین کنسلی:</span>
+                            <p>{{ $cancellationRulesText }}</p>
+                        </div>
+                    @endif
                 </div>
 
                 {{-- یادداشت مهمان --}}
@@ -548,13 +597,13 @@
                     <div class="grid grid-cols-2 gap-4 text-center">
                         <div class="p-3.5 rounded-2xl bg-gray-50 dark:bg-gray-900/50 border border-gray-200/60 dark:border-gray-700/60">
                             <span class="text-[11px] font-bold text-gray-400 block mb-1">تاریخ ورود</span>
-                            <span class="text-sm font-black text-gray-900 dark:text-white block">{{ $booking->check_in }}</span>
-                            <span class="text-[10px] text-gray-500 mt-1 block">از ساعت {{ $booking->property?->rentalConfig?->check_in_time ?? '۱۴:۰۰' }}</span>
+                            <span class="text-sm font-black text-gray-900 dark:text-white block">{{ CalendarUtils::convertNumbers($booking->check_in) }}</span>
+                            <span class="text-[10px] text-gray-500 mt-1 block">از ساعت {{ CalendarUtils::convertNumbers($checkInTime) }}</span>
                         </div>
                         <div class="p-3.5 rounded-2xl bg-gray-50 dark:bg-gray-900/50 border border-gray-200/60 dark:border-gray-700/60">
                             <span class="text-[11px] font-bold text-gray-400 block mb-1">تاریخ خروج</span>
-                            <span class="text-sm font-black text-gray-900 dark:text-white block">{{ $booking->check_out }}</span>
-                            <span class="text-[10px] text-gray-500 mt-1 block">تا ساعت {{ $booking->property?->rentalConfig?->check_out_time ?? '۱۲:۰۰' }}</span>
+                            <span class="text-sm font-black text-gray-900 dark:text-white block">{{ CalendarUtils::convertNumbers($booking->check_out) }}</span>
+                            <span class="text-[10px] text-gray-500 mt-1 block">تا ساعت {{ CalendarUtils::convertNumbers($checkOutTime) }}</span>
                         </div>
                     </div>
 

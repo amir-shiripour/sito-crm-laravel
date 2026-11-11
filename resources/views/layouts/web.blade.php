@@ -221,7 +221,9 @@
     @endphp
 
     {{-- Header --}}
-    @includeFirst($themeManager->resolveViewChain('header'), ['appName' => $appName, 'appLogo' => $appLogo])
+    @unless(View::hasSection('hide_header'))
+        @includeFirst($themeManager->resolveViewChain('header'), ['appName' => $appName, 'appLogo' => $appLogo])
+    @endunless
 
     {{-- Main Content --}}
     <main class="flex-grow flex flex-col relative z-10 w-full">

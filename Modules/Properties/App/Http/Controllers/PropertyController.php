@@ -13,6 +13,10 @@ use Modules\Properties\Entities\PropertyBuilding;
 use Modules\Properties\Entities\PropertyRentalBooking;
 use Modules\Properties\Services\RentalBookingService;
 use Modules\Clients\Entities\Client;
+use Modules\Clients\Entities\ClientForm;
+use Modules\Properties\Services\RentalPublicService;
+use Morilog\Jalali\Jalalian;
+use Morilog\Jalali\CalendarUtils;
 use App\Services\GapGPTService;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Str;
@@ -731,7 +735,7 @@ class PropertyController extends Controller
             return redirect()->route('properties.show', $property->slug ?: $property->code);
         }
 
-        $property->loadMissing(['host.user', 'rentalConfig', 'category']);
+        $property->loadMissing(['host.user', 'rentalConfig', 'category', 'seasonalPrices', 'rentalBlocks']);
 
         $checkIn = $request->input('check_in') ?: $request->input('check_in_date');
         $checkOut = $request->input('check_out') ?: $request->input('check_out_date');
@@ -753,8 +757,8 @@ class PropertyController extends Controller
                 ->with('error', 'لطفاً ابتدا تاریخ ورود و خروج مورد نظر خود را در تقویم انتخاب نمایید.');
         }
 
-        // اگر کاربر لاگین نیست، اطلاعات پیش‌نویس در سشن ذخیره شده و به لاگین هدایت می‌شود
-        if (!auth('client')->check()) {
+        // اگر کاربر نه کلاینت است و نه ادمین/کاربر سیستم، اطلاعات پیش‌نویس ذخیره و به لاگین هدایت می‌شود
+        if (!auth('client')->check() && !auth()->check()) {
             session([
                 'rental_booking_draft' => [
                     'property_id' => $property->id,
@@ -778,6 +782,19 @@ class PropertyController extends Controller
         }
 
         $client = auth('client')->user();
+        if (!$client && auth()->check()) {
+            $u = auth()->user();
+            $client = (object) [
+                'id' => null,
+                'full_name' => $u->name,
+                'first_name' => $u->name,
+                'last_name' => '',
+                'phone' => $u->phone ?? $u->mobile ?? '۰۹۱۲۰۰۰۰۰۰۰',
+                'email' => $u->email,
+                'national_code' => $u->national_code ?? '',
+                'meta' => [],
+            ];
+        }
 
         // محاسبه پیش‌فاکتور شفاف
         $bookingService = app(RentalBookingService::class);
@@ -803,16 +820,155 @@ class PropertyController extends Controller
 
         $config = $property->rentalConfig;
 
+        // آماده‌سازی تقویم ۶ ماهه جهت مدال تعاملی تقویم در صفحه پیش‌فاکتور
+        $rentalPublicService = app(RentalPublicService::class);
+        $calendarData = $rentalPublicService->getCalendarData($property, 6);
+
+        // آماده‌سازی فیلدهای اطلاعات کلاینت بر اساس فرم‌ساز کلاینت (/user/settings/clients/forms)
+        // و الزام بر اساس گزینه «احراز هویت کاربر (ویرایش در پروفایل)» (client_auth == true)
+        $clientForm = ClientForm::active();
+        $rawFields = $clientForm ? ($clientForm->schema['fields'] ?? []) : [];
+        $excludedFieldIds = ['password', 'status_id', 'notes', 'booking_waitlist', 'case_number'];
+        $clientFormFields = [];
+
+        foreach ($rawFields as $f) {
+            $fId = $f['id'] ?? '';
+            if (empty($fId) || in_array($fId, $excludedFieldIds, true)) {
+                continue;
+            }
+
+            $isPhone = ($fId === 'phone');
+            $isRequired = !empty($f['client_auth']);
+            $currentVal = null;
+            if ($client && is_object($client)) {
+                if (in_array($fId, ['full_name', 'phone', 'email', 'national_code', 'username'], true)) {
+                    $currentVal = $client->{$fId} ?? null;
+                    if ($fId === 'full_name' && empty($currentVal) && (!empty($client->first_name) || !empty($client->last_name))) {
+                        $currentVal = trim(($client->first_name ?? '') . ' ' . ($client->last_name ?? ''));
+                    }
+                } else {
+                    $meta = is_array($client->meta ?? null) ? $client->meta : [];
+                    $currentVal = $meta[$fId] ?? null;
+                }
+            }
+
+            $clientFormFields[] = [
+                'id'          => $fId,
+                'label'       => $f['label'] ?? $fId,
+                'type'        => $f['type'] ?? 'text',
+                'placeholder' => $f['placeholder'] ?? '',
+                'required'    => $isRequired,
+                'client_auth' => $isRequired,
+                'locked'      => $isPhone, // شماره تماس به عنوان هویت اصلی احراز شده قفل است
+                'options'     => !empty($f['options_json']) ? $f['options_json'] : ($f['options'] ?? []),
+                'value'       => $currentVal,
+            ];
+        }
+
+        if (empty($clientFormFields)) {
+            $clientFormFields = [
+                [
+                    'id'          => 'full_name',
+                    'label'       => 'نام و نام خانوادگی',
+                    'type'        => 'text',
+                    'placeholder' => 'مثلاً: علی محمدی',
+                    'required'    => true,
+                    'client_auth' => true,
+                    'locked'      => false,
+                    'options'     => [],
+                    'value'       => $client->full_name ?? ($client->name ?? ''),
+                ],
+                [
+                    'id'          => 'phone',
+                    'label'       => 'شماره تماس',
+                    'type'        => 'tel',
+                    'placeholder' => '۰۹۱۲۰۰۰۰۰۰۰',
+                    'required'    => true,
+                    'client_auth' => true,
+                    'locked'      => true,
+                    'options'     => [],
+                    'value'       => $client->phone ?? '',
+                ],
+                [
+                    'id'          => 'national_code',
+                    'label'       => 'کد ملی',
+                    'type'        => 'text',
+                    'placeholder' => 'کد ملی ۱۰ رقمی',
+                    'required'    => true,
+                    'client_auth' => true,
+                    'locked'      => false,
+                    'options'     => [],
+                    'value'       => $client->national_code ?? '',
+                ],
+            ];
+        }
+
+        // قوانین لغو رزرو واقعی ثبت شده روی اقامتگاه
+        $cancellationPolicy = trim($config?->cancellation_policy ?: ($property->meta['cancellation_policy'] ?? ''));
+
+        // مقررات مهم اقامتگاه دقیقاً مطابق با بخش قوانین و مقررات صفحه اقامتگاه (rental/show)
+        $allHouseRules = $config?->house_rules ?? [];
+        $ruleKeys = is_array($allHouseRules) ? $allHouseRules : [];
+
+        $smokingAllowed = !in_array('no_smoking', $ruleKeys, true);
+        $petsAllowed = !in_array('no_pets', $ruleKeys, true);
+        $partiesAllowed = !in_array('no_party', $ruleKeys, true);
+        $idRequired = in_array('national_card_required', $ruleKeys, true);
+
+        $houseRulesStructured = [
+            [
+                'title' => 'استعمال دخانیات',
+                'status_text' => $smokingAllowed ? 'مجاز' : 'ممنوع در فضای بسته',
+                'status_type' => $smokingAllowed ? 'emerald' : 'rose',
+            ],
+            [
+                'title' => 'ورود حیوانات خانگی',
+                'status_text' => $petsAllowed ? 'مجاز' : 'ممنوع',
+                'status_type' => $petsAllowed ? 'emerald' : 'rose',
+            ],
+            [
+                'title' => 'برگزاری جشن و مهمانی',
+                'status_text' => $partiesAllowed ? 'مجاز با هماهنگی' : 'ممنوع',
+                'status_type' => $partiesAllowed ? 'emerald' : 'rose',
+            ],
+            [
+                'title' => 'ارائه مدارک شناسایی',
+                'status_text' => $idRequired ? 'الزامی (کارت ملی هوشمند)' : 'طبق ضوابط میزبان',
+                'status_type' => 'emerald',
+            ],
+        ];
+
+        // اطلاعات تماس پشتیبانی و پلتفرم از دیتابیس
+        $appName = function_exists('get_setting') ? get_setting('app_name', 'مستر ویلا لفور') : 'مستر ویلا لفور';
+        $supportPhone = (function_exists('get_setting') ? get_setting('contact_phone') : null)
+            ?: \Modules\Properties\Entities\PropertySetting::get('support_phone')
+            ?: ($property->agent?->phone ?: $property->agent?->mobile ?: $property->creator?->phone ?: null);
+
+        // اطلاعات میزبان
+        $host = $property->host;
+        $hostPhone = $host && $host->phone ? $host->phone : ($property->agent?->mobile ?? $property->agent?->phone ?? null);
+        $canShowDirectCall = PropertySetting::get('rental_show_direct_call_btn', 'all') === 'all';
+        $hostDisplayName = $host ? ($host->display_name ?: $host->user?->name) : ($property->agent?->name ?: 'میزبان اقامتگاه');
+
         return view('properties::rental.checkout', compact(
             'property',
             'config',
             'quote',
             'client',
+            'clientFormFields',
+            'calendarData',
+            'cancellationPolicy',
+            'houseRulesStructured',
             'currency',
             'currencyLabel',
             'checkIn',
             'checkOut',
-            'guests'
+            'guests',
+            'appName',
+            'supportPhone',
+            'hostPhone',
+            'canShowDirectCall',
+            'hostDisplayName'
         ));
     }
 
@@ -832,7 +988,7 @@ class PropertyController extends Controller
         }
 
         // مهمان باید ابتدا وارد حساب کاربری پرتال کلاینت شود
-        if (!auth('client')->check()) {
+        if (!auth('client')->check() && !auth()->check()) {
             $returnUrl = route('properties.checkout', [
                 'slug'      => $property->slug ?: $property->code,
                 'check_in'  => $request->input('check_in_date'),
@@ -854,27 +1010,138 @@ class PropertyController extends Controller
         }
 
         $client = auth('client')->user();
+        if (!$client && auth()->check()) {
+            $u = auth()->user();
+            $client = Client::firstOrCreate(
+                ['phone' => $u->phone ?? $u->mobile ?? '09120000000'],
+                [
+                    'full_name' => $u->name,
+                    'email' => $u->email,
+                    'national_code' => $u->national_code ?? null,
+                ]
+            );
+        }
+
+        // استخراج قواعد اعتبارسنجی داینامیک از فرم‌ساز کلاینت بر اساس قاعده الزام احراز هویت
+        $clientForm = ClientForm::active();
+        $rawFields = $clientForm ? ($clientForm->schema['fields'] ?? []) : [];
+        $excludedFieldIds = ['password', 'status_id', 'notes', 'booking_waitlist', 'case_number', 'phone'];
 
         $rules = [
-            'check_in_date'       => 'required|string',
-            'check_out_date'      => 'required|string',
-            'guests_count'        => 'required|integer|min:1',
-            'guest_full_name'     => 'nullable|string|max:190',
-            'guest_phone'         => 'nullable|string|max:30',
-            'guest_national_code' => 'nullable|string|max:20',
-            'notes'               => 'nullable|string|max:1000',
+            'check_in_date'  => 'required|string',
+            'check_out_date' => 'required|string',
+            'guests_count'   => 'required|integer|min:1',
+            'notes'          => 'nullable|string|max:1000',
         ];
 
-        $request->validate($rules, [
-            'check_in_date.required'   => 'لطفاً تاریخ ورود را انتخاب کنید.',
-            'check_out_date.required'  => 'لطفاً تاریخ خروج را انتخاب کنید.',
-            'guests_count.required'    => 'لطفاً تعداد مهمانان را مشخص کنید.',
-        ]);
+        $messages = [
+            'check_in_date.required'  => 'لطفاً تاریخ ورود را انتخاب فرمایید.',
+            'check_out_date.required' => 'لطفاً تاریخ خروج را انتخاب فرمایید.',
+            'guests_count.required'   => 'لطفاً تعداد مهمانان را مشخص فرمایید.',
+            'notes.max'               => 'متن پیام به میزبان نمی‌تواند بیش از ۱۰۰۰ کاراکتر باشد.',
+        ];
+
+        $dynamicClientData = [];
+
+        foreach ($rawFields as $field) {
+            $fId = $field['id'] ?? '';
+            if (empty($fId) || in_array($fId, $excludedFieldIds, true)) {
+                continue;
+            }
+
+            $isRequired = !empty($field['client_auth']);
+            $fType = $field['type'] ?? 'text';
+
+            $ruleArr = [];
+            $ruleArr[] = $isRequired ? 'required' : 'nullable';
+
+            if ($fId === 'national_code') {
+                $ruleArr[] = 'string';
+                $ruleArr[] = 'regex:/^[0-9]{10}$/';
+                $messages[$fId . '.regex'] = 'کد ملی باید یک عدد ۱۰ رقمی معتبر باشد.';
+                $messages['guest_' . $fId . '.regex'] = 'کد ملی باید یک عدد ۱۰ رقمی معتبر باشد.';
+            } elseif ($fType === 'email' || $fId === 'email') {
+                $ruleArr[] = 'email:filter';
+                $ruleArr[] = 'max:255';
+                $messages[$fId . '.email'] = 'فرمت ایمیل وارد شده نامعتبر است.';
+                $messages['guest_' . $fId . '.email'] = 'فرمت ایمیل وارد شده نامعتبر است.';
+            } elseif ($fType === 'number') {
+                $ruleArr[] = 'numeric';
+                $messages[$fId . '.numeric'] = 'فیلد «' . ($field['label'] ?? $fId) . '» باید عددی باشد.';
+                $messages['guest_' . $fId . '.numeric'] = 'فیلد «' . ($field['label'] ?? $fId) . '» باید عددی باشد.';
+            } else {
+                $ruleArr[] = 'string';
+                $ruleArr[] = 'max:255';
+            }
+
+            $inputKey = $fId;
+            if (!$request->has($fId) && $request->has('guest_' . $fId)) {
+                $inputKey = 'guest_' . $fId;
+            }
+
+            $rules[$inputKey] = implode('|', $ruleArr);
+            $messages[$inputKey . '.required'] = 'تکمیل فیلد «' . ($field['label'] ?? $fId) . '» الزامی است.';
+
+            $dynamicClientData[$fId] = $request->input($inputKey);
+        }
+
+        // نام و نام خانوادگی در صورتی که در فرم‌ساز تعیین شده باشد
+        $fullNameField = collect($rawFields)->firstWhere('id', 'full_name');
+        if ($fullNameField && !empty($fullNameField['client_auth'])) {
+            $nameKey = $request->has('guest_full_name') ? 'guest_full_name' : 'full_name';
+            $rules[$nameKey] = 'required|string|min:3|max:190';
+            $messages[$nameKey . '.required'] = 'تکمیل نام و نام خانوادگی الزامی است.';
+        }
+
+        $request->validate($rules, $messages);
+
+        // همگام‌سازی و به‌روزرسانی اطلاعات کلاینت (شماره همراه احراز شده و غیرقابل تغییر است)
+        if ($client instanceof Client) {
+            $updates = [];
+            $meta = is_array($client->meta) ? $client->meta : [];
+
+            foreach ($dynamicClientData as $key => $val) {
+                if ($val === null || $key === 'phone') continue; // شماره همراه هرگز از فرم دستخوش تغییر نمی‌شود
+                if (in_array($key, ['full_name', 'email', 'national_code', 'username'], true)) {
+                    $updates[$key] = $val;
+                    if ($key === 'full_name') {
+                        $parts = explode(' ', trim($val), 2);
+                        $updates['first_name'] = $parts[0] ?? $val;
+                        $updates['last_name'] = $parts[1] ?? '';
+                    }
+                } else {
+                    $meta[$key] = $val;
+                }
+            }
+
+            if (!empty($updates)) {
+                $client->fill($updates);
+            }
+            $client->meta = $meta;
+            $client->save();
+        }
 
         try {
-            // ثبت رزرو توسط سرویس مرکزی
+            // ثبت رزرو توسط سرویس مرکزی با شماره همراه معتبر و قطعی کلاینت
+            $bookingData = $request->all();
+            $bookingData['guest_phone'] = $client->phone; // هویت کلاینت احراز شده و غیرقابل جعل
+
+            if (!empty($dynamicClientData['full_name'])) {
+                $bookingData['guest_full_name'] = $dynamicClientData['full_name'];
+            } elseif (!empty($client->full_name)) {
+                $bookingData['guest_full_name'] = $client->full_name;
+            }
+
+            if (!empty($dynamicClientData['national_code'])) {
+                $bookingData['guest_national_code'] = $dynamicClientData['national_code'];
+            } elseif (!empty($client->national_code)) {
+                $bookingData['guest_national_code'] = $client->national_code;
+            }
+
+            $bookingData['client_form_data'] = $dynamicClientData;
+
             $bookingService = app(RentalBookingService::class);
-            $booking = $bookingService->createBooking($property, $client, $request->all());
+            $booking = $bookingService->createBooking($property, $client, $bookingData);
 
             // پاک‌سازی پیش‌نویس از سشن
             session()->forget('rental_booking_draft');

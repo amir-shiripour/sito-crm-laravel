@@ -138,6 +138,7 @@ class SettingsController extends Controller
         $rental_map_circle_radius = PropertySetting::get('rental_map_circle_radius', 300);
 
         $rental_show_direct_call_btn = PropertySetting::get('rental_show_direct_call_btn', 'all');
+        $rental_default_cancellation_policy = PropertySetting::get('rental_default_cancellation_policy', '');
 
         // Hero Promotional Banners / Slides (اسلایدر و بنرهای تبلیغاتی)
         $rawHeroSlides = PropertySetting::get('rental_hero_slides');
@@ -259,6 +260,7 @@ class SettingsController extends Controller
             'rental_map_display_type',
             'rental_map_circle_radius',
             'rental_show_direct_call_btn',
+            'rental_default_cancellation_policy',
             'rental_hero_slides',
             'rental_hero_bg_image',
             'rental_hero_mobile_bg_image',
@@ -333,6 +335,7 @@ class SettingsController extends Controller
             'rental_map_display_type' => 'nullable|in:circle,exact,circle_then_exact',
             'rental_map_circle_radius' => 'nullable|integer|min:50|max:5000',
             'rental_show_direct_call_btn' => 'nullable|in:all,confirmed_booking,none',
+            'rental_default_cancellation_policy' => 'nullable|string',
             'rental_hero_slides' => 'nullable|array',
             'rental_hero_slides.*.id' => 'nullable|string|max:100',
             'rental_hero_slides.*.title' => 'nullable|string|max:255',
@@ -494,6 +497,7 @@ class SettingsController extends Controller
         PropertySetting::set('rental_map_circle_radius', (int) $request->input('rental_map_circle_radius', 300));
 
         PropertySetting::set('rental_show_direct_call_btn', $request->input('rental_show_direct_call_btn', 'all'));
+        PropertySetting::set('rental_default_cancellation_policy', $request->input('rental_default_cancellation_policy'));
 
         // Save Hero Promotional Banners / Slides (یکپارچه با ImageOptimizerService جهت بهینه‌سازی و تبدیل WebP)
         if ($request->has('rental_hero_slides') && is_array($request->rental_hero_slides)) {

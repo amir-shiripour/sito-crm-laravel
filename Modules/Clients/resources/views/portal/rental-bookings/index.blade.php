@@ -20,7 +20,7 @@
                     </a>
                     رزروهای اقامتگاهی من
                 </h1>
-                <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">مشاهده و پیگیری درخواست‌ها، سند رزرو اقامتگاه، وضعیت تأیید میزبان و پرداخت</p>
+                <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">مشاهده و پیگیری درخواست‌ها و رزروهای اقامتگاه، وضعیت تأیید میزبان و پرداخت</p>
             </div>
             <div>
                 <a href="{{ route('properties.index') }}" class="inline-flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition shadow-md shadow-indigo-600/20">
@@ -154,7 +154,7 @@
                                     {{ $badge['label'] ?? 'نامشخص' }}
                                 </span>
                                 <a href="{{ $showUrl }}" class="text-xs font-black text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1">
-                                    <span>مشاهده جزئیات و سند</span>
+                                    <span>مشاهده جزئیات رزرو</span>
                                     <svg class="w-3.5 h-3.5 rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
                                 </a>
                             </div>

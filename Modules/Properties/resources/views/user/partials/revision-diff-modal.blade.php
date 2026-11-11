@@ -218,14 +218,65 @@
                 this.rejectionReason = '';
             },
 
+            getOrCreateForm() {
+                let form = document.getElementById('revision-action-form');
+                if (!form) {
+                    form = document.createElement('form');
+                    form.id = 'revision-action-form';
+                    form.method = 'POST';
+                    form.style.display = 'none';
+
+                    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '{{ csrf_token() }}';
+                    const tokenInput = document.createElement('input');
+                    tokenInput.type = 'hidden';
+                    tokenInput.name = '_token';
+                    tokenInput.value = csrfToken;
+                    form.appendChild(tokenInput);
+
+                    const statusInput = document.createElement('input');
+                    statusInput.type = 'hidden';
+                    statusInput.name = 'approval_status';
+                    statusInput.id = 'revision-form-status';
+                    form.appendChild(statusInput);
+
+                    const reasonInput = document.createElement('input');
+                    reasonInput.type = 'hidden';
+                    reasonInput.name = 'rejection_reason';
+                    reasonInput.id = 'revision-form-reason';
+                    form.appendChild(reasonInput);
+
+                    document.body.appendChild(form);
+                }
+                return form;
+            },
+
             handleApproveAction() {
                 if (!confirm('آیا از تأیید این تغییرات و انتشار آن در سایت اطمینان دارید؟')) {
                     return;
                 }
-                const form = document.getElementById('revision-action-form');
+                const form = this.getOrCreateForm();
                 form.action = this.reviewUrl;
-                document.getElementById('revision-form-status').value = 'approved';
-                document.getElementById('revision-form-reason').value = '';
+
+                let statusInput = document.getElementById('revision-form-status');
+                if (!statusInput) {
+                    statusInput = document.createElement('input');
+                    statusInput.type = 'hidden';
+                    statusInput.name = 'approval_status';
+                    statusInput.id = 'revision-form-status';
+                    form.appendChild(statusInput);
+                }
+                statusInput.value = 'approved';
+
+                let reasonInput = document.getElementById('revision-form-reason');
+                if (!reasonInput) {
+                    reasonInput = document.createElement('input');
+                    reasonInput.type = 'hidden';
+                    reasonInput.name = 'rejection_reason';
+                    reasonInput.id = 'revision-form-reason';
+                    form.appendChild(reasonInput);
+                }
+                reasonInput.value = '';
+
                 form.submit();
             },
 
@@ -240,10 +291,29 @@
                     return;
                 }
 
-                const form = document.getElementById('revision-action-form');
+                const form = this.getOrCreateForm();
                 form.action = this.reviewUrl;
-                document.getElementById('revision-form-status').value = 'rejected';
-                document.getElementById('revision-form-reason').value = this.rejectionReason.trim();
+
+                let statusInput = document.getElementById('revision-form-status');
+                if (!statusInput) {
+                    statusInput = document.createElement('input');
+                    statusInput.type = 'hidden';
+                    statusInput.name = 'approval_status';
+                    statusInput.id = 'revision-form-status';
+                    form.appendChild(statusInput);
+                }
+                statusInput.value = 'rejected';
+
+                let reasonInput = document.getElementById('revision-form-reason');
+                if (!reasonInput) {
+                    reasonInput = document.createElement('input');
+                    reasonInput.type = 'hidden';
+                    reasonInput.name = 'rejection_reason';
+                    reasonInput.id = 'revision-form-reason';
+                    form.appendChild(reasonInput);
+                }
+                reasonInput.value = this.rejectionReason.trim();
+
                 form.submit();
             }
         };

@@ -96,6 +96,9 @@ class VisionStockSyncService
                 $targetWarehouse = Warehouse::where('vendor_id', $vendorId)->first();
             }
 
+            $selectedGroups = (array)($this->setting->selected_groups ?: []);
+            $hasGroupFilter = !empty($selectedGroups);
+
             foreach ($items as $item) {
                 if (!is_array($item)) {
                     continue;
@@ -103,6 +106,11 @@ class VisionStockSyncService
 
                 $goodCode = (string)($item['GoodCode'] ?? $item['Code'] ?? $item['good_code'] ?? '');
                 $qty = (float)($item['AllT'] ?? $item['Stock'] ?? $item['Qty'] ?? $item['stock'] ?? 0);
+                $groupCode = (string)($item['Gorohk'] ?? '');
+
+                if ($hasGroupFilter && !in_array($groupCode, $selectedGroups, true)) {
+                    continue;
+                }
 
                 if (empty($goodCode)) {
                     continue;

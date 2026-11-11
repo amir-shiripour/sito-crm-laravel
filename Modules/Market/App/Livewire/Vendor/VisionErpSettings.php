@@ -28,6 +28,17 @@ class VisionErpSettings extends Component
     public bool $auto_sync_stock = false;
     public bool $auto_dispatch_order = false;
 
+    // Layer 1: Scope, Category Whitelist & Price Mapping
+    public array $selected_groups = [];
+    public array $selected_subgroups = [];
+    public string $price_field = 'Pricef1';
+    public ?string $compare_price_field = 'PriceF';
+    public array $selected_warehouses = [];
+    public string $initial_product_status = 'draft';
+    public ?array $cached_metadata = null;
+    public string $groupSearch = '';
+    public bool $fetchingMetadata = false;
+
     // Status
     public ?string $last_sync_at = null;
     public ?string $last_sync_status = null;
@@ -76,6 +87,16 @@ class VisionErpSettings extends Component
             $this->default_customer_code = (string)$setting->default_customer_code;
             $this->auto_sync_stock = (bool)$setting->auto_sync_stock;
             $this->auto_dispatch_order = (bool)$setting->auto_dispatch_order;
+
+            // Layer 1 mappings
+            $this->selected_groups = (array)($setting->selected_groups ?: []);
+            $this->selected_subgroups = (array)($setting->selected_subgroups ?: []);
+            $this->price_field = (string)($setting->price_field ?: 'Pricef1');
+            $this->compare_price_field = $setting->compare_price_field ?: 'PriceF';
+            $this->selected_warehouses = (array)($setting->selected_warehouses ?: []);
+            $this->initial_product_status = (string)($setting->initial_product_status ?: 'draft');
+            $this->cached_metadata = $setting->cached_metadata;
+
             $this->last_sync_at = $setting->last_sync_at?->format('Y/m/d H:i');
             $this->last_sync_status = $setting->last_sync_status;
             $this->last_error_message = $setting->last_error_message;
@@ -95,6 +116,9 @@ class VisionErpSettings extends Component
             'default_visitor_code' => 'nullable|string|max:50',
             'default_warehouse_code' => 'nullable|string|max:50',
             'default_customer_code' => 'nullable|string|max:50',
+            'price_field' => 'nullable|string|max:30',
+            'compare_price_field' => 'nullable|string|max:30',
+            'initial_product_status' => 'required|in:draft,published',
         ]);
 
         $data = [
@@ -106,6 +130,12 @@ class VisionErpSettings extends Component
             'default_customer_code' => $this->default_customer_code,
             'auto_sync_stock' => $this->auto_sync_stock,
             'auto_dispatch_order' => $this->auto_dispatch_order,
+            'selected_groups' => array_values(array_unique($this->selected_groups)),
+            'selected_subgroups' => array_values(array_unique($this->selected_subgroups)),
+            'price_field' => $this->price_field ?: 'Pricef1',
+            'compare_price_field' => $this->compare_price_field ?: null,
+            'selected_warehouses' => $this->selected_warehouses,
+            'initial_product_status' => $this->initial_product_status ?: 'draft',
         ];
 
         if (!empty($this->ws_password)) {
@@ -120,7 +150,135 @@ class VisionErpSettings extends Component
             $data
         );
 
-        session()->flash('success', 'تنظیمات اتصال به وب‌سرویس ویژن با موفقیت ذخیره شد.');
+        session()->flash('success', 'تنظیمات و نگاشت‌های وب‌سرویس ویژن با موفقیت ذخیره شد.');
+        $this->loadSettings();
+    }
+
+    /**
+     * Fetch Layer 1 discovery metadata from Vision ERP (categories, subgroups, total count)
+     */
+    public function fetchDiscoveryMetadata(): void
+    {
+        $this->syncMessage = null;
+        $this->syncSuccess = null;
+
+        $setting = VendorVisionSetting::where('vendor_id', $this->vendorId)->first();
+        if (!$setting) {
+            $this->syncSuccess = false;
+            $this->syncMessage = 'ابتدا فرم اتصال را ذخیره کنید.';
+            return;
+        }
+
+        $catalogService = new VisionCatalogSyncService($setting);
+        $res = $catalogService->fetchDiscoveryMetadata();
+
+        $this->syncSuccess = $res['success'];
+        $this->syncMessage = $res['message'];
+
+        if ($res['success']) {
+            $this->cached_metadata = $res['data'];
+            $this->loadSettings();
+        }
+    }
+
+    /**
+     * Toggle a category group selection
+     */
+    public function toggleGroup(string $groupCode): void
+    {
+        $current = $this->selected_groups;
+        if (in_array($groupCode, $current, true)) {
+            $this->selected_groups = array_values(array_diff($current, [$groupCode]));
+        } else {
+            $current[] = $groupCode;
+            $this->selected_groups = array_values(array_unique($current));
+        }
+        $this->saveSettings();
+    }
+
+    /**
+     * Select all discovered groups
+     */
+    public function selectAllGroups(): void
+    {
+        $allGroups = $this->cached_metadata['groups'] ?? [];
+        $codes = [];
+        foreach ($allGroups as $g) {
+            if (!empty($g['CodeG'])) {
+                $codes[] = (string)$g['CodeG'];
+            }
+        }
+        $this->selected_groups = $codes;
+        $this->saveSettings();
+    }
+
+    /**
+     * Deselect all groups
+     */
+    public function deselectAllGroups(): void
+    {
+        $this->selected_groups = [];
+        $this->selected_subgroups = [];
+        $this->saveSettings();
+    }
+
+    /**
+     * Toggle a subgroup selection
+     */
+    public function toggleSubgroup(string $subCode, string $parentGroupCode): void
+    {
+        $current = $this->selected_subgroups;
+        if (in_array($subCode, $current, true)) {
+            $this->selected_subgroups = array_values(array_diff($current, [$subCode]));
+        } else {
+            $current[] = $subCode;
+            $this->selected_subgroups = array_values(array_unique($current));
+            // Ensure parent group is also active
+            if (!in_array($parentGroupCode, $this->selected_groups, true)) {
+                $this->selected_groups[] = $parentGroupCode;
+            }
+        }
+        $this->saveSettings();
+    }
+
+    /**
+     * Get filtered groups for UI search
+     */
+    public function getFilteredGroupsProperty(): array
+    {
+        $groups = $this->cached_metadata['groups'] ?? [];
+        if (empty($this->groupSearch)) {
+            return $groups;
+        }
+
+        $term = trim(mb_strtolower($this->groupSearch));
+        return array_values(array_filter($groups, function ($g) use ($term) {
+            $name = mb_strtolower($g['NameG'] ?? '');
+            $code = mb_strtolower((string)($g['CodeG'] ?? ''));
+            return str_contains($name, $term) || str_contains($code, $term);
+        }));
+    }
+
+    /**
+     * Sync catalog goods strictly respecting Layer 1 active groups
+     */
+    public function syncSelectedCatalog(): void
+    {
+        $this->syncMessage = null;
+        $this->syncSuccess = null;
+
+        $setting = VendorVisionSetting::where('vendor_id', $this->vendorId)->first();
+        if (!$setting || !$setting->is_active) {
+            $this->syncSuccess = false;
+            $this->syncMessage = 'اتصال وب‌سرویس ویژن فعال نیست یا ذخیره نشده است.';
+            return;
+        }
+
+        $catalogService = new VisionCatalogSyncService($setting);
+        $res = $catalogService->syncBaseData(3, 500, 1);
+
+        $this->syncSuccess = $res['success'];
+        $this->syncMessage = $res['message'];
         $this->loadSettings();
     }
 

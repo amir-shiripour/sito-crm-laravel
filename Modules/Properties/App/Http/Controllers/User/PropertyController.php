@@ -1061,15 +1061,28 @@ class PropertyController extends Controller
             ]);
 
             if ($revision) {
-                // انتقال وضعیت اقامتگاه به در انتظار بررسی مجدد
-                $property->approval_status = 'pending_review';
+                if ($mustStageForReview) {
+                    // انتقال وضعیت اقامتگاه به در انتظار بررسی مجدد در صورت ویرایش توسط میزبان
+                    $property->approval_status = 'pending_review';
+                } else {
+                    // برای مدیران، بازبینی به عنوان تاریخچه تغییرات مستقیماً تأییدشده ثبت می‌شود
+                    $revision->update([
+                        'status' => 'approved',
+                        'reviewer_id' => $user->id,
+                        'reviewed_at' => now(),
+                        'notes' => 'ثبت و اعمال مستقیم توسط ' . $user->name,
+                    ]);
+                }
             }
         }
 
         if ($mustStageForReview && $revision) {
             // در صورتی که ملک زنده است و کاربر میزبان است:
             // تغییرات در PropertyRevision ذخیره شده است. مقادیر زنده و دیتابیس عمومی تا زمان تأیید مدیر تغییر نمی‌کنند.
-            $property->save(); // فقط وضعیت approval_status ذخیره شود
+            \Modules\Properties\Entities\Property::where('id', $property->id)->update([
+                'approval_status' => 'pending_review',
+            ]);
+            $property->refresh();
         } else {
             // برای مدیران یا در زمان ثبت اولیه اقامتگاه (پیش از اولین تأیید):
             $property->save();
@@ -1103,8 +1116,12 @@ class PropertyController extends Controller
             }
         }
 
-        if ($isRentalOrHost) {
+        if ($mustStageForReview && $revision) {
             return back()->with('success', 'تغییرات اقامتگاه ثبت شد و پس از بررسی و تأیید مدیریت در سایت اعمال خواهد شد.');
+        }
+
+        if ($isRentalOrHost) {
+            return back()->with('success', 'تغییرات اقامتگاه با موفقیت ذخیره و در سایت اعمال شد.');
         }
 
         return back()->with('success', 'تغییرات ملک با موفقیت ذخیره شد.');

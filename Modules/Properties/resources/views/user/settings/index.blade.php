@@ -1476,7 +1476,7 @@
                         <div class="w-full sm:w-64">
                             <select name="rental_show_host_box" class="{{ $inputClass }} font-bold text-xs">
                                 <option value="all" {{ ($rental_show_host_box ?? 'all') === 'all' ? 'selected' : '' }}>نمایش عمومی (برای همه بازدیدکنندگان)</option>
-                                <option value="confirmed_booking" {{ ($rental_show_host_box ?? '') === 'confirmed_booking' ? 'selected' : '' }}>فقط پس از رزرو تأیید شده مسافر</option>
+                                <option value="confirmed_booking" {{ ($rental_show_host_box ?? '') === 'confirmed_booking' ? 'selected' : '' }}>فقط پس از پرداخت و قطعی شدن رزرو (تسویه)</option>
                                 <option value="none" {{ ($rental_show_host_box ?? '') === 'none' ? 'selected' : '' }}>عدم نمایش (مخفی کامل)</option>
                             </select>
                         </div>
@@ -1503,7 +1503,7 @@
                             <label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1">شماره تماس در کارت میزبان:</label>
                             <select name="rental_host_show_phone" class="{{ $inputClass }} py-1.5 text-[11px] font-bold">
                                 <option value="all" {{ ($rental_host_show_phone ?? '') === 'all' ? 'selected' : '' }}>نمایش عمومی</option>
-                                <option value="confirmed_booking" {{ ($rental_host_show_phone ?? 'confirmed_booking') === 'confirmed_booking' ? 'selected' : '' }}>فقط پس از تایید رزرو</option>
+                                <option value="confirmed_booking" {{ ($rental_host_show_phone ?? 'confirmed_booking') === 'confirmed_booking' ? 'selected' : '' }}>فقط پس از پرداخت و قطعی شدن رزرو (تسویه)</option>
                                 <option value="none" {{ ($rental_host_show_phone ?? '') === 'none' ? 'selected' : '' }}>عدم نمایش</option>
                             </select>
                         </div>
@@ -1523,10 +1523,10 @@
                             <label class="block text-xs font-bold text-gray-800 dark:text-gray-200">نمایش متن آدرس اقامتگاه</label>
                             <select name="rental_show_address" class="{{ $inputClass }} font-bold text-xs">
                                 <option value="all" {{ ($rental_show_address ?? 'all') === 'all' ? 'selected' : '' }}>نمایش عمومی آدرس برای همه</option>
-                                <option value="confirmed_booking" {{ ($rental_show_address ?? '') === 'confirmed_booking' ? 'selected' : '' }}>نمایش آدرس دقیق فقط پس از رزرو تأیید شده</option>
+                                <option value="confirmed_booking" {{ ($rental_show_address ?? '') === 'confirmed_booking' ? 'selected' : '' }}>نمایش آدرس دقیق فقط پس از پرداخت و قطعی شدن رزرو (تسویه)</option>
                                 <option value="none" {{ ($rental_show_address ?? '') === 'none' ? 'selected' : '' }}>عدم نمایش آدرس متنی</option>
                             </select>
-                            <span class="text-[10px] text-slate-500 dark:text-slate-400 block">در صورت انتخاب «پس از رزرو تأیید شده»، برای سایرین پیام راهنما نمایش می‌یابد.</span>
+                            <span class="text-[10px] text-slate-500 dark:text-slate-400 block">در صورت انتخاب «پس از پرداخت و قطعی شدن رزرو»، آدرس متنی تا زمان پرداخت صورت‌حساب مخفی خواهد ماند.</span>
                         </div>
 
                         {{-- نمایش کلی نقشه --}}
@@ -1534,7 +1534,7 @@
                             <label class="block text-xs font-bold text-gray-800 dark:text-gray-200">نمایش بخش نقشه تعاملی</label>
                             <select name="rental_show_map" class="{{ $inputClass }} font-bold text-xs">
                                 <option value="all" {{ ($rental_show_map ?? 'all') === 'all' ? 'selected' : '' }}>نمایش نقشه برای همه بازدیدکنندگان</option>
-                                <option value="confirmed_booking" {{ ($rental_show_map ?? '') === 'confirmed_booking' ? 'selected' : '' }}>نمایش نقشه فقط پس از رزرو تأیید شده</option>
+                                <option value="confirmed_booking" {{ ($rental_show_map ?? '') === 'confirmed_booking' ? 'selected' : '' }}>نمایش نقشه فقط پس از پرداخت و قطعی شدن رزرو (تسویه)</option>
                                 <option value="none" {{ ($rental_show_map ?? '') === 'none' ? 'selected' : '' }}>عدم نمایش بخش نقشه</option>
                             </select>
                             <span class="text-[10px] text-slate-500 dark:text-slate-400 block">کنترل فعال یا غیرفعال بودن نمایش کامپوننت نقشه در صفحه اقامتگاه.</span>
@@ -1549,7 +1549,7 @@
                                     نوع نمایش موقعیت روی نقشه:
                                 </label>
                                 <select name="rental_map_display_type" class="{{ $inputClass }} font-bold text-xs">
-                                    <option value="circle_then_exact" {{ ($rental_map_display_type ?? 'circle_then_exact') === 'circle_then_exact' ? 'selected' : '' }}>محدوده دایره قبل از رزرو ➔ نقطه دقیق بعد از تایید رزرو (پیش‌نهادی)</option>
+                                    <option value="circle_then_exact" {{ ($rental_map_display_type ?? 'circle_then_exact') === 'circle_then_exact' ? 'selected' : '' }}>محدوده دایره قبل از پرداخت ➔ نقطه دقیق بعد از پرداخت و قطعی شدن (پیش‌نهادی)</option>
                                     <option value="circle" {{ ($rental_map_display_type ?? '') === 'circle' ? 'selected' : '' }}>همیشه محدوده دایره تقریبی (حفظ کامل حریم خصوصی)</option>
                                     <option value="exact" {{ ($rental_map_display_type ?? '') === 'exact' ? 'selected' : '' }}>همیشه نقطه دقیق با پین / مارکر</option>
                                 </select>
@@ -1573,7 +1573,7 @@
                             </div>
                         </div>
                         <p class="text-[11px] text-slate-600 dark:text-slate-300 font-sans leading-relaxed">
-                            💡 در حالت <strong>«محدوده دایره قبل از رزرو ➔ نقطه دقیق بعد از تایید رزرو»</strong>، برای عموم کاربران یک دایره بنفش ملایم با شعاع تعیین‌شده رسم می‌شود و پس از آنکه رزرو مسافر تأیید شد (یا برای مدیران پلتفرم)، مارکر و پین دقیق آدرس اقامتگاه به نمایش درمی‌آید.
+                            💡 در حالت <strong>«محدوده دایره قبل از پرداخت ➔ نقطه دقیق بعد از پرداخت و قطعی شدن»</strong>، برای عموم کاربران یک دایره بنفش ملایم با شعاع تعیین‌شده رسم می‌شود و پس از آنکه صورت‌حساب رزرو توسط مسافر پرداخت و قطعی شد (یا برای مدیران پلتفرم)، مارکر و پین دقیق آدرس اقامتگاه به نمایش درمی‌آید.
                         </p>
                     </div>
                 </div>
@@ -1593,10 +1593,25 @@
                     <div class="w-full sm:w-64 shrink-0">
                         <select name="rental_show_direct_call_btn" class="{{ $inputClass }} font-bold text-xs">
                             <option value="all" {{ ($rental_show_direct_call_btn ?? 'all') === 'all' ? 'selected' : '' }}>نمایش عمومی برای همه</option>
-                            <option value="confirmed_booking" {{ ($rental_show_direct_call_btn ?? '') === 'confirmed_booking' ? 'selected' : '' }}>فقط پس از رزرو تأیید شده</option>
+                            <option value="confirmed_booking" {{ ($rental_show_direct_call_btn ?? '') === 'confirmed_booking' ? 'selected' : '' }}>فقط پس از پرداخت و قطعی شدن رزرو (تسویه)</option>
                             <option value="none" {{ ($rental_show_direct_call_btn ?? '') === 'none' ? 'selected' : '' }}>عدم نمایش (غیرفعال)</option>
                         </select>
                     </div>
+                </div>
+
+                {{-- ۴. شرایط و قوانین پیش‌فرض کنسلی و استرداد وجه --}}
+                <div class="p-4.5 rounded-2xl bg-gray-50/70 dark:bg-gray-900/40 border border-gray-200/70 dark:border-gray-700/60 space-y-3">
+                    <div class="flex items-center gap-2 pb-2 border-b border-gray-200/50 dark:border-gray-700/50">
+                        <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+                        <h3 class="text-xs font-black text-gray-900 dark:text-white">۴. شرایط و قوانین کنسلی و استرداد وجه</h3>
+                    </div>
+                    <p class="text-[11px] text-slate-500 dark:text-slate-400 font-sans leading-relaxed">
+                        در صورتی که برای یک اقامتگاه، شرایط و قوانین کنسلی اختصاصی ثبت نشده باشد، این متن در بخش جزئیات رزرو به مسافر نمایش داده خواهد شد. در صورت خالی بودن این فیلد و عدم ثبت در اقامتگاه، باکس توضیحات شرایط کنسلی به صورت خودکار مخفی می‌شود.
+                    </p>
+                    <textarea name="rental_default_cancellation_policy" 
+                              rows="3" 
+                              placeholder="متن پیش‌فرض شرایط کنسلی و استرداد وجه (اختیاری)..." 
+                              class="{{ $inputClass }} text-xs font-sans leading-relaxed">{{ old('rental_default_cancellation_policy', $rental_default_cancellation_policy ?? '') }}</textarea>
                 </div>
 
             </div>

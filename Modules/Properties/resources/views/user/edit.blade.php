@@ -167,10 +167,6 @@
                                 </a>
                             </div>
                         </div>
-
-                        @if(\Modules\Properties\Services\PropertyRevisionService::canManagePublication(auth()->user()))
-                            @include('properties::user.partials.revision-diff-modal')
-                        @endif
                     @endif
 
                     <div class="{{ $cardClass }}">
@@ -1070,6 +1066,10 @@
                 </div>
             </div>
         </div>
+
+        @if(\Modules\Properties\Services\PropertyRevisionService::canManagePublication(auth()->user()))
+            @include('properties::user.partials.revision-diff-modal')
+        @endif
 
     </div>
 
