@@ -29,16 +29,6 @@ class AppServiceProvider extends ServiceProvider
             $view->with('allCustomFields', CustomUserField::where('show_in_register', true)->get()->groupBy('role_name'));
 
         });
-        View::composer(
-            [
-                'market::web.index',
-                'market::web.category',
-                'market::web.product.show',
-                'layouts.web',
-                'themes.market.header',
-                'themes.market.footer',
-            ],
-            ThemeComposer::class
-        );
+        View::composer('*', ThemeComposer::class);
     }
 }

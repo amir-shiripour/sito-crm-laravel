@@ -104,7 +104,7 @@
         <div class="header">
             <div>
                 <div class="brand-title">{{ config('app.name', 'سامانه رزرواسیون اقامتگاه') }}</div>
-                <div style="font-size: 11px; color: #64748b; margin-top: 4px;">برگه رسمی تأییدیه و سند نهایی رزرو اقامتگاه</div>
+                <div style="font-size: 11px; color: #64748b; margin-top: 4px;">برگه رسمی تأییدیه نهایی رزرو اقامتگاه</div>
             </div>
             <div style="text-align: left;">
                 <div style="font-weight: 900; font-size: 14px;">کد رزرو: {{ $booking->booking_code }}</div>

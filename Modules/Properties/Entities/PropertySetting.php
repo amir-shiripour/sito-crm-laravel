@@ -50,4 +50,12 @@ class PropertySetting extends Model
     {
         return self::getCurrency() === 'rial' ? 'ریال' : 'تومان';
     }
+
+    /**
+     * دریافت تنظیمات و مرزهای جغرافیایی نقشه
+     */
+    public static function getMapBoundsConfig(): array
+    {
+        return \Modules\Properties\Services\MapBoundaryService::getBoundsConfig();
+    }
 }

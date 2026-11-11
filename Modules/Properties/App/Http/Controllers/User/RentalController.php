@@ -368,16 +368,16 @@ class RentalController extends Controller
         $isWizard = $request->input('wizard') == '1' || $request->query('wizard') == '1';
 
         if ($isWizard) {
-            $successMsg = (!$canManagePublication && !empty($dirtyConfig))
+            $successMsg = ($mustStageForReview && $revision)
                 ? 'تنظیمات و نرخ‌های اقامتگاه ثبت شد. لطفاً در مرحله بعد اطلاعات تکمیلی و مشخصات اتاق‌ها را تکمیل نمایید.'
                 : 'تنظیمات اقامتگاه با موفقیت ذخیره شد. لطفاً اطلاعات تکمیلی و مشخصات اتاق‌ها را تکمیل نمایید.';
 
             return redirect()->route('user.properties.details', $property)->with('success', $successMsg);
         }
 
-        $successMsg = (!$canManagePublication && !empty($dirtyConfig))
+        $successMsg = ($mustStageForReview && $revision)
             ? 'تغییرات نرخ و تنظیمات اقامتگاه ثبت شد و پس از بررسی و تایید مدیریت در سایت فعال خواهد شد.'
-            : 'تنظیمات و نرخ‌های اقامتگاه با موفقیت به‌روزرسانی شد.';
+            : 'تنظیمات و نرخ‌های اقامتگاه با موفقیت به‌روزرسانی و در سایت اعمال شد.';
 
         return redirect()->route('user.properties.rental.config', $property)->with('success', $successMsg);
     }
@@ -457,7 +457,7 @@ class RentalController extends Controller
                 'user_name' => $revision->user?->name ?? 'کاربر/میزبان',
                 'created_at_jalali' => \Morilog\Jalali\Jalalian::fromCarbon($revision->created_at)->format('Y/m/d H:i'),
                 'type' => $revision->type,
-                'changes_summary' => $revision->changes_summary,
+                'changes_summary' => \Modules\Properties\Services\PropertyRevisionService::formatSummaryForDisplay($revision),
             ]
         ]);
     }

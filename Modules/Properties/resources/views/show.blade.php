@@ -720,7 +720,13 @@
                 if (typeof jQuery === 'undefined' || !jQuery.fn) loadScript(baseUrl + '/js/jquery-3.2.1.min.js', 'js', loadEnv); else loadEnv();
             } else {
                 if (typeof L !== 'undefined') {
-                    const map = L.map('map').setView([lat, lng], 15);
+                    const mapBoundsConfig = @js(\Modules\Properties\Entities\PropertySetting::getMapBoundsConfig());
+                    const mapOptions = {
+                        maxBounds: mapBoundsConfig?.bounds || [[25.0, 44.0], [39.8, 63.5]],
+                        maxBoundsViscosity: 1.0,
+                        minZoom: mapBoundsConfig?.minZoom || 5,
+                    };
+                    const map = L.map('map', mapOptions).setView([lat, lng], 15);
                     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
                     L.marker([lat, lng], {icon: customMarkerIcon()}).addTo(map).bindPopup(popupHtml).openPopup();
                 }

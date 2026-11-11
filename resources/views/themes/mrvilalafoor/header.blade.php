@@ -53,17 +53,9 @@
 
             {{-- Desktop Navigation Links --}}
             <nav class="hidden md:flex items-center gap-1 mr-4">
-                <a href="{{ url('/') }}" class="px-3 py-2 rounded-xl text-xs font-bold text-zinc-700 dark:text-zinc-300 hover:text-[#007A5E] dark:hover:text-emerald-400 hover:bg-[#F7F8F9] dark:hover:bg-zinc-900 transition-colors">
-                    کاوش اقامتگاه‌ها
+                <a href="{{ route('properties.index') }}" class="px-3.5 py-2 rounded-xl text-xs font-bold {{ request()->routeIs('properties.*') ? 'text-[#007A5E] dark:text-emerald-400 bg-[#ECFDF5]/70 dark:bg-emerald-950/30' : 'text-zinc-700 dark:text-zinc-300 hover:text-[#007A5E] dark:hover:text-emerald-400 hover:bg-[#F7F8F9] dark:hover:bg-zinc-900' }} transition-colors">
+                    اقامتگاه‌ها
                 </a>
-                <a href="{{ route('properties.index') }}" class="px-3 py-2 rounded-xl text-xs font-medium text-zinc-600 dark:text-zinc-400 hover:text-[#007A5E] dark:hover:text-emerald-400 hover:bg-[#F7F8F9] dark:hover:bg-zinc-900 transition-colors">
-                    همه فایل‌ها
-                </a>
-                @if(\Illuminate\Support\Facades\Route::has('content.archive.default'))
-                    <a href="{{ route('content.archive.default') }}" class="px-3 py-2 rounded-xl text-xs font-medium text-zinc-600 dark:text-zinc-400 hover:text-[#007A5E] dark:hover:text-emerald-400 hover:bg-[#F7F8F9] dark:hover:bg-zinc-900 transition-colors">
-                        راهنمای سفر و وبلاگ
-                    </a>
-                @endif
             </nav>
         </div>
 
@@ -71,8 +63,8 @@
         <div class="flex items-center gap-2.5 sm:gap-3">
 
             {{-- Multi-Host Marketplace Call to Action (ثبت اقامتگاه / میزبان شوید) --}}
-            @if($rentalMultiHostEnabled && Route::has('user.properties.hosts.register'))
-                <a href="{{ $isHostRegistered ? route('user.properties.hosts.dashboard') : route('user.properties.hosts.register') }}" 
+            @if($rentalMultiHostEnabled)
+                <a href="{{ $isHostRegistered ? route('user.properties.hosts.dashboard') : url('/register') }}" 
                    class="hidden sm:inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-[#007A5E]/30 dark:border-emerald-500/30 bg-[#ECFDF5] dark:bg-emerald-950/40 hover:bg-[#007A5E]/10 dark:hover:bg-emerald-900/40 text-xs font-bold text-[#007A5E] dark:text-emerald-300 transition-colors">
                     <svg class="w-4 h-4 text-[#007A5E] dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
@@ -94,24 +86,30 @@
                 </svg>
             </button>
 
-            {{-- User Auth / Profile --}}
+            {{-- User Auth / Profile (پشتیبانی کامل از کاربران سیستم، ادمین و کلاینت‌ها) --}}
             @if(auth()->check())
+                @php
+                    $currentUser = auth()->user();
+                    $isSuperAdmin = ($currentUser->is_super_admin ?? false) || (method_exists($currentUser, 'hasRole') && ($currentUser->hasRole('super-admin') || $currentUser->hasRole('Super Admin')));
+                    $userDashboardUrl = $isSuperAdmin ? url('/admin') : url('/user');
+                    $userDashboardTitle = $isSuperAdmin ? 'پنل مدیریت کل' : 'پنل کاربری';
+                @endphp
                 <div class="relative" x-data="{ open: false }" @click.outside="open = false">
                     <button type="button" 
                             @click="open = !open" 
                             class="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-[#ECECEE] dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors">
                         <div class="w-7 h-7 rounded-lg bg-[#007A5E]/10 dark:bg-emerald-950/60 text-[#007A5E] dark:text-emerald-400 flex items-center justify-center font-bold text-xs">
-                            {{ mb_substr(auth()->user()->name ?? 'ک', 0, 1) }}
+                            {{ mb_substr($currentUser->name ?? 'ک', 0, 1) }}
                         </div>
-                        <span class="text-xs font-bold text-[#18181B] dark:text-zinc-200 hidden sm:inline max-w-[100px] truncate">
-                            {{ auth()->user()->name }}
+                        <span class="text-xs font-bold text-[#18181B] dark:text-zinc-200 hidden sm:inline max-w-[110px] truncate">
+                            {{ $currentUser->name }}
                         </span>
                         <svg class="w-3.5 h-3.5 text-zinc-400 transition-transform duration-200" :class="{ 'rotate-180': open }" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                         </svg>
                     </button>
 
-                    {{-- Dropdown Menu --}}
+                    {{-- Dropdown Menu for Users / Staff / Admin --}}
                     <div x-show="open" 
                          x-transition:enter="transition ease-out duration-150"
                          x-transition:enter-start="opacity-0 scale-95"
@@ -122,17 +120,17 @@
                          class="absolute left-0 mt-2 w-52 rounded-2xl bg-white dark:bg-zinc-900 border border-[#ECECEE] dark:border-zinc-800 shadow-xl py-2 z-50 text-right">
                         
                         <div class="px-4 py-2 border-b border-[#ECECEE] dark:border-zinc-800">
-                            <div class="text-xs font-bold text-[#18181B] dark:text-zinc-100">{{ auth()->user()->name }}</div>
-                            <div class="text-[11px] text-zinc-400 truncate mt-0.5">{{ auth()->user()->email ?? auth()->user()->phone }}</div>
+                            <div class="text-xs font-bold text-[#18181B] dark:text-zinc-100">{{ $currentUser->name }}</div>
+                            <div class="text-[11px] text-zinc-400 truncate mt-0.5">{{ $currentUser->email ?? $currentUser->phone }}</div>
                         </div>
 
-                        <a href="{{ route('user.dashboard') }}" class="flex items-center gap-2 px-4 py-2.5 text-xs text-zinc-700 dark:text-zinc-300 hover:bg-[#F7F8F9] dark:hover:bg-zinc-800 transition-colors">
+                        <a href="{{ $userDashboardUrl }}" class="flex items-center gap-2 px-4 py-2.5 text-xs text-zinc-700 dark:text-zinc-300 hover:bg-[#F7F8F9] dark:hover:bg-zinc-800 transition-colors font-medium">
                             <svg class="w-4 h-4 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
-                            <span>پنل کاربری</span>
+                            <span>{{ $userDashboardTitle }}</span>
                         </a>
 
-                        @if($rentalMultiHostEnabled && Route::has('user.properties.hosts.dashboard'))
-                            <a href="{{ $isHostRegistered ? route('user.properties.hosts.dashboard') : route('user.properties.hosts.register') }}" class="flex items-center gap-2 px-4 py-2.5 text-xs text-[#007A5E] dark:text-emerald-400 hover:bg-[#ECFDF5] dark:hover:bg-emerald-950/30 transition-colors font-bold">
+                        @if($rentalMultiHostEnabled)
+                            <a href="{{ $isHostRegistered ? route('user.properties.hosts.dashboard') : url('/register') }}" class="flex items-center gap-2 px-4 py-2.5 text-xs text-[#007A5E] dark:text-emerald-400 hover:bg-[#ECFDF5] dark:hover:bg-emerald-950/30 transition-colors font-bold">
                                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
                                 <span>{{ $isHostRegistered ? 'داشبورد میزبانان' : 'ثبت درخواست میزبانی' }}</span>
                             </a>
@@ -142,7 +140,7 @@
 
                         <form method="POST" action="{{ route('logout') }}">
                             @csrf
-                            <button type="submit" class="w-full flex items-center gap-2 px-4 py-2 text-xs text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors text-right">
+                            <button type="submit" class="w-full flex items-center gap-2 px-4 py-2 text-xs text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors text-right cursor-pointer">
                                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
                                 <span>خروج از حساب</span>
                             </button>
@@ -150,20 +148,65 @@
                     </div>
                 </div>
             @elseif(auth('client')->check())
+                @php
+                    $currentClient = auth('client')->user();
+                    $clientDisplayName = trim(($currentClient->first_name ?? '') . ' ' . ($currentClient->last_name ?? '')) ?: ($currentClient->full_name ?? ($currentClient->name ?? 'مسافر گرامی'));
+                @endphp
                 <div class="relative" x-data="{ open: false }" @click.outside="open = false">
                     <button type="button" 
                             @click="open = !open" 
                             class="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-[#ECECEE] dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors">
-                        <div class="w-7 h-7 rounded-lg bg-[#007A5E]/10 text-[#007A5E] flex items-center justify-center font-bold text-xs">
-                            {{ mb_substr(auth('client')->user()->first_name ?? 'م', 0, 1) }}
+                        <div class="w-7 h-7 rounded-lg bg-[#007A5E]/10 dark:bg-emerald-950/60 text-[#007A5E] dark:text-emerald-400 flex items-center justify-center font-bold text-xs">
+                            {{ mb_substr($clientDisplayName, 0, 1) }}
                         </div>
-                        <span class="text-xs font-bold text-[#18181B] dark:text-zinc-200 hidden sm:inline">
-                            {{ auth('client')->user()->full_name ?: 'مسافر گرامی' }}
+                        <span class="text-xs font-bold text-[#18181B] dark:text-zinc-200 hidden sm:inline max-w-[110px] truncate">
+                            {{ $clientDisplayName }}
                         </span>
+                        <svg class="w-3.5 h-3.5 text-zinc-400 transition-transform duration-200" :class="{ 'rotate-180': open }" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                        </svg>
                     </button>
+
+                    {{-- Dropdown Menu for Client --}}
+                    <div x-show="open" 
+                         x-transition:enter="transition ease-out duration-150"
+                         x-transition:enter-start="opacity-0 scale-95"
+                         x-transition:enter-end="opacity-100 scale-100"
+                         x-transition:leave="transition ease-in duration-100"
+                         x-transition:leave-start="opacity-100 scale-100"
+                         x-transition:leave-end="opacity-0 scale-95"
+                         class="absolute left-0 mt-2 w-52 rounded-2xl bg-white dark:bg-zinc-900 border border-[#ECECEE] dark:border-zinc-800 shadow-xl py-2 z-50 text-right">
+                        
+                        <div class="px-4 py-2 border-b border-[#ECECEE] dark:border-zinc-800">
+                            <div class="text-xs font-bold text-[#18181B] dark:text-zinc-100">{{ $clientDisplayName }}</div>
+                            <div class="text-[11px] text-zinc-400 truncate mt-0.5">{{ $currentClient->phone ?? $currentClient->email }}</div>
+                        </div>
+
+                        <a href="{{ url('/clients/dashboard') }}" class="flex items-center gap-2 px-4 py-2.5 text-xs text-zinc-700 dark:text-zinc-300 hover:bg-[#F7F8F9] dark:hover:bg-zinc-800 transition-colors font-medium">
+                            <svg class="w-4 h-4 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+                            <span>داشبورد من</span>
+                        </a>
+
+                        @if(Route::has('client.rental-bookings.index'))
+                            <a href="{{ route('client.rental-bookings.index') }}" class="flex items-center gap-2 px-4 py-2.5 text-xs text-zinc-700 dark:text-zinc-300 hover:bg-[#F7F8F9] dark:hover:bg-zinc-800 transition-colors font-medium">
+                                <svg class="w-4 h-4 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                                <span>رزروها و سفرهای من</span>
+                            </a>
+                        @endif
+
+                        <div class="border-t border-[#ECECEE] dark:border-zinc-800 my-1"></div>
+
+                        <form method="POST" action="{{ route('client.logout') }}">
+                            @csrf
+                            <button type="submit" class="w-full flex items-center gap-2 px-4 py-2 text-xs text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors text-right cursor-pointer">
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+                                <span>خروج از حساب</span>
+                            </button>
+                        </form>
+                    </div>
                 </div>
             @else
-                <a href="{{ route('login') }}" 
+                <a href="{{ url('/clients/dashboard') }}" 
                    class="px-4 py-2 rounded-xl border border-[#ECECEE] dark:border-zinc-800 hover:border-[#18181B] dark:hover:border-zinc-600 bg-white dark:bg-zinc-900 text-xs font-bold text-[#18181B] dark:text-zinc-100 transition-colors shadow-sm inline-flex items-center">
                     ورود / ثبت‌نام
                 </a>

@@ -578,7 +578,15 @@
                 return;
             }
 
-            const mapInstance = L.map('map').setView([35.6892, 51.3890], 12);
+            const mapBoundsConfig = @js(\Modules\Properties\Entities\PropertySetting::getMapBoundsConfig());
+            const mapOptions = {
+                maxBounds: mapBoundsConfig?.bounds || [[25.0, 44.0], [39.8, 63.5]],
+                maxBoundsViscosity: 1.0,
+                minZoom: mapBoundsConfig?.minZoom || 5,
+            };
+            const center = mapBoundsConfig?.center || [32.4279, 53.6880];
+            const zoom = mapBoundsConfig?.zoom || 6;
+            const mapInstance = L.map('map', mapOptions).setView(center, zoom);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
             }).addTo(mapInstance);

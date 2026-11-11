@@ -7,6 +7,8 @@ use Modules\Settings\Entities\Setting;
 
 class ThemeComposer
 {
+    private static ?array $cachedPalette = null;
+
     /**
      * دیکشنری رنگ‌های Tailwind و کد Hex آن‌ها برای المان‌های داینامیک
      */
@@ -34,9 +36,9 @@ class ThemeComposer
     /**
      * متد جادویی تولید پالت کامل Tailwind بر اساس یک نام رنگ
      */
-    private function generatePalette($colorName)
+    public function generatePalette($colorName)
     {
-        $hex = $this->colorHexMap[$colorName] ?? '#4f46e5';
+        $hex = $this->colorHexMap[$colorName] ?? '#10b981';
         $secondary = $this->getSecondaryColor($colorName);
 
         return [
@@ -45,7 +47,7 @@ class ThemeComposer
             'bg' => "bg-{$colorName}-600",
             'bg_hover' => "hover:bg-{$colorName}-700",
             'bg_light' => "bg-{$colorName}-50",
-            'bg_light_dark' => "dark:bg-{$colorName}-900/30",
+            'bg_light_dark' => "dark:bg-{$colorName}-950/40",
             'border_hover' => "hover:border-{$colorName}-500/50",
             'border' => "border-{$colorName}-600",
             'ring' => "focus:ring-{$colorName}-500",
@@ -60,7 +62,7 @@ class ThemeComposer
             'blob_2' => "bg-{$secondary}-500/10 dark:bg-{$secondary}-500/20",
             'bullet' => "bg-{$colorName}-600",
             'hex' => $hex,
-            'name' => $colorName // برای استفاده در منطق‌های خاص
+            'name' => $colorName
         ];
     }
 
@@ -69,37 +71,59 @@ class ThemeComposer
      */
     public function compose(View $view)
     {
-        $globalSettings = [];
-        if (file_exists(storage_path('app/installed.flag'))) {
-            try {
-                if (\Illuminate\Support\Facades\Schema::hasTable('settings')) {
-                    $globalSettings = Setting::pluck('value', 'key')->toArray();
+        if (static::$cachedPalette === null) {
+            $globalSettings = [];
+            if (file_exists(storage_path('app/installed.flag'))) {
+                try {
+                    if (\Illuminate\Support\Facades\Schema::hasTable('settings')) {
+                        $globalSettings = Setting::pluck('value', 'key')->toArray();
+                    }
+                } catch (\Throwable $e) {
+                    $globalSettings = [];
                 }
-            } catch (\Throwable $e) {
-                $globalSettings = [];
             }
+
+            $appTheme = $globalSettings['app_theme'] ?? 'default';
+            $themeChain = [];
+            try {
+                if (class_exists(\App\Services\ThemeManager::class)) {
+                    $themeChain = app(\App\Services\ThemeManager::class)->getThemeChain();
+                    if (!empty($themeChain[0])) {
+                        $appTheme = $themeChain[0];
+                    }
+                }
+            } catch (\Throwable $e) {}
+
+            $defaultThemeColors = [
+                'default' => 'indigo',
+                'market' => 'orange',
+                'booking' => 'teal',
+                'properties' => 'emerald',
+                'mrvilalafoor' => 'emerald',
+                'fieldservice' => 'indigo'
+            ];
+
+            $customColors = isset($globalSettings['theme_colors'])
+                ? (is_string($globalSettings['theme_colors']) ? json_decode($globalSettings['theme_colors'], true) : $globalSettings['theme_colors'])
+                : [];
+
+            $activeColorName = $customColors[$appTheme] ?? null;
+            if (!$activeColorName && !empty($themeChain)) {
+                foreach ($themeChain as $chainTheme) {
+                    if (!empty($customColors[$chainTheme])) {
+                        $activeColorName = $customColors[$chainTheme];
+                        break;
+                    }
+                }
+            }
+            if (!$activeColorName) {
+                $activeColorName = $defaultThemeColors[$appTheme] ?? 'emerald';
+            }
+
+            static::$cachedPalette = $this->generatePalette($activeColorName);
         }
 
-        $appTheme = $globalSettings['app_theme'] ?? 'default';
-
-        // دیکشنری رنگ‌های پیش‌فرض برای هر قالب (در صورتی که کاربر شخصی‌سازی نکرده باشد)
-        $defaultThemeColors = [
-            'default' => 'indigo',
-            'market' => 'orange',
-            'booking' => 'teal',
-            'properties' => 'blue',
-            'fieldservice' => 'indigo'
-        ];
-
-        // 💡 دریافت مقادیر رنگی سفارشی که مدیر از پنل تنظیم کرده است (حالا به صورت آرایه برای هر قالب جداست)
-        $customColors = isset($globalSettings['theme_colors'])
-            ? json_decode($globalSettings['theme_colors'], true)
-            : [];
-
-        // رنگ نهایی برای قالبِ در حال اجرا را پیدا می‌کنیم
-        $activeColorName = $customColors[$appTheme] ?? $defaultThemeColors[$appTheme] ?? 'indigo';
-
-        // پالت را بر اساس رنگ تولید کرده و به ویو می‌فرستیم
-        $view->with('t', $this->generatePalette($activeColorName));
+        $view->with('t', static::$cachedPalette);
     }
 }
+

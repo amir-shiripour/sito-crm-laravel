@@ -71,6 +71,16 @@ class PropertyRevisionService
             'province_id' => 'استان',
             'neighborhood' => 'محله / منطقه',
             'price' => 'قیمت پایه / هر شب',
+            'host_id' => 'میزبان اقامتگاه',
+            'owner_id' => 'مالک اقامتگاه',
+            'agent_id' => 'کارشناس / مشاور مسئول',
+            'building_id' => 'مجتمع / ساختمان',
+            'min_price' => 'حداقل قیمت',
+            'deposit_price' => 'مبلغ رهن / ودیعه',
+            'rent_price' => 'مبلغ اجاره ماهیانه',
+            'advance_price' => 'مبلغ بیعانه / پیش‌پرداخت',
+            'is_special' => 'اقامتگاه ویژه / برگزیده',
+            'show_on_site' => 'وضعیت نمایش در سایت',
         ];
 
         foreach ($dirtyAttributes as $key => $newValue) {
@@ -104,6 +114,70 @@ class PropertyRevisionService
                 $currency = PropertySetting::get('currency', 'toman') === 'toman' ? 'تومان' : 'ریال';
                 $oldValue = $oldValue ? (number_format((float)$oldValue) . ' ' . $currency) : '—';
                 $newValue = $newValue ? (number_format((float)$newValue) . ' ' . $currency) : '—';
+            } elseif ($key === 'host_id') {
+                $formatHost = function ($hostId) {
+                    if (!$hostId) {
+                        return 'بدون میزبان (مدیریت مستقیم توسط پلتفرم)';
+                    }
+                    $h = \Modules\Properties\Entities\PropertyHost::withTrashed()->with('user')->find($hostId);
+                    if (!$h) {
+                        return 'میزبان نامشخص (کد ' . $hostId . ')';
+                    }
+                    $name = $h->display_name ?: ($h->user?->name ?: ('میزبان کد ' . $h->id));
+                    $phone = $h->phone ? " ({$h->phone})" : '';
+                    return $name . $phone;
+                };
+                $oldValue = $formatHost($oldValue);
+                $newValue = $formatHost($newValue);
+            } elseif ($key === 'owner_id') {
+                $formatOwner = function ($ownerId) {
+                    if (!$ownerId) {
+                        return '—';
+                    }
+                    $o = \Modules\Properties\Entities\PropertyOwner::withTrashed()->find($ownerId);
+                    if (!$o) {
+                        return 'مالک کد ' . $ownerId;
+                    }
+                    $name = trim(($o->first_name ?? '') . ' ' . ($o->last_name ?? ''));
+                    $phone = $o->phone ? " ({$o->phone})" : '';
+                    return ($name ?: ('مالک کد ' . $o->id)) . $phone;
+                };
+                $oldValue = $formatOwner($oldValue);
+                $newValue = $formatOwner($newValue);
+            } elseif ($key === 'agent_id') {
+                $formatAgent = function ($agentId) {
+                    if (!$agentId) return 'بدون کارشناس مسئول';
+                    $agent = User::find($agentId);
+                    return $agent ? $agent->name : ('کارشناس کد ' . $agentId);
+                };
+                $oldValue = $formatAgent($oldValue);
+                $newValue = $formatAgent($newValue);
+            } elseif ($key === 'category_id') {
+                $formatCategory = function ($catId) {
+                    if (!$catId) return '—';
+                    $cat = \Modules\Properties\Entities\PropertyCategory::find($catId);
+                    return $cat ? $cat->name : ('دسته‌بندی کد ' . $catId);
+                };
+                $oldValue = $formatCategory($oldValue);
+                $newValue = $formatCategory($newValue);
+            } elseif ($key === 'building_id') {
+                $formatBuilding = function ($bId) {
+                    if (!$bId) return '—';
+                    $b = \Modules\Properties\Entities\PropertyBuilding::find($bId);
+                    return $b ? $b->name : ('مجتمع کد ' . $bId);
+                };
+                $oldValue = $formatBuilding($oldValue);
+                $newValue = $formatBuilding($newValue);
+            } elseif (in_array($key, ['min_price', 'deposit_price', 'rent_price', 'advance_price'])) {
+                $currency = PropertySetting::get('currency', 'toman') === 'toman' ? 'تومان' : 'ریال';
+                $oldValue = (is_numeric($oldValue) && (float)$oldValue > 0) ? (number_format((float)$oldValue) . ' ' . $currency) : ((is_numeric($oldValue) && (float)$oldValue == 0) ? 'توافقی' : '—');
+                $newValue = (is_numeric($newValue) && (float)$newValue > 0) ? (number_format((float)$newValue) . ' ' . $currency) : ((is_numeric($newValue) && (float)$newValue == 0) ? 'توافقی' : '—');
+            } elseif ($key === 'is_special') {
+                $oldValue = $oldValue ? 'اقامتگاه ویژه / برگزیده' : 'عادی';
+                $newValue = $newValue ? 'اقامتگاه ویژه / برگزیده' : 'عادی';
+            } elseif ($key === 'show_on_site') {
+                $oldValue = $oldValue ? 'نمایش عمومی در سایت' : 'عدم نمایش در سایت';
+                $newValue = $newValue ? 'نمایش عمومی در سایت' : 'عدم نمایش در سایت';
             } elseif ($key === 'property_type') {
                 $rentalTypes = Property::getRentalPropertyTypes();
                 $typesMap = [
@@ -297,19 +371,27 @@ class PropertyRevisionService
             return null;
         }
 
+        $canManage = self::canManagePublication($user);
+        $status = $canManage ? 'approved' : 'pending';
+
         $revision = PropertyRevision::create([
             'property_id' => $property->id,
             'user_id' => $user->id,
+            'reviewer_id' => $canManage ? $user->id : null,
+            'reviewed_at' => $canManage ? now() : null,
             'type' => 'property_update',
-            'status' => 'pending',
+            'status' => $status,
             'old_data' => $oldData,
             'new_data' => $newData,
             'changes_summary' => $summary,
+            'notes' => $canManage ? ('ثبت و اعمال مستقیم توسط مدیر ' . $user->name) : null,
         ]);
 
-        $property->update([
-            'approval_status' => 'pending_review',
-        ]);
+        if (!$canManage) {
+            $property->update([
+                'approval_status' => 'pending_review',
+            ]);
+        }
 
         return $revision;
     }
@@ -531,19 +613,27 @@ class PropertyRevisionService
             return null;
         }
 
+        $canManage = self::canManagePublication($user);
+        $status = $canManage ? 'approved' : 'pending';
+
         $revision = PropertyRevision::create([
             'property_id' => $property->id,
             'user_id' => $user->id,
+            'reviewer_id' => $canManage ? $user->id : null,
+            'reviewed_at' => $canManage ? now() : null,
             'type' => 'rental_config_update',
-            'status' => 'pending',
+            'status' => $status,
             'old_data' => $oldData,
             'new_data' => $newData,
             'changes_summary' => $summary,
+            'notes' => $canManage ? ('ثبت و اعمال مستقیم توسط مدیر ' . $user->name) : null,
         ]);
 
-        $property->update([
-            'approval_status' => 'pending_review',
-        ]);
+        if (!$canManage) {
+            $property->update([
+                'approval_status' => 'pending_review',
+            ]);
+        }
 
         return $revision;
     }
@@ -639,6 +729,14 @@ class PropertyRevisionService
 
                 if (!empty($propertyAttributes)) {
                     $property->fill($propertyAttributes);
+
+                    // در صورت تغییر یا انتساب میزبان، چنانچه ملک مالک اختصاصی نداشته باشد و میزبان مالک متصل داشته باشد
+                    if (isset($propertyAttributes['host_id']) && $propertyAttributes['host_id']) {
+                        $newHost = \Modules\Properties\Entities\PropertyHost::find($propertyAttributes['host_id']);
+                        if ($newHost && $newHost->owner_id && empty($property->owner_id)) {
+                            $property->owner_id = $newHost->owner_id;
+                        }
+                    }
                 }
 
                 // اعمال ویژگی‌ها یا امکانات در صورت وجود
@@ -752,5 +850,132 @@ class PropertyRevisionService
         }
 
         return $value;
+    }
+
+    /**
+     * فرمت‌بندی هوشمند و ترجمه شناسه‌ها برای نمایش در مدال مقایسه (Diff)
+     */
+    public static function formatSummaryForDisplay(PropertyRevision $revision): array
+    {
+        $summary = is_array($revision->changes_summary) ? $revision->changes_summary : [];
+        $oldData = is_array($revision->old_data) ? $revision->old_data : [];
+        $newData = is_array($revision->new_data) ? $revision->new_data : [];
+
+        $fieldLabels = [
+            'host_id' => 'میزبان اقامتگاه',
+            'owner_id' => 'مالک اقامتگاه',
+            'agent_id' => 'کارشناس / مشاور مسئول',
+            'category_id' => 'دسته‌بندی',
+            'building_id' => 'مجتمع / ساختمان',
+            'min_price' => 'حداقل قیمت',
+            'deposit_price' => 'مبلغ رهن / ودیعه',
+            'rent_price' => 'مبلغ اجاره ماهیانه',
+            'advance_price' => 'مبلغ بیعانه / پیش‌پرداخت',
+            'is_special' => 'اقامتگاه ویژه / برگزیده',
+            'show_on_site' => 'وضعیت نمایش در سایت',
+            'title' => 'عنوان اقامتگاه',
+            'description' => 'توضیحات اقامتگاه',
+            'price' => 'قیمت پایه / هر شب',
+            'area' => 'متراژ اقامتگاه',
+        ];
+
+        $formatHost = function ($hostId) {
+            if (!$hostId || $hostId === '—' || $hostId === '') {
+                return 'بدون میزبان (مدیریت مستقیم توسط پلتفرم)';
+            }
+            if (is_numeric($hostId)) {
+                $h = \Modules\Properties\Entities\PropertyHost::withTrashed()->with('user')->find($hostId);
+                if ($h) {
+                    $name = $h->display_name ?: ($h->user?->name ?: ('میزبان کد ' . $h->id));
+                    $phone = $h->phone ? " ({$h->phone})" : '';
+                    return $name . $phone;
+                }
+                return 'میزبان کد ' . $hostId;
+            }
+            return $hostId;
+        };
+
+        $formatOwner = function ($ownerId) {
+            if (!$ownerId || $ownerId === '—' || $ownerId === '') return '—';
+            if (is_numeric($ownerId)) {
+                $o = \Modules\Properties\Entities\PropertyOwner::withTrashed()->find($ownerId);
+                if ($o) {
+                    $name = trim(($o->first_name ?? '') . ' ' . ($o->last_name ?? ''));
+                    $phone = $o->phone ? " ({$o->phone})" : '';
+                    return ($name ?: ('مالک کد ' . $o->id)) . $phone;
+                }
+                return 'مالک کد ' . $ownerId;
+            }
+            return $ownerId;
+        };
+
+        $formatPrice = function ($val) {
+            if (is_numeric($val)) {
+                $num = (float)$val;
+                if ($num == 0) return 'توافقی';
+                $currency = PropertySetting::get('currency', 'toman') === 'toman' ? 'تومان' : 'ریال';
+                return number_format($num) . ' ' . $currency;
+            }
+            return $val ?: '—';
+        };
+
+        $formatted = [];
+        foreach ($summary as $item) {
+            $field = $item['field'] ?? '';
+            $label = $item['label'] ?? '';
+            $oldVal = $item['old'] ?? '—';
+            $newVal = $item['new'] ?? '—';
+
+            // بهبود عنوان برچسب در صورت انگلیسی بودن یا عدم تطابق
+            if (isset($fieldLabels[$field]) && ($label === $field || empty($label))) {
+                $item['label'] = $fieldLabels[$field];
+            }
+
+            if ($field === 'host_id') {
+                $item['label'] = 'میزبان اقامتگاه';
+                $rawOld = array_key_exists('host_id', $oldData) ? $oldData['host_id'] : $oldVal;
+                $rawNew = array_key_exists('host_id', $newData) ? $newData['host_id'] : $newVal;
+                $item['old'] = $formatHost($rawOld);
+                $item['new'] = $formatHost($rawNew);
+            } elseif ($field === 'owner_id') {
+                $item['label'] = 'مالک اقامتگاه';
+                $rawOld = array_key_exists('owner_id', $oldData) ? $oldData['owner_id'] : $oldVal;
+                $rawNew = array_key_exists('owner_id', $newData) ? $newData['owner_id'] : $newVal;
+                $item['old'] = $formatOwner($rawOld);
+                $item['new'] = $formatOwner($rawNew);
+            } elseif (in_array($field, ['min_price', 'deposit_price', 'rent_price', 'advance_price'])) {
+                if (isset($fieldLabels[$field])) {
+                    $item['label'] = $fieldLabels[$field];
+                }
+                $rawOld = array_key_exists($field, $oldData) ? $oldData[$field] : $oldVal;
+                $rawNew = array_key_exists($field, $newData) ? $newData[$field] : $newVal;
+                $item['old'] = $formatPrice($rawOld);
+                $item['new'] = $formatPrice($rawNew);
+            } elseif ($field === 'category_id') {
+                $item['label'] = 'دسته‌بندی';
+                if (is_numeric($oldVal)) {
+                    $c = \Modules\Properties\Entities\PropertyCategory::find($oldVal);
+                    $item['old'] = $c ? $c->name : $oldVal;
+                }
+                if (is_numeric($newVal)) {
+                    $c = \Modules\Properties\Entities\PropertyCategory::find($newVal);
+                    $item['new'] = $c ? $c->name : $newVal;
+                }
+            } elseif ($field === 'agent_id') {
+                $item['label'] = 'کارشناس / مشاور مسئول';
+                if (is_numeric($oldVal)) {
+                    $u = User::find($oldVal);
+                    $item['old'] = $u ? $u->name : $oldVal;
+                }
+                if (is_numeric($newVal)) {
+                    $u = User::find($newVal);
+                    $item['new'] = $u ? $u->name : $newVal;
+                }
+            }
+
+            $formatted[] = $item;
+        }
+
+        return $formatted;
     }
 }

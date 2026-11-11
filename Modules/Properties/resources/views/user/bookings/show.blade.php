@@ -204,10 +204,10 @@
                 </div>
             </div>
 
-            @if($booking->guest_notes)
+            @if(!empty($booking->notes) || !empty($booking->guest_notes))
                 <div class="bg-white dark:bg-gray-800 rounded-2xl p-4 border border-gray-100 dark:border-gray-700 text-xs font-bold space-y-1">
-                    <span class="text-gray-400 block">یادداشت ثبت شده توسط مهمان:</span>
-                    <p class="text-gray-700 dark:text-gray-300 leading-relaxed">{{ $booking->guest_notes }}</p>
+                    <span class="text-gray-400 block">پیام و یادداشت ثبت شده توسط مهمان:</span>
+                    <p class="text-gray-700 dark:text-gray-300 leading-relaxed font-sans whitespace-pre-line">{{ $booking->notes ?: $booking->guest_notes }}</p>
                 </div>
             @endif
 

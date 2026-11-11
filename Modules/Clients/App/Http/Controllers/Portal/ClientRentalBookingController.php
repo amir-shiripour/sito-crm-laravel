@@ -101,7 +101,7 @@ class ClientRentalBookingController extends Controller
     }
 
     /**
-     * مشاهده جزئیات و سند تأییدیه رزرو
+     * مشاهده جزئیات رزرو
      */
     public function show(PropertyRentalBooking $booking)
     {
@@ -182,14 +182,32 @@ class ClientRentalBookingController extends Controller
             ], $bankAccounts)),
         ];
 
-        // قوانین کنسلی اقامتگاه
+        // قوانین کنسلی اقامتگاه: فقط در صورتی که متن اختصاصی برای ملک یا در تنظیمات کل سیستم ثبت شده باشد
         $rentalConfig = $booking->property?->rentalConfig;
-        $cancellationPolicy = $rentalConfig?->cancellation_policy ?? 'moderate';
-        $cancellationRulesText = match($cancellationPolicy) {
-            'flexible' => 'کنسلی تا ۴۸ ساعت قبل از تاریخ ورود رایگان است و پس از آن مبلغ شب اول کسر می‌گردد.',
-            'strict'   => 'کنسلی تا ۵ روز قبل از ورود با کسر ۲۰٪ و پس از آن با کسر ۵۰٪ مبلغ انجام خواهد شد.',
-            default    => 'کنسلی تا ۷۲ ساعت قبل از موعد ورود بدون جریمه بوده و کمتر از آن با کسر هزینه شب اول امکان‌پذیر است.',
-        };
+        $propertyCancellation = trim($rentalConfig?->cancellation_policy ?? '');
+        $globalCancellation = trim(PropertySetting::get('rental_default_cancellation_policy', ''));
+        $cancellationRulesText = !empty($propertyCancellation) ? $propertyCancellation : (!empty($globalCancellation) ? $globalCancellation : null);
+
+        // تنظیمات حریم خصوصی و نمایش جزئیات اقامتگاه (/user/settings/properties#rentals)
+        $rentalDisplaySettings = [
+            'show_host_box'        => PropertySetting::get('rental_show_host_box', 'all'),
+            'host_show_avatar'     => (bool) PropertySetting::get('rental_host_show_avatar', 1),
+            'host_show_badge'      => (bool) PropertySetting::get('rental_host_show_badge', 1),
+            'host_show_about'      => (bool) PropertySetting::get('rental_host_show_about', 1),
+            'host_show_phone'      => PropertySetting::get('rental_host_show_phone', 'confirmed_booking'),
+            'show_address'         => PropertySetting::get('rental_show_address', 'all'),
+            'show_map'             => PropertySetting::get('rental_show_map', 'all'),
+            'map_display_type'     => PropertySetting::get('rental_map_display_type', 'circle_then_exact'),
+            'map_circle_radius'    => (int) PropertySetting::get('rental_map_circle_radius', 300),
+            'show_direct_call_btn' => PropertySetting::get('rental_show_direct_call_btn', 'all'),
+        ];
+
+        // استخراج ساعات ورود و خروج بدون ثانیه (HH:MM)
+        $rawCheckInTime = $rentalConfig?->check_in_time;
+        $checkInTime = $rawCheckInTime ? substr($rawCheckInTime, 0, 5) : '۱۴:۰۰';
+
+        $rawCheckOutTime = $rentalConfig?->check_out_time;
+        $checkOutTime = $rawCheckOutTime ? substr($rawCheckOutTime, 0, 5) : '۱۲:۰۰';
 
         return view('clients::portal.rental-bookings.show', compact(
             'booking',
@@ -199,12 +217,15 @@ class ClientRentalBookingController extends Controller
             'paymentSubItems',
             'onlineGateways',
             'bankAccounts',
-            'cancellationRulesText'
+            'cancellationRulesText',
+            'rentalDisplaySettings',
+            'checkInTime',
+            'checkOutTime'
         ));
     }
 
     /**
-     * چاپ سند و تأییدیه رسمی رزرو اقامتگاه
+     * چاپ تأییدیه رسمی رزرو اقامتگاه
      */
     public function print(PropertyRentalBooking $booking)
     {
