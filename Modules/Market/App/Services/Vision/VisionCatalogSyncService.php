@@ -733,6 +733,45 @@ class VisionCatalogSyncService
                 );
 
             } else {
+                // Ensure brand_id and category_id are resolved (required by market_master_products schema)
+                if (!$brandId) {
+                    $fallbackBrand = Brand::firstOrCreate(
+                        ['vision_code' => $rootGroupCode ?: 'GEN'],
+                        [
+                            'name' => $rootGroupCode ? ('گروه ' . $rootGroupCode) : 'عمومی',
+                            'slug' => 'vision-brand-' . strtolower($rootGroupCode ?: 'gen'),
+                            'code_prefix' => (Brand::max('code_prefix') ?? 2999) + 1,
+                            'is_active' => true,
+                        ]
+                    );
+                    $brandId = $fallbackBrand->id;
+                    if ($rootGroupCode) {
+                        $brandsByVision->put($rootGroupCode, $fallbackBrand);
+                    }
+                }
+
+                if (!$categoryId) {
+                    $existingBrandCat = Category::where('brand_id', $brandId)->first();
+                    if ($existingBrandCat) {
+                        $categoryId = $existingBrandCat->id;
+                    } else {
+                        $fallbackCat = Category::firstOrCreate(
+                            ['vision_code' => $groupCode ?: ('GEN-' . $brandId)],
+                            [
+                                'name' => 'عمومی',
+                                'slug' => 'vision-cat-' . strtolower(str_replace(',', '-', $groupCode ?: ('gen-' . $brandId))),
+                                'code_offset' => 10,
+                                'brand_id' => $brandId,
+                                'is_active' => true,
+                            ]
+                        );
+                        $categoryId = $fallbackCat->id;
+                        if ($groupCode) {
+                            $categoriesByVision->put($groupCode, $fallbackCat);
+                        }
+                    }
+                }
+
                 // Generate Smart SKU (crm_code)
                 $smartSku = null;
                 if ($brandId && $categoryId) {
