@@ -4,8 +4,11 @@ namespace Modules\Market\App\Livewire\Admin;
 
 use Livewire\Component;
 use Livewire\WithPagination;
+use Modules\Market\Entities\Brand;
+use Modules\Market\Entities\Category;
 use Modules\Market\Entities\MarketSetting;
 use Modules\Market\Entities\ProductVariant;
+use Modules\Market\Entities\Vendor;
 use Modules\Market\Entities\VendorProduct;
 use Modules\Market\Entities\Warehouse;
 use Modules\Market\Entities\WarehouseStock;
@@ -24,7 +27,7 @@ class WarehouseStockController extends Component
     public $search = '';
 
     #[Url]
-    public $stockStatusFilter = 'all';
+    public $stockStatusFilter = 'all'; // 'all', 'in_stock', 'out_of_stock', 'low_stock', 'has_reserved', 'discrepancy'
 
     #[Url]
     public $warehouseFilter = 'central'; // 'central', 'vendors', 'all'
@@ -35,14 +38,37 @@ class WarehouseStockController extends Component
     #[Url]
     public $selectedWarehouseId = '';
 
+    #[Url]
+    public $brandFilter = '';
+
+    #[Url]
+    public $categoryFilter = '';
+
+    #[Url]
+    public $sortBy = 'latest'; // 'latest', 'physical_desc', 'physical_asc', 'online_desc', 'reserved_desc', 'title_asc'
+
+    #[Url]
+    public $currentTab = 'stock'; // 'warehouses', 'stock', 'transactions', 'transfers'
+
     public $editingVariantId = null;
     public $editableStocks = [];
 
     // Properties for transactions listing tab
-    public $currentTab = 'stock'; // 'stock' or 'transactions'
+    #[Url]
     public $txFilterWarehouseId = '';
+
+    #[Url]
     public $txFilterType = 'all';
+
+    #[Url]
     public $txSearch = '';
+
+    // Properties for transfers listing tab
+    #[Url]
+    public $tfFilterStatus = 'all';
+
+    #[Url]
+    public $tfSearch = '';
 
     // Properties for manual WMS voucher form
     public $showTxVariantId = null;
@@ -64,6 +90,67 @@ class WarehouseStockController extends Component
     public $showRejectTransferId = null;
     public $rejectReason = '';
 
+    public function mount()
+    {
+        $isVendorRoute = request()->routeIs('user.market.vendor.*') || request()->is('user/market/vendor/*');
+
+        if (!$this->isAdminUser() || ($isVendorRoute && !request()->has('warehouseFilter'))) {
+            $this->warehouseFilter = 'vendors';
+        }
+
+        if ($this->selectedWarehouseId) {
+            $wh = Warehouse::find($this->selectedWarehouseId);
+            if ($wh) {
+                if ($this->isAdminUser()) {
+                    if ($wh->vendor_id && $this->warehouseFilter === 'central') {
+                        $this->warehouseFilter = 'vendors';
+                    } elseif (!$wh->vendor_id && $this->warehouseFilter === 'vendors') {
+                        $this->warehouseFilter = 'central';
+                    }
+                    if ($wh->vendor_id && empty($this->selectedVendorId)) {
+                        $this->selectedVendorId = (string) $wh->vendor_id;
+                    }
+                } else {
+                    // Ensure non-admin vendor only selects their own warehouse
+                    $myVendorId = Auth::user()?->marketVendor?->id;
+                    if ($wh->vendor_id !== $myVendorId) {
+                        $this->selectedWarehouseId = '';
+                    }
+                }
+            }
+        } elseif ($isVendorRoute && $this->isAdminUser() && empty($this->selectedVendorId)) {
+            $myVendorId = Auth::user()?->marketVendor?->id;
+            if ($myVendorId) {
+                $this->selectedVendorId = (string) $myVendorId;
+            }
+        }
+    }
+
+    public function isAdminUser(): bool
+    {
+        return Auth::check() && Auth::user()->hasAnyRole(['super-admin', 'admin']);
+    }
+
+    protected function getContextVendorId(): ?int
+    {
+        if (!$this->isAdminUser()) {
+            return Auth::user()?->marketVendor?->id;
+        }
+
+        if ($this->selectedWarehouseId) {
+            $wh = Warehouse::find($this->selectedWarehouseId);
+            if ($wh && $wh->vendor_id) {
+                return (int) $wh->vendor_id;
+            }
+        }
+
+        if ($this->selectedVendorId) {
+            return (int) $this->selectedVendorId;
+        }
+
+        return Auth::user()?->marketVendor?->id ?? Vendor::first()?->id;
+    }
+
     protected function rules()
     {
         return [
@@ -74,6 +161,57 @@ class WarehouseStockController extends Component
 
     public function updatingSearch()
     {
+        $this->resetPage();
+    }
+
+    public function updatedBrandFilter()
+    {
+        $this->categoryFilter = '';
+        $this->resetPage();
+    }
+
+    public function updatedCategoryFilter()
+    {
+        $this->resetPage();
+    }
+
+    public function updatedSortBy()
+    {
+        $this->resetPage();
+    }
+
+    public function updatingTxSearch()
+    {
+        $this->resetPage('txPage');
+    }
+
+    public function updatedTxFilterWarehouseId()
+    {
+        $this->resetPage('txPage');
+    }
+
+    public function updatedTxFilterType()
+    {
+        $this->resetPage('txPage');
+    }
+
+    public function updatingTfSearch()
+    {
+        $this->resetPage('tfPage');
+    }
+
+    public function updatedTfFilterStatus()
+    {
+        $this->resetPage('tfPage');
+    }
+
+    public function resetProductFilters()
+    {
+        $this->search = '';
+        $this->stockStatusFilter = 'all';
+        $this->brandFilter = '';
+        $this->categoryFilter = '';
+        $this->sortBy = 'latest';
         $this->resetPage();
     }
 
@@ -91,30 +229,41 @@ class WarehouseStockController extends Component
         if ($filter !== 'vendors' && $this->currentTab === 'warehouses') {
             $this->currentTab = 'stock';
         }
+        $this->cancelEdit();
+        $this->closeTransactionForm();
         $this->resetPage();
     }
 
     public function updatedSelectedVendorId()
     {
         $this->selectedWarehouseId = '';
+        $this->cancelEdit();
         $this->resetPage();
     }
 
     public function updatedSelectedWarehouseId()
     {
+        $this->cancelEdit();
         $this->resetPage();
     }
 
     public function selectWarehouseAndTab($warehouseId, $tab)
     {
-        $this->selectedWarehouseId = $warehouseId;
+        $this->selectedWarehouseId = (string) $warehouseId;
+        $wh = Warehouse::find($warehouseId);
+        if ($wh && $wh->vendor_id && $this->isAdminUser()) {
+            $this->warehouseFilter = 'vendors';
+            $this->selectedVendorId = (string) $wh->vendor_id;
+        }
         $this->currentTab = $tab;
+        $this->cancelEdit();
         $this->resetPage();
     }
 
     public function clearWarehouseFilter()
     {
         $this->selectedWarehouseId = '';
+        $this->cancelEdit();
         $this->resetPage();
     }
 
@@ -122,26 +271,40 @@ class WarehouseStockController extends Component
     {
         $this->currentTab = $tab;
         if ($tab === 'transactions') {
-            $this->txFilterWarehouseId = '';
-            $this->txFilterType = 'all';
-            $this->txSearch = '';
+            $this->resetPage('txPage');
+        } elseif ($tab === 'transfers') {
+            $this->resetPage('tfPage');
+        } else {
+            $this->resetPage();
         }
-        $this->resetPage();
     }
 
     #[Computed]
     public function relevantWarehouses()
     {
-        $query = Warehouse::where('is_active', true);
+        $query = Warehouse::where('is_active', true)->with('vendor');
 
-        if (Auth::user()->hasRole('vendor') && !Auth::user()->hasAnyRole(['super-admin', 'admin'])) {
-            $query->where('vendor_id', Auth::user()->marketVendor->id);
+        if (!$this->isAdminUser()) {
+            $vendorId = Auth::user()?->marketVendor?->id;
+            $query->where('vendor_id', $vendorId ?: -1);
+            if ($this->selectedWarehouseId) {
+                $query->where('id', $this->selectedWarehouseId);
+            }
         } else {
-            // Admin/Super Admin
             if ($this->warehouseFilter === 'central') {
                 $query->whereNull('vendor_id');
+                if ($this->selectedWarehouseId) {
+                    $query->where('id', $this->selectedWarehouseId);
+                }
             } elseif ($this->warehouseFilter === 'vendors') {
                 $query->whereNotNull('vendor_id');
+                if ($this->selectedWarehouseId) {
+                    $query->where('id', $this->selectedWarehouseId);
+                } elseif ($this->selectedVendorId) {
+                    $query->where('vendor_id', $this->selectedVendorId);
+                }
+            } else {
+                // 'all'
                 if ($this->selectedWarehouseId) {
                     $query->where('id', $this->selectedWarehouseId);
                 } elseif ($this->selectedVendorId) {
@@ -154,31 +317,87 @@ class WarehouseStockController extends Component
     }
 
     #[Computed]
+    public function userAccessibleWarehouses()
+    {
+        if (!$this->isAdminUser()) {
+            $vendorId = Auth::user()?->marketVendor?->id;
+            return Warehouse::where('is_active', true)
+                ->where('vendor_id', $vendorId ?: -1)
+                ->get();
+        }
+
+        $query = Warehouse::where('is_active', true)->with('vendor');
+        if ($this->warehouseFilter === 'central') {
+            $query->whereNull('vendor_id');
+        } elseif ($this->warehouseFilter === 'vendors') {
+            $query->whereNotNull('vendor_id');
+            if ($this->selectedVendorId) {
+                $query->where('vendor_id', $this->selectedVendorId);
+            }
+        }
+        return $query->get();
+    }
+
+    #[Computed]
+    public function allDestinationWarehouses()
+    {
+        return Warehouse::where('is_active', true)->with('vendor')->orderByRaw('vendor_id IS NOT NULL')->get();
+    }
+
+    #[Computed]
     public function wmsStats()
     {
         $warehouseIds = $this->relevantWarehouses()->pluck('id');
 
+        $stocksQuery = WarehouseStock::whereIn('warehouse_id', $warehouseIds);
+
         return [
             'total_warehouses' => $warehouseIds->count(),
             'active_warehouses' => Warehouse::whereIn('id', $warehouseIds)->where('is_active', true)->count(),
-            'total_physical' => (int) WarehouseStock::whereIn('warehouse_id', $warehouseIds)->sum('physical_stock'),
-            'total_online' => (int) WarehouseStock::whereIn('warehouse_id', $warehouseIds)->sum('online_stock'),
-            'total_reserved' => (int) WarehouseStock::whereIn('warehouse_id', $warehouseIds)->sum('reserved_stock'),
+            'total_physical' => (int) (clone $stocksQuery)->sum('physical_stock'),
+            'total_online' => (int) (clone $stocksQuery)->sum('online_stock'),
+            'total_reserved' => (int) (clone $stocksQuery)->sum('reserved_stock'),
+            'discrepancy_count' => (int) (clone $stocksQuery)->whereColumn('physical_stock', '!=', 'online_stock')->count(),
         ];
     }
 
     #[Computed]
     public function vendorsList()
     {
-        return \Modules\Market\Entities\Vendor::where('status', 'active')->get();
+        return Vendor::where('status', 'active')->get();
+    }
+
+    #[Computed]
+    public function brandsList()
+    {
+        return Brand::where('is_active', true)->orderBy('name')->get();
+    }
+
+    #[Computed]
+    public function categoriesList()
+    {
+        $query = Category::where('is_active', true)->orderBy('name');
+        if ($this->brandFilter) {
+            $query->where('brand_id', $this->brandFilter);
+        }
+        return $query->get();
     }
 
     #[Computed]
     public function allWarehousesList()
     {
-        $query = Warehouse::whereNotNull('vendor_id')->with('vendor');
-        if ($this->selectedVendorId) {
-            $query->where('vendor_id', $this->selectedVendorId);
+        $query = Warehouse::with('vendor');
+        if (!$this->isAdminUser()) {
+            $query->where('vendor_id', Auth::user()?->marketVendor?->id ?: -1);
+        } else {
+            if ($this->warehouseFilter === 'central') {
+                $query->whereNull('vendor_id');
+            } elseif ($this->warehouseFilter === 'vendors') {
+                $query->whereNotNull('vendor_id');
+                if ($this->selectedVendorId) {
+                    $query->where('vendor_id', $this->selectedVendorId);
+                }
+            }
         }
         return $query->get();
     }
@@ -187,10 +406,12 @@ class WarehouseStockController extends Component
     public function vendorWarehousesStats()
     {
         $query = Warehouse::whereNotNull('vendor_id')->with('vendor');
-        if ($this->selectedVendorId) {
+        if (!$this->isAdminUser()) {
+            $query->where('vendor_id', Auth::user()?->marketVendor?->id ?: -1);
+        } elseif ($this->selectedVendorId) {
             $query->where('vendor_id', $this->selectedVendorId);
         }
-        
+
         return $query->get()->map(function ($wh) {
             $stocks = WarehouseStock::where('warehouse_id', $wh->id)->get();
             return [
@@ -200,9 +421,9 @@ class WarehouseStockController extends Component
                 'is_active' => $wh->is_active,
                 'vendor_name' => $wh->vendor->store_name ?? 'بدون فروشنده',
                 'total_products' => $stocks->count(),
-                'total_physical' => $stocks->sum('physical_stock'),
-                'total_online' => $stocks->sum('online_stock'),
-                'total_reserved' => $stocks->sum('reserved_stock'),
+                'total_physical' => (int) $stocks->sum('physical_stock'),
+                'total_online' => (int) $stocks->sum('online_stock'),
+                'total_reserved' => (int) $stocks->sum('reserved_stock'),
             ];
         });
     }
@@ -211,8 +432,8 @@ class WarehouseStockController extends Component
     public function products()
     {
         $relevantWarehouseIds = $this->relevantWarehouses()->pluck('id');
-        $isVendor = Auth::user()->hasRole('vendor');
-        $vendorId = $isVendor ? Auth::user()->marketVendor->id : (Auth::user()->marketVendor->id ?? \Modules\Market\Entities\Vendor::first()?->id);
+        $isPureVendor = !$this->isAdminUser();
+        $vendorId = $this->getContextVendorId();
 
         $wmsSubQuery = WarehouseStock::query()
             ->select(
@@ -228,9 +449,13 @@ class WarehouseStockController extends Component
             ->select(
                 'product_variant_id',
                 DB::raw('MAX(id) as vendor_product_id'),
-                DB::raw('SUM(stock) as legacy_stock')
+                DB::raw('SUM(stock) as legacy_stock'),
+                DB::raw('MAX(price) as vendor_price'),
+                DB::raw('MAX(discount_price) as vendor_discount_price'),
+                DB::raw('MAX(reorder_point) as vendor_reorder_point'),
+                DB::raw('MAX(status) as vendor_status')
             )
-            ->where('vendor_id', $vendorId)
+            ->when($vendorId, fn($q) => $q->where('vendor_id', $vendorId))
             ->groupBy('product_variant_id');
 
         $query = ProductVariant::query()
@@ -241,70 +466,150 @@ class WarehouseStockController extends Component
                 $join->on('market_product_variants.id', '=', 'vp_summary.product_variant_id');
             });
 
-        if ($isVendor) {
-            $query->whereNotNull('vp_summary.vendor_product_id');
+        if ($isPureVendor) {
+            $query->where(function ($q) {
+                $q->whereNotNull('vp_summary.vendor_product_id')
+                  ->orWhereNotNull('wms_summary.product_variant_id');
+            });
+        } elseif ($this->warehouseFilter === 'vendors' && ($this->selectedVendorId || $this->selectedWarehouseId)) {
+            $query->where(function ($q) {
+                $q->whereNotNull('vp_summary.vendor_product_id')
+                  ->orWhereNotNull('wms_summary.product_variant_id');
+            });
         }
 
         $query->select(
             'market_product_variants.*',
             'vp_summary.vendor_product_id',
             'vp_summary.legacy_stock',
+            'vp_summary.vendor_price',
+            'vp_summary.vendor_discount_price',
+            'vp_summary.vendor_reorder_point',
+            'vp_summary.vendor_status',
             DB::raw('COALESCE(wms_summary.total_physical_stock, 0) as total_physical_stock'),
             DB::raw('COALESCE(wms_summary.total_online_stock, 0) as total_online_stock'),
             DB::raw('COALESCE(wms_summary.total_reserved_stock, 0) as total_reserved_stock')
         );
 
-        $query->with(['masterProduct']);
+        $query->with([
+            'masterProduct.brand',
+            'masterProduct.category',
+            'warehouseStocks' => function ($q) use ($relevantWarehouseIds) {
+                $q->whereIn('warehouse_id', $relevantWarehouseIds);
+            },
+        ]);
 
         if ($this->search) {
-            $query->where(function ($q) {
-                $q->whereHas('masterProduct', function ($q2) {
-                    $q2->where('title', 'like', '%' . $this->search . '%');
-                })->orWhere('variant_code', 'like', '%' . $this->search . '%');
+            $term = trim($this->search);
+            $query->where(function ($q) use ($term) {
+                $q->whereHas('masterProduct', function ($q2) use ($term) {
+                    $q2->where('title', 'like', '%' . $term . '%')
+                       ->orWhere('crm_code', 'like', '%' . $term . '%')
+                       ->orWhere('barcode', 'like', '%' . $term . '%')
+                       ->orWhere('gtin', 'like', '%' . $term . '%');
+                })
+                ->orWhere('market_product_variants.variant_code', 'like', '%' . $term . '%')
+                ->orWhere('market_product_variants.variant_attributes', 'like', '%' . $term . '%');
             });
         }
 
+        if ($this->brandFilter) {
+            $brandId = (int) $this->brandFilter;
+            $query->whereHas('masterProduct', function ($q) use ($brandId) {
+                $q->where('brand_id', $brandId);
+            });
+        }
+
+        if ($this->categoryFilter) {
+            $catId = (int) $this->categoryFilter;
+            // Include child categories up to 4 levels
+            $childIds = Category::where('parent_id', $catId)->pluck('id')->toArray();
+            $grandChildIds = !empty($childIds) ? Category::whereIn('parent_id', $childIds)->pluck('id')->toArray() : [];
+            $greatGrandChildIds = !empty($grandChildIds) ? Category::whereIn('parent_id', $grandChildIds)->pluck('id')->toArray() : [];
+            $allCatIds = array_unique(array_merge([$catId], $childIds, $grandChildIds, $greatGrandChildIds));
+
+            $query->whereHas('masterProduct', function ($q) use ($allCatIds) {
+                $q->whereIn('category_id', $allCatIds);
+            });
+        }
+
+        // Use WHERE on the joined subquery columns so pagination count and data queries both work accurately
         if ($this->stockStatusFilter === 'in_stock') {
-            $query->havingRaw('COALESCE(total_physical_stock, 0) + COALESCE(total_online_stock, 0) > 0');
+            $query->whereRaw('(COALESCE(wms_summary.total_physical_stock, 0) + COALESCE(wms_summary.total_online_stock, 0)) > 0');
         } elseif ($this->stockStatusFilter === 'out_of_stock') {
-            $query->havingRaw('(COALESCE(total_physical_stock, 0) + COALESCE(total_online_stock, 0)) = 0');
+            $query->whereRaw('(COALESCE(wms_summary.total_physical_stock, 0) + COALESCE(wms_summary.total_online_stock, 0)) = 0');
+        } elseif ($this->stockStatusFilter === 'low_stock') {
+            $query->whereRaw('COALESCE(wms_summary.total_physical_stock, 0) > 0 AND COALESCE(wms_summary.total_physical_stock, 0) <= COALESCE(vp_summary.vendor_reorder_point, market_product_variants.reorder_point, 5)');
+        } elseif ($this->stockStatusFilter === 'has_reserved') {
+            $query->whereRaw('COALESCE(wms_summary.total_reserved_stock, 0) > 0');
+        } elseif ($this->stockStatusFilter === 'discrepancy') {
+            $query->whereRaw('COALESCE(wms_summary.total_physical_stock, 0) != COALESCE(wms_summary.total_online_stock, 0)');
+        }
+
+        // Sorting
+        switch ($this->sortBy) {
+            case 'physical_desc':
+                $query->orderByDesc('total_physical_stock');
+                break;
+            case 'physical_asc':
+                $query->orderBy('total_physical_stock', 'asc');
+                break;
+            case 'online_desc':
+                $query->orderByDesc('total_online_stock');
+                break;
+            case 'reserved_desc':
+                $query->orderByDesc('total_reserved_stock');
+                break;
+            default:
+                $query->orderByDesc('market_product_variants.id');
+                break;
         }
 
         return $query->paginate(10);
     }
 
-
     public function toggleEditStock($variantId)
     {
-        if ($this->editingVariantId === $variantId) {
+        if ($this->editingVariantId === $variantId && !$this->showTxVariantId) {
             $this->cancelEdit();
             return;
         }
 
+        $this->showTxVariantId = null;
         $this->editingVariantId = $variantId;
         $this->editableStocks = [];
 
-        // Get all relevant warehouse IDs for the current user context.
         $relevantWarehouses = $this->relevantWarehouses();
         $relevantWarehouseIds = $relevantWarehouses->pluck('id');
 
-        // Fetch all existing stock records for this variant in the relevant warehouses in a single query.
         $existingStocks = WarehouseStock::where('product_variant_id', $variantId)
             ->whereIn('warehouse_id', $relevantWarehouseIds)
             ->get()
-            ->keyBy('warehouse_id'); // Key by warehouse_id for efficient lookup.
+            ->keyBy('warehouse_id');
 
-        // Iterate through the relevant warehouses to build the form structure,
-        // ensuring all warehouses appear in the form.
         foreach ($relevantWarehouses as $warehouse) {
-            // Find the specific stock record from our collection.
             $stock = $existingStocks->get($warehouse->id);
 
-            // Populate the form data. If a stock record exists, use its value; otherwise, default to 0.
             $this->editableStocks[$warehouse->id] = [
-                'physical_stock' => $stock->physical_stock ?? 0,
-                'online_stock' => $stock->online_stock ?? 0,
+                'physical_stock' => (int) ($stock->physical_stock ?? 0),
+                'online_stock' => (int) ($stock->online_stock ?? 0),
             ];
+        }
+    }
+
+    public function adjustEditableStock($warehouseId, $field, $delta)
+    {
+        if (!isset($this->editableStocks[$warehouseId][$field])) {
+            $this->editableStocks[$warehouseId][$field] = 0;
+        }
+        $current = (int) $this->editableStocks[$warehouseId][$field];
+        $this->editableStocks[$warehouseId][$field] = max(0, $current + (int) $delta);
+    }
+
+    public function syncOnlineWithPhysical($warehouseId)
+    {
+        if (isset($this->editableStocks[$warehouseId]['physical_stock'])) {
+            $this->editableStocks[$warehouseId]['online_stock'] = (int) $this->editableStocks[$warehouseId]['physical_stock'];
         }
     }
 
@@ -315,53 +620,55 @@ class WarehouseStockController extends Component
         $this->resetValidation();
     }
 
-    public function saveStocksForVariant($variantId)
+    public function saveStocksForVariant($variantId = null)
     {
+        $variantId = $variantId ?: $this->editingVariantId;
         $this->validate();
 
         $variant = ProductVariant::findOrFail($variantId);
         $userId = Auth::id();
-        $isVendor = Auth::user()->hasRole('vendor');
-        $vendorId = $isVendor ? Auth::user()->marketVendor->id : (Auth::user()->marketVendor->id ?? \Modules\Market\Entities\Vendor::first()?->id);
+        $isPureVendor = !$this->isAdminUser();
+        $vendorId = $this->getContextVendorId();
 
         DB::beginTransaction();
         try {
             $affectedVendorProducts = [];
 
-            // 1. Process and save individual warehouse stock updates
             foreach ($this->editableStocks as $warehouseId => $data) {
-                // Security check: ensure the warehouse belongs to the context
                 $warehouseQuery = Warehouse::where('id', $warehouseId);
-                if ($isVendor) {
+                if ($isPureVendor) {
                     $warehouseQuery->where('vendor_id', $vendorId);
                 }
 
                 $warehouse = $warehouseQuery->first();
                 if (!$warehouse) {
-                    continue; // Skip if invalid permission
+                    continue;
                 }
 
                 $whVendorId = $warehouse->vendor_id ?? $vendorId;
-                
-                // Guarantee a VendorProduct entry exists for this context
-                $whVendorProduct = VendorProduct::firstOrCreate(
-                    ['vendor_id' => $whVendorId, 'product_variant_id' => $variant->id],
-                    ['status' => 'draft', 'price' => 0]
-                );
+
+                $whVendorProduct = null;
+                if ($whVendorId) {
+                    $whVendorProduct = VendorProduct::firstOrCreate(
+                        ['vendor_id' => $whVendorId, 'product_variant_id' => $variant->id],
+                        ['status' => 'draft', 'price' => $variant->price ?? 0]
+                    );
+                }
 
                 $currentStock = WarehouseStock::firstOrNew([
                     'warehouse_id' => $warehouseId,
                     'product_variant_id' => $variant->id,
-                    'vendor_product_id' => $whVendorProduct->id,
                 ]);
+                if ($whVendorProduct && !$currentStock->vendor_product_id) {
+                    $currentStock->vendor_product_id = $whVendorProduct->id;
+                }
 
-                $oldPhysical = $currentStock->physical_stock ?? 0;
-                $oldOnline = $currentStock->online_stock ?? 0;
+                $oldPhysical = (int) ($currentStock->physical_stock ?? 0);
+                $oldOnline = (int) ($currentStock->online_stock ?? 0);
 
-                $newPhysical = (int) $data['physical_stock'];
-                $newOnline = (int) $data['online_stock'];
+                $newPhysical = max(0, (int) $data['physical_stock']);
+                $newOnline = max(0, (int) $data['online_stock']);
 
-                // Do not create empty stock records if they don't exist
                 if (!$currentStock->exists && $newPhysical === 0 && $newOnline === 0) {
                     continue;
                 }
@@ -370,45 +677,45 @@ class WarehouseStockController extends Component
                 $currentStock->online_stock = $newOnline;
                 $currentStock->save();
 
-                $affectedVendorProducts[$whVendorId] = $whVendorProduct;
+                if ($whVendorId && $whVendorProduct) {
+                    $affectedVendorProducts[$whVendorId] = $whVendorProduct;
+                }
 
-                // Log physical transactions
                 if ($oldPhysical !== $newPhysical) {
                     WarehouseTransaction::create([
                         'warehouse_id' => $warehouseId,
                         'product_variant_id' => $variant->id,
-                        'vendor_product_id' => $whVendorProduct->id,
+                        'vendor_product_id' => $whVendorProduct?->id,
                         'type' => 'adjustment',
                         'quantity' => $newPhysical - $oldPhysical,
-                        'description' => 'تعدیل موجودی فیزیکی',
+                        'description' => "تعدیل انبارگردانی (موجودی فیزیکی از {$oldPhysical} به {$newPhysical})",
                         'user_id' => $userId,
                     ]);
                 }
 
-                // Log online transactions
                 if ($oldOnline !== $newOnline) {
                     WarehouseTransaction::create([
                         'warehouse_id' => $warehouseId,
                         'product_variant_id' => $variant->id,
-                        'vendor_product_id' => $whVendorProduct->id,
+                        'vendor_product_id' => $whVendorProduct?->id,
                         'type' => 'adjustment',
                         'quantity' => $newOnline - $oldOnline,
-                        'description' => 'تعدیل موجودی آنلاین',
+                        'description' => "تعدیل انبارگردانی (موجودی آنلاین از {$oldOnline} به {$newOnline})",
                         'user_id' => $userId,
                     ]);
                 }
             }
 
-            // 2. Strict Two-Way Synchronization back to Legacy System (Source of Truth for frontend)
             foreach ($affectedVendorProducts as $vId => $vProd) {
                 $newStock = app(\Modules\Market\App\Services\WarehouseStockService::class)
                     ->getAvailableStock($variant->id, $vId);
                 $vProd->update(['stock' => $newStock]);
+                $variant->update(['stock' => $newStock]);
             }
 
             DB::commit();
 
-            $this->dispatch('notify', type: 'success', text: 'موجودی انبار با موفقیت بروزرسانی شد و با سیستم هماهنگ گردید.');
+            $this->dispatch('notify', type: 'success', text: 'موجودی انبار با موفقیت بروزرسانی شد و سند تعدیل انبارگردانی ثبت گردید.');
             $this->cancelEdit();
 
         } catch (\Exception $e) {
@@ -424,9 +731,8 @@ class WarehouseStockController extends Component
             return;
         }
         $this->showTxVariantId = $variantId;
-        $this->cancelEdit(); // Close simple stock edit if open
+        $this->cancelEdit();
 
-        // Reset properties
         $relevant = $this->relevantWarehouses();
         $this->txWarehouseId = $warehouseId ?? ($relevant->first()?->id ?? '');
         $this->txType = 'in';
@@ -448,13 +754,11 @@ class WarehouseStockController extends Component
     public function submitTransaction($variantId)
     {
         $variant = ProductVariant::findOrFail($variantId);
-        $isVendor = Auth::user()->hasRole('vendor');
 
         if (is_string($this->txUnitPrice)) {
             $this->txUnitPrice = str_replace(',', '', $this->txUnitPrice);
         }
 
-        // Custom validation rules based on transaction type (in/out)
         $rules = [
             'txWarehouseId' => 'required|exists:market_warehouses,id',
             'txType' => 'required|in:in,out',
@@ -466,7 +770,7 @@ class WarehouseStockController extends Component
             'txDocumentRef' => 'nullable|string|max:100',
         ];
 
-        $validated = $this->validate($rules, [], [
+        $this->validate($rules, [], [
             'txWarehouseId' => 'انبار',
             'txType' => 'نوع حواله',
             'txStockType' => 'نوع موجودی هدف',
@@ -479,50 +783,43 @@ class WarehouseStockController extends Component
 
         $warehouse = Warehouse::findOrFail($this->txWarehouseId);
 
-        // Security check: If the user is a vendor and NOT an admin, they cannot access a warehouse that is not theirs.
-        if (Auth::user()->hasRole('vendor') && !Auth::user()->hasAnyRole(['super-admin', 'admin'])) {
-            if ($warehouse->vendor_id !== Auth::user()->marketVendor->id) {
+        if (!$this->isAdminUser()) {
+            if ($warehouse->vendor_id !== Auth::user()?->marketVendor?->id) {
                 throw new \Exception('شما مجاز به ثبت حواله برای این انبار نیستید.');
             }
         }
 
-        $vendorId = $warehouse->vendor_id ?? ($isVendor ? Auth::user()->marketVendor->id : (Auth::user()->marketVendor->id ?? \Modules\Market\Entities\Vendor::first()?->id));
+        $vendorId = $warehouse->vendor_id ?? $this->getContextVendorId();
 
         DB::beginTransaction();
         try {
-            // Guarantee a VendorProduct entry exists for this context
-            $vendorProduct = VendorProduct::firstOrCreate(
-                ['vendor_id' => $vendorId, 'product_variant_id' => $variant->id],
-                ['status' => 'draft', 'price' => 0]
-            );
+            $vendorProduct = null;
+            if ($vendorId) {
+                $vendorProduct = VendorProduct::firstOrCreate(
+                    ['vendor_id' => $vendorId, 'product_variant_id' => $variant->id],
+                    ['status' => 'draft', 'price' => $variant->price ?? 0]
+                );
+            }
 
-            // Fetch or create stock record
             $stock = WarehouseStock::firstOrNew([
                 'warehouse_id' => $this->txWarehouseId,
                 'product_variant_id' => $variant->id,
-                'vendor_product_id' => $vendorProduct->id,
             ], [
                 'physical_stock' => 0,
                 'online_stock' => 0,
                 'reserved_stock' => 0,
             ]);
+            if ($vendorProduct && !$stock->vendor_product_id) {
+                $stock->vendor_product_id = $vendorProduct->id;
+            }
 
             $qty = (int) $this->txQuantity;
             $price = $this->txUnitPrice ? (float) $this->txUnitPrice : null;
 
-            // Compute target stock updates
-            $physicalChange = 0;
-            $onlineChange = 0;
-
-            if ($this->txStockType === 'physical' || $this->txStockType === 'both') {
-                $physicalChange = $qty;
-            }
-            if ($this->txStockType === 'online' || $this->txStockType === 'both') {
-                $onlineChange = $qty;
-            }
+            $physicalChange = ($this->txStockType === 'physical' || $this->txStockType === 'both') ? $qty : 0;
+            $onlineChange = ($this->txStockType === 'online' || $this->txStockType === 'both') ? $qty : 0;
 
             if ($this->txType === 'out') {
-                // Check if enough stock
                 if ($physicalChange > 0 && ($stock->physical_stock ?? 0) < $physicalChange) {
                     throw new \Exception('موجودی فیزیکی انبار برای این خروج کافی نیست.');
                 }
@@ -539,7 +836,6 @@ class WarehouseStockController extends Component
 
             $stock->save();
 
-            // Reasons mapper for description
             $reasons = [
                 'purchase' => 'خرید کالا',
                 'return' => 'مرجوعی مشتری',
@@ -558,11 +854,10 @@ class WarehouseStockController extends Component
                 $descriptionText .= ' - ' . $this->txCustomDescription;
             }
 
-            // Write to WarehouseTransaction
             WarehouseTransaction::create([
                 'warehouse_id' => $this->txWarehouseId,
                 'product_variant_id' => $variant->id,
-                'vendor_product_id' => $vendorProduct->id,
+                'vendor_product_id' => $vendorProduct?->id,
                 'type' => $this->txType,
                 'quantity' => $this->txType === 'out' ? -$qty : $qty,
                 'unit_price' => $price,
@@ -570,10 +865,12 @@ class WarehouseStockController extends Component
                 'user_id' => Auth::id(),
             ]);
 
-            // Sync legacy stock field using strategy
-            $newStock = app(\Modules\Market\App\Services\WarehouseStockService::class)
-                ->getAvailableStock($variant->id, $vendorId);
-            $vendorProduct->update(['stock' => $newStock]);
+            if ($vendorProduct) {
+                $newStock = app(\Modules\Market\App\Services\WarehouseStockService::class)
+                    ->getAvailableStock($variant->id, $vendorId);
+                $vendorProduct->update(['stock' => $newStock]);
+                $variant->update(['stock' => $newStock]);
+            }
 
             DB::commit();
 
@@ -585,8 +882,6 @@ class WarehouseStockController extends Component
             $this->dispatch('notify', type: 'error', text: 'خطا در ثبت حواله دستی انبار: ' . $e->getMessage());
         }
     }
-
-
 
     #[Computed]
     public function warehouseTransactions()
@@ -602,13 +897,16 @@ class WarehouseStockController extends Component
                 $q->where('type', $this->txFilterType);
             })
             ->when($this->txSearch, function ($q) {
-                $q->where(function ($q2) {
-                    $q2->where('description', 'like', '%' . $this->txSearch . '%')
-                       ->orWhereHas('productVariant.masterProduct', function ($q3) {
-                           $q3->where('title', 'like', '%' . $this->txSearch . '%');
+                $term = trim($this->txSearch);
+                $q->where(function ($q2) use ($term) {
+                    $q2->where('description', 'like', '%' . $term . '%')
+                       ->orWhereHas('productVariant.masterProduct', function ($q3) use ($term) {
+                           $q3->where('title', 'like', '%' . $term . '%')
+                              ->orWhere('crm_code', 'like', '%' . $term . '%')
+                              ->orWhere('barcode', 'like', '%' . $term . '%');
                        })
-                       ->orWhereHas('productVariant', function ($q3) {
-                           $q3->where('variant_code', 'like', '%' . $this->txSearch . '%');
+                       ->orWhereHas('productVariant', function ($q3) use ($term) {
+                           $q3->where('variant_code', 'like', '%' . $term . '%');
                        });
                 });
             })
@@ -627,9 +925,13 @@ class WarehouseStockController extends Component
         $relevant = $this->relevantWarehouses();
         $this->tfSourceWarehouseId = $warehouseId ?? ($relevant->first()?->id ?? '');
 
-        // Destination default is the Central Warehouse (vendor_id is null)
         $centralWarehouse = Warehouse::whereNull('vendor_id')->where('is_active', true)->first();
-        $this->tfDestinationWarehouseId = $centralWarehouse ? $centralWarehouse->id : '';
+        if ($centralWarehouse && $centralWarehouse->id != $this->tfSourceWarehouseId) {
+            $this->tfDestinationWarehouseId = $centralWarehouse->id;
+        } else {
+            $otherWh = Warehouse::where('is_active', true)->where('id', '!=', $this->tfSourceWarehouseId)->first();
+            $this->tfDestinationWarehouseId = $otherWh ? $otherWh->id : '';
+        }
         $this->tfQuantity = '';
 
         $this->resetValidation();
@@ -643,30 +945,28 @@ class WarehouseStockController extends Component
 
     public function submitTransferRequest($variantId)
     {
-        $variant = ProductVariant::findOrFail($variantId);
-        
+        ProductVariant::findOrFail($variantId);
+
         $rules = [
             'tfSourceWarehouseId' => 'required|exists:market_warehouses,id',
             'tfDestinationWarehouseId' => 'required|exists:market_warehouses,id|different:tfSourceWarehouseId',
             'tfQuantity' => 'required|integer|min:1',
         ];
 
-        $validated = $this->validate($rules, [], [
+        $this->validate($rules, [], [
             'tfSourceWarehouseId' => 'انبار مبدا',
             'tfDestinationWarehouseId' => 'انبار مقصد',
             'tfQuantity' => 'تعداد انتقال',
         ]);
 
         $sourceWarehouse = Warehouse::findOrFail($this->tfSourceWarehouseId);
-        
-        // Security check
-        if (Auth::user()->hasRole('vendor') && !Auth::user()->hasAnyRole(['super-admin', 'admin'])) {
-            if ($sourceWarehouse->vendor_id !== Auth::user()->marketVendor->id) {
+
+        if (!$this->isAdminUser()) {
+            if ($sourceWarehouse->vendor_id !== Auth::user()?->marketVendor?->id) {
                 throw new \Exception('شما مجاز به درخواست انتقال از این انبار نیستید.');
             }
         }
 
-        // Check stock availability
         $stock = WarehouseStock::where('warehouse_id', $this->tfSourceWarehouseId)
             ->where('product_variant_id', $variantId)
             ->first();
@@ -677,9 +977,9 @@ class WarehouseStockController extends Component
         }
 
         $vendorId = $sourceWarehouse->vendor_id;
-        $vendorProduct = VendorProduct::where('vendor_id', $vendorId)
-            ->where('product_variant_id', $variantId)
-            ->first();
+        $vendorProduct = $vendorId
+            ? VendorProduct::where('vendor_id', $vendorId)->where('product_variant_id', $variantId)->first()
+            : null;
 
         DB::beginTransaction();
         try {
@@ -705,8 +1005,7 @@ class WarehouseStockController extends Component
 
     public function approveTransferRequest($transferId)
     {
-        // Must be admin
-        if (!Auth::user()->hasAnyRole(['super-admin', 'admin'])) {
+        if (!$this->isAdminUser()) {
             $this->dispatch('notify', type: 'error', text: 'شما دسترسی لازم برای تایید این درخواست را ندارید.');
             return;
         }
@@ -719,7 +1018,6 @@ class WarehouseStockController extends Component
 
         DB::beginTransaction();
         try {
-            // Use the stock service to handle actual logic
             app(\Modules\Market\App\Services\WarehouseStockService::class)
                 ->transferStock($transfer, Auth::id());
 
@@ -753,7 +1051,7 @@ class WarehouseStockController extends Component
 
     public function submitRejection()
     {
-        if (!Auth::user()->hasAnyRole(['super-admin', 'admin'])) {
+        if (!$this->isAdminUser()) {
             $this->dispatch('notify', type: 'error', text: 'شما دسترسی لازم را ندارید.');
             return;
         }
@@ -786,22 +1084,49 @@ class WarehouseStockController extends Component
     {
         $query = WarehouseTransfer::with(['sourceWarehouse.vendor', 'destinationWarehouse', 'productVariant.masterProduct', 'user', 'processor']);
 
-        if (Auth::user()->hasRole('vendor') && !Auth::user()->hasAnyRole(['super-admin', 'admin'])) {
-            $vendorId = Auth::user()->marketVendor->id;
-            $query->whereHas('sourceWarehouse', function ($q) use ($vendorId) {
-                $q->where('vendor_id', $vendorId);
+        if (!$this->isAdminUser()) {
+            $vendorId = Auth::user()?->marketVendor?->id;
+            $query->where(function ($q) use ($vendorId) {
+                $q->whereHas('sourceWarehouse', fn($sq) => $sq->where('vendor_id', $vendorId ?: -1))
+                  ->orWhereHas('destinationWarehouse', fn($dq) => $dq->where('vendor_id', $vendorId ?: -1));
             });
         } else {
-            // Admin context
-            if ($this->warehouseFilter === 'central') {
-                $query->whereHas('destinationWarehouse', function ($q) {
-                    $q->whereNull('vendor_id');
+            if ($this->selectedWarehouseId) {
+                $whId = (int) $this->selectedWarehouseId;
+                $query->where(function ($q) use ($whId) {
+                    $q->where('source_warehouse_id', $whId)
+                      ->orWhere('destination_warehouse_id', $whId);
+                });
+            } elseif ($this->warehouseFilter === 'central') {
+                $query->where(function ($q) {
+                    $q->whereHas('destinationWarehouse', fn($dq) => $dq->whereNull('vendor_id'))
+                      ->orWhereHas('sourceWarehouse', fn($sq) => $sq->whereNull('vendor_id'));
                 });
             } elseif ($this->warehouseFilter === 'vendors') {
-                $query->whereHas('sourceWarehouse', function ($q) {
-                    $q->whereNotNull('vendor_id');
+                $query->where(function ($q) {
+                    $q->whereHas('sourceWarehouse', fn($sq) => $sq->whereNotNull('vendor_id'))
+                      ->orWhereHas('destinationWarehouse', fn($dq) => $dq->whereNotNull('vendor_id'));
                 });
             }
+        }
+
+        if ($this->tfFilterStatus && $this->tfFilterStatus !== 'all') {
+            $query->where('status', $this->tfFilterStatus);
+        }
+
+        if ($this->tfSearch) {
+            $term = trim($this->tfSearch);
+            $query->where(function ($q) use ($term) {
+                $q->where('id', $term)
+                  ->orWhereHas('productVariant.masterProduct', function ($q2) use ($term) {
+                      $q2->where('title', 'like', '%' . $term . '%')
+                         ->orWhere('crm_code', 'like', '%' . $term . '%')
+                         ->orWhere('barcode', 'like', '%' . $term . '%');
+                  })
+                  ->orWhereHas('productVariant', function ($q2) use ($term) {
+                      $q2->where('variant_code', 'like', '%' . $term . '%');
+                  });
+            });
         }
 
         return $query->orderBy('created_at', 'desc')->paginate(15, ['*'], 'tfPage');
