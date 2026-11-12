@@ -38,44 +38,78 @@ class VisionStockSyncService
             ];
         }
 
+        @set_time_limit(600);
+        @ignore_user_abort(true);
+
         try {
             $buyerCode = (string)($this->setting->ws_username ?: '10100177');
 
-            $payload = [
-                'type' => 3,
-                'PerPage' => 500,
-                'groupe' => -1,
-                'idf' => '',
-                'start' => 1,
-                'buyercode' => $buyerCode,
-            ];
+            // Paginated fetch of all items across catalog
+            $items = [];
+            $perPage = 500;
+            $page = 1;
+            $seenCodes = [];
+            $maxPages = 30;
 
-            $response = $this->client->callAction('GetOnLineBaseDataPDA', [
-                'inputStringJson' => json_encode($payload, JSON_UNESCAPED_UNICODE),
-            ]);
+            while ($page <= $maxPages) {
+                $start = 1 + (($page - 1) * $perPage);
+                $payload = [
+                    'type' => 3,
+                    'PerPage' => $perPage,
+                    'groupe' => -1,
+                    'idf' => '',
+                    'start' => $start,
+                    'buyercode' => $buyerCode,
+                ];
 
-            if (!$response['success']) {
-                $this->setting->update([
-                    'last_sync_at' => now(),
-                    'last_sync_status' => 'failed',
-                    'last_error_message' => $response['message'],
+                $response = $this->client->callAction('GetOnLineBaseDataPDA', [
+                    'inputStringJson' => json_encode($payload, JSON_UNESCAPED_UNICODE),
                 ]);
 
-                return [
-                    'success' => false,
-                    'updated_count' => 0,
-                    'message' => $response['message'],
-                ];
+                if (!$response['success']) {
+                    $this->setting->update([
+                        'last_sync_at' => now(),
+                        'last_sync_status' => 'failed',
+                        'last_error_message' => $response['message'],
+                    ]);
+
+                    return [
+                        'success' => false,
+                        'updated_count' => 0,
+                        'message' => $response['message'],
+                    ];
+                }
+
+                $data = $response['data'];
+                if (is_string($data)) {
+                    $data = json_decode($data, true) ?: [];
+                }
+
+                $batch = $data['kala']['kalas'] ?? $data['items'] ?? [];
+                if (!is_array($batch) || empty($batch)) {
+                    break;
+                }
+
+                $newInBatch = 0;
+                foreach ($batch as $item) {
+                    $c = (string)($item['GoodCode'] ?? $item['Code'] ?? $item['good_code'] ?? '');
+                    if ($c === '' || !isset($seenCodes[$c])) {
+                        if ($c !== '') {
+                            $seenCodes[$c] = true;
+                        }
+                        $items[] = $item;
+                        $newInBatch++;
+                    }
+                }
+
+                if (count($batch) < $perPage || $newInBatch === 0) {
+                    break;
+                }
+
+                $page++;
             }
 
-            $data = $response['data'];
-            if (is_string($data)) {
-                $data = json_decode($data, true) ?: [];
-            }
-
-            $items = $data['kala']['kalas'] ?? $data['items'] ?? [];
-
-            if (!is_array($items) || empty($items)) {
+            if (empty($items)) {
                 $this->setting->update([
                     'last_sync_at' => now(),
                     'last_sync_status' => 'success',

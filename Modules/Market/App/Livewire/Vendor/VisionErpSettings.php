@@ -390,7 +390,7 @@ class VisionErpSettings extends Component
         $catalogService = new VisionCatalogSyncService($setting);
         // Ensure brands and categories structure is synced first
         $catalogService->syncBrandsAndCategories();
-        $res = $catalogService->syncBaseData(3, 500, 1);
+        $res = $catalogService->syncAllProducts();
 
         $this->syncSuccess = $res['success'];
         $this->syncMessage = $res['message'];
