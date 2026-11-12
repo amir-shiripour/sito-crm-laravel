@@ -197,9 +197,10 @@
 
                 <div class="flex flex-wrap items-center gap-2">
                     <button type="button" wire:click="syncStockNow" wire:loading.attr="disabled" class="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 border border-indigo-500/30 text-xs font-bold transition-all">
-                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                        <svg class="w-4 h-4 animate-spin" wire:loading wire:target="syncStockNow" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg>
+                        <svg class="w-4 h-4" wire:loading.remove wire:target="syncStockNow" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
                         <span wire:loading.remove wire:target="syncStockNow">همگام‌سازی موجودی انبار</span>
-                        <span wire:loading wire:target="syncStockNow">در حال واکشی...</span>
+                        <span wire:loading wire:target="syncStockNow">در حال واکشی موجودی ویژن...</span>
                     </button>
 
                     <span class="text-[11px] text-slate-500 dark:text-slate-400 hidden sm:inline">
@@ -249,9 +250,10 @@
                 </button>
 
                 <button type="button" wire:click="syncSelectedCatalog" wire:loading.attr="disabled" class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-md shadow-indigo-500/20 transition-all">
-                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+                    <svg class="w-4 h-4 animate-spin" wire:loading wire:target="syncSelectedCatalog" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg>
+                    <svg class="w-4 h-4" wire:loading.remove wire:target="syncSelectedCatalog" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
                     <span wire:loading.remove wire:target="syncSelectedCatalog">همگام‌سازی کالاهای گروه‌های فعال</span>
-                    <span wire:loading wire:target="syncSelectedCatalog">در حال همگام‌سازی...</span>
+                    <span wire:loading wire:target="syncSelectedCatalog">در حال پیمایش کاتالوگ ویژن (حدود ۱ تا ۲ دقیقه)...</span>
                 </button>
             </div>
         </div>

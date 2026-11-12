@@ -402,9 +402,18 @@ class VisionCatalogSyncService
                 $syncedCategories++;
             }
 
-            // Step F: Ensure every active Brand has at least a root Category (especially groups with no subgroups)
+            // Step F: Ensure active groups that have NO subgroups have a fallback Category (groups WITH subgroups must not create an extra brand category)
             foreach ($brandsMap as $gCode => $brand) {
-                if (!isset($categoryMap[$gCode])) {
+                // If this group already has subgroups synced in $categoryMap, DO NOT create a dummy category for the brand
+                $hasSubgroups = false;
+                foreach ($allowedSubgroups as $sub) {
+                    if ((string)($sub['ParentId'] ?? '') === (string)$gCode || str_starts_with((string)($sub['CodeG'] ?? ''), $gCode . ',')) {
+                        $hasSubgroups = true;
+                        break;
+                    }
+                }
+
+                if (!$hasSubgroups && !isset($categoryMap[$gCode])) {
                     $cat = Category::firstOrNew(['vision_code' => $gCode]);
                     $cat->name = $brand->name;
                     $cat->brand_id = $brand->id;
@@ -527,7 +536,7 @@ class VisionCatalogSyncService
 
             switch ($type) {
                 case 3:
-                    return $this->syncProducts($items);
+                    return $this->syncAllProducts();
                 case 0:
                     return $this->syncCustomers($items);
                 default:
@@ -548,10 +557,105 @@ class VisionCatalogSyncService
     }
 
     /**
+     * Fetch all catalog goods across all pages from Vision ERP and sync strictly within Layer 1 whitelist
+     */
+    public function syncAllProducts(?callable $progressCallback = null): array
+    {
+        if (!$this->setting->is_active) {
+            return [
+                'success' => false,
+                'count' => 0,
+                'message' => 'تنظیمات وب‌سرویس جامع ویژن غیرفعال است.',
+            ];
+        }
+
+        @set_time_limit(600);
+        @ignore_user_abort(true);
+
+        $buyerCode = (string)($this->setting->ws_username ?: '10100177');
+        $allGoods = [];
+        $perPage = 500;
+        $page = 1;
+        $seenCodes = [];
+        $maxPages = 30; // Safety guard for up to 15,000 items
+
+        try {
+            while ($page <= $maxPages) {
+                $start = 1 + (($page - 1) * $perPage);
+                $payload = [
+                    'type' => 3,
+                    'PerPage' => $perPage,
+                    'groupe' => -1,
+                    'idf' => '',
+                    'start' => $start,
+                    'buyercode' => $buyerCode,
+                ];
+
+                $response = $this->client->callAction('GetOnLineBaseDataPDA', [
+                    'inputStringJson' => json_encode($payload, JSON_UNESCAPED_UNICODE),
+                ]);
+
+                if (!$response['success']) {
+                    return [
+                        'success' => false,
+                        'count' => count($allGoods),
+                        'message' => 'خطا در دریافت صفحه ' . $page . ' کالاها از ویژن: ' . ($response['message'] ?? 'نامشخص'),
+                    ];
+                }
+
+                $data = $response['data'];
+                if (is_string($data)) {
+                    $data = json_decode($data, true) ?: [];
+                }
+
+                $batch = $data['kala']['kalas'] ?? $data['items'] ?? [];
+                if (!is_array($batch) || empty($batch)) {
+                    break;
+                }
+
+                $newInBatch = 0;
+                foreach ($batch as $item) {
+                    $c = (string)($item['GoodCode'] ?? $item['Code'] ?? $item['good_code'] ?? '');
+                    if ($c === '' || !isset($seenCodes[$c])) {
+                        if ($c !== '') {
+                            $seenCodes[$c] = true;
+                        }
+                        $allGoods[] = $item;
+                        $newInBatch++;
+                    }
+                }
+
+                if (is_callable($progressCallback)) {
+                    $progressCallback($page, count($allGoods));
+                }
+
+                // If less than $perPage returned or no new items found, reached end of catalog
+                if (count($batch) < $perPage || $newInBatch === 0) {
+                    break;
+                }
+
+                $page++;
+            }
+
+            return $this->syncProducts($allGoods);
+        } catch (Exception $e) {
+            Log::error('Vision Sync All Products Error: ' . $e->getMessage(), [
+                'vendor_id' => $this->setting->vendor_id,
+            ]);
+
+            return [
+                'success' => false,
+                'count' => 0,
+                'message' => 'خطا در پیمایش کاتالوگ ویژن: ' . $e->getMessage(),
+            ];
+        }
+    }
+
+    /**
      * Sync or match products by CRM Code / Vision Good Code, respecting Layer 1 Whitelist & Price Mapping,
      * connecting to the corresponding Brand (/user/market/brands) and Category (/user/market/categories).
      */
-    protected function syncProducts(array $goods): array
+    public function syncProducts(array $goods): array
     {
         if (!$this->setting->is_active) {
             return [
@@ -719,6 +823,7 @@ class VisionCatalogSyncService
                     ]);
                     if (!$vendorProduct->exists) {
                         $vendorProduct->status = ($initialStatus === 'published') ? 'published' : 'draft';
+                        $vendorProduct->price = $regularPrice ?: 0;
                     }
                 }
 
@@ -818,7 +923,7 @@ class VisionCatalogSyncService
                     $vendorProduct = VendorProduct::create([
                         'vendor_id' => $vendorId,
                         'product_variant_id' => $variant->id,
-                        'price' => $regularPrice,
+                        'price' => $regularPrice ?: 0,
                         'discount_price' => $discountPrice,
                         'stock' => $stockQty,
                         'status' => ($initialStatus === 'published') ? 'published' : 'draft',
