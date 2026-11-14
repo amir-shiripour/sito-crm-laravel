@@ -52,6 +52,10 @@ class VisionErpSettings extends Component
     // UI feedback
     public ?string $connectionMessage = null;
     public ?bool $connectionSuccess = null;
+    public ?string $connectionSaveMessage = null;
+    public ?bool $connectionSaveSuccess = null;
+    public ?string $mappingSaveMessage = null;
+    public ?bool $mappingSaveSuccess = null;
     public ?string $syncMessage = null;
     public ?bool $syncSuccess = null;
     public bool $testingConnection = false;
@@ -110,12 +114,14 @@ class VisionErpSettings extends Component
         }
     }
 
-    #[On('save-vision-settings')]
-    public function saveSettings(): void
+    /**
+     * Validate and persist all current form settings into the database.
+     */
+    protected function persistSettings(): ?VendorVisionSetting
     {
         if (!$this->vendorId) {
             session()->flash('error', 'هیچ فروشنده‌ای انتخاب نشده است.');
-            return;
+            return null;
         }
 
         $this->validate([
@@ -157,13 +163,62 @@ class VisionErpSettings extends Component
             $data['admin_pass'] = $this->admin_pass;
         }
 
-        VendorVisionSetting::updateOrCreate(
+        return VendorVisionSetting::updateOrCreate(
             ['vendor_id' => $this->vendorId],
             $data
         );
+    }
+
+    #[On('save-vision-settings')]
+    public function saveSettings(): void
+    {
+        $setting = $this->persistSettings();
+        if (!$setting) {
+            return;
+        }
 
         session()->flash('success', 'تنظیمات و نگاشت‌های وب‌سرویس ویژن با موفقیت ذخیره شد.');
         $this->loadSettings();
+    }
+
+    /**
+     * Save Connection & Automation settings (Card 1) with inline feedback.
+     */
+    public function saveConnectionSettings(): void
+    {
+        $this->connectionSaveMessage = null;
+        $this->connectionSaveSuccess = null;
+
+        $setting = $this->persistSettings();
+        if (!$setting) {
+            $this->connectionSaveSuccess = false;
+            $this->connectionSaveMessage = 'خطا در ذخیره تنظیمات: فروشنده‌ای انتخاب نشده است.';
+            return;
+        }
+
+        $this->loadSettings();
+        $this->connectionSaveSuccess = true;
+        $this->connectionSaveMessage = 'تنظیمات اتصال و اتوماسیون وب‌سرویس ویژن با موفقیت ذخیره شد.';
+    }
+
+    /**
+     * Save Price, Status & Warehouse mapping settings (Card 2) with inline feedback.
+     */
+    public function saveMappingSettings(): void
+    {
+        $this->mappingSaveMessage = null;
+        $this->mappingSaveSuccess = null;
+
+        $setting = $this->persistSettings();
+        if (!$setting) {
+            $this->mappingSaveSuccess = false;
+            $this->mappingSaveMessage = 'خطا در ذخیره نگاشت‌ها: فروشنده‌ای انتخاب نشده است.';
+            return;
+        }
+
+        $this->loadSettings();
+        $this->mappingSaveSuccess = true;
+        $this->mappingSaveMessage = 'تنظیمات کلاس قیمت، وضعیت انتشار و انبار با موفقیت ذخیره شد. اکنون می‌توانید همگام‌سازی را اجرا کنید.';
     }
 
     /**
@@ -174,7 +229,7 @@ class VisionErpSettings extends Component
         $this->syncMessage = null;
         $this->syncSuccess = null;
 
-        $setting = VendorVisionSetting::where('vendor_id', $this->vendorId)->first();
+        $setting = $this->persistSettings();
         if (!$setting) {
             $this->syncSuccess = false;
             $this->syncMessage = 'ابتدا فرم اتصال را ذخیره کنید.';
@@ -357,10 +412,10 @@ class VisionErpSettings extends Component
         $this->syncMessage = null;
         $this->syncSuccess = null;
 
-        $setting = VendorVisionSetting::where('vendor_id', $this->vendorId)->first();
+        $setting = $this->persistSettings();
         if (!$setting || !$setting->is_active) {
             $this->syncSuccess = false;
-            $this->syncMessage = 'اتصال وب‌سرویس جامع ویژن (نسخه ۳.۶.۱) فعال نیست یا ذخیره نشده است.';
+            $this->syncMessage = 'اتصال وب‌سرویس جامع ویژن (نسخه ۳.۶.۱) فعال نیست. ابتدا در بخش تنظیمات اتصال آن را فعال کنید.';
             return;
         }
 
@@ -380,10 +435,10 @@ class VisionErpSettings extends Component
         $this->syncMessage = null;
         $this->syncSuccess = null;
 
-        $setting = VendorVisionSetting::where('vendor_id', $this->vendorId)->first();
+        $setting = $this->persistSettings();
         if (!$setting || !$setting->is_active) {
             $this->syncSuccess = false;
-            $this->syncMessage = 'اتصال وب‌سرویس ویژن فعال نیست یا ذخیره نشده است.';
+            $this->syncMessage = 'اتصال وب‌سرویس ویژن فعال نیست. ابتدا در بخش تنظیمات اتصال آن را فعال کنید.';
             return;
         }
 
@@ -429,10 +484,10 @@ class VisionErpSettings extends Component
         $this->syncMessage = null;
         $this->syncSuccess = null;
 
-        $setting = VendorVisionSetting::where('vendor_id', $this->vendorId)->first();
+        $setting = $this->persistSettings();
         if (!$setting || !$setting->is_active) {
             $this->syncSuccess = false;
-            $this->syncMessage = 'ابتدا تنظیمات ویژن را ذخیره و وضعیت اتصال را فعال کنید.';
+            $this->syncMessage = 'ابتدا در بخش تنظیمات اتصال، وضعیت اتصال وب‌سرویس ویژن را فعال کنید.';
             return;
         }
 
