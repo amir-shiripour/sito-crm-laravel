@@ -1268,20 +1268,23 @@
         <!-- ============================================================= -->
         <style>
             #mobile-bottom-nav {
+                background-color: #ffffff !important;
                 background-color: rgba(255, 255, 255, 0.96) !important;
                 backdrop-filter: blur(12px) !important;
                 -webkit-backdrop-filter: blur(12px) !important;
-                box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.06);
-                z-index: 45 !important;
+                box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.08) !important;
+                z-index: 9990 !important;
                 grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
             }
+            html.dark #mobile-bottom-nav,
             .dark #mobile-bottom-nav {
+                background-color: #09090b !important;
                 background-color: rgba(9, 9, 11, 0.96) !important;
-                border-top-color: rgba(39, 39, 42, 0.9) !important;
-                box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.45);
+                border-top-color: rgba(39, 39, 42, 0.95) !important;
+                box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.55) !important;
             }
         </style>
-        <nav id="mobile-bottom-nav" class="md:hidden fixed bottom-0 right-0 left-0 h-16 bg-white/95 dark:bg-zinc-950/95 backdrop-blur-sm border-t border-[#ECECEE] dark:border-zinc-800 z-40 grid grid-cols-6 items-center px-1 select-none">
+        <nav id="mobile-bottom-nav" class="md:hidden fixed bottom-0 right-0 left-0 h-16 font-sans bg-white/95 dark:bg-zinc-950/95 backdrop-blur-sm border-t border-[#ECECEE] dark:border-zinc-800 z-40 grid grid-cols-6 items-center px-1 select-none">
             {{-- 1. خانه --}}
             <button type="button" onclick="switchMobileTab('explore')" id="mob-nav-explore" class="flex flex-col items-center justify-center gap-1 py-1 text-[#007A5E] dark:text-emerald-400">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25"/></svg>
@@ -1318,6 +1321,14 @@
                 <span class="text-[10px] font-medium">حساب من</span>
             </button>
         </nav>
+        <script>
+            (function () {
+                var mobNav = document.getElementById('mobile-bottom-nav');
+                if (mobNav && document.body && mobNav.parentElement !== document.body) {
+                    document.body.appendChild(mobNav);
+                }
+            })();
+        </script>
 
     </div>
 
