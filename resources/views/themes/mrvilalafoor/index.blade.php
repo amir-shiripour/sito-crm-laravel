@@ -1264,9 +1264,24 @@
         </div>
 
         <!-- ============================================================= -->
-        <!-- MOBILE BOTTOM NAVIGATION (Tab Bar: خانه / اقامتگاه‌ها / سفرهای من / مورد علاقه‌ها / حساب من) -->
+        <!-- MOBILE BOTTOM NAVIGATION (Tab Bar: خانه / اقامتگاه‌ها / میزبان شوید / سفرهای من / مورد علاقه‌ها / حساب من) -->
         <!-- ============================================================= -->
-        <nav id="mobile-bottom-nav" class="md:hidden fixed bottom-0 right-0 left-0 h-16 bg-white/95 dark:bg-zinc-950/95 backdrop-blur-sm border-t border-[#ECECEE] dark:border-zinc-800 z-40 grid grid-cols-5 items-center px-1 select-none">
+        <style>
+            #mobile-bottom-nav {
+                background-color: rgba(255, 255, 255, 0.96) !important;
+                backdrop-filter: blur(12px) !important;
+                -webkit-backdrop-filter: blur(12px) !important;
+                box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.06);
+                z-index: 45 !important;
+                grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
+            }
+            .dark #mobile-bottom-nav {
+                background-color: rgba(9, 9, 11, 0.96) !important;
+                border-top-color: rgba(39, 39, 42, 0.9) !important;
+                box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.45);
+            }
+        </style>
+        <nav id="mobile-bottom-nav" class="md:hidden fixed bottom-0 right-0 left-0 h-16 bg-white/95 dark:bg-zinc-950/95 backdrop-blur-sm border-t border-[#ECECEE] dark:border-zinc-800 z-40 grid grid-cols-6 items-center px-1 select-none">
             {{-- 1. خانه --}}
             <button type="button" onclick="switchMobileTab('explore')" id="mob-nav-explore" class="flex flex-col items-center justify-center gap-1 py-1 text-[#007A5E] dark:text-emerald-400">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25"/></svg>
@@ -1277,6 +1292,12 @@
             <a href="{{ route('properties.index') }}" id="mob-nav-properties" class="flex flex-col items-center justify-center gap-1 py-1 text-zinc-400 dark:text-zinc-500 hover:text-[#007A5E] no-underline">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21"/></svg>
                 <span class="text-[10px] font-medium">اقامتگاه‌ها</span>
+            </a>
+
+            {{-- 3. میزبان شوید --}}
+            <a href="{{ url('/register') }}" id="mob-nav-host" class="flex flex-col items-center justify-center gap-1 py-1 text-zinc-400 dark:text-zinc-500 hover:text-[#007A5E] no-underline">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v6m3-3H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                <span class="text-[10px] font-medium whitespace-nowrap">میزبان شوید</span>
             </a>
 
             {{-- 3. سفرهای من --}}
