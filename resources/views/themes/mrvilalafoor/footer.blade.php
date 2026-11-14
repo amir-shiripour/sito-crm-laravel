@@ -61,7 +61,14 @@
 <!-- ============================================================= -->
 <!-- MR. VILA LAFOOR MODERN RESPONSIVE FOOTER (DESKTOP & MOBILE)   -->
 <!-- ============================================================= -->
-<footer class="border-t border-[#ECECEE] dark:border-zinc-800 bg-white/70 dark:bg-zinc-950 mt-8 sm:mt-12 lg:mt-16 pt-8 sm:pt-12 pb-28 sm:pb-24 md:pb-12 text-zinc-600 dark:text-zinc-300 transition-colors font-sans relative overflow-hidden">
+<style>
+    @media (max-width: 1023px) {
+        footer.mrvila-footer {
+            padding-bottom: 6.5rem !important;
+        }
+    }
+</style>
+<footer class="mrvila-footer border-t border-[#ECECEE] dark:border-zinc-800 bg-white/70 dark:bg-zinc-950 mt-8 sm:mt-12 lg:mt-16 pt-8 sm:pt-12 pb-24 md:pb-12 text-zinc-600 dark:text-zinc-300 transition-colors font-sans relative overflow-hidden">
     
     {{-- Decorative Ambient Glow --}}
     <div class="absolute -top-32 right-1/4 w-96 h-96 bg-emerald-500/5 dark:bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
