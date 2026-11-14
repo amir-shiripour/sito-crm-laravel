@@ -62,6 +62,10 @@
 <!-- MR. VILA LAFOOR MODERN RESPONSIVE FOOTER (DESKTOP & MOBILE)   -->
 <!-- ============================================================= -->
 <style>
+    footer.mrvila-footer {
+        position: relative;
+        z-index: 1 !important;
+    }
     @media (max-width: 1023px) {
         footer.mrvila-footer {
             padding-bottom: 6.5rem !important;
