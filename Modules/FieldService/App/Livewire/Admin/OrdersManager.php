@@ -6,7 +6,6 @@ use App\Helpers\ProvinceCity;
 use Livewire\Component;
 use Livewire\WithPagination;
 use Modules\Clients\Entities\Client;
-use Modules\FieldService\App\Enums\ApplianceType;
 use Modules\FieldService\App\Enums\OrderStatus;
 use Modules\FieldService\App\Models\Building;
 use Modules\FieldService\App\Models\Category;
@@ -37,7 +36,6 @@ class OrdersManager extends Component
 
     // Order Form Fields
     public ?int $category_id = null;
-    public string $appliance_type = 'package';
     public string $appliance_brand_model = '';
     public string $problem_description = '';
     public string $priority = 'normal';
@@ -80,16 +78,6 @@ class OrdersManager extends Component
             $this->city = 'بابل';
         } else {
             $this->city = $cities[0] ?? '';
-        }
-    }
-
-    public function updatedCategoryId($value)
-    {
-        if ($value) {
-            $cat = Category::find($value);
-            if ($cat && $cat->appliance_type) {
-                $this->appliance_type = $cat->appliance_type->value;
-            }
         }
     }
 
@@ -141,7 +129,6 @@ class OrdersManager extends Component
 
         $defaultCat = Category::where('is_active', true)->orderBy('sort_order')->first();
         $this->category_id = $defaultCat?->id;
-        $this->appliance_type = $defaultCat?->appliance_type?->value ?? 'package';
         $this->priority = 'normal';
         $this->province = 'مازندران';
         $this->city = 'بابل';
@@ -202,7 +189,6 @@ class OrdersManager extends Component
             'category_id'           => $this->category_id,
             'building_id'           => $this->building_id ?: null,
             'vendor_id'             => $this->vendor_id ?: null,
-            'appliance_type'        => ApplianceType::tryFrom($this->appliance_type) ?? ApplianceType::PACKAGE,
             'appliance_brand_model' => $this->appliance_brand_model,
             'problem_description'   => $this->problem_description,
             'status'                => $initialStatus,

@@ -25,7 +25,6 @@ return new class extends Migration
                 $table->foreignId('vendor_id')->nullable()->constrained('field_service_vendors')->nullOnDelete();
                 
                 // Device and problem details
-                $table->string('appliance_type', 50)->default('package');
                 $table->string('appliance_brand_model', 100)->nullable(); // e.g. بوتان پارما ۲۴ / ایران رادیاتور L24FF
                 $table->string('serial_number', 100)->nullable();
                 $table->text('problem_description')->nullable();

@@ -1296,9 +1296,15 @@ class WorkflowEngine
                 $firstPayment = $pendingPayment ?? ($appt->payments ? $appt->payments->first() : null);
                 $bookingPaymentId = $firstPayment ? $firstPayment->id : $appt->id;
 
+                $dayName = $dateJalali?->format('l');
+                $dayMonth = $dateJalali?->format('j F');
+                $dateHuman = $dateJalali ? $dateJalali->format('l j F') : null;
+                $dateFull = $dateJalali ? $dateJalali->format('l j F Y') : null;
+
                 $data['appointment'] = $appt;
                 $data['tokens'] = array_merge($data['tokens'], [
                     'appointment_id' => $appt->id,
+                    'booking_id' => $appt->id,
                     'appointment_details_id' => $appt->id,
                     'appointment_payment_id' => $bookingPaymentId,
                     'client_name' => $appt->client?->full_name,
@@ -1307,8 +1313,21 @@ class WorkflowEngine
                     'service_name' => $appt->service?->name,
                     'provider_name' => $appt->provider?->name,
                     'appointment_date_jalali' => $dateJalali?->format('Y/m/d'),
+                    'booking_date_jalali' => $dateJalali?->format('Y/m/d'),
                     'appointment_time_jalali' => $dateJalali?->format('H:i'),
+                    'booking_time_jalali' => $dateJalali?->format('H:i'),
                     'appointment_datetime_jalali' => $dateJalali?->format('Y/m/d H:i'),
+                    'booking_datetime_jalali' => $dateJalali?->format('Y/m/d H:i'),
+                    'appointment_day_name' => $dayName,
+                    'appointment_day_of_week' => $dayName,
+                    'booking_day_name' => $dayName,
+                    'booking_day_of_week' => $dayName,
+                    'appointment_day_month_jalali' => $dayMonth,
+                    'booking_day_month_jalali' => $dayMonth,
+                    'appointment_date_human_jalali' => $dateHuman,
+                    'booking_date_human_jalali' => $dateHuman,
+                    'appointment_date_full_jalali' => $dateFull,
+                    'booking_date_full_jalali' => $dateFull,
                     'amount' => $formattedAmount,
                     'payable_amount' => $formattedAmount,
                     'raw_amount' => $rawAmount,
@@ -1457,6 +1476,11 @@ class WorkflowEngine
 
                 $remainingAmount = max(0, (float)$booking->grand_total - (float)$booking->paid_amount);
 
+                $checkInDateObj = $booking->check_in_date ? \Carbon\Carbon::parse($booking->check_in_date) : null;
+                $checkOutDateObj = $booking->check_out_date ? \Carbon\Carbon::parse($booking->check_out_date) : null;
+                $checkInJalaliObj = $checkInDateObj ? \Morilog\Jalali\Jalalian::fromCarbon($checkInDateObj) : null;
+                $checkOutJalaliObj = $checkOutDateObj ? \Morilog\Jalali\Jalalian::fromCarbon($checkOutDateObj) : null;
+
                 $rentalTokens = [
                     'booking_code'        => $booking->booking_code,
                     'booking_id'          => $booking->id,
@@ -1469,8 +1493,12 @@ class WorkflowEngine
                     'guest_national_code' => $booking->guest_national_code ?? '',
                     'host_name'           => $hostName,
                     'host_phone'          => $hostPhone,
-                    'check_in_jalali'     => $booking->check_in_jalali ?? '',
-                    'check_out_jalali'    => $booking->check_out_jalali ?? '',
+                    'check_in_jalali'     => $booking->check_in_jalali ?? ($checkInJalaliObj?->format('Y/m/d') ?? ''),
+                    'check_in_day_name'   => $checkInJalaliObj?->format('l') ?? '',
+                    'check_in_date_human_jalali' => $checkInJalaliObj ? $checkInJalaliObj->format('l j F') : '',
+                    'check_out_jalali'    => $booking->check_out_jalali ?? ($checkOutJalaliObj?->format('Y/m/d') ?? ''),
+                    'check_out_day_name'  => $checkOutJalaliObj?->format('l') ?? '',
+                    'check_out_date_human_jalali' => $checkOutJalaliObj ? $checkOutJalaliObj->format('l j F') : '',
                     'nights_count'        => $booking->nights_count,
                     'guests_count'        => $booking->guests_count,
                     'extra_guests_count'  => $booking->extra_guests_count ?? 0,

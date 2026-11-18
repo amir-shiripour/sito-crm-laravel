@@ -41,10 +41,10 @@ class RegistrationRequestController extends Controller
         // Custom fields lookup
         $customFields = CustomUserField::all()->keyBy('field_name');
 
-        // FieldService categories lookup
+        // FieldService categories lookup (with section & group hierarchy)
         $categoriesMap = [];
         if (class_exists(\Modules\FieldService\App\Models\Category::class)) {
-            $categoriesMap = \Modules\FieldService\App\Models\Category::all()->keyBy('id');
+            $categoriesMap = \Modules\FieldService\App\Models\Category::with(['section', 'group.section'])->get()->keyBy('id');
         }
 
         // Status counter metrics
@@ -117,9 +117,10 @@ class RegistrationRequestController extends Controller
         if ($registrationRequest->role && in_array($registrationRequest->role->name, ['technician', 'field_service_technician'], true)) {
             if (class_exists(\Modules\FieldService\App\Services\TechnicianLifecycleService::class)) {
                 $customFields = $registrationRequest->custom_fields ?? [];
-                \Modules\FieldService\App\Services\TechnicianLifecycleService::createOrUpdateTechnicianForUser($user, array_merge($customFields, [
+                $tech = \Modules\FieldService\App\Services\TechnicianLifecycleService::createOrUpdateTechnicianForUser($user, array_merge($customFields, [
                     'status' => \Modules\FieldService\App\Enums\TechnicianStatus::ACTIVE,
                 ]));
+                \Modules\FieldService\App\Services\TechnicianLifecycleService::triggerApprovalContract($tech);
             }
         }
 
@@ -150,6 +151,9 @@ class RegistrationRequestController extends Controller
             if (class_exists(\Modules\FieldService\App\Models\Technician::class)) {
                 $tech = \Modules\FieldService\App\Models\Technician::where('mobile', $registrationRequest->mobile)->first();
                 if ($tech) {
+                    $meta = is_array($tech->meta) ? $tech->meta : [];
+                    $meta['verification_submitted'] = false;
+                    $tech->meta = $meta;
                     $tech->status = \Modules\FieldService\App\Enums\TechnicianStatus::SUSPENDED;
                     $tech->is_online = false;
                     $tech->save();

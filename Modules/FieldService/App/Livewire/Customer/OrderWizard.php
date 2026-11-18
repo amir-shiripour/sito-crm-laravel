@@ -7,7 +7,6 @@ use Illuminate\Support\Facades\Auth;
 use Livewire\Component;
 use Modules\Clients\Entities\Client;
 use Modules\Clients\Entities\ClientAddress;
-use Modules\FieldService\App\Enums\ApplianceType;
 use Modules\FieldService\App\Enums\OrderStatus;
 use Modules\FieldService\App\Models\Category;
 use Modules\FieldService\App\Models\FieldServiceSetting;
@@ -30,7 +29,6 @@ class OrderWizard extends Component
 
     // Form inputs
     public ?int $selectedCategoryId = null;
-    public string $appliance_type = 'package';
     public string $appliance_brand_model = '';
     public string $problem_description = '';
     public string $priority = 'normal';
@@ -111,7 +109,6 @@ class OrderWizard extends Component
         $defaultCat = Category::where('is_active', true)->orderBy('sort_order')->first();
         if ($defaultCat) {
             $this->selectedCategoryId = $defaultCat->id;
-            $this->appliance_type = $defaultCat->appliance_type?->value ?? 'package';
         }
 
         $this->calculatePricing();
@@ -404,7 +401,6 @@ class OrderWizard extends Component
         $cat = Category::find($catId);
         if ($cat) {
             $this->selectedCategoryId = $cat->id;
-            $this->appliance_type = $cat->appliance_type?->value ?? 'package';
             $this->calculatePricing();
         }
     }
@@ -585,7 +581,6 @@ class OrderWizard extends Component
             'client_id'             => $client->id,
             'category_id'           => $this->selectedCategoryId,
             'vendor_id'             => $vendorId,
-            'appliance_type'        => ApplianceType::tryFrom($this->appliance_type) ?? ApplianceType::PACKAGE,
             'appliance_brand_model' => $this->appliance_brand_model,
             'problem_description'   => $this->problem_description,
             'status'                => OrderStatus::SEARCHING,
@@ -709,7 +704,6 @@ class OrderWizard extends Component
         // Auto-select first category if none selected
         if (!$this->selectedCategoryId && $allCategories->isNotEmpty()) {
             $this->selectedCategoryId = $allCategories->first()->id;
-            $this->appliance_type = $allCategories->first()->appliance_type?->value ?? 'package';
             $this->calculatePricing();
         }
 

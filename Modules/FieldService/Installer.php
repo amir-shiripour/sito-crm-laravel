@@ -31,6 +31,8 @@ class Installer extends BaseModuleInstaller
         'field_service_buildings',
         'field_service_vendors',
         'field_service_categories',
+        'field_service_service_groups',
+        'field_service_sections',
         'field_service_settings',
         'field_service_technicians',
     ];

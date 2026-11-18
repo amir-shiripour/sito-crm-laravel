@@ -9,7 +9,6 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Modules\Clients\Entities\Client;
-use Modules\FieldService\App\Enums\ApplianceType;
 use Modules\FieldService\App\Enums\OrderStatus;
 
 class ServiceOrder extends Model
@@ -25,7 +24,6 @@ class ServiceOrder extends Model
         'category_id',
         'building_id',
         'vendor_id',
-        'appliance_type',
         'appliance_brand_model',
         'serial_number',
         'problem_description',
@@ -57,7 +55,6 @@ class ServiceOrder extends Model
 
     protected $casts = [
         'status'                   => OrderStatus::class,
-        'appliance_type'           => ApplianceType::class,
         'is_emergency'             => 'boolean',
         'lat'                      => 'float',
         'lng'                      => 'float',

@@ -29,6 +29,7 @@ class FieldServiceSettings extends Component
     public float $base_travel_fee = 60000;
     public int $dispatch_timeout_seconds = 45;
     public int $default_warranty_days = 90;
+    public int $default_technician_radius_km = 25;
 
     // Frontend & Landing Settings
     public string $landing_announcement_text = 'پوشش سراسری اعزام تکنسین در کلیه شهرستان‌های مازندران';
@@ -50,6 +51,7 @@ class FieldServiceSettings extends Component
         $this->base_travel_fee            = (float) FieldServiceSetting::get('base_travel_fee', 60000);
         $this->dispatch_timeout_seconds   = (int) FieldServiceSetting::get('dispatch_timeout_seconds', 45);
         $this->default_warranty_days      = (int) FieldServiceSetting::get('default_warranty_days', 90);
+        $this->default_technician_radius_km = max(1, min(200, (int) FieldServiceSetting::get('default_technician_radius_km', 25)));
 
         $this->landing_announcement_text  = FieldServiceSetting::get('landing_announcement_text', 'پوشش سراسری اعزام تکنسین در کلیه شهرستان‌های مازندران');
         $this->landing_support_phone      = FieldServiceSetting::get('landing_support_phone', '۰۱۱-۳۲۲۲۴۴۵۵');
@@ -133,6 +135,8 @@ class FieldServiceSettings extends Component
         FieldServiceSetting::set('base_travel_fee', $this->base_travel_fee, 'financial');
         FieldServiceSetting::set('dispatch_timeout_seconds', $this->dispatch_timeout_seconds, 'dispatch');
         FieldServiceSetting::set('default_warranty_days', $this->default_warranty_days, 'financial');
+        $this->default_technician_radius_km = max(1, min(200, (int) $this->default_technician_radius_km));
+        FieldServiceSetting::set('default_technician_radius_km', $this->default_technician_radius_km, 'dispatch');
 
         FieldServiceSetting::set('landing_announcement_text', $this->landing_announcement_text, 'frontend');
         FieldServiceSetting::set('landing_support_phone', $this->landing_support_phone, 'frontend');

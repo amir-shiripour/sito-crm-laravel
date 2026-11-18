@@ -221,18 +221,22 @@ class PageController extends Controller
             if (class_exists(\Modules\FieldService\App\Models\Category::class) && \Illuminate\Support\Facades\Schema::hasTable('field_service_categories')) {
                 $data['fsCategories'] = \Modules\FieldService\App\Models\Category::where('is_active', true)->get();
                 $data['activeTechCount'] = \Modules\FieldService\App\Models\Technician::where('is_online', true)->count();
+                $data['totalTechCount'] = \Modules\FieldService\App\Models\Technician::count();
+                $data['technicianPayoutShare'] = 85;
                 $data['baseTravelFee'] = (float) config('fieldservice.default_travel_fee', 60000);
                 $data['defaultWarrantyDays'] = (int) config('fieldservice.default_warranty_days', 90);
                 $data['completedOrdersCount'] = \Modules\FieldService\App\Models\ServiceOrder::where('status', \Modules\FieldService\App\Enums\OrderStatus::COMPLETED)->count();
-                $data['landingAnnouncement'] = \Modules\FieldService\App\Models\FieldServiceSetting::get('landing_announcement_text', 'پوشش سراسری اعزام تکنسین در کلیه شهرستان‌های مازندران');
+                $data['landingAnnouncement'] = \Modules\FieldService\App\Models\FieldServiceSetting::get('landing_announcement_text', 'جذب و استخدام سراسری تکنسین و متخصصان فنی در مازندران');
                 $data['supportPhone'] = \Modules\FieldService\App\Models\FieldServiceSetting::get('landing_support_phone', '۰۱۱-۳۲۲۲۴۴۵۵');
             } else {
                 $data['fsCategories'] = collect();
                 $data['activeTechCount'] = 0;
+                $data['totalTechCount'] = 0;
+                $data['technicianPayoutShare'] = 85;
                 $data['baseTravelFee'] = 60000;
                 $data['defaultWarrantyDays'] = 90;
                 $data['completedOrdersCount'] = 0;
-                $data['landingAnnouncement'] = 'پوشش سراسری اعزام تکنسین در کلیه شهرستان‌های مازندران';
+                $data['landingAnnouncement'] = 'جذب و استخدام سراسری تکنسین و متخصصان فنی در مازندران';
                 $data['supportPhone'] = '۰۱۱-۳۲۲۲۴۴۵۵';
             }
         }

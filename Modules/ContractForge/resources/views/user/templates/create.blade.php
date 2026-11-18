@@ -7,7 +7,16 @@
                 <h1 class="text-xl font-bold text-gray-900 dark:text-gray-100">ایجاد قالب جدید</h1>
                 <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">طراحی قالب جدید به صورت بلوک‌های داینامیک</p>
             </div>
-            <div>
+            <div class="flex flex-wrap items-center gap-2">
+                @if(!empty($fieldServiceActive))
+                    <button type="button" onclick="applyTechnicianPreset()"
+                            class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold shadow-sm transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        <span>الگوی آماده قرارداد تکنسین</span>
+                    </button>
+                @endif
                 <a href="{{ route('user.contracts.templates.index') }}" class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm font-medium hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">
                     بازگشت به لیست
                 </a>
@@ -90,7 +99,7 @@
                         <h2 class="text-base font-bold text-gray-900 dark:text-gray-100">توکن‌های داینامیک مجاز</h2>
                         <p class="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">روی هر توکن کلیک کنید تا در کلیپ‌بورد کپی شود و سپس آن را در بلوک‌های متنی قرارداد بچسبانید (Paste).</p>
                         
-                        <div class="space-y-2.5 max-h-[600px] overflow-y-auto pr-1">
+                        <div id="tokensListContainer" class="space-y-2.5 max-h-[600px] overflow-y-auto pr-1">
                             @foreach($tokens as $key => $lbl)
                                 <div onclick="copyToken('{{ $key }}')" class="group flex items-center justify-between p-2.5 rounded-xl border border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/50 hover:bg-indigo-50/50 dark:hover:bg-indigo-900/20 hover:border-indigo-200 dark:hover:border-indigo-800 cursor-pointer transition-all duration-200">
                                     <div>
@@ -114,6 +123,54 @@
     </div>
 
     <script>
+        const tokensByEntityType = @json($tokensByEntityType ?? []);
+        const technicianPresetBlocks = @json($technicianPresetBlocks ?? []);
+
+        function applyTechnicianPreset() {
+            const container = document.getElementById('blocksContainer');
+            if (!container || !technicianPresetBlocks.length) return;
+
+            if (container.children.length > 0 && !confirm('بلوک‌های فعلی جایگزین الگوی آماده قرارداد تکنسین شوند؟')) {
+                return;
+            }
+
+            const nameInput = document.querySelector('input[name="name"]');
+            if (nameInput && !nameInput.value.trim()) {
+                nameInput.value = 'قرارداد همکاری و عضویت تکنسین';
+            }
+
+            const entitySelect = document.querySelector('select[name="entity_type"]');
+            if (entitySelect) {
+                entitySelect.value = 'field_service_technician';
+                entitySelect.dispatchEvent(new Event('change'));
+            }
+
+            container.innerHTML = '';
+            blockCounter = 0;
+            technicianPresetBlocks.forEach(block => addBlock(block.type, block));
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const entitySelect = document.querySelector('select[name="entity_type"]');
+            const container = document.getElementById('tokensListContainer');
+            if (entitySelect && container) {
+                entitySelect.addEventListener('change', () => {
+                    const tokens = tokensByEntityType[entitySelect.value] || {};
+                    container.innerHTML = Object.entries(tokens).map(([key, lbl]) => `
+                        <div onclick="copyToken('${key}')" class="group flex items-center justify-between p-2.5 rounded-xl border border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/50 hover:bg-indigo-50/50 dark:hover:bg-indigo-900/20 hover:border-indigo-200 dark:hover:border-indigo-800 cursor-pointer transition-all duration-200">
+                            <div>
+                                <div class="text-xs font-semibold text-gray-900 dark:text-gray-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400">${lbl}</div>
+                                <div class="text-[11px] font-sans text-gray-400 dark:text-gray-500 mt-0.5" dir="ltr">{${key}}</div>
+                            </div>
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-400 group-hover:text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                            </svg>
+                        </div>
+                    `).join('');
+                });
+            }
+        });
+
         let blockCounter = 0;
 
         function getAlignSelectHtml(counter, currentAlign = 'right', allowedAligns = ['right', 'center', 'left', 'justify']) {
@@ -219,9 +276,15 @@
                     <div class="space-y-2">
                         <label class="block text-xs font-semibold text-gray-600 dark:text-gray-400">انتخاب جدول داده‌های داینامیک</label>
                         <select name="blocks[${blockCounter}][content]" class="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-4 py-2.5 text-sm focus:border-indigo-500 focus:ring-indigo-500 focus:ring-1 focus:outline-none transition-colors">
-                            <option value="plan_items_table" ${selected === 'plan_items_table' ? 'selected' : ''}>جدول خدمات طرح درمان</option>
-                            <option value="installment_breakdown_table" ${selected === 'installment_breakdown_table' ? 'selected' : ''}>جدول اقساط و زمان پرداخت</option>
-                            <option value="cheques_table" ${selected === 'cheques_table' ? 'selected' : ''}>جدول چک‌های دریافتی</option>
+                            @if(!empty($bookingActive))
+                                <option value="plan_items_table" ${selected === 'plan_items_table' ? 'selected' : ''}>جدول خدمات طرح درمان</option>
+                                <option value="installment_breakdown_table" ${selected === 'installment_breakdown_table' ? 'selected' : ''}>جدول اقساط و زمان پرداخت</option>
+                                <option value="cheques_table" ${selected === 'cheques_table' ? 'selected' : ''}>جدول چک‌های دریافتی</option>
+                            @endif
+                            @if(!empty($fieldServiceActive))
+                                <option value="technician_skills_table" ${selected === 'technician_skills_table' ? 'selected' : ''}>جدول تخصص‌ها و خدمات تکنسین</option>
+                                <option value="technician_signatures_table" ${selected === 'technician_signatures_table' ? 'selected' : ''}>باکس امضاهای قرارداد تکنسین (مطابق PDF)</option>
+                            @endif
                         </select>
                     </div>
                 `;

@@ -5,8 +5,9 @@ namespace Modules\FieldService\App\Livewire\Admin;
 use Illuminate\Support\Str;
 use Livewire\Component;
 use Livewire\WithPagination;
-use Modules\FieldService\App\Enums\ApplianceType;
 use Modules\FieldService\App\Models\Category;
+use Modules\FieldService\App\Models\Section;
+use Modules\FieldService\App\Models\ServiceGroup;
 
 class CategoriesManager extends Component
 {
@@ -14,16 +15,22 @@ class CategoriesManager extends Component
 
     public string $search = '';
     public string $statusFilter = 'all';
-    public string $applianceFilter = 'all';
+    public string $sectionFilter = 'all';
+    public string $groupFilter = 'all';
+
+    // Bulk group assignment
+    public array $selectedIds = [];
+    public ?string $bulkGroupId = '';
 
     // Modal state: Create & Edit
     public bool $showModal = false;
     public ?int $editingCategoryId = null;
 
+    public ?int $selectedSectionId = null;
+    public ?int $groupId = null;
     public string $name = '';
     public string $slug = '';
     public string $icon = '🛠️';
-    public string $applianceType = 'other';
     public ?string $baseLaborFeeToman = '';
     public int $warrantyDays = 90;
     public int $sortOrder = 0;
@@ -47,24 +54,69 @@ class CategoriesManager extends Component
         $this->resetPage();
     }
 
-    public function updatingApplianceFilter()
+    public function updatingSectionFilter()
+    {
+        $this->groupFilter = 'all';
+        $this->resetPage();
+    }
+
+    public function updatingGroupFilter()
     {
         $this->resetPage();
+    }
+
+    public function updatedSelectedSectionId()
+    {
+        $this->groupId = null;
+    }
+
+    public function assignSelectedToGroup(): void
+    {
+        $ids = array_values(array_filter(array_map('intval', $this->selectedIds)));
+        if (empty($ids)) {
+            return;
+        }
+
+        if ($this->bulkGroupId === '' || $this->bulkGroupId === null) {
+            Category::whereIn('id', $ids)->update(['section_id' => null, 'group_id' => null]);
+            session()->flash('message', count($ids) . ' خدمت به حالت «بدون بخش و دسته» منتقل شدند.');
+        } else {
+            $group = ServiceGroup::with('section')->findOrFail((int) $this->bulkGroupId);
+            Category::whereIn('id', $ids)->update([
+                'section_id' => $group->section_id,
+                'group_id'   => $group->id,
+            ]);
+            $sectionName = $group->section?->name ? $group->section->name . ' › ' : '';
+            session()->flash('message', count($ids) . " خدمت به دسته «{$sectionName}{$group->name}» منتقل شدند.");
+        }
+
+        $this->selectedIds = [];
+        $this->bulkGroupId = '';
     }
 
     public function openCreateModal()
     {
         $this->reset([
             'editingCategoryId',
+            'selectedSectionId',
+            'groupId',
             'name',
             'slug',
             'icon',
-            'applianceType',
             'baseLaborFeeToman',
             'description',
         ]);
+        if ($this->sectionFilter !== 'all') {
+            $this->selectedSectionId = (int) $this->sectionFilter;
+        }
+        if ($this->groupFilter !== 'all' && $this->groupFilter !== 'none') {
+            $grp = ServiceGroup::find((int) $this->groupFilter);
+            if ($grp) {
+                $this->selectedSectionId = $grp->section_id;
+                $this->groupId = $grp->id;
+            }
+        }
         $this->icon = '🛠️';
-        $this->applianceType = 'other';
         $this->baseLaborFeeToman = '300,000';
         $this->warrantyDays = 90;
         $this->sortOrder = (Category::max('sort_order') ?? 0) + 1;
@@ -75,12 +127,13 @@ class CategoriesManager extends Component
 
     public function openEditModal(int $id)
     {
-        $cat = Category::findOrFail($id);
+        $cat = Category::with('group')->findOrFail($id);
         $this->editingCategoryId = $cat->id;
+        $this->groupId = $cat->group_id;
+        $this->selectedSectionId = $cat->section_id ?: $cat->group?->section_id;
         $this->name = $cat->name;
         $this->slug = $cat->slug;
         $this->icon = $cat->icon ?? '🛠️';
-        $this->applianceType = $cat->appliance_type instanceof ApplianceType ? $cat->appliance_type->value : (string) $cat->appliance_type;
         $this->baseLaborFeeToman = number_format($cat->base_labor_fee / 10);
         $this->warrantyDays = $cat->warranty_days;
         $this->sortOrder = $cat->sort_order;
@@ -99,42 +152,110 @@ class CategoriesManager extends Component
     public function updatedName($value)
     {
         if (empty($this->slug) || !$this->editingCategoryId) {
-            $this->slug = Str::slug($value, '-', null);
+            $this->slug = $this->generateUniqueSlug((string) $value, $this->groupId, $this->editingCategoryId);
         }
+    }
+
+    public function updatedGroupId()
+    {
+        if (!$this->editingCategoryId && !empty(trim($this->name))) {
+            $this->slug = $this->generateUniqueSlug($this->name, $this->groupId, $this->editingCategoryId);
+        }
+    }
+
+    protected function generateUniqueSlug(string $name, ?int $groupId = null, ?int $ignoreId = null): string
+    {
+        $base = Str::slug($name, '-', null);
+        if ($base === '') {
+            $base = 'service';
+        }
+
+        $exists = fn (string $candidate): bool => Category::query()
+            ->where('slug', $candidate)
+            ->when($ignoreId, fn ($q) => $q->where('id', '!=', $ignoreId))
+            ->exists();
+
+        if (!$exists($base)) {
+            return $base;
+        }
+
+        if ($groupId) {
+            $groupSlug = ServiceGroup::whereKey($groupId)->value('slug');
+            if ($groupSlug) {
+                $withGroup = Str::limit("{$groupSlug}-{$base}", 100, '');
+                if (!$exists($withGroup)) {
+                    return $withGroup;
+                }
+            }
+        }
+
+        $counter = 2;
+        do {
+            $suffix = "-{$counter}";
+            $candidate = Str::limit($base, 100 - strlen($suffix), '') . $suffix;
+            $counter++;
+        } while ($exists($candidate));
+
+        return $candidate;
     }
 
     public function saveCategory()
     {
+        $this->selectedSectionId = $this->selectedSectionId ?: null;
+        $this->groupId = $this->groupId ?: null;
+
+        if (empty(trim($this->slug)) && !empty(trim($this->name))) {
+            $this->slug = $this->generateUniqueSlug($this->name, $this->groupId, $this->editingCategoryId);
+        } else {
+            $this->slug = Str::slug($this->slug, '-', null);
+        }
+
         $uniqueRule = 'unique:field_service_categories,slug';
         if ($this->editingCategoryId) {
             $uniqueRule .= ',' . $this->editingCategoryId;
         }
 
         $this->validate([
-            'name'          => 'required|string|max:100',
-            'slug'          => 'required|string|max:100|' . $uniqueRule,
-            'icon'          => 'nullable|string|max:20',
-            'applianceType' => 'required|string',
-            'warrantyDays'  => 'required|integer|min:0|max:3650',
-            'sortOrder'     => 'required|integer|min:0',
-            'description'   => 'nullable|string|max:1000',
+            'selectedSectionId' => 'nullable|integer|exists:field_service_sections,id',
+            'groupId'           => 'nullable|integer|exists:field_service_service_groups,id',
+            'name'              => 'required|string|max:100',
+            'slug'              => 'required|string|max:100|' . $uniqueRule,
+            'icon'              => 'nullable|string|max:20',
+            'warrantyDays'      => 'required|integer|min:0|max:3650',
+            'sortOrder'         => 'required|integer|min:0',
+            'description'       => 'nullable|string|max:1000',
         ], [
-            'name.required'      => 'وارد کردن عنوان خدمت الزامی است.',
-            'slug.required'      => 'وارد کردن نامک الزامی است.',
-            'slug.unique'        => 'این نامک قبلاً ثبت شده است. لطفاً یک نامک یکتا وارد کنید.',
-            'warrantyDays.min'   => 'مدت گارانتی نمی‌تواند منفی باشد.',
-            'sortOrder.required' => 'اولویت مرتب‌سازی الزامی است.',
+            'selectedSectionId.exists' => 'بخش انتخاب‌شده معتبر نیست.',
+            'groupId.exists'           => 'دسته انتخاب‌شده معتبر نیست.',
+            'name.required'            => 'وارد کردن عنوان خدمت الزامی است.',
+            'slug.required'            => 'وارد کردن نامک الزامی است.',
+            'slug.unique'              => 'این نامک قبلاً ثبت شده است. لطفاً یک نامک یکتا وارد کنید.',
+            'warrantyDays.min'         => 'مدت گارانتی نمی‌تواند منفی باشد.',
+            'sortOrder.required'       => 'اولویت مرتب‌سازی الزامی است.',
         ]);
 
-        // Convert cleaned Toman to Rials for database storage
-        $cleanToman = (float) preg_replace('/[^0-9]/', '', (string) $this->baseLaborFeeToman);
+        // Keep section_id consistent with group_id if a group is selected
+        $resolvedSectionId = $this->selectedSectionId;
+        if ($this->groupId) {
+            $resolvedSectionId = ServiceGroup::whereKey($this->groupId)->value('section_id') ?? $this->selectedSectionId;
+        }
+
+        // Convert cleaned Toman (including Persian/Arabic digits) to Rials for database storage
+        $normalizedToman = strtr((string) $this->baseLaborFeeToman, [
+            '۰' => '0', '۱' => '1', '۲' => '2', '۳' => '3', '۴' => '4',
+            '۵' => '5', '۶' => '6', '۷' => '7', '۸' => '8', '۹' => '9',
+            '٠' => '0', '١' => '1', '٢' => '2', '٣' => '3', '٤' => '4',
+            '٥' => '5', '٦' => '6', '٧' => '7', '٨' => '8', '٩' => '9',
+        ]);
+        $cleanToman = (float) preg_replace('/[^0-9]/', '', $normalizedToman);
         $baseLaborFeeRials = $cleanToman * 10;
 
         $data = [
+            'section_id'     => $resolvedSectionId ?: null,
+            'group_id'       => $this->groupId ?: null,
             'name'           => $this->name,
             'slug'           => Str::slug($this->slug, '-', null),
             'icon'           => $this->icon ?: '🛠️',
-            'appliance_type' => $this->applianceType,
             'base_labor_fee' => $baseLaborFeeRials,
             'warranty_days'  => $this->warrantyDays,
             'sort_order'     => $this->sortOrder,
@@ -206,7 +327,7 @@ class CategoriesManager extends Component
 
     public function render()
     {
-        $query = Category::withCount(['technicians', 'orders']);
+        $query = Category::with(['section', 'group.section'])->withCount(['technicians', 'orders']);
 
         if (!empty(trim($this->search))) {
             $search = trim($this->search);
@@ -223,19 +344,41 @@ class CategoriesManager extends Component
             $query->where('is_active', false);
         }
 
-        if ($this->applianceFilter !== 'all') {
-            $query->where('appliance_type', $this->applianceFilter);
+        if ($this->sectionFilter !== 'all') {
+            $sectionId = (int) $this->sectionFilter;
+            $query->where(function ($q) use ($sectionId) {
+                $q->where('section_id', $sectionId)
+                  ->orWhereHas('group', fn ($gq) => $gq->where('section_id', $sectionId));
+            });
+        }
+
+        if ($this->groupFilter === 'none') {
+            $query->whereNull('group_id');
+        } elseif ($this->groupFilter !== 'all') {
+            $query->where('group_id', (int) $this->groupFilter);
         }
 
         $categories = $query->orderBy('sort_order', 'asc')
             ->orderBy('id', 'asc')
             ->paginate(15);
 
-        $applianceTypes = ApplianceType::cases();
+        $sections = Section::orderBy('sort_order', 'asc')->orderBy('id', 'asc')->get();
+        $allGroups = ServiceGroup::with('section')->orderBy('sort_order', 'asc')->orderBy('id', 'asc')->get();
+
+        $filterGroups = $this->sectionFilter !== 'all'
+            ? $allGroups->where('section_id', (int) $this->sectionFilter)
+            : $allGroups;
+
+        $modalGroups = $this->selectedSectionId
+            ? $allGroups->where('section_id', (int) $this->selectedSectionId)
+            : collect();
 
         return view('fieldservice::livewire.admin.categories-manager', [
             'categories'     => $categories,
-            'applianceTypes' => $applianceTypes,
+            'sections'       => $sections,
+            'allGroups'      => $allGroups,
+            'filterGroups'   => $filterGroups,
+            'modalGroups'    => $modalGroups,
             'totalCount'     => Category::count(),
             'activeCount'    => Category::where('is_active', true)->count(),
         ]);

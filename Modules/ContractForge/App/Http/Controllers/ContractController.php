@@ -7,8 +7,8 @@ use Illuminate\Http\Request;
 use Modules\ContractForge\App\Models\Contract;
 use Modules\ContractForge\App\Models\ContractTemplate;
 use Modules\ContractForge\Services\ContractEngine;
+use Modules\ContractForge\Services\ContractModuleHelper;
 use Modules\ContractForge\Services\TokenResolver;
-use Modules\Booking\App\Models\TreatmentPlan;
 use Spatie\Browsershot\Browsershot;
 
 class ContractController extends Controller
@@ -38,13 +38,34 @@ class ContractController extends Controller
         return view('contractforge::user.contracts.show', compact('contract'));
     }
 
+    protected function authorizeContractRead(Contract $contract): void
+    {
+        $user = auth()->user();
+        if (!$user) {
+            abort(403);
+        }
+
+        if ($user->can('contractforge.view')) {
+            return;
+        }
+
+        $entity = $contract->contractable;
+        if ($entity && isset($entity->user_id) && (int) $entity->user_id === (int) $user->id && in_array($contract->status, ['active', 'signed'], true)) {
+            return;
+        }
+
+        abort(403, 'شما دسترسی مشاهده این قرارداد را ندارید.');
+    }
+
     public function print(Contract $contract)
     {
+        $this->authorizeContractRead($contract);
         return view('contractforge::user.contracts.print', compact('contract'));
     }
 
     public function pdf(Contract $contract)
     {
+        $this->authorizeContractRead($contract);
         // Add minimal print container styles to body
         $html = view('contractforge::user.contracts.pdf', compact('contract'))->render();
 
@@ -89,6 +110,19 @@ class ContractController extends Controller
         return back()->with('success', 'قرارداد با موفقیت به عنوان امضا شده ثبت شد.');
     }
 
+    public function sendToSign(Contract $contract)
+    {
+        if ($contract->status === 'signed' || $contract->status === 'cancelled') {
+            return back()->with('error', 'وضعیت فعلی قرارداد امکان ارسال برای امضا را ندارد.');
+        }
+
+        $contract->update([
+            'status' => 'active',
+        ]);
+
+        return back()->with('success', 'قرارداد با وضعیت «در انتظار امضا» برای طرف قرارداد ارسال شد.');
+    }
+
     public function cancel(Contract $contract)
     {
         $contract->update([
@@ -107,22 +141,32 @@ class ContractController extends Controller
 
     public function generateManual(Request $request)
     {
+        $availableTypes = array_keys(ContractModuleHelper::getAvailableEntityTypes());
+
         $request->validate([
-            'template_id' => 'required|exists:contract_templates,id',
-            'entity_id' => 'required|integer',
-            'entity_type' => 'required|string|in:treatment_plan',
+            'template_id'    => 'required|exists:contract_templates,id',
+            'entity_id'      => 'required|integer',
+            'entity_type'    => 'required|string|in:' . implode(',', $availableTypes ?: ['none']),
+            'initial_status' => 'nullable|in:draft,active',
         ]);
 
         $template = ContractTemplate::findOrFail($request->template_id);
 
-        if ($request->entity_type === 'treatment_plan') {
-            $entity = TreatmentPlan::findOrFail($request->entity_id);
+        if ($request->entity_type === 'treatment_plan' && ContractModuleHelper::isModuleActive('Booking')) {
+            $entity = \Modules\Booking\App\Models\TreatmentPlan::findOrFail($request->entity_id);
+        } elseif ($request->entity_type === 'field_service_technician' && ContractModuleHelper::isModuleActive('FieldService')) {
+            $entity = \Modules\FieldService\App\Models\Technician::findOrFail($request->entity_id);
         } else {
-            return back()->with('error', 'موجودیت نامعتبر است.');
+            return back()->with('error', 'موجودیت نامعتبر است یا ماژول مرتبط غیرفعال می‌باشد.');
         }
 
+        $initialStatus = $request->input(
+            'initial_status',
+            $request->entity_type === 'field_service_technician' ? 'active' : 'draft'
+        );
+
         try {
-            $contract = ContractEngine::generate($template, $entity);
+            $contract = ContractEngine::generate($template, $entity, null, null, $initialStatus);
             return redirect()->route('user.contracts.show', $contract->id)
                 ->with('success', 'قرارداد جدید با موفقیت ایجاد شد.');
         } catch (\Exception $e) {
@@ -164,7 +208,7 @@ class ContractController extends Controller
                 'title' => $title,
             ]);
 
-            return back()->with('success', 'محتوای قرارداد بر اساس آخرین تغییرات طرح درمان و قالب قرارداد بروزرسانی شد.');
+            return back()->with('success', 'محتوای قرارداد بر اساس آخرین تغییرات اطلاعات موجودیت و قالب قرارداد بروزرسانی شد.');
         } catch (\Exception $e) {
             return back()->with('error', 'خطا در بروزرسانی قرارداد: ' . $e->getMessage());
         }

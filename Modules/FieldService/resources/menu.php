@@ -1,5 +1,45 @@
 <?php
 
+$isTechOnly = auth()->check()
+    && \Modules\FieldService\App\Support\TechnicianCustomFieldsHelper::isTechnicianOnly(auth()->user());
+
+if ($isTechOnly) {
+    return [
+        [
+            'title'      => 'پنل کاری تکنسین',
+            'route'      => 'user.fieldservice.dashboard',
+            'permission' => 'fieldservice.view',
+            'icon'       => '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 4h6v8h-6z" /><path d="M4 16h6v4h-6z" /><path d="M14 12h6v8h-6z" /><path d="M14 4h6v4h-6z" /></svg>',
+            'group'      => 'fieldservice',
+            'position'   => 30.1,
+        ],
+        [
+            'title'      => 'ماموریت‌ها و سرویس‌های من',
+            'route'      => 'user.fieldservice.orders.index',
+            'permission' => 'fieldservice.orders.view',
+            'icon'       => '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M9 5h-2a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-12a2 2 0 0 0 -2 -2h-2" /><path d="M9 3m0 2a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v0a2 2 0 0 1 -2 2h-2a2 2 0 0 1 -2 -2z" /><path d="M9 14l2 2l4 -4" /></svg>',
+            'group'      => 'fieldservice',
+            'position'   => 30.2,
+        ],
+        [
+            'title'      => 'درآمد و تسویه‌های من',
+            'route'      => 'user.fieldservice.settlements.index',
+            'permission' => 'fieldservice.settlements.view',
+            'icon'       => '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M17 8v-3a1 1 0 0 0 -1 -1h-10a2 2 0 0 0 0 4h12a1 1 0 0 1 1 1v3m0 4v3a1 1 0 0 1 -1 1h-12a2 2 0 0 1 -2 -2v-12" /><path d="M20 12v4h-4a2 2 0 0 1 0 -4h4" /></svg>',
+            'group'      => 'fieldservice',
+            'position'   => 30.3,
+        ],
+        [
+            'title'      => 'کنسول نقشه و رادار',
+            'route'      => 'fieldservice.technician',
+            'permission' => 'fieldservice.view',
+            'icon'       => '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 18.5l-3 -1.5l-6 3v-13l6 -3l6 3l6 -3v7.5" /><path d="M9 4v13" /><path d="M15 7v5.5" /></svg>',
+            'group'      => 'fieldservice',
+            'position'   => 30.4,
+        ],
+    ];
+}
+
 return [
     // مانیتورینگ زنده ناوگان (GIS Fleet Map)
     [

@@ -14,6 +14,9 @@
             'appointment_date_jalali' => 'تاریخ نوبت (شمسی)',
             'appointment_time_jalali' => 'ساعت نوبت',
             'appointment_datetime_jalali' => 'تاریخ و ساعت کامل',
+            'appointment_day_name' => 'نام روز در هفته (مثلاً دوشنبه)',
+            'appointment_day_month_jalali' => 'روز و ماه نوبت (مثلاً ۲ آذر)',
+            'appointment_date_human_jalali' => 'تاریخ خوانا با نام روز (مثلاً دوشنبه ۲ آذر)',
             'payment_link' => 'لینک پرداخت',
         ],
         'treatment_plan' => [

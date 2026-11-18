@@ -61,6 +61,33 @@ class Contract extends Model
     }
 
     /**
+     * Safely resolve the contract party display name across supported modules.
+     */
+    public function getPartyNameAttribute(): string
+    {
+        if ($this->relationLoaded('client') && $this->client) {
+            return $this->client->full_name ?: 'بدون نام';
+        }
+
+        if ($this->client_id && $this->client) {
+            return $this->client->full_name ?: 'بدون نام';
+        }
+
+        try {
+            $entity = $this->contractable;
+            if ($entity) {
+                return $entity->full_name
+                    ?? $entity->patient_name
+                    ?? (method_exists($entity, 'getContractTitle') ? $entity->getContractTitle() : 'بدون نام');
+            }
+        } catch (\Throwable $e) {
+            // Module for contractable entity may be disabled/removed
+        }
+
+        return 'بدون نام';
+    }
+
+    /**
      * Get a user-friendly status badge markup or class.
      */
     public function getStatusLabelAttribute(): string

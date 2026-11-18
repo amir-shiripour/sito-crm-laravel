@@ -4,12 +4,63 @@
     $title = __('پروفایل کاربری');
     $user = auth()->user();
     $userRolesDisplay = $user->roles->pluck('display_name')->toArray();
+
+    $fieldServiceActive = class_exists(\Nwidart\Modules\Facades\Module::class)
+        && \Nwidart\Modules\Facades\Module::has('FieldService')
+        && \Nwidart\Modules\Facades\Module::isEnabled('FieldService')
+        && \App\Models\Module::where('name', 'FieldService')->where('active', true)->where('installed', true)->exists()
+        && class_exists(\Modules\FieldService\App\Livewire\Technician\TechnicianVerificationForm::class)
+        && class_exists(\Modules\FieldService\App\Models\Technician::class);
+
+    $showInitialVerificationTab = false;
+    $isRestrictedTech = false;
+    $showTechnicianContractsTab = false;
+    $pendingTechContractsCount = 0;
+    if ($fieldServiceActive && $user->hasRole('technician')) {
+        $techRecord = \Modules\FieldService\App\Models\Technician::where('user_id', $user->id)->first();
+        $techMobile = $techRecord?->mobile ?: $user->mobile;
+        $hasRejectedRequest = $techMobile && class_exists(\App\Models\RegistrationRequest::class)
+            ? \App\Models\RegistrationRequest::where('mobile', $techMobile)->where('status', 'rejected')->exists()
+            : false;
+
+        $isRestrictedUnapproved = !$techRecord
+            || (
+                $techRecord->status !== \Modules\FieldService\App\Enums\TechnicianStatus::ACTIVE
+                && $techRecord->status !== \Modules\FieldService\App\Enums\TechnicianStatus::SUSPENDED
+            );
+
+        $isRestrictedTech = $isRestrictedUnapproved;
+
+        $showInitialVerificationTab = !$techRecord
+            || $hasRejectedRequest
+            || (
+                $techRecord->status !== \Modules\FieldService\App\Enums\TechnicianStatus::ACTIVE
+                && $techRecord->status !== \Modules\FieldService\App\Enums\TechnicianStatus::SUSPENDED
+            );
+
+        if (
+            $techRecord
+            && class_exists(\Modules\ContractForge\Services\ContractModuleHelper::class)
+            && \Modules\ContractForge\Services\ContractModuleHelper::isModuleActive('ContractForge')
+        ) {
+            $showTechnicianContractsTab = true;
+            $pendingTechContractsCount = $techRecord->contracts()->where('status', 'active')->count();
+        }
+    }
+
+    $defaultTab = session(
+        'active_tab',
+        $pendingTechContractsCount > 0
+            ? 'contracts'
+            : ($showInitialVerificationTab ? 'verification' : 'profile')
+    );
 @endphp
 
 @section('content')
 
     <div class="mx-auto max-w-full space-y-6"
-         x-data="{ activeTab: '{{ session('active_tab', 'profile') }}' }">
+         x-data="{ activeTab: '{{ $defaultTab }}' }"
+         x-on:switch-profile-tab.window="activeTab = $event.detail">
         <div class="relative dark:bg-gray-900/30 border-b border-gray-200 dark:border-gray-700 p-6 sm:p-8">
             <div class="flex flex-col xl:flex-row items-start xl:items-center justify-between gap-6">
 
@@ -29,12 +80,14 @@
                     <div>
                         <h1 class="text-xl font-bold text-gray-900 dark:text-white">{{ $user->name }}</h1>
                         <div class="mt-2 flex flex-wrap items-center gap-3 text-xs sm:text-sm">
-                            <div class="flex items-center gap-1.5 text-gray-500 dark:text-gray-400 font-mono dir-ltr">
-                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <div x-data="{ headerMobile: @js($user->mobile ?: 'ثبت نشده') }"
+                                 @profile-mobile-updated.window="headerMobile = $event.detail.mobile"
+                                 class="flex items-center gap-1.5 text-slate-600 dark:text-slate-300 font-sans dir-ltr">
+                                <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                          d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                                          d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/>
                                 </svg>
-                                <span>{{ $user->email }}</span>
+                                <span x-text="headerMobile"></span>
                             </div>
                             @if(count($userRolesDisplay))
                                 <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border
@@ -49,51 +102,114 @@
                 </div>
 
                 {{-- Tab nav --}}
-                <div class="flex flex-wrap items-center gap-2 w-full xl:w-auto mt-2 xl:mt-0">
-                    <nav class="flex w-full sm:w-auto space-x-3 space-x-reverse overflow-x-auto pb-2 sm:pb-0 hide-scrollbar">
+                <div class="w-full xl:w-auto mt-2 xl:mt-0 min-w-0">
+                    <nav x-data="{
+                            isDown: false,
+                            startX: 0,
+                            scrollLeft: 0,
+                            moved: false,
+                            focusActive(behavior = 'smooth') {
+                                const btn = this.$el.querySelector(`[data-tab='${activeTab}']`);
+                                if (btn) {
+                                    btn.scrollIntoView({ behavior, inline: 'center', block: 'nearest' });
+                                }
+                            },
+                            startDrag(e) {
+                                this.isDown = true;
+                                this.moved = false;
+                                this.startX = e.pageX - this.$el.offsetLeft;
+                                this.scrollLeft = this.$el.scrollLeft;
+                            },
+                            onDrag(e) {
+                                if (!this.isDown) return;
+                                const x = e.pageX - this.$el.offsetLeft;
+                                const walk = x - this.startX;
+                                if (Math.abs(walk) > 4) this.moved = true;
+                                if (this.moved) {
+                                    e.preventDefault();
+                                    this.$el.scrollLeft = this.scrollLeft - walk;
+                                }
+                            },
+                            stopDrag() {
+                                this.isDown = false;
+                                setTimeout(() => { this.moved = false; }, 0);
+                            }
+                         }"
+                         x-init="$nextTick(() => focusActive('auto')); $watch('activeTab', () => $nextTick(() => focusActive('smooth')))"
+                         @mousedown="startDrag($event)"
+                         @mousemove="onDrag($event)"
+                         @mouseup="stopDrag()"
+                         @mouseleave="stopDrag()"
+                         style="scrollbar-width: none; -ms-overflow-style: none;"
+                         class="flex items-center gap-2 w-full overflow-x-auto touch-pan-x select-none cursor-grab active:cursor-grabbing [&::-webkit-scrollbar]:hidden">
 
-                        <button @click="activeTab = 'profile'"
-                                :class="activeTab === 'profile' ? 'bg-white border-gray-200 text-indigo-600 shadow-sm dark:bg-gray-700 dark:border-gray-600 dark:text-indigo-300' : 'bg-transparent border-transparent text-gray-600 hover:text-gray-800 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-800/60'"
-                                class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-medium
-                                transition-all whitespace-nowrap">
-                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
-                            </svg>
-                            اطلاعات کاربری
-                        </button>
-
-                        @if (Laravel\Fortify\Features::enabled(Laravel\Fortify\Features::updatePasswords()))
-                            <button @click="activeTab = 'security'"
-                                    :class="activeTab === 'security' ? 'bg-white border-gray-200 text-indigo-600 shadow-sm dark:bg-gray-700 dark:border-gray-600 dark:text-indigo-300' : 'bg-transparent border-transparent text-gray-600 hover:text-gray-800 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-800/60'"
-                                    class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm
-                                    font-medium transition-all whitespace-nowrap">
-                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                        @if($showInitialVerificationTab)
+                            <button type="button" data-tab="verification" @click="if (!moved) activeTab = 'verification'"
+                                    :class="activeTab === 'verification' ? 'bg-white border-gray-200 text-indigo-600 shadow-sm dark:bg-gray-700 dark:border-gray-600 dark:text-indigo-300' : 'bg-transparent border-transparent text-gray-600 hover:text-gray-800 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-800/60'"
+                                    class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-medium transition-all whitespace-nowrap shrink-0">
+                                <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
                                 </svg>
-                                امنیت
+                                احراز هویت
                             </button>
                         @endif
 
-                        <button @click="activeTab = 'sessions'"
-                                :class="activeTab === 'sessions' ? 'bg-white border-gray-200 text-indigo-600 shadow-sm dark:bg-gray-700 dark:border-gray-600 dark:text-indigo-300' : 'bg-transparent border-transparent text-gray-600 hover:text-gray-800 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-800/60'"
-                                class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm
-                                font-medium transition-all whitespace-nowrap">
-                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
-                            </svg>
-                            نشست‌ها
-                        </button>
-
-                        @if(auth()->user()->canAccessDoctorTab())
-                            <button @click="activeTab = 'doctor'"
-                                    :class="activeTab === 'doctor' ? 'bg-white border-gray-200 text-indigo-600 shadow-sm dark:bg-gray-700 dark:border-gray-600 dark:text-indigo-300' : 'bg-transparent border-transparent text-gray-600 hover:text-gray-800 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-800/60'"
-                                    class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm
-                                    font-medium transition-all whitespace-nowrap">
-                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.121 17.804A4 4 0 015 16V5a2 2 0 012-2h10a2 2 0 012 2v11a4 4 0 01-.121 1.804M9 21h6"/>
+                        @if(!$isRestrictedTech)
+                            <button type="button" data-tab="profile" @click="if (!moved) activeTab = 'profile'"
+                                    :class="activeTab === 'profile' ? 'bg-white border-gray-200 text-indigo-600 shadow-sm dark:bg-gray-700 dark:border-gray-600 dark:text-indigo-300' : 'bg-transparent border-transparent text-gray-600 hover:text-gray-800 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-800/60'"
+                                    class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-medium transition-all whitespace-nowrap shrink-0">
+                                <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
                                 </svg>
-                                پروفایل پزشک
+                                اطلاعات کاربری
                             </button>
+
+                            @if (Laravel\Fortify\Features::enabled(Laravel\Fortify\Features::updatePasswords()))
+                                <button type="button" data-tab="security" @click="if (!moved) activeTab = 'security'"
+                                        :class="activeTab === 'security' ? 'bg-white border-gray-200 text-indigo-600 shadow-sm dark:bg-gray-700 dark:border-gray-600 dark:text-indigo-300' : 'bg-transparent border-transparent text-gray-600 hover:text-gray-800 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-800/60'"
+                                        class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-medium transition-all whitespace-nowrap shrink-0">
+                                    <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                                    </svg>
+                                    امنیت
+                                </button>
+                            @endif
+
+                            <button type="button" data-tab="sessions" @click="if (!moved) activeTab = 'sessions'"
+                                    :class="activeTab === 'sessions' ? 'bg-white border-gray-200 text-indigo-600 shadow-sm dark:bg-gray-700 dark:border-gray-600 dark:text-indigo-300' : 'bg-transparent border-transparent text-gray-600 hover:text-gray-800 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-800/60'"
+                                    class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-medium transition-all whitespace-nowrap shrink-0">
+                                <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                                </svg>
+                                نشست‌ها
+                            </button>
+
+                            @if($showTechnicianContractsTab)
+                                <button type="button" data-tab="contracts" @click="if (!moved) activeTab = 'contracts'"
+                                        :class="activeTab === 'contracts' ? 'bg-white border-gray-200 text-indigo-600 shadow-sm dark:bg-gray-700 dark:border-gray-600 dark:text-indigo-300' : 'bg-transparent border-transparent text-gray-600 hover:text-gray-800 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-800/60'"
+                                        class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-medium transition-all whitespace-nowrap shrink-0">
+                                    <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                    </svg>
+                                    <span>قراردادها</span>
+                                    @if($pendingTechContractsCount > 0)
+                                        <span class="px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-amber-500/15 text-amber-600 dark:text-amber-300">
+                                            {{ $pendingTechContractsCount }}
+                                        </span>
+                                    @endif
+                                </button>
+                            @endif
+
+                            @if(auth()->user()->canAccessDoctorTab())
+                                <button type="button" data-tab="doctor" @click="if (!moved) activeTab = 'doctor'"
+                                        :class="activeTab === 'doctor' ? 'bg-white border-gray-200 text-indigo-600 shadow-sm dark:bg-gray-700 dark:border-gray-600 dark:text-indigo-300' : 'bg-transparent border-transparent text-gray-600 hover:text-gray-800 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-800/60'"
+                                        class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-medium transition-all whitespace-nowrap shrink-0">
+                                    <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.121 17.804A4 4 0 015 16V5a2 2 0 012-2h10a2 2 0 012 2v11a4 4 0 01-.121 1.804M9 21h6"/>
+                                    </svg>
+                                    پروفایل پزشک
+                                </button>
+                            @endif
                         @endif
 
                     </nav>
@@ -102,10 +218,40 @@
         </div>
         <div class="p-6 sm:p-8 bg-white dark:bg-gray-800">
 
+            @if(session('success'))
+                <div class="mb-6 p-4 rounded-xl bg-emerald-50 dark:bg-emerald-500/15 border border-emerald-200 dark:border-emerald-500/30 text-emerald-700 dark:text-emerald-300 text-xs font-bold">
+                    {{ session('success') }}
+                </div>
+            @endif
+
+            @if(session('warning'))
+                <div class="mb-6 p-4 rounded-xl bg-amber-50 dark:bg-amber-500/15 border border-amber-200 dark:border-amber-500/30 text-amber-800 dark:text-amber-300 text-xs font-bold">
+                    {{ session('warning') }}
+                </div>
+            @endif
+
+            {{-- احراز هویت (فقط تا زمان تایید) --}}
+            @if($showInitialVerificationTab)
+                <div x-show="activeTab === 'verification'" x-cloak>
+                    @livewire('fieldservice::technician-verification-form', ['isInitial' => true])
+                </div>
+            @endif
+
+            {{-- قراردادهای تکنسین --}}
+            @if($showTechnicianContractsTab)
+                <div x-show="activeTab === 'contracts'" x-cloak>
+                    @livewire('fieldservice::technician-contracts-panel')
+                </div>
+            @endif
+
             {{-- اطلاعات کاربری --}}
             <div x-show="activeTab === 'profile'" x-cloak>
                 @if (Laravel\Fortify\Features::canUpdateProfileInformation())
                     @livewire('profile.update-profile-information-form')
+                @endif
+
+                @if($fieldServiceActive && auth()->user()->hasRole('technician') && !$showInitialVerificationTab)
+                    @livewire('fieldservice::technician-verification-form', ['isInitial' => false])
                 @endif
             </div>
 

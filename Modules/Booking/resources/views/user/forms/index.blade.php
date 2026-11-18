@@ -47,7 +47,7 @@
                             : 0;
                         @endphp
                         <tr class="group hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors duration-150">
-                            <td class="px-4 py-3 text-gray-500 dark:text-gray-400 font-mono text-xs">
+                            <td class="px-4 py-3 text-gray-500 dark:text-gray-400 font-sans text-xs">
                                 {{ $form->id }}
                             </td>
                             <td class="px-4 py-3 font-medium text-gray-900 dark:text-gray-100">

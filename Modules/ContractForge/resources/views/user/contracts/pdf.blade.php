@@ -69,5 +69,14 @@
     <div class="contract-container">
         {!! $contract->rendered_body !!}
     </div>
+
+    @if($contract->status === 'signed' && $contract->signed_at)
+        <div class="mt-8 border-t pt-4" style="font-size: 12px; color: #065f46; background: #ecfdf5; border: 1px solid #a7f3d0; padding: 12px 16px; border-radius: 8px;">
+            <strong>تایید و امضای الکترونیکی:</strong>
+            این قرارداد توسط {{ $contract->party_name }} در تاریخ
+            {{ \Morilog\Jalali\Jalalian::fromCarbon($contract->signed_at)->format('Y/m/d H:i') }}
+            مطالعه و تایید الکترونیکی شده است.
+        </div>
+    @endif
 </body>
 </html>

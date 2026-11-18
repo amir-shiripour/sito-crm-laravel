@@ -11,9 +11,10 @@ Route::prefix('user')->name('user.')->middleware(['web', 'auth'])->group(functio
         // Core Contracts Routes
         Route::get('/', [ContractController::class, 'index'])->name('index')->middleware('can:contractforge.view');
         Route::get('/{contract}/show', [ContractController::class, 'show'])->name('show')->middleware('can:contractforge.view');
-        Route::get('/{contract}/print', [ContractController::class, 'print'])->name('print')->middleware('can:contractforge.view');
-        Route::get('/{contract}/pdf', [ContractController::class, 'pdf'])->name('pdf')->middleware('can:contractforge.view');
+        Route::get('/{contract}/print', [ContractController::class, 'print'])->name('print');
+        Route::get('/{contract}/pdf', [ContractController::class, 'pdf'])->name('pdf');
         Route::post('/{contract}/sign', [ContractController::class, 'sign'])->name('sign')->middleware('can:contractforge.manage');
+        Route::post('/{contract}/send-to-sign', [ContractController::class, 'sendToSign'])->name('send_to_sign')->middleware('can:contractforge.manage');
         Route::post('/{contract}/cancel', [ContractController::class, 'cancel'])->name('cancel')->middleware('can:contractforge.manage');
         Route::post('/{contract}/regenerate', [ContractController::class, 'regenerate'])->name('regenerate')->middleware('can:contractforge.manage');
         Route::delete('/{contract}', [ContractController::class, 'destroy'])->name('destroy')->middleware('can:contractforge.manage');

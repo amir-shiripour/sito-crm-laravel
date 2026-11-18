@@ -322,7 +322,7 @@
                 <div class="space-y-2.5 max-h-64 overflow-y-auto custom-scrollbar p-0.5">
                     {{-- Appliance Brand/Model --}}
                     <div>
-                        <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">برند و مدل دستگاه (اختیاری)</label>
+                        <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">برند و مدل دستگاه</label>
                         <input type="text" wire:model="appliance_brand_model" placeholder="مثال: پکیج بوتان بیتا / اسپلیت ال‌جی"
                                class="w-full h-10 px-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-800 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-sans">
                     </div>

@@ -2,10 +2,20 @@
 <html lang="fa" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>{{ $platformName ?? 'سامانه هوشمند خدمات فنی' }} | کنسول اعزام و سفیران</title>
+    <title>{{ $platformName ?? 'سامانه هوشمند خدمات فنی' }} | کنسول سفیران و تکنسین‌ها</title>
     
+    {{-- Anti-FOUC Early Theme Script --}}
+    <script>
+        (() => {
+            const pref = localStorage.getItem('theme') || 'system';
+            const sysDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            const isDark = pref === 'dark' || (pref === 'system' && sysDark);
+            document.documentElement.classList.toggle('dark', isDark);
+        })();
+    </script>
+
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @livewireStyles
 
@@ -44,11 +54,22 @@
             display: none !important;
         }
         .leaflet-control-attribution {
-            background: rgba(15, 23, 42, 0.8) !important;
-            color: #94a3b8 !important;
+            background: rgba(255, 255, 255, 0.85) !important;
+            color: #475569 !important;
             font-size: 9px !important;
             border-radius: 6px !important;
             margin: 4px !important;
+            border: 1px solid rgba(0, 0, 0, 0.08) !important;
+        }
+        .dark .leaflet-control-attribution {
+            background: rgba(15, 23, 42, 0.85) !important;
+            color: #94a3b8 !important;
+            border: 1px solid rgba(255, 255, 255, 0.08) !important;
+        }
+
+        /* Pure CSS Dark Mode Filter for Map Tiles (Zero API Key & 60 FPS) */
+        .dark .leaflet-tile {
+            filter: brightness(0.65) invert(1) contrast(2.4) hue-rotate(185deg) saturate(0.28);
         }
 
         /* Instant Touch & GPU Hardware Acceleration */
@@ -65,6 +86,9 @@
             -webkit-user-select: none !important;
             user-select: none !important;
             cursor: grab;
+            background: #f1f5f9 !important;
+        }
+        .dark .leaflet-container {
             background: #090d16 !important;
         }
         .leaflet-container:active {
@@ -76,87 +100,98 @@
         }
     </style>
 </head>
-<body class="h-dvh w-screen overflow-hidden bg-slate-950 text-slate-100 font-sans selection:bg-indigo-600 selection:text-white select-none relative"
+<body class="h-dvh w-screen overflow-hidden bg-slate-100 dark:bg-slate-950 text-slate-800 dark:text-slate-100 font-sans selection:bg-indigo-600 selection:text-white select-none relative"
       x-data="technicianAppHandler(@js($mapConfig), @js($technician), @js($activeMission), @js($availableMissions), @js($todayStats))"
       x-init="initMap()">
 
     {{-- ========================================================================= --}}
     {{-- 1. FULL-VIEWPORT MAP LAYER                                                --}}
     {{-- ========================================================================= --}}
-    <div id="technicianMap" class="w-full h-full absolute inset-0 z-0 bg-slate-950"></div>
+    <div id="technicianMap" class="w-full h-full absolute inset-0 z-0 bg-slate-200 dark:bg-slate-950"></div>
 
     {{-- ========================================================================= --}}
-    {{-- 2. FLOATING TOP HEADER: DRIVER/TECHNICIAN COCKPIT (RTL ORDER)              --}}
+    {{-- 2. MODERN FLAT APP HEADER (MINIMAL, BALANCED & RESPONSIVE)               --}}
     {{-- ========================================================================= --}}
-    <header class="fixed top-3 inset-x-3 sm:top-5 sm:inset-x-6 z-20 pointer-events-none">
+    <header class="fixed top-2 inset-x-2 sm:top-4 sm:inset-x-6 z-20 pointer-events-none">
         <div class="max-w-xl mx-auto flex items-center justify-between gap-2">
             
-            {{-- Right: Profile & Rating Pill (Opens Performance Modal) --}}
-            @if($technician)
-            <button type="button" @click="statsModalOpen = true"
-                    class="pointer-events-auto px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-full bg-slate-900/95 backdrop-blur-md shadow-xl border border-slate-800 flex items-center gap-2 text-right transition-all active:scale-95 shrink-0 hover:border-slate-700">
-                <div class="w-8 h-8 rounded-full bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400 shrink-0">
+            {{-- Right: Technician Name & Rating (Tap to open Today's Stats) --}}
+            <div class="pointer-events-auto flex items-center gap-1.5 shrink-0">
+                @if($technician)
+                <button type="button" @click="statsModalOpen = true"
+                        class="px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-2xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-md shadow-sm dark:shadow-xl border border-slate-200/90 dark:border-slate-800 flex items-center gap-2 text-right transition-all active:scale-95 hover:border-slate-300 dark:hover:border-slate-700">
+                    <div class="w-8 h-8 rounded-xl bg-indigo-50 dark:bg-indigo-500/15 border border-indigo-200 dark:border-indigo-500/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shrink-0">
+                        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="12" cy="7" r="4"></circle>
+                        </svg>
+                    </div>
+                    <div class="min-w-0">
+                        <div class="text-xs font-bold text-slate-800 dark:text-white truncate flex items-center gap-1.5">
+                            <span>{{ $technician->full_name }}</span>
+                            @if($technician->status->value === 'pending_approval')
+                            <span class="text-[9px] px-1.5 py-0.5 rounded-md font-bold bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-500/30">
+                                در بررسی
+                            </span>
+                            @endif
+                        </div>
+                        <div class="text-[10px] text-amber-600 dark:text-amber-400 font-bold flex items-center gap-1 mt-0.5">
+                            <svg class="w-3 h-3 fill-amber-500 text-amber-500 shrink-0" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                            <span>{{ $todayStats['rating'] }}</span>
+                            <span class="text-slate-400 dark:text-slate-500">•</span>
+                            <span class="text-slate-500 dark:text-slate-400">{{ $technician->completed_orders_count }} خدمت</span>
+                        </div>
+                    </div>
+                </button>
+                @else
+                <button type="button" @click="$dispatch('open-technician-auth')"
+                        class="px-3.5 py-2 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-md flex items-center gap-2 transition-all active:scale-95 shrink-0">
                     <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path>
                         <circle cx="12" cy="7" r="4"></circle>
                     </svg>
-                </div>
-                <div class="hidden sm:block min-w-0">
-                    <div class="text-xs font-black text-white truncate flex items-center gap-1.5">
-                        <span>{{ $technician->full_name }}</span>
-                        @if($technician->status->value === 'pending_approval')
-                        <span class="text-[9px] px-1.5 py-0.5 rounded font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                            در انتظار تایید مدارک
-                        </span>
-                        @else
-                        <span class="text-[9px] px-1.5 py-0.2 rounded font-bold bg-amber-500/15 text-amber-300 border border-amber-500/25">
-                            {{ $technician->tier?->label() ?: 'تکنسین برتر' }}
-                        </span>
-                        @endif
-                    </div>
-                    <div class="text-[10px] text-amber-400 font-bold flex items-center gap-1 mt-0.5">
-                        <svg class="w-3 h-3 fill-amber-400 text-amber-400 shrink-0" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-                        <span>{{ $todayStats['rating'] }}</span>
-                        <span class="text-slate-500">•</span>
-                        <span class="text-slate-400">{{ $technician->completed_orders_count }} خدمت</span>
-                    </div>
-                </div>
-            </button>
-            @else
-            <button type="button" @click="$dispatch('open-technician-auth')"
-                    class="pointer-events-auto px-3.5 py-2 rounded-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-xl flex items-center gap-2 transition-all active:scale-95 shrink-0">
-                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path>
-                    <circle cx="12" cy="7" r="4"></circle>
-                </svg>
-                <span>ورود به حساب تکنسین</span>
-            </button>
-            @endif
+                    <span>ورود تکنسین</span>
+                </button>
+                @endif
+            </div>
 
             {{-- Center: Duty Capsule Switch (Online / Offline) --}}
             @if($technician)
-            <div class="pointer-events-auto bg-slate-900/95 backdrop-blur-md shadow-xl rounded-full p-1 border border-slate-800 flex items-center shrink-0">
+            <div class="pointer-events-auto bg-white/95 dark:bg-slate-900/95 backdrop-blur-md shadow-sm dark:shadow-xl rounded-full p-1 border border-slate-200/90 dark:border-slate-800 flex items-center shrink-0">
                 @livewire('fieldservice::technician-duty-toggle', ['technicianId' => $technician->id])
             </div>
             @endif
 
-            {{-- Left: Today Earnings & Switcher Menu --}}
-            <div class="pointer-events-auto flex items-center gap-1.5">
+            {{-- Left: Today Earnings + Dark/Light Theme Switcher + Extra Menu --}}
+            <div class="pointer-events-auto flex items-center gap-1.5 shrink-0">
                 @if($technician)
                 {{-- Today's Income Pill --}}
                 <button type="button" @click="statsModalOpen = true"
-                        class="px-3 py-2 rounded-full bg-slate-900/95 backdrop-blur-md shadow-xl border border-slate-800 flex items-center gap-1.5 text-xs transition-all active:scale-95 hover:border-slate-700 shrink-0">
-                    <span class="text-[10px] text-slate-400 font-bold hidden sm:inline">کارکرد امروز:</span>
-                    <span class="font-black text-emerald-400 text-xs">{{ number_format($todayStats['net_earnings']) }}</span>
-                    <span class="text-[9px] text-emerald-500 font-bold">تومان</span>
+                        class="hidden sm:flex px-3 py-2 rounded-2xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-md shadow-sm dark:shadow-xl border border-slate-200/90 dark:border-slate-800 items-center gap-1.5 text-xs transition-all active:scale-95 hover:border-slate-300 dark:hover:border-slate-700 shrink-0">
+                    <span class="text-[10px] text-slate-500 dark:text-slate-400 font-bold">کارکرد امروز:</span>
+                    <span class="font-bold text-emerald-600 dark:text-emerald-400 text-xs">{{ number_format($todayStats['net_earnings']) }}</span>
+                    <span class="text-[9px] text-emerald-600 dark:text-emerald-500 font-bold">تومان</span>
                 </button>
                 @endif
 
-                {{-- Fast Portal Switcher --}}
-                <div x-data="{ switcherOpen: false }" class="relative">
-                    <button type="button" @click="switcherOpen = !switcherOpen"
-                            class="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-slate-900/95 backdrop-blur-md shadow-xl border border-slate-800 flex items-center justify-center text-slate-300 hover:text-white transition-all active:scale-95"
-                            title="سایر پرتال‌ها و خروج">
+                {{-- Dark / Light Theme Toggle Button --}}
+                <button type="button" @click="toggleTheme()"
+                        class="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-md shadow-sm dark:shadow-xl border border-slate-200/90 dark:border-slate-800 flex items-center justify-center text-slate-700 dark:text-slate-200 hover:text-indigo-600 dark:hover:text-indigo-400 transition-all active:scale-95"
+                        :title="isDark ? 'حالت روز (روشن)' : 'حالت شب (تاریک)'">
+                    <svg x-show="isDark" class="w-5 h-5 text-amber-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="4"></circle>
+                        <path d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32 1.41 1.41M2 12h2m16 0h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"></path>
+                    </svg>
+                    <svg x-show="!isDark" class="w-5 h-5 text-indigo-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"></path>
+                    </svg>
+                </button>
+
+                {{-- Extra Menu / CRM & Logout --}}
+                <div x-data="{ menuOpen: false }" class="relative">
+                    <button type="button" @click="menuOpen = !menuOpen"
+                            class="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-md shadow-sm dark:shadow-xl border border-slate-200/90 dark:border-slate-800 flex items-center justify-center text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-all active:scale-95"
+                            title="گزینه‌ها">
                         <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <circle cx="12" cy="12" r="1"></circle>
                             <circle cx="12" cy="5" r="1"></circle>
@@ -164,40 +199,36 @@
                         </svg>
                     </button>
 
-                    <div x-show="switcherOpen" @click.outside="switcherOpen = false" x-cloak
+                    <div x-show="menuOpen" @click.outside="menuOpen = false" x-cloak
                          x-transition:enter="transition ease-out duration-150"
                          x-transition:enter-start="opacity-0 scale-95"
                          x-transition:enter-end="opacity-100 scale-100"
-                         class="absolute left-0 top-full mt-2 w-52 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl p-1.5 space-y-1 z-30 font-sans">
-                        <a href="{{ route('fieldservice.customer') }}"
-                           class="flex items-center gap-2.5 p-2 rounded-xl hover:bg-slate-800 text-xs text-slate-200 transition">
-                            <svg class="w-4 h-4 text-indigo-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-                            <span>پرتال مشتریان</span>
-                        </a>
+                         class="absolute left-0 top-full mt-2 w-52 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl p-1.5 space-y-1 z-30 font-sans">
+                        
                         <a href="{{ route('user.fieldservice.dashboard') }}"
-                           class="flex items-center gap-2.5 p-2 rounded-xl hover:bg-slate-800 text-xs text-slate-200 transition">
-                            <svg class="w-4 h-4 text-indigo-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-                            <span>پنل مدیریت CRM</span>
-                        </a>
-                        <a href="{{ route('fieldservice.b2b') }}"
-                           class="flex items-center gap-2.5 p-2 rounded-xl hover:bg-slate-800 text-xs text-slate-200 transition">
-                            <svg class="w-4 h-4 text-indigo-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="16" height="20" x="4" y="2" rx="2" ry="2"></rect><path d="M9 22v-4h6v4"></path><path d="M8 6h.01"></path><path d="M16 6h.01"></path><path d="M12 6h.01"></path><path d="M12 10h.01"></path><path d="M12 14h.01"></path><path d="M16 10h.01"></path><path d="M16 14h.01"></path><path d="M8 10h.01"></path><path d="M8 14h.01"></path></svg>
-                            <span>پرتال مدیران ساختمان</span>
+                           class="flex items-center gap-2.5 p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-xs text-slate-700 dark:text-slate-200 transition font-bold">
+                            <svg class="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                            <span>{{ ($technician && \Modules\FieldService\App\Support\TechnicianCustomFieldsHelper::isTechnicianOnly(auth()->user())) ? 'پنل کاری من' : 'پنل مدیریت CRM' }}</span>
                         </a>
 
                         @if($technician)
-                        <div class="border-t border-slate-800 my-1 pt-1">
+                        <button type="button" @click="statsModalOpen = true; menuOpen = false;"
+                                class="w-full flex items-center gap-2.5 p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-xs text-slate-700 dark:text-slate-200 transition text-right font-bold">
+                            <svg class="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"></path><path d="m19 9-5 5-4-4-3 3"></path></svg>
+                            <span>کارنامه و آمار امروز</span>
+                        </button>
+                        <div class="border-t border-slate-100 dark:border-slate-800 my-1 pt-1">
                             <a href="{{ route('fieldservice.technician.logout') }}"
-                               class="flex items-center gap-2.5 p-2 rounded-xl hover:bg-rose-500/20 text-xs text-rose-300 transition font-bold">
-                                <svg class="w-4 h-4 text-rose-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" x2="9" y1="12" y2="12"></line></svg>
+                               class="flex items-center gap-2.5 p-2 rounded-xl hover:bg-rose-50 dark:hover:bg-rose-500/20 text-xs text-rose-600 dark:text-rose-400 transition font-bold">
+                                <svg class="w-4 h-4 text-rose-500 dark:text-rose-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" x2="9" y1="12" y2="12"></line></svg>
                                 <span>خروج از حساب تکنسین</span>
                             </a>
                         </div>
                         @else
-                        <div class="border-t border-slate-800 my-1 pt-1">
-                            <button type="button" @click="$dispatch('open-technician-auth'); switcherOpen = false;"
-                                    class="w-full flex items-center gap-2.5 p-2 rounded-xl hover:bg-indigo-600 text-xs text-indigo-300 hover:text-white transition font-bold text-right">
-                                <svg class="w-4 h-4 text-indigo-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21 2-2 2m-1.5 1.5L10 13l-4 4-4-4 4-4 7.5-7.5"></path><path d="m15.5 7.5 3 3"></path></svg>
+                        <div class="border-t border-slate-100 dark:border-slate-800 my-1 pt-1">
+                            <button type="button" @click="$dispatch('open-technician-auth'); menuOpen = false;"
+                                    class="w-full flex items-center gap-2.5 p-2 rounded-xl hover:bg-indigo-600 text-xs text-indigo-600 hover:text-white dark:text-indigo-400 dark:hover:text-white transition font-bold text-right">
+                                <svg class="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21 2-2 2m-1.5 1.5L10 13l-4 4-4-4 4-4 7.5-7.5"></path><path d="m15.5 7.5 3 3"></path></svg>
                                 <span>ورود / ثبت‌نام تکنسین</span>
                             </button>
                         </div>
@@ -212,12 +243,12 @@
     {{-- ========================================================================= --}}
     {{-- 3. FLOATING GPS / RE-CENTER BUTTON (BOTTOM-RIGHT)                         --}}
     {{-- ========================================================================= --}}
-    <div :class="sheetExpanded ? 'bottom-[330px] sm:bottom-[350px]' : 'bottom-28 sm:bottom-32'"
+    <div :class="sheetExpanded ? 'bottom-[330px] sm:bottom-[350px]' : 'bottom-20 sm:bottom-20'"
          class="fixed right-4 sm:right-6 z-20 transition-all duration-300 ease-out">
         <button type="button" @click="centerOnTechnician()"
                 title="موقعیت فعلی من"
-                class="w-12 h-12 rounded-full bg-slate-900/95 backdrop-blur-md shadow-xl border border-slate-800 flex items-center justify-center text-slate-200 hover:text-emerald-400 transition-all active:scale-95 hover:border-slate-700">
-            <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                class="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-md shadow-md dark:shadow-xl border border-slate-200/90 dark:border-slate-800 flex items-center justify-center text-slate-700 dark:text-slate-200 hover:text-emerald-600 dark:hover:text-emerald-400 transition-all active:scale-95">
+            <svg class="w-5 h-5 sm:w-6 sm:h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                 <circle cx="12" cy="12" r="3"></circle>
                 <path d="M12 2v3m0 14v3M2 12h3m14 0h3"></path>
             </svg>
@@ -228,62 +259,44 @@
     {{-- 4. FLOATING BOTTOM SHEET: MISSION CONSOLE (SWIPEABLE & COLLAPSIBLE)       --}}
     {{-- ========================================================================= --}}
     <section class="fixed inset-x-0 bottom-0 z-30 lg:top-20 lg:bottom-6 lg:left-6 lg:right-auto lg:w-[480px] pointer-events-none transition-all duration-300 ease-out">
-        <div class="pointer-events-auto bg-slate-950/95 backdrop-blur-2xl rounded-t-[32px] lg:rounded-3xl border border-slate-800 shadow-2xl flex flex-col transition-all duration-300 ease-out"
+        <div class="pointer-events-auto bg-white/95 dark:bg-slate-950/95 backdrop-blur-xl rounded-t-[32px] lg:rounded-3xl border border-slate-200/90 dark:border-slate-800 shadow-xl dark:shadow-2xl flex flex-col transition-all duration-300 ease-out"
              :class="{
-                 'h-auto max-h-[85vh] lg:h-auto lg:max-h-[85vh]': sheetExpanded,
-                 'h-[82px] max-h-[82px] lg:h-[82px] lg:max-h-[82px]': !sheetExpanded
+                 'h-auto max-h-[82vh] lg:h-auto lg:max-h-[85vh]': sheetExpanded,
+                 'h-14 max-h-14 lg:h-14 lg:max-h-14': !sheetExpanded
              }"
              @touchstart="handleTouchStart($event)"
              @touchmove="handleTouchMove($event)"
              @touchend="handleTouchEnd()">
 
             {{-- Peek Bar: Mobile Drag Handle & Summary Row --}}
-            <div @click="toggleSheet()" class="px-4 py-2 cursor-pointer flex flex-col justify-between h-[82px] select-none border-b border-slate-900">
+            <div @click="toggleSheet()" class="px-4 py-2 cursor-pointer flex flex-col justify-between h-14 select-none border-b border-slate-100 dark:border-slate-900">
                 {{-- Handle Bar --}}
                 <div class="flex justify-center -mt-0.5">
-                    <span class="w-12 h-1 rounded-full bg-slate-700 hover:bg-slate-600 transition-colors"></span>
+                    <span class="w-10 h-1 rounded-full bg-slate-300 dark:bg-slate-700 hover:bg-slate-400 dark:hover:bg-slate-600 transition-colors"></span>
                 </div>
 
-                {{-- Compact Peek Info (Reactive via Alpine & Livewire State Sync) --}}
-                <div class="flex items-center justify-between gap-3 pt-1">
-                    <div class="flex items-center gap-2.5 min-w-0">
+                {{-- Compact Peek Bar Content --}}
+                <div class="flex items-center justify-between gap-3">
+                    <div class="flex items-center gap-2 min-w-0">
                         {{-- 1. Active Assigned Mission Case --}}
                         <template x-if="hasActiveMission">
-                            <div class="flex items-center gap-2.5 min-w-0">
-                                <span class="w-3 h-3 rounded-full bg-indigo-500 animate-pulse shrink-0"></span>
+                            <div class="flex items-center gap-2 min-w-0">
+                                <span class="w-2.5 h-2.5 rounded-full bg-indigo-600 dark:bg-indigo-500 animate-pulse shrink-0"></span>
                                 <div class="min-w-0">
-                                    <div class="text-xs font-black text-white truncate" x-text="'ماموریت فعال: ' + activeMissionTitle"></div>
-                                    <div class="text-[10px] text-indigo-300 truncate font-bold flex items-center gap-1.5">
+                                    <div class="text-xs font-bold text-slate-800 dark:text-white truncate" x-text="'ماموریت فعال: ' + activeMissionTitle"></div>
+                                    <div class="text-[10px] text-indigo-600 dark:text-indigo-400 truncate font-bold flex items-center gap-1.5">
                                         <span x-text="activeMissionStatus"></span>
-                                        <span x-show="activeMissionEta" class="text-emerald-400 font-bold" x-text="'• ' + activeMissionEta"></span>
-                                        <span x-show="activeMissionDist" class="text-slate-400" x-text="'(' + activeMissionDist + ' ک.م)'"></span>
+                                        <span x-show="activeMissionEta" class="text-emerald-600 dark:text-emerald-400 font-bold" x-text="'• ' + activeMissionEta"></span>
                                     </div>
                                 </div>
                             </div>
                         </template>
 
-                        {{-- 2. No Active Mission, Technician Logged In --}}
-                        <template x-if="!hasActiveMission && technician">
-                            <div class="flex items-center gap-2.5 min-w-0">
-                                <span class="w-3 h-3 rounded-full shrink-0"
-                                      :class="(technician && technician.is_online) ? 'bg-emerald-400 animate-ping' : 'bg-slate-600'"></span>
-                                <div class="min-w-0">
-                                    <div class="text-xs font-black text-white truncate"
-                                         x-text="(technician && technician.is_online) ? 'رادار سفارش‌های مازندران فعال است' : 'شما در وضعیت آفلاین هستید'"></div>
-                                    <div class="text-[10px] text-slate-400 truncate"
-                                         x-text="(technician && technician.is_online) ? (availableMissionsCount + ' سفارش در انتظار بررسی') : 'جهت دریافت کار آنلاین شوید'"></div>
-                                </div>
-                            </div>
-                        </template>
-
-                        {{-- 3. Guest / Unauthenticated --}}
-                        <template x-if="!hasActiveMission && !technician">
-                            <div class="flex items-center gap-2.5 min-w-0">
-                                <span class="w-3 h-3 rounded-full bg-amber-400 animate-ping shrink-0"></span>
-                                <div class="min-w-0">
-                                    <div class="text-xs font-black text-white truncate">نیاز به ورود به حساب کاربری</div>
-                                    <div class="text-[10px] text-amber-300 truncate font-bold">برای دریافت سرویس وارد شوید</div>
-                                </div>
+                        {{-- 2. No Active Mission --}}
+                        <template x-if="!hasActiveMission">
+                            <div class="flex items-center gap-2 min-w-0">
+                                <span class="w-2 h-2 rounded-full" :class="(technician && technician.is_online) ? 'bg-emerald-500' : 'bg-slate-400 dark:bg-slate-600'"></span>
+                                <span class="text-xs font-bold text-slate-800 dark:text-white">پیشنهادها و سفارش‌های رادار</span>
                             </div>
                         </template>
                     </div>
@@ -291,17 +304,17 @@
                     <div class="flex items-center gap-2 shrink-0">
                         <template x-if="hasActiveMission && activeMissionCustomerPhone">
                             <a :href="'tel:' + activeMissionCustomerPhone" @click.stop
-                               class="w-9 h-9 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white flex items-center justify-center text-xs shadow-md shadow-indigo-600/30 transition active:scale-95"
+                               class="w-8 h-8 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white flex items-center justify-center text-xs shadow-md transition active:scale-95"
                                title="تماس با مشتری">
-                                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                                     <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
                                 </svg>
                             </a>
                         </template>
                         <button type="button" @click.stop="toggleSheet()"
-                                class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold transition flex items-center gap-1.5 active:scale-95 border border-slate-700">
+                                class="px-2.5 py-1 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold transition flex items-center gap-1 active:scale-95 border border-slate-200 dark:border-slate-700">
                             <span x-text="sheetExpanded ? 'بستن' : 'مشاهده'"></span>
-                            <svg class="w-3.5 h-3.5 transition-transform duration-200" :class="sheetExpanded ? 'rotate-180' : ''" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m18 15-6-6-6 6"/></svg>
+                            <svg class="w-3 h-3 transition-transform duration-200" :class="sheetExpanded ? 'rotate-180' : ''" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m18 15-6-6-6 6"/></svg>
                         </button>
                     </div>
                 </div>
@@ -310,19 +323,11 @@
             {{-- Full Content Area: Livewire Mission Feed --}}
             <div :class="!sheetExpanded ? 'hidden' : 'flex flex-col flex-1 min-h-0'"
                  class="transition-all duration-200">
-                <div class="p-4 sm:p-5 custom-scrollbar flex-1 overflow-y-auto max-h-[75vh]">
+                <div class="p-4 sm:p-5 custom-scrollbar flex-1 overflow-y-auto max-h-[72vh] lg:max-h-[75vh] space-y-3">
+                    @if($technician)
+                        @livewire('fieldservice::technician-contracts-panel', ['compactPortalMode' => true])
+                    @endif
                     @livewire('fieldservice::mission-feed', ['technicianId' => $technician?->id])
-                </div>
-
-                {{-- Status Bar / Footnote --}}
-                <div class="px-5 py-2.5 bg-slate-900/90 border-t border-slate-800 flex items-center justify-between text-[11px] text-slate-400 shrink-0">
-                    <div class="flex items-center gap-1.5 font-bold text-slate-300">
-                        <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
-                        <span>پوشش هوشمند مازندران (بابل، ساری، آمل، قائمشهر)</span>
-                    </div>
-                    <div class="text-[10px] text-slate-500">
-                        {{ $platformName ?? 'سامانه' }} فیلد سرویس
-                    </div>
                 </div>
             </div>
 
@@ -334,62 +339,62 @@
     {{-- ========================================================================= --}}
     @if($technician)
     <div x-show="statsModalOpen" x-cloak
-         class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-xs font-sans select-none">
+         class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 dark:bg-slate-950/80 backdrop-blur-xs font-sans select-none">
         <div @click.outside="statsModalOpen = false"
              x-transition:enter="transition ease-out duration-200"
              x-transition:enter-start="opacity-0 scale-95"
              x-transition:enter-end="opacity-100 scale-100"
-             class="w-full max-w-sm bg-slate-900 border border-slate-800 rounded-3xl p-5 space-y-4 shadow-2xl">
+             class="w-full max-w-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 space-y-4 shadow-2xl">
             
-            <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
                 <div class="flex items-center gap-2">
-                    <span class="w-8 h-8 rounded-xl bg-indigo-600/20 border border-indigo-500/30 text-indigo-400 flex items-center justify-center font-bold text-sm">
+                    <span class="w-8 h-8 rounded-xl bg-indigo-50 dark:bg-indigo-600/20 border border-indigo-200 dark:border-indigo-500/30 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold text-sm">
                         <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"></path><path d="m19 9-5 5-4-4-3 3"></path></svg>
                     </span>
-                    <h3 class="text-sm font-black text-white">کارنامه و عملکرد امروز شما</h3>
+                    <h3 class="text-sm font-bold text-slate-800 dark:text-white">کارنامه و عملکرد امروز شما</h3>
                 </div>
-                <button type="button" @click="statsModalOpen = false" class="w-6 h-6 rounded-full bg-slate-800 flex items-center justify-center text-slate-400 hover:text-white text-xs">✕</button>
+                <button type="button" @click="statsModalOpen = false" class="w-6 h-6 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400 hover:text-slate-800 dark:hover:text-white text-xs">✕</button>
             </div>
 
             {{-- 4-Grid Metrics --}}
             <div class="grid grid-cols-2 gap-2 font-sans">
-                <div class="p-3 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-1">
-                    <div class="text-[10px] text-slate-400 font-bold">درآمد خالص امروز:</div>
-                    <div class="text-sm font-black text-emerald-400">{{ number_format($todayStats['net_earnings']) }} <span class="text-[10px]">تومان</span></div>
+                <div class="p-3 rounded-2xl bg-slate-50 dark:bg-slate-950/80 border border-slate-200 dark:border-slate-800 space-y-1">
+                    <div class="text-[10px] text-slate-500 dark:text-slate-400 font-bold">درآمد خالص امروز:</div>
+                    <div class="text-sm font-bold text-emerald-600 dark:text-emerald-400">{{ number_format($todayStats['net_earnings']) }} <span class="text-[10px]">تومان</span></div>
                 </div>
-                <div class="p-3 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-1">
-                    <div class="text-[10px] text-slate-400 font-bold">خدمات انجام‌شده امروز:</div>
-                    <div class="text-sm font-black text-white">{{ $todayStats['completed_count'] }} <span class="text-[10px] text-slate-500">سرویس</span></div>
+                <div class="p-3 rounded-2xl bg-slate-50 dark:bg-slate-950/80 border border-slate-200 dark:border-slate-800 space-y-1">
+                    <div class="text-[10px] text-slate-500 dark:text-slate-400 font-bold">خدمات انجام‌شده امروز:</div>
+                    <div class="text-sm font-bold text-slate-800 dark:text-white">{{ $todayStats['completed_count'] }} <span class="text-[10px] text-slate-400 dark:text-slate-500">سرویس</span></div>
                 </div>
-                <div class="p-3 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-1">
-                    <div class="text-[10px] text-slate-400 font-bold">امتیاز رضایت مشتریان:</div>
-                    <div class="text-sm font-black text-amber-400 flex items-center gap-1">
-                        <svg class="w-3.5 h-3.5 fill-amber-400 text-amber-400" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                <div class="p-3 rounded-2xl bg-slate-50 dark:bg-slate-950/80 border border-slate-200 dark:border-slate-800 space-y-1">
+                    <div class="text-[10px] text-slate-500 dark:text-slate-400 font-bold">امتیاز رضایت مشتریان:</div>
+                    <div class="text-sm font-bold text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                        <svg class="w-3.5 h-3.5 fill-amber-500 text-amber-500" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
                         <span>{{ $todayStats['rating'] }}</span>
-                        <span class="text-[10px] text-slate-500">از ۵</span>
+                        <span class="text-[10px] text-slate-400 dark:text-slate-500">از ۵</span>
                     </div>
                 </div>
-                <div class="p-3 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-1">
-                    <div class="text-[10px] text-slate-400 font-bold">نرخ پذیرش رادار:</div>
-                    <div class="text-sm font-black text-indigo-400">{{ $todayStats['acceptance_rate'] }}%</div>
+                <div class="p-3 rounded-2xl bg-slate-50 dark:bg-slate-950/80 border border-slate-200 dark:border-slate-800 space-y-1">
+                    <div class="text-[10px] text-slate-500 dark:text-slate-400 font-bold">نرخ پذیرش رادار:</div>
+                    <div class="text-sm font-bold text-indigo-600 dark:text-indigo-400">{{ $todayStats['acceptance_rate'] }}%</div>
                 </div>
             </div>
 
             {{-- Lifetime Summary --}}
-            <div class="p-3 rounded-2xl bg-slate-800/50 border border-slate-800 flex items-center justify-between text-xs">
-                <span class="text-slate-400">مجموع خدمات موفق تا کنون:</span>
-                <span class="font-black text-white">{{ $technician->completed_orders_count }} خدمت</span>
+            <div class="p-3 rounded-2xl bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 flex items-center justify-between text-xs">
+                <span class="text-slate-500 dark:text-slate-400">مجموع خدمات موفق تا کنون:</span>
+                <span class="font-bold text-slate-800 dark:text-white">{{ $technician->completed_orders_count }} خدمت</span>
             </div>
 
             <div class="space-y-2 pt-1">
                 <button type="button" @click="statsModalOpen = false"
-                        class="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs rounded-2xl transition">
+                        class="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-2xl transition">
                     بازگشت به نقشه
                 </button>
 
                 <a href="{{ route('fieldservice.technician.logout') }}"
-                   class="w-full py-2.5 bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 border border-rose-500/30 font-bold text-xs rounded-2xl transition flex items-center justify-center gap-2">
-                    <svg class="w-4 h-4 text-rose-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" x2="9" y1="12" y2="12"></line></svg>
+                   class="w-full py-2.5 bg-rose-50 dark:bg-rose-500/15 hover:bg-rose-100 dark:hover:bg-rose-500/25 text-rose-600 dark:text-rose-300 border border-rose-200 dark:border-rose-500/30 font-bold text-xs rounded-2xl transition flex items-center justify-center gap-2">
+                    <svg class="w-4 h-4 text-rose-500 dark:text-rose-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" x2="9" y1="12" y2="12"></line></svg>
                     <span>خروج از حساب تکنسین</span>
                 </a>
             </div>
@@ -398,9 +403,9 @@
     @endif
 
     {{-- ========================================================================= --}}
-    {{-- 6. DEDICATED TECHNICIAN AUTH MODAL (OTP & PASSWORD)                       --}}
+    {{-- 6. DEDICATED TECHNICIAN AUTH MODAL                                        --}}
     {{-- ========================================================================= --}}
-    @livewire('fieldservice::technician-auth-modal')
+    @livewire('fieldservice::technician-auth-modal', ['autoOpen' => true, 'allowClose' => false])
 
     {{-- ========================================================================= --}}
     {{-- 7. APPLICATION LOGIC & LEAFLET MAP HANDLER (UNPROXIED 60 FPS)             --}}
@@ -440,6 +445,7 @@
                 todayStats: todayStats || {},
                 sheetExpanded: true,
                 statsModalOpen: false,
+                isDark: document.documentElement.classList.contains('dark'),
 
                 // Reactive Active Mission State (Updated dynamically via Livewire events)
                 hasActiveMission: !!activeMission,
@@ -457,6 +463,12 @@
                 touchEndY: 0,
                 touchStartX: 0,
                 touchEndX: 0,
+
+                toggleTheme() {
+                    this.isDark = !this.isDark;
+                    document.documentElement.classList.toggle('dark', this.isDark);
+                    localStorage.setItem('theme', this.isDark ? 'dark' : 'light');
+                },
 
                 toggleSheet() {
                     this.sheetExpanded = !this.sheetExpanded;
@@ -520,7 +532,7 @@
                         inertiaMaxSpeed: 2000,
                     });
 
-                    // Dark OSM Tiles
+                    // Add standard OpenStreetMap tiles (Reliable, Zero API-Key Errors)
                     const subdomains = this.config.subdomains || ['a', 'b', 'c'];
                     L.tileLayer(this.config.tile_url, {
                         maxZoom: this.config.max_zoom || 19,
@@ -530,7 +542,7 @@
                         keepBuffer: 6,
                         updateWhenIdle: false,
                         updateWhenZooming: true,
-                        attribution: '&copy; ' + @json($platformName ?? 'GIS') + ' | ' + (this.config.name || 'GIS'),
+                        attribution: '&copy; ' + @json($platformName ?? 'OpenStreetMap'),
                     }).addTo(rawTechMap);
 
                     rawMissionsLayer = L.layerGroup().addTo(rawTechMap);
@@ -746,7 +758,7 @@
                         html: `
                             <div style="position: relative; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center;">
                                 ${isOnline ? '<div class="tech-radar-ring" style="width: 44px; height: 44px;"></div>' : ''}
-                                <div style="background: ${isOnline ? '#4f46e5' : '#475569'}; width: 30px; height: 30px; border-radius: 50%; border: 2.5px solid white; box-shadow: 0 4px 14px rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; color: white; position: relative; z-index: 2;">
+                                <div style="background: ${isOnline ? '#4f46e5' : '#475569'}; width: 30px; height: 30px; border-radius: 50%; border: 2.5px solid white; box-shadow: 0 4px 14px rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; color: white; position: relative; z-index: 2;">
                                     <svg style="width: 16px; height: 16px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                                         <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path>
                                         <circle cx="12" cy="7" r="4"></circle>
@@ -795,7 +807,6 @@
                     if (customerName) this.activeMissionCustomerName = customerName;
                     if (customerPhone) this.activeMissionCustomerPhone = customerPhone;
 
-                    // If route is already rendered with the exact same destination, update info and don't re-create layers or reset view
                     if (rawCustomerMarker && this.currentDestLat === parsedDestLat && this.currentDestLng === parsedDestLng) {
                         return;
                     }
@@ -804,7 +815,6 @@
                     this.currentDestLat = parsedDestLat;
                     this.currentDestLng = parsedDestLng;
 
-                    // Fetch real street road route from Routing Service
                     let routeCoords = [[techLat, techLng], [parsedDestLat, parsedDestLng]];
                     try {
                         const url = `{{ route('fieldservice.api.route') }}?origin_lat=${techLat}&origin_lng=${techLng}&dest_lat=${parsedDestLat}&dest_lng=${parsedDestLng}`;
@@ -825,7 +835,6 @@
                         console.warn('Technician road route fallback to direct line:', err);
                     }
 
-                    // Customer destination pin (Clean vector SVG)
                     const customerIcon = L.divIcon({
                         className: 'customer-destination-pin',
                         html: `
@@ -849,7 +858,6 @@
                         .addTo(rawTechMap)
                         .bindPopup(`<b style="font-family: IRANYekanX, sans-serif; font-size: 12px;">محل مشتری: ${customerName || 'کارفرما'}</b>`);
 
-                    // Dual layer high-contrast polyline (glow + vibrant line) along actual roads
                     rawRouteGlowPolyline = L.polyline(routeCoords, {
                         color: '#4f46e5',
                         weight: 8,
@@ -895,7 +903,6 @@
                 addOrUpdateMissionMarker(m) {
                     if (!m || !m.id || !m.lat || !m.lng || !rawMissionsLayer) return null;
 
-                    // If already exists, update position and return
                     if (rawMissionMarkersMap[m.id]) {
                         rawMissionMarkersMap[m.id].setLatLng([m.lat, m.lng]);
                         return rawMissionMarkersMap[m.id];
@@ -905,7 +912,7 @@
                         className: 'available-job-pin',
                         html: `
                             <div style="position: relative; display: flex; flex-direction: column; align-items: center; cursor: pointer;">
-                                <div style="background: ${m.is_emergency ? '#d97706' : '#4f46e5'}; width: 30px; height: 30px; border-radius: 50%; border: 2px solid white; box-shadow: 0 4px 12px rgba(0,0,0,0.35); display: flex; align-items: center; justify-content: center; color: white; transition: transform 0.2s;" class="hover:scale-110 active:scale-95">
+                                <div style="background: ${m.is_emergency ? '#d97706' : '#4f46e5'}; width: 30px; height: 30px; border-radius: 50%; border: 2px solid white; box-shadow: 0 4px 12px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; color: white; transition: transform 0.2s;" class="hover:scale-110 active:scale-95">
                                     ${m.is_emergency ? `
                                         <svg style="width: 15px; height: 15px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
                                             <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
@@ -962,7 +969,6 @@
                     const currentMissions = this.availableMissions || [];
                     const currentIds = currentMissions.map(m => Number(m.id));
 
-                    // Remove stale markers smoothly
                     Object.keys(rawMissionMarkersMap).forEach((id) => {
                         if (!currentIds.includes(Number(id))) {
                             rawMissionsLayer.removeLayer(rawMissionMarkersMap[id]);
@@ -970,7 +976,6 @@
                         }
                     });
 
-                    // Add or update all current missions
                     currentMissions.forEach((m) => {
                         this.addOrUpdateMissionMarker(m);
                     });
@@ -979,10 +984,8 @@
                 focusOnMission(orderId, lat, lng, title) {
                     if (!rawTechMap) return;
 
-                    // Clear previous preview line and focus ring
                     this.clearMissionFocus();
 
-                    // Ensure the mission pin is physically rendered on map before focusing!
                     if (!rawMissionMarkersMap[orderId] && rawMissionsLayer) {
                         this.addOrUpdateMissionMarker({
                             id: orderId,
@@ -994,20 +997,17 @@
                         });
                     }
 
-                    // Smooth fly to order position
                     rawTechMap.flyTo([lat, lng], 16, { duration: 0.8 });
 
-                    // Draw preview dotted route line from technician to job location
                     const techLat = (this.technician && this.technician.lat) ? this.technician.lat : 36.5444;
                     const techLng = (this.technician && this.technician.lng) ? this.technician.lng : 52.6780;
                     rawPreviewRouteLine = L.polyline([[techLat, techLng], [lat, lng]], {
-                        color: '#818cf8',
+                        color: '#6366f1',
                         weight: 3.5,
                         opacity: 0.85,
                         dashArray: '6, 8',
                     }).addTo(rawTechMap);
 
-                    // Glowing radar pulse marker on the selected job
                     const pulseIcon = L.divIcon({
                         className: 'focus-job-pulse',
                         html: `
@@ -1020,7 +1020,6 @@
                     });
                     rawFocusRingLayer = L.marker([lat, lng], { icon: pulseIcon, interactive: false }).addTo(rawTechMap);
 
-                    // Open tooltip if marker exists
                     if (rawMissionMarkersMap[orderId]) {
                         rawMissionMarkersMap[orderId].openTooltip();
                     }

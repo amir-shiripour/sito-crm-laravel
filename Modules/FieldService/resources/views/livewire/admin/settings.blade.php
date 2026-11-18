@@ -227,6 +227,12 @@
                     <input type="number" wire:model="default_warranty_days" class="w-full h-9 px-3 rounded-xl bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-xs text-gray-800 dark:text-gray-200 font-sans">
                     <span class="text-[10px] text-gray-400">پیش‌فرض: ۹۰ روز ضمانت کیفیت</span>
                 </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">شعاع پوشش عملیاتی پیش‌فرض تکنسین (کیلومتر)</label>
+                    <input type="number" min="1" max="200" wire:model="default_technician_radius_km" class="w-full h-9 px-3 rounded-xl bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-xs text-gray-800 dark:text-gray-200 font-sans">
+                    <span class="text-[10px] text-gray-400">پیش‌فرض برای تکنسین‌های جدید و ثبت‌نامی (۱ تا ۲۰۰ کیلومتر)</span>
+                </div>
             </div>
         </div>
 

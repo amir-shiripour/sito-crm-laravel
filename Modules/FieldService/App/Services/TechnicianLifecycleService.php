@@ -76,13 +76,13 @@ class TechnicianLifecycleService
             $meta['certificate_file'] = $data['certificate_file'];
         }
 
-        // 5. Find existing Technician by user_id or mobile
+        // 5. Find existing Technician by user_id or mobile (including soft-deleted records)
         $technician = null;
         if (!empty($user->id)) {
-            $technician = Technician::where('user_id', $user->id)->first();
+            $technician = Technician::withTrashed()->where('user_id', $user->id)->first();
         }
         if (!$technician && !empty($mobile)) {
-            $technician = Technician::where('mobile', $mobile)->first();
+            $technician = Technician::withTrashed()->where('mobile', $mobile)->first();
         }
 
         $attributes = [
@@ -97,7 +97,7 @@ class TechnicianLifecycleService
             'address'               => $data['address'] ?? ($technician?->address),
             'lat'                   => isset($data['lat']) ? (float)$data['lat'] : ($technician?->lat),
             'lng'                   => isset($data['lng']) ? (float)$data['lng'] : ($technician?->lng),
-            'operational_radius_km' => isset($data['operational_radius_km']) ? (int)$data['operational_radius_km'] : ($technician?->operational_radius_km ?? 25),
+            'operational_radius_km' => isset($data['operational_radius_km']) ? (int)$data['operational_radius_km'] : ($technician?->operational_radius_km ?? (int) \Modules\FieldService\App\Models\FieldServiceSetting::get('default_technician_radius_km', 25)),
             'status'                => $status,
             'tier'                  => $tier,
             'verified_at'           => $status === TechnicianStatus::ACTIVE ? now() : ($technician?->verified_at),
@@ -109,10 +109,24 @@ class TechnicianLifecycleService
             $technician = Technician::create($attributes);
             Log::info("TechnicianLifecycleService: Created Technician #{$technician->id} for User #{$user->id}");
         } else {
-            if (empty($technician->user_id)) {
-                $attributes['user_id'] = $user->id;
+            $isReassigned = $technician->trashed()
+                || empty($technician->user_id)
+                || !User::where('id', $technician->user_id)->exists()
+                || (int) $technician->user_id !== (int) $user->id;
+
+            if ($technician->trashed()) {
+                $technician->restore();
             }
-            $technician->update(array_filter($attributes, fn($v) => !is_null($v)));
+
+            if ($isReassigned) {
+                $attributes['user_id'] = $user->id;
+                $attributes['verified_at'] = $status === TechnicianStatus::ACTIVE ? now() : null;
+                $attributes['meta'] = $data['meta'] ?? [];
+                $technician->skills()->delete();
+                $technician->forceFill($attributes)->save();
+            } else {
+                $technician->update(array_filter($attributes, fn($v) => !is_null($v)));
+            }
             Log::info("TechnicianLifecycleService: Updated Technician #{$technician->id} for User #{$user->id}");
         }
 
@@ -192,5 +206,32 @@ class TechnicianLifecycleService
         }
 
         return self::createOrUpdateTechnicianForUser($user, $data);
+    }
+
+    /**
+     * Trigger ContractForge auto-rules when a technician is approved/activated.
+     */
+    public static function triggerApprovalContract(Technician $technician, ?string $previousStatus = null): int
+    {
+        if (
+            $technician->status !== TechnicianStatus::ACTIVE
+            || ! class_exists(\Modules\ContractForge\Services\ContractModuleHelper::class)
+            || ! class_exists(\Modules\ContractForge\Services\ContractEngine::class)
+            || ! \Modules\ContractForge\Services\ContractModuleHelper::isModuleActive('ContractForge')
+        ) {
+            return 0;
+        }
+
+        try {
+            return \Modules\ContractForge\Services\ContractEngine::autoTrigger(
+                'field_service_technician',
+                $technician,
+                'status_changed',
+                $previousStatus
+            );
+        } catch (\Throwable $e) {
+            Log::warning('TechnicianLifecycleService::triggerApprovalContract error: ' . $e->getMessage());
+            return 0;
+        }
     }
 }

@@ -71,6 +71,9 @@ Route::middleware(['web', 'auth'])->prefix('user')->name('user.')->group(functio
     Route::get('/dashboard', [UserDashboardController::class, 'index'])->name('dashboard');
     Route::post('/dashboard/layout', [UserDashboardController::class, 'updateLayout'])->name('dashboard.update-layout');
 
+    Route::post('/profile/mobile/send-otp', [\App\Http\Controllers\User\ProfileMobileOtpController::class, 'sendOtp'])->name('profile.mobile.send-otp');
+    Route::post('/profile/mobile/verify-otp', [\App\Http\Controllers\User\ProfileMobileOtpController::class, 'verifyOtp'])->name('profile.mobile.verify-otp');
+
     // روت‌های ویجت و صفحه تقویم
     Route::get('/calendar', [\App\Http\Controllers\User\CalendarController::class, 'index'])->name('calendar');
     Route::get('/calendar/events', [\App\Http\Controllers\User\CalendarController::class, 'events'])->name('calendar.events');

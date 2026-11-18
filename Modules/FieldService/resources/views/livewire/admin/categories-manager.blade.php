@@ -34,7 +34,7 @@
         </div>
 
         {{-- Top KPI Cards --}}
-        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-6 pt-6 border-t border-slate-100 dark:border-slate-700/50">
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6 pt-6 border-t border-slate-100 dark:border-slate-700/50">
             <div class="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/50 border border-slate-200/60 dark:border-slate-700/50 flex items-center justify-between">
                 <div>
                     <div class="text-xs font-semibold text-slate-600 dark:text-slate-300">کل خدمات تعریف‌شده</div>
@@ -62,16 +62,6 @@
                 </div>
                 <div class="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-500/15 text-amber-600 dark:text-amber-400 flex items-center justify-center text-lg">
                     ⏸️
-                </div>
-            </div>
-
-            <div class="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/50 border border-slate-200/60 dark:border-slate-700/50 flex items-center justify-between">
-                <div>
-                    <div class="text-xs font-semibold text-slate-600 dark:text-slate-300">انواع تجهیزات پایه</div>
-                    <div class="text-2xl font-black text-sky-600 dark:text-sky-400 mt-1">{{ count($applianceTypes) }} <span class="text-xs font-medium text-slate-500">رسته</span></div>
-                </div>
-                <div class="w-10 h-10 rounded-xl bg-sky-50 dark:bg-sky-500/15 text-sky-600 dark:text-sky-400 flex items-center justify-center text-lg">
-                    🏷️
                 </div>
             </div>
         </div>
@@ -109,6 +99,31 @@
         </div>
 
         <div class="flex flex-wrap items-center gap-3 w-full md:w-auto">
+            {{-- Section Filter --}}
+            <div class="flex items-center gap-1.5 w-full sm:w-auto">
+                <span class="text-xs text-slate-600 dark:text-slate-300 font-medium shrink-0">بخش:</span>
+                <select wire:model.live="sectionFilter"
+                        class="h-10 px-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 text-xs font-sans text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer w-full sm:w-40">
+                    <option value="all">همه بخش‌ها</option>
+                    @foreach($sections as $sec)
+                        <option value="{{ $sec->id }}">{{ $sec->icon }} {{ $sec->name }}</option>
+                    @endforeach
+                </select>
+            </div>
+
+            {{-- Group Filter --}}
+            <div class="flex items-center gap-1.5 w-full sm:w-auto">
+                <span class="text-xs text-slate-600 dark:text-slate-300 font-medium shrink-0">دسته:</span>
+                <select wire:model.live="groupFilter"
+                        class="h-10 px-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 text-xs font-sans text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer w-full sm:w-44">
+                    <option value="all">همه دسته‌ها</option>
+                    <option value="none">بدون دسته</option>
+                    @foreach($filterGroups as $grp)
+                        <option value="{{ $grp->id }}">{{ $grp->icon }} {{ $grp->name }}</option>
+                    @endforeach
+                </select>
+            </div>
+
             {{-- Status Filter --}}
             <div class="flex items-center gap-1.5 w-full sm:w-auto">
                 <span class="text-xs text-slate-600 dark:text-slate-300 font-medium shrink-0">وضعیت:</span>
@@ -119,20 +134,30 @@
                     <option value="inactive">فقط خدمات غیرفعال</option>
                 </select>
             </div>
-
-            {{-- Appliance Type Filter --}}
-            <div class="flex items-center gap-1.5 w-full sm:w-auto">
-                <span class="text-xs text-slate-600 dark:text-slate-300 font-medium shrink-0">رسته دستگاه:</span>
-                <select wire:model.live="applianceFilter"
-                        class="h-10 px-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 text-xs font-sans text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer w-full sm:w-52">
-                    <option value="all">همه دسته‌بندی‌ها</option>
-                    @foreach($applianceTypes as $type)
-                        <option value="{{ $type->value }}">{{ $type->icon() }} {{ $type->label() }}</option>
-                    @endforeach
-                </select>
-            </div>
         </div>
     </div>
+
+    {{-- Bulk Assignment Toolbar --}}
+    @if(count($selectedIds) > 0)
+    <div class="bg-indigo-50 dark:bg-indigo-500/15 border border-indigo-200 dark:border-indigo-500/30 rounded-2xl p-3.5 flex flex-col sm:flex-row items-center justify-between gap-3">
+        <div class="text-xs font-bold text-indigo-800 dark:text-indigo-200">
+            {{ number_format(count($selectedIds)) }} خدمت انتخاب شده است
+        </div>
+        <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+            <select wire:model="bulkGroupId"
+                    class="h-9 px-3 rounded-xl bg-white dark:bg-slate-900 border border-indigo-200 dark:border-indigo-500/40 text-xs font-sans text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer">
+                <option value="">بدون دسته (لغو انتساب)</option>
+                @foreach($allGroups as $grp)
+                    <option value="{{ $grp->id }}">{{ $grp->section?->name }} › {{ $grp->name }}</option>
+                @endforeach
+            </select>
+            <button type="button" wire:click="assignSelectedToGroup"
+                    class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-600 dark:hover:bg-indigo-500 text-white text-xs font-bold transition">
+                انتقال گروهی به دسته
+            </button>
+        </div>
+    </div>
+    @endif
 
     {{-- Categories Table --}}
     <div class="bg-white dark:bg-slate-800 rounded-3xl border border-slate-200/80 dark:border-slate-700/60 shadow-sm overflow-hidden">
@@ -140,9 +165,10 @@
             <table class="w-full text-right text-xs">
                 <thead>
                     <tr class="bg-slate-50/80 dark:bg-slate-900/60 border-b border-slate-200/70 dark:border-slate-700/60 text-slate-600 dark:text-slate-300 font-bold">
+                        <th class="py-3.5 px-3 w-10 text-center">#</th>
                         <th class="py-3.5 px-4 w-16 text-center">ترتیب</th>
                         <th class="py-3.5 px-4">عنوان خدمت و آیکون</th>
-                        <th class="py-3.5 px-4">نوع تجهیز پایه</th>
+                        <th class="py-3.5 px-4">بخش / دسته</th>
                         <th class="py-3.5 px-4">دستمزد پایه (تومان)</th>
                         <th class="py-3.5 px-4 text-center">گارانتی</th>
                         <th class="py-3.5 px-4 text-center">متخصصین ناوگان</th>
@@ -153,7 +179,13 @@
                 </thead>
                 <tbody class="divide-y divide-slate-100 dark:divide-slate-700/50 text-slate-800 dark:text-slate-200">
                     @forelse($categories as $category)
-                    <tr class="hover:bg-slate-50/70 dark:hover:bg-slate-700/30 transition-colors">
+                    <tr wire:key="category-row-{{ $category->id }}" class="hover:bg-slate-50/70 dark:hover:bg-slate-700/30 transition-colors">
+                        {{-- Bulk Select --}}
+                        <td class="py-3.5 px-3 text-center">
+                            <input type="checkbox" wire:model.live="selectedIds" value="{{ $category->id }}"
+                                   class="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300 dark:border-slate-600 cursor-pointer">
+                        </td>
+
                         {{-- Sort Order --}}
                         <td class="py-3.5 px-4 text-center">
                             <span class="inline-flex items-center justify-center w-7 h-7 rounded-xl bg-slate-100 dark:bg-slate-700/60 font-black text-slate-700 dark:text-slate-300 font-sans">
@@ -182,17 +214,25 @@
                             </div>
                         </td>
 
-                        {{-- Appliance Type --}}
+                        {{-- Section > Group Badge --}}
                         <td class="py-3.5 px-4">
-                            @php
-                                $appType = $category->appliance_type instanceof \Modules\FieldService\App\Enums\ApplianceType 
-                                    ? $category->appliance_type 
-                                    : \Modules\FieldService\App\Enums\ApplianceType::tryFrom((string) $category->appliance_type);
-                            @endphp
-                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-slate-100 dark:bg-slate-700/60 text-slate-700 dark:text-slate-200 font-medium border border-slate-200/60 dark:border-slate-600/40">
-                                <span>{{ $appType ? $appType->icon() : '🛠️' }}</span>
-                                <span>{{ $appType ? $appType->label() : ($category->appliance_type ?? '-') }}</span>
+                            @if($category->group)
+                            <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 font-medium border border-indigo-500/20">
+                                <span>{{ $category->group->section?->name ?? $category->section?->name }}</span>
+                                <span class="text-indigo-400">›</span>
+                                <span class="font-bold">{{ $category->group->name }}</span>
+                            </div>
+                            @elseif($category->section)
+                            <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-sky-500/10 text-sky-700 dark:text-sky-300 font-medium border border-sky-500/20">
+                                <span class="font-bold">{{ $category->section->name }}</span>
+                                <span class="text-sky-400">›</span>
+                                <span class="text-slate-600 dark:text-slate-300">بدون دسته</span>
+                            </div>
+                            @else
+                            <span class="inline-flex items-center px-2.5 py-1 rounded-xl bg-amber-500/10 text-amber-700 dark:text-amber-300 font-medium border border-amber-500/20">
+                                بدون بخش و دسته
                             </span>
+                            @endif
                         </td>
 
                         {{-- Base Labor Fee --}}
@@ -262,7 +302,7 @@
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="9" class="py-12 px-4 text-center">
+                        <td colspan="10" class="py-12 px-4 text-center">
                             <div class="flex flex-col items-center justify-center max-w-sm mx-auto">
                                 <div class="w-14 h-14 rounded-2xl bg-slate-100 dark:bg-slate-700/50 text-slate-400 dark:text-slate-400 flex items-center justify-center text-2xl mb-3">
                                     🔍
@@ -294,7 +334,7 @@
     {{-- CREATE / EDIT CATEGORY MODAL                                              --}}
     {{-- ========================================================================= --}}
     @if($showModal)
-    <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm overflow-y-auto"
+    <div wire:key="category-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm overflow-y-auto"
          x-transition:enter="transition ease-out duration-250"
          x-transition:enter-start="opacity-0"
          x-transition:enter-end="opacity-100"
@@ -325,7 +365,37 @@
 
             {{-- Modal Form Body --}}
             <form wire:submit.prevent="saveCategory" class="p-6 space-y-4">
-                
+
+                {{-- Row 0: Section & Group --}}
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                            بخش / تایپ خدمات
+                        </label>
+                        <select wire:model.live="selectedSectionId"
+                                class="w-full h-11 px-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-xs font-sans text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer">
+                            <option value="">بدون بخش (اختیاری)</option>
+                            @foreach($sections as $sec)
+                                <option value="{{ $sec->id }}">{{ $sec->icon }} {{ $sec->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                            دسته مرتبط
+                        </label>
+                        <select wire:model.live="groupId" @if(!$selectedSectionId) disabled @endif
+                                class="w-full h-11 px-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-xs font-sans text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer disabled:opacity-60">
+                            <option value="">{{ $selectedSectionId ? 'انتخاب دسته...' : 'ابتدا بخش را انتخاب کنید' }}</option>
+                            @foreach($modalGroups as $grp)
+                                <option value="{{ $grp->id }}">{{ $grp->icon }} {{ $grp->name }}</option>
+                            @endforeach
+                        </select>
+                        @error('groupId') <span class="text-[11px] text-rose-500 mt-1 block">{{ $message }}</span> @enderror
+                    </div>
+                </div>
+
                 {{-- Row 1: Name & Icon --}}
                 <div class="grid grid-cols-1 sm:grid-cols-4 gap-3.5">
                     <div class="sm:col-span-3">
@@ -346,28 +416,14 @@
                     </div>
                 </div>
 
-                {{-- Row 2: Slug & Appliance Type --}}
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                    <div>
-                        <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                            شناسه انگلیسی (Slug) <span class="text-rose-500">*</span>
-                        </label>
-                        <input type="text" wire:model="slug" placeholder="air-conditioner-split" dir="ltr"
-                               class="w-full h-11 px-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-xs font-sans text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-left">
-                        @error('slug') <span class="text-[11px] text-rose-500 mt-1 block">{{ $message }}</span> @enderror
-                    </div>
-
-                    <div>
-                        <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                            رسته تجهیز پایه <span class="text-rose-500">*</span>
-                        </label>
-                        <select wire:model="applianceType"
-                                class="w-full h-11 px-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-xs font-sans text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer">
-                            @foreach($applianceTypes as $t)
-                                <option value="{{ $t->value }}">{{ $t->icon() }} {{ $t->label() }}</option>
-                            @endforeach
-                        </select>
-                    </div>
+                {{-- Row 2: Slug --}}
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                        شناسه انگلیسی (Slug) <span class="text-rose-500">*</span>
+                    </label>
+                    <input type="text" wire:model="slug" placeholder="air-conditioner-split" dir="ltr"
+                           class="w-full h-11 px-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-xs font-sans text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-left">
+                    @error('slug') <span class="text-[11px] text-rose-500 mt-1 block">{{ $message }}</span> @enderror
                 </div>
 
                 {{-- Row 3: Base Fee & Warranty Days --}}
@@ -401,6 +457,7 @@
                         </label>
                         <input type="number" wire:model="sortOrder" min="0"
                                class="w-full h-11 px-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-center font-sans">
+                        @error('sortOrder') <span class="text-[11px] text-rose-500 mt-1 block">{{ $message }}</span> @enderror
                     </div>
 
                     <div class="pt-5">

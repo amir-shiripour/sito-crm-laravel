@@ -125,8 +125,11 @@
                     <h2 class="text-base font-black text-gray-900 dark:text-white">آخرین ماموریت‌های در جریان</h2>
                     <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">وضعیت زنده پذیرش و اعزام تکنسین‌ها به محل کارفرما</p>
                 </div>
-                <a href="{{ route('user.fieldservice.orders.index') }}" class="text-xs text-indigo-600 dark:text-indigo-400 hover:underline font-bold">
-                    مشاهده همه سفارش‌ها ←
+                <a href="{{ route('user.fieldservice.orders.index') }}" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/15 hover:bg-indigo-100 dark:hover:bg-indigo-500/25 transition-colors no-underline">
+                    <span>مشاهده همه سفارش‌ها</span>
+                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                    </svg>
                 </a>
             </div>
 
@@ -155,7 +158,7 @@
                                 {{ $ord->customer_name }}
                             </td>
                             <td class="py-3.5 px-2 text-gray-600 dark:text-gray-400">
-                                {{ $ord->appliance_type?->label() ?? 'سرویس' }}
+                                {{ $ord->category?->name ?? 'سرویس' }}
                             </td>
                             <td class="py-3.5 px-2 font-medium">
                                 @if($ord->technician)
@@ -230,7 +233,9 @@
             <div class="bg-white dark:bg-gray-800 p-5 rounded-2xl border border-gray-200/70 dark:border-gray-700/60 shadow-sm">
                 <div class="flex items-center justify-between mb-3">
                     <h3 class="text-xs font-black text-gray-900 dark:text-white">متخصصین آنلاین در استان</h3>
-                    <a href="{{ route('user.fieldservice.technicians.index') }}" class="text-[11px] text-indigo-600 dark:text-indigo-400 hover:underline">لیست ناوگان</a>
+                    <a href="{{ route('user.fieldservice.technicians.index') }}" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/15 hover:bg-indigo-100 dark:hover:bg-indigo-500/25 transition-colors no-underline">
+                        <span>لیست ناوگان</span>
+                    </a>
                 </div>
                 <div class="space-y-2">
                     @forelse($activeTechnicians as $tech)

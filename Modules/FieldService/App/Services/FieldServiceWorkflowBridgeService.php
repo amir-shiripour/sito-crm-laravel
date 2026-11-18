@@ -40,7 +40,7 @@ class FieldServiceWorkflowBridgeService
                 'client_id'      => $order->client_id,
                 'customer_name'  => $order->customer_name,
                 'customer_phone' => $order->customer_phone,
-                'appliance_type' => $order->appliance_type?->value,
+                'category_name'  => $order->category?->name,
                 'city'           => $order->city,
                 'address'        => $order->address,
                 'is_emergency'   => $order->is_emergency,

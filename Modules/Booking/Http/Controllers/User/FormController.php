@@ -61,7 +61,7 @@ class FormController extends Controller
     {
         $this->ensureFormEditAllowed();
 
-        $data = $this->validateFormInput($request);
+        $data = $this->validateFormInput($request, $form);
 
         $this->forms->update($request->user(), $form, $data);
 
@@ -117,7 +117,7 @@ class FormController extends Controller
         }
     }
 
-    protected function validateFormInput(Request $request): array
+    protected function validateFormInput(Request $request, ?BookingForm $existingForm = null): array
     {
         $rules = [
             'name' => ['required', 'string', 'max:255'],
@@ -144,7 +144,7 @@ class FormController extends Controller
         } else {
             $rules['schema_json'] = ['required', 'array'];
             $rules['schema_json.fields'] = ['required', 'array', 'min:1'];
-            $rules['schema_json.fields.*.name'] = ['required', 'string', 'max:100'];
+            $rules['schema_json.fields.*.name'] = ['nullable', 'string', 'max:100'];
             $rules['schema_json.fields.*.label'] = ['required', 'string', 'max:255'];
             $rules['schema_json.fields.*.type'] = ['required', 'string', 'max:50'];
             $rules['schema_json.fields.*.required'] = ['nullable'];
@@ -158,11 +158,36 @@ class FormController extends Controller
 
             $data = $request->validate($rules);
 
+            // استخراج تمام نام‌های فیلدهای سایر فرم‌های دیتابیس برای جلوگیری از نام‌های مشابه در دو فرم مختلف
+            $otherFormsQuery = BookingForm::query();
+            if ($existingForm && $existingForm->id) {
+                $otherFormsQuery->where('id', '!=', $existingForm->id);
+            }
+            $existingGlobalNames = [];
+            foreach ($otherFormsQuery->get(['schema_json']) as $otherForm) {
+                foreach ($otherForm->schema_json['fields'] ?? [] as $f) {
+                    if (!empty($f['name'])) {
+                        $existingGlobalNames[strtolower(trim($f['name']))] = true;
+                    }
+                }
+            }
+
+            // نگهداری فیلدهای موجود قبلی خود این فرم برای جلوگیری از آسیب به نوبت‌های ثبت‌شده گذشته
+            $originalCurrentNames = [];
+            if ($existingForm && !empty($existingForm->schema_json['fields'])) {
+                foreach ($existingForm->schema_json['fields'] as $f) {
+                    if (!empty($f['name'])) {
+                        $originalCurrentNames[strtolower(trim($f['name']))] = trim($f['name']);
+                    }
+                }
+            }
+
             $fields = array_values($data['schema_json']['fields'] ?? []);
             $normalized = [];
+            $usedInCurrentForm = [];
 
             foreach ($fields as $field) {
-                $name = trim((string) ($field['name'] ?? ''));
+                $rawName = trim((string) ($field['name'] ?? ''));
                 $label = trim((string) ($field['label'] ?? ''));
                 $type = trim((string) ($field['type'] ?? 'text'));
                 $placeholder = trim((string) ($field['placeholder'] ?? ''));
@@ -170,6 +195,16 @@ class FormController extends Controller
                 $role = trim((string) ($field['role'] ?? ''));
                 $multiple = ! empty($field['multiple']);
                 $lockCurrentIfRole = ! empty($field['lock_current_if_role']);
+
+                // تعیین و یکتاسازی نام فیلد (جلوگیری از تشابه در همان فرم و سایر فرم‌ها)
+                $name = $this->resolveUniqueFieldName(
+                    $rawName,
+                    $label,
+                    $usedInCurrentForm,
+                    $existingGlobalNames,
+                    $originalCurrentNames
+                );
+                $usedInCurrentForm[strtolower($name)] = true;
 
                 $optionsRaw = trim((string) ($field['options'] ?? ''));
                 $options = $optionsRaw === ''
@@ -200,5 +235,49 @@ class FormController extends Controller
         $data['form_type'] = $data['form_type'] ?? BookingForm::TYPE_CUSTOM;
 
         return $data;
+    }
+
+    /**
+     * تولید یا اعتبارسنجی نام یکتای فیلد (عدم تکرار در فرم فعلی و سایر فرم‌ها و سازگاری با گذشته)
+     */
+    protected function resolveUniqueFieldName(
+        string $rawName,
+        string $label,
+        array $usedInCurrentForm,
+        array $existingGlobalNames,
+        array $originalCurrentNames
+    ): string {
+        $rawLower = strtolower($rawName);
+
+        // اگر فیلد قبلاً در همین فرم با این نام وجود داشته و هنوز در فیلدهای این دور استفاده نشده، دقیقاً همان حفظ شود
+        if ($rawName !== '' && isset($originalCurrentNames[$rawLower]) && !isset($usedInCurrentForm[$rawLower])) {
+            return $rawName;
+        }
+
+        // تمیزسازی ورودی کاربر به صورت کلید انگلیسی استاندارد
+        $sanitized = preg_replace('/[^a-zA-Z0-9_]/', '_', $rawName);
+        $sanitized = trim((string) preg_replace('/_+/', '_', (string) $sanitized), '_');
+
+        if ($sanitized === '') {
+            $fromLabel = preg_replace('/[^a-zA-Z0-9_]/', '_', \Illuminate\Support\Str::slug($label, '_'));
+            $fromLabel = trim((string) preg_replace('/_+/', '_', (string) $fromLabel), '_');
+            $baseName = $fromLabel !== '' ? 'f_' . $fromLabel : 'field';
+        } else {
+            $baseName = $sanitized;
+        }
+
+        $candidate = $baseName;
+        $candidateLower = strtolower($candidate);
+
+        // اگر نام نامعتبر باشد یا در همین فرم یا سایر فرم‌های سیستم قبلاً استفاده شده باشد، شناسه یکتا اضافه می‌شود
+        if ($candidate === '' || isset($usedInCurrentForm[$candidateLower]) || isset($existingGlobalNames[$candidateLower])) {
+            do {
+                $suffix = substr(bin2hex(random_bytes(3)), 0, 5);
+                $candidate = ($baseName !== '' ? $baseName : 'field') . '_' . $suffix;
+                $candidateLower = strtolower($candidate);
+            } while (isset($usedInCurrentForm[$candidateLower]) || isset($existingGlobalNames[$candidateLower]));
+        }
+
+        return $candidate;
     }
 }

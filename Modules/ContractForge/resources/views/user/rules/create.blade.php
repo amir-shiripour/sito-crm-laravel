@@ -138,14 +138,16 @@
         const paymentOptions = @json($paymentOptions);
         const sysCurrency = '{{ $sysCurrency }}';
 
-        const availableFields = {
-            'patient_name': 'نام بیمار',
-            'plan_status': 'وضعیت طرح درمان',
-            'installment_option_title': 'روش پرداخت (installment_option_title)',
-            'plan_total': 'مبلغ کل طرح درمان',
-            'plan_final_payable': 'مبلغ نهایی قابل پرداخت',
-            'installment_months': 'تعداد ماه‌های اقساط'
-        };
+        const conditionFieldsByEntityType = @json($conditionFieldsByEntityType ?? []);
+        let availableFields = {};
+
+        function refreshAvailableFields() {
+            const entitySelect = document.querySelector('select[name="entity_type"]');
+            const entityType = entitySelect ? entitySelect.value : Object.keys(conditionFieldsByEntityType)[0];
+            availableFields = conditionFieldsByEntityType[entityType] || {};
+        }
+
+        refreshAvailableFields();
 
         let debounceTimer;
         window.searchPatients = function(input, rowNum) {
@@ -309,9 +311,19 @@
             if (row) row.remove();
         }
 
-        // Add an initial empty condition row
+        // Leave conditions empty by default (rule applies to all matching events/statuses)
         window.addEventListener('DOMContentLoaded', () => {
-            addConditionRow({ field: 'installment_option_title', op: 'contains', value: 'اقساط' });
+            refreshAvailableFields();
+            const entitySelect = document.querySelector('select[name="entity_type"]');
+            if (entitySelect) {
+                entitySelect.addEventListener('change', () => {
+                    refreshAvailableFields();
+                    const container = document.getElementById('conditionsContainer');
+                    if (container) {
+                        container.innerHTML = '';
+                    }
+                });
+            }
         });
     </script>
 @endsection
