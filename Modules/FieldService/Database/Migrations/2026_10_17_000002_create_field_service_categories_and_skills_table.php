@@ -14,7 +14,6 @@ return new class extends Migration
                 $table->string('name', 100);
                 $table->string('slug', 100)->unique();
                 $table->string('icon', 50)->nullable();
-                $table->string('appliance_type', 40)->default('other');
                 $table->decimal('base_labor_fee', 14, 2)->default(0); // in IRR
                 $table->unsignedInteger('warranty_days')->default(90);
                 $table->boolean('is_active')->default(true);

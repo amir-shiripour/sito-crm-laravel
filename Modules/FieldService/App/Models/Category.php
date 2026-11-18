@@ -4,9 +4,9 @@ namespace Modules\FieldService\App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Modules\FieldService\App\Enums\ApplianceType;
 
 class Category extends Model
 {
@@ -15,10 +15,11 @@ class Category extends Model
     protected $table = 'field_service_categories';
 
     protected $fillable = [
+        'section_id',
+        'group_id',
         'name',
         'slug',
         'icon',
-        'appliance_type',
         'base_labor_fee',
         'warranty_days',
         'is_active',
@@ -27,12 +28,23 @@ class Category extends Model
     ];
 
     protected $casts = [
-        'appliance_type' => ApplianceType::class,
+        'section_id'     => 'integer',
+        'group_id'       => 'integer',
         'base_labor_fee' => 'float',
         'warranty_days'  => 'integer',
         'is_active'      => 'boolean',
         'sort_order'     => 'integer',
     ];
+
+    public function section(): BelongsTo
+    {
+        return $this->belongsTo(Section::class, 'section_id');
+    }
+
+    public function group(): BelongsTo
+    {
+        return $this->belongsTo(ServiceGroup::class, 'group_id');
+    }
 
     public function technicians(): BelongsToMany
     {

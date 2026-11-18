@@ -73,14 +73,23 @@
             <div class="{{ $fieldCardClasses }}">
                 <div class="md:col-span-2">
                     <label class="{{ $smallLabelClass }}">برچسب</label>
-                    <input type="text" name="schema_json[fields][{{ $i }}][label]" class="{{ $inputClass }} text-sm"
-                           value="{{ $field['label'] ?? '' }}" required>
+                    <input type="text" name="schema_json[fields][{{ $i }}][label]" class="{{ $inputClass }} text-sm field-label-input"
+                           value="{{ $field['label'] ?? '' }}" required placeholder="مثلاً: تاریخ تولد، توضیحات، آدرس">
                 </div>
 
                 <div>
-                    <label class="{{ $smallLabelClass }}">نام فیلد</label>
-                    <input type="text" name="schema_json[fields][{{ $i }}][name]" class="{{ $inputClass }} text-sm"
-                           value="{{ $field['name'] ?? '' }}" required>
+                    <div class="flex items-center justify-between mb-1">
+                        <label class="{{ $smallLabelClass }}">نام فیلد</label>
+                        <span class="text-[10px] text-gray-500 dark:text-gray-400 font-sans">یکتا و خودکار</span>
+                    </div>
+                    <div class="relative">
+                        <input type="text" name="schema_json[fields][{{ $i }}][name]" class="{{ $inputClass }} text-sm field-name-input pl-8 font-sans"
+                               dir="ltr"
+                               value="{{ $field['name'] ?? '' }}" required placeholder="field_..." title="شناسه سیستمی فیلد">
+                        <button type="button" class="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition btn-refresh-name" title="تولید شناسه جدید">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                        </button>
+                    </div>
                 </div>
 
                 <div>
@@ -180,10 +189,8 @@
         const addBtn = document.getElementById('add-form-field');
         const fieldsSection = document.getElementById('fields-section-container');
         const formTypeSelect = document.querySelector('select[name="form_type"]');
-        const inputClass = @json($inputClass.
-        ' text-sm');
-        const selectClass = @json($selectClass.
-        ' text-sm');
+        const inputClass = @json($inputClass . ' text-sm');
+        const selectClass = @json($selectClass . ' text-sm');
         const smallLabelClass = @json($smallLabelClass);
         const fieldCardClass = @json($fieldCardClasses);
 
@@ -202,10 +209,51 @@
             }
         }
 
+        if (formTypeSelect) {
+            formTypeSelect.addEventListener('change', toggleFieldsSection);
+            toggleFieldsSection();
+        }
+
         if (!container || !addBtn) return;
+
+        function getAllUsedNames() {
+            const names = new Set();
+            container.querySelectorAll('.field-name-input').forEach(input => {
+                const val = input.value.trim().toLowerCase();
+                if (val) names.add(val);
+            });
+            return names;
+        }
+
+        function generateUniqueFieldId(base = 'field') {
+            const used = getAllUsedNames();
+            const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+            let candidate = '';
+            let attempts = 0;
+            const cleanBase = (base || 'field').toLowerCase().replace(/[^a-z0-9_]/g, '_').replace(/_+/g, '_').replace(/^_+|_+$/g, '') || 'field';
+
+            do {
+                let rand = '';
+                for (let i = 0; i < 5; i++) {
+                    rand += chars.charAt(Math.floor(Math.random() * chars.length));
+                }
+                candidate = `${cleanBase}_${rand}`;
+                attempts++;
+            } while (used.has(candidate) && attempts < 100);
+
+            return candidate;
+        }
+
+        // مقداردهی اولیه به فیلدهایی که احیانا نام خالی دارند
+        container.querySelectorAll('.field-name-input').forEach(input => {
+            if (!input.value.trim()) {
+                input.value = generateUniqueFieldId();
+            }
+        });
 
         const roleOptionsHtml = `@foreach($roles as $role)<option value="{{ $role->name }}">{{ $role->name }}</option>@endforeach`;
 
+        // مدیریت تغییر نوع فیلد و دکمه ریفرش نام فیلد
         container.addEventListener('change', function(e) {
             if (e.target && e.target.name && e.target.name.includes('[type]')) {
                 const row = e.target.closest('.form-field-row');
@@ -222,18 +270,68 @@
             }
         });
 
+        // کلیک روی دکمه ریفرش نام فیلد
+        container.addEventListener('click', function(e) {
+            const refreshBtn = e.target.closest('.btn-refresh-name');
+            if (refreshBtn) {
+                const row = refreshBtn.closest('.form-field-row');
+                if (row) {
+                    const nameInput = row.querySelector('.field-name-input');
+                    const labelInput = row.querySelector('.field-label-input');
+                    const labelVal = labelInput ? labelInput.value.trim() : '';
+                    let base = 'field';
+                    if (labelVal && /^[a-zA-Z0-9_\s-]+$/.test(labelVal)) {
+                        base = labelVal.toLowerCase().replace(/[\s-]+/g, '_');
+                    }
+                    if (nameInput) {
+                        nameInput.value = generateUniqueFieldId(base);
+                        nameInput.dispatchEvent(new Event('change', { bubbles: true }));
+                    }
+                }
+            }
+        });
+
+        // پر کردن خودکار فیلد نام در صورتی که خالی باشد هنگام نوشتن برچسب
+        container.addEventListener('input', function(e) {
+            if (e.target && e.target.classList.contains('field-label-input')) {
+                const row = e.target.closest('.form-field-row');
+                if (row) {
+                    const nameInput = row.querySelector('.field-name-input');
+                    if (nameInput && !nameInput.value.trim()) {
+                        const labelVal = e.target.value.trim();
+                        let base = 'field';
+                        if (labelVal && /^[a-zA-Z0-9_\s-]+$/.test(labelVal)) {
+                            base = labelVal.toLowerCase().replace(/[\s-]+/g, '_');
+                        }
+                        nameInput.value = generateUniqueFieldId(base);
+                    }
+                }
+            }
+        });
+
         addBtn.addEventListener('click', function() {
             const index = Date.now();
+            const autoGeneratedName = generateUniqueFieldId('field');
             const row = document.createElement('div');
             row.className = fieldCardClass;
             row.innerHTML = `
                 <div class="md:col-span-2">
                     <label class="${smallLabelClass}">برچسب</label>
-                    <input type="text" name="schema_json[fields][${index}][label]" class="${inputClass}" required>
+                    <input type="text" name="schema_json[fields][${index}][label]" class="${inputClass} field-label-input" required placeholder="مثلاً: تاریخ تولد، توضیحات">
                 </div>
                 <div>
-                    <label class="${smallLabelClass}">نام فیلد</label>
-                    <input type="text" name="schema_json[fields][${index}][name]" class="${inputClass}" required>
+                    <div class="flex items-center justify-between mb-1">
+                        <label class="${smallLabelClass}">نام فیلد</label>
+                        <span class="text-[10px] text-gray-500 dark:text-gray-400 font-sans">یکتا و خودکار</span>
+                    </div>
+                    <div class="relative">
+                        <input type="text" name="schema_json[fields][${index}][name]" class="${inputClass} field-name-input pl-8 font-sans"
+                               dir="ltr"
+                               value="${autoGeneratedName}" required placeholder="field_..." title="شناسه سیستمی فیلد">
+                        <button type="button" class="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition btn-refresh-name" title="تولید شناسه جدید">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                        </button>
+                    </div>
                 </div>
                 <div>
                     <label class="${smallLabelClass}">نوع (HTML)</label>

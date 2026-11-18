@@ -150,8 +150,8 @@
                         {{-- Appliance & Category --}}
                         <td class="py-3.5 px-4">
                             <div class="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                                <span>{{ $ord->appliance_type?->icon() }}</span>
-                                <span>{{ $ord->appliance_type?->label() }}</span>
+                                <span>{{ $ord->category?->icon ?: '🛠️' }}</span>
+                                <span>{{ $ord->category?->name ?? 'سرویس فنی' }}</span>
                                 @if($ord->appliance_brand_model)
                                 <span class="text-slate-400 font-normal">({{ $ord->appliance_brand_model }})</span>
                                 @endif
@@ -491,8 +491,8 @@
                 {{-- Appliance & Problem Card --}}
                 <div class="p-4 rounded-2xl bg-slate-50 dark:bg-slate-750 border border-slate-200/70 dark:border-slate-700/50 space-y-2.5">
                     <div class="font-bold text-slate-800 dark:text-slate-200 text-xs flex items-center justify-between">
-                        <span>🛠️ مشخصات دستگاه و عیب</span>
-                        <span class="text-[11px] font-semibold text-indigo-600">{{ $viewingOrder->appliance_type?->label() }}</span>
+                        <span>🛠️ مشخصات خدمت و عیب</span>
+                        <span class="text-[11px] font-semibold text-indigo-600">{{ $viewingOrder->category?->name ?? 'سرویس فنی' }}</span>
                     </div>
                     @if($viewingOrder->appliance_brand_model)
                     <div class="text-slate-600 dark:text-slate-300">برند و مدل: <span class="font-bold text-slate-900 dark:text-white">{{ $viewingOrder->appliance_brand_model }}</span></div>

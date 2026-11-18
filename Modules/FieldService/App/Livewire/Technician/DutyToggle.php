@@ -51,6 +51,17 @@ class DutyToggle extends Component
                 return;
             }
 
+            // Guard: Must sign any pending ContractForge contract before going online
+            if (!$tech->is_online && $tech->hasPendingContract()) {
+                $this->isOnline = false;
+                $this->dispatch('notify', [
+                    'type' => 'warning',
+                    'text' => 'برای آنلاین شدن و شروع فعالیت، ابتدا باید قرارداد همکاری خود را مطالعه و تایید کنید.',
+                ]);
+                $this->dispatch('open-pending-contract-modal');
+                return;
+            }
+
             $tech->is_online = !$tech->is_online;
             $tech->last_active_at = now();
             $tech->save();

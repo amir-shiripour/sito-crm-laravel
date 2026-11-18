@@ -4,8 +4,8 @@
     <div class="space-y-6">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm p-5">
             <div>
-                <h1 class="text-xl font-bold text-gray-900 dark:text-gray-100">قراردادهای بیماران</h1>
-                <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">مشاهده و مدیریت اسناد تعهدنامه و قراردادهای صادر شده برای بیماران کلینیک</p>
+                <h1 class="text-xl font-bold text-gray-900 dark:text-gray-100">مدیریت قراردادها</h1>
+                <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">مشاهده و مدیریت اسناد تعهدنامه و قراردادهای صادر شده</p>
             </div>
             <div class="flex flex-wrap gap-2 justify-end">
                 <a href="{{ route('user.contracts.templates.index') }}" class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gray-100 dark:bg-gray-700 text-gray-750 dark:text-gray-300 text-sm font-medium hover:bg-gray-250 transition-all duration-200">
@@ -61,7 +61,7 @@
                         <tr class="bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 text-xs font-semibold uppercase tracking-wider">
                             <th class="p-4">شماره قرارداد</th>
                             <th class="p-4">عنوان</th>
-                            <th class="p-4">نام بیمار</th>
+                            <th class="p-4">طرف قرارداد</th>
                             <th class="p-4">وضعیت</th>
                             <th class="p-4">کاربر ایجادکننده</th>
                             <th class="p-4">تاریخ صدور</th>
@@ -78,7 +78,7 @@
                                     {{ $contract->title }}
                                 </td>
                                 <td class="p-4 text-gray-600 dark:text-gray-300">
-                                    {{ $contract->client->full_name ?? ($contract->contractable->patient_name ?? 'بدون نام') }}
+                                    {{ $contract->party_name }}
                                 </td>
                                 <td class="p-4">
                                     @if($contract->status === 'signed')

@@ -38,7 +38,7 @@
                     {{ $contract->contract_number }}
                 </span>
                 <h1 class="text-xl font-bold text-gray-900 dark:text-gray-100 mt-2">{{ $contract->title }}</h1>
-                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">صادر شده برای: {{ $contract->client->full_name ?? ($contract->contractable->patient_name ?? 'بیمار') }}</p>
+                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">صادر شده برای: {{ $contract->party_name }}</p>
             </div>
             
             <div class="flex flex-wrap gap-2 justify-end">
@@ -56,15 +56,24 @@
                 </a>
                 
                 @if($contract->status !== 'signed' && $contract->status !== 'cancelled')
-                    <form action="{{ route('user.contracts.regenerate', $contract->id) }}" method="POST" class="inline" onsubmit="return confirm('آیا از بروزرسانی اطلاعات قرارداد بر اساس آخرین اطلاعات طرح درمان و تغییرات قالب اطمینان دارید؟');">
+                    <form action="{{ route('user.contracts.regenerate', $contract->id) }}" method="POST" class="inline" onsubmit="return confirm('آیا از بروزرسانی اطلاعات قرارداد بر اساس آخرین اطلاعات موجودیت و تغییرات قالب اطمینان دارید؟');">
                         @csrf
                         <button type="submit" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-amber-500 text-white text-sm font-medium hover:bg-amber-650 hover:shadow-lg hover:shadow-amber-500/30 transition-all duration-200">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 8H18.5" />
                             </svg>
-                            بروزرسانی از طرح درمان
+                            بروزرسانی اطلاعات قرارداد
                         </button>
                     </form>
+
+                    @if($contract->status === 'draft')
+                        <form action="{{ route('user.contracts.send_to_sign', $contract->id) }}" method="POST" class="inline">
+                            @csrf
+                            <button type="submit" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-sky-600 text-white text-sm font-medium hover:bg-sky-700 transition-all duration-200">
+                                ارسال برای امضا
+                            </button>
+                        </form>
+                    @endif
 
                     <form action="{{ route('user.contracts.sign', $contract->id) }}" method="POST" class="inline">
                         @csrf
@@ -112,6 +121,17 @@
                 <div class="prose max-w-none dark:prose-invert">
                     {!! $contract->rendered_body !!}
                 </div>
+
+                @if($contract->status === 'signed' && $contract->signed_at)
+                    <div class="mt-8 pt-4 border-t border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-emerald-700 dark:text-emerald-300 bg-emerald-50/70 dark:bg-emerald-900/20 p-4 rounded-xl border border-emerald-200/80 dark:border-emerald-800/60">
+                        <div class="font-bold">
+                            تایید و امضای الکترونیکی توسط: {{ $contract->party_name }}
+                        </div>
+                        <div class="font-sans">
+                            تاریخ ثبت: {{ \Morilog\Jalali\Jalalian::fromCarbon($contract->signed_at)->format('Y/m/d H:i') }}
+                        </div>
+                    </div>
+                @endif
             </div>
 
             <!-- Right: Meta Panel -->
@@ -140,6 +160,8 @@
                             <span class="font-semibold text-gray-900 dark:text-gray-100">
                                 @if($contract->contractable_type === 'Modules\Booking\App\Models\TreatmentPlan')
                                     طرح درمان #{{ $contract->contractable_id }}
+                                @elseif($contract->contractable_type === 'Modules\FieldService\App\Models\Technician')
+                                    تکنسین فنی #{{ $contract->contractable_id }}
                                 @else
                                     {{ class_basename($contract->contractable_type) }} #{{ $contract->contractable_id }}
                                 @endif

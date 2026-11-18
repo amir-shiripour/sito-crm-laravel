@@ -131,8 +131,11 @@
             <div class="pt-3 border-t border-slate-100 dark:border-slate-700/50">
                 <div class="text-xs font-bold text-slate-700 dark:text-slate-300 mb-2.5 flex items-center justify-between">
                     <span>تجهیزات و تاسیسات ثبت‌شده ({{ $building->equipments->count() }} مورد):</span>
-                    <a href="{{ route('user.fieldservice.buildings.index') }}" class="text-indigo-600 dark:text-indigo-400 hover:underline text-[11px]">
-                        مدیریت در پاسپورت تاسیسات ←
+                    <a href="{{ route('user.fieldservice.buildings.index') }}" class="inline-flex items-center gap-1 text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 font-semibold text-[11px] no-underline">
+                        <span>مدیریت در پاسپورت تاسیسات</span>
+                        <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                        </svg>
                     </a>
                 </div>
 

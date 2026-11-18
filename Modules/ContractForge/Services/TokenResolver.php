@@ -16,8 +16,20 @@ class TokenResolver
             $tokens = array_merge($tokens, $extraTokens);
         }
 
+        $isTechnician = method_exists($entity, 'getContractEntityType')
+            && $entity->getContractEntityType() === 'field_service_technician';
+        $blankPlaceholder = '......................';
+
         foreach ($tokens as $key => $value) {
-            $text = str_replace('{' . $key . '}', (string) ($value ?? ''), $text);
+            $replacement = (string) ($value ?? '');
+            if ($isTechnician && $replacement === '' && $key !== 'technician_skills_table') {
+                $replacement = $blankPlaceholder;
+            }
+            $text = str_replace('{' . $key . '}', $replacement, $text);
+        }
+
+        if ($isTechnician) {
+            $text = preg_replace('/\{[a-zA-Z0-9_]+\}/', $blankPlaceholder, $text) ?? $text;
         }
 
         return $text;

@@ -4,7 +4,6 @@ namespace Modules\FieldService\App\Livewire\B2B;
 
 use Livewire\Component;
 use Modules\Clients\Entities\Client;
-use Modules\FieldService\App\Enums\ApplianceType;
 use Modules\FieldService\App\Enums\OrderStatus;
 use Modules\FieldService\App\Models\Building;
 use Modules\FieldService\App\Models\ServiceOrder;
@@ -14,7 +13,6 @@ use Modules\FieldService\App\Services\FieldServiceWorkflowBridgeService;
 class EmergencyDispatch extends Component
 {
     public ?int $buildingId = null;
-    public string $appliance_type = 'boiler';
     public string $emergency_title = '';
     public string $problem_description = '';
 
@@ -42,7 +40,6 @@ class EmergencyDispatch extends Component
             'order_number'          => ServiceOrder::generateOrderNumber(),
             'client_id'             => $client->id,
             'building_id'           => $building->id,
-            'appliance_type'        => ApplianceType::tryFrom($this->appliance_type) ?? ApplianceType::BOILER,
             'appliance_brand_model' => $this->emergency_title ?: 'تاسیسات مجتمع ' . $building->name,
             'problem_description'   => "🚨 فوریت اضطراری تاسیسات: " . $this->problem_description,
             'status'                => OrderStatus::SEARCHING,

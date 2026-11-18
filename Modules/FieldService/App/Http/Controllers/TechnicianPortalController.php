@@ -49,7 +49,7 @@ class TechnicianPortalController extends Controller
         $todayStats = [
             'completed_count' => 0,
             'net_earnings'    => 0,
-            'rating'          => 5.0,
+            'rating'          => 0.0,
             'acceptance_rate' => 100,
         ];
 
@@ -100,7 +100,7 @@ class TechnicianPortalController extends Controller
                 // Calculate distance to technician for each available mission and filter by operational radius
                 $techLat = (float) $technician->lat;
                 $techLng = (float) $technician->lng;
-                $maxRadius = (int) ($technician->operational_radius_km ?: 25);
+                $maxRadius = (int) ($technician->operational_radius_km ?: \Modules\FieldService\App\Models\FieldServiceSetting::get('default_technician_radius_km', 25));
 
                 $availableMissions = $availableMissions->map(function ($order) use ($techLat, $techLng) {
                     if ($order->lat && $order->lng) {
@@ -131,7 +131,7 @@ class TechnicianPortalController extends Controller
             $todayStats = [
                 'completed_count' => $todayCompletedCount,
                 'net_earnings'    => round($todayEarnings),
-                'rating'          => $technician->rating_avg ?: 5.0,
+                'rating'          => $technician->rating_avg ?? 0.0,
                 'acceptance_rate' => $technician->acceptance_rate ?: 100,
             ];
         }

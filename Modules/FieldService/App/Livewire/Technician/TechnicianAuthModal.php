@@ -14,6 +14,7 @@ use Modules\FieldService\App\Models\Category;
 use Modules\FieldService\App\Models\FieldServiceSetting;
 use Modules\FieldService\App\Models\Technician;
 use Modules\FieldService\App\Services\TechnicianLifecycleService;
+use Modules\FieldService\App\Support\TechnicianCustomFieldsHelper;
 use Modules\Sms\Entities\SmsOtp;
 use Spatie\Permission\Models\Role;
 
@@ -22,8 +23,9 @@ class TechnicianAuthModal extends Component
     use WithFileUploads;
 
     public bool $isOpen = false;
+    public bool $allowClose = true;
 
-    // Step state: 1 = Phone Input & Detection, 2 = OTP Verification, 3 = Register Step 1 (Personal & Location), 4 = Register Step 2 (Skills & Documents)
+    // Step state: 1 = Phone Input & Detection, 2 = OTP Verification, 3 = Registration Fields (show_in_register)
     public int $step = 1;
 
     // Flow state: 'login' | 'register'
@@ -40,16 +42,13 @@ class TechnicianAuthModal extends Component
     public ?string $devOtpCode = null;
     public bool $isPhoneVerified = false;
 
-    // Step 3: Registration details (harmonized with /register and technician custom fields)
+    // Step 3: Registration details (harmonized with /admin/custom-fields show_in_register)
     public string $firstName = '';
     public string $lastName = '';
-    public string $nationalCode = '';
     public string $province = 'مازندران';
     public string $city = 'بابل';
-    public string $address = '';
-    public string $shabaNumber = '';
-    public $nationalCardImage = null;
-    public array $selectedCategories = [];
+    public array $customFields = [];
+    public array $customFiles = [];
 
     // Alerts
     public ?string $errorMessage = null;
@@ -61,8 +60,9 @@ class TechnicianAuthModal extends Component
         'logout-technician'     => 'logoutTechnician',
     ];
 
-    public function mount()
+    public function mount(bool $autoOpen = true, bool $allowClose = true)
     {
+        $this->allowClose = $allowClose;
         $user = Auth::user();
 
         // If user is already authenticated with technician role and active record
@@ -75,8 +75,13 @@ class TechnicianAuthModal extends Component
         }
 
         // Open modal by default for unauthenticated technician visitors
-        $this->isOpen = true;
+        $this->isOpen = $autoOpen;
         $this->initDefaultLocation();
+
+        $phoneParam = request()->query('phone');
+        if (!empty($phoneParam)) {
+            $this->phone = self::normalizePhoneNumber($phoneParam);
+        }
     }
 
     public function initDefaultLocation()
@@ -84,6 +89,14 @@ class TechnicianAuthModal extends Component
         $this->province = 'مازندران';
         $cities = ProvinceCity::getCities('مازندران');
         $this->city = in_array('بابل', $cities, true) ? 'بابل' : ($cities[0] ?? 'بابل');
+
+        $registerFieldNames = TechnicianCustomFieldsHelper::getFields('register')->pluck('field_name')->toArray();
+        if (in_array('province', $registerFieldNames, true)) {
+            $this->customFields['province'] = $this->province;
+        }
+        if (in_array('city', $registerFieldNames, true)) {
+            $this->customFields['city'] = $this->city;
+        }
     }
 
     public function updatedProvince($value)
@@ -94,16 +107,37 @@ class TechnicianAuthModal extends Component
         } else {
             $this->city = $cities[0] ?? '';
         }
+        $this->customFields['province'] = $value;
+        $this->customFields['city'] = $this->city;
     }
 
-    public function openModal()
+    public function updatedCustomFields($value, $key)
+    {
+        if ($key === 'province') {
+            $this->province = (string) $value;
+            $this->updatedProvince($this->province);
+        } elseif ($key === 'city') {
+            $this->city = (string) $value;
+        }
+    }
+
+    public function openModal(?string $phone = null)
     {
         $this->isOpen = true;
         $this->clearMessages();
+        if (!empty($phone)) {
+            $this->phone = self::normalizePhoneNumber($phone);
+        }
     }
 
     public function closeModal()
     {
+        if ($this->allowClose) {
+            $this->isOpen = false;
+            $this->clearMessages();
+            return;
+        }
+
         $user = Auth::user();
         if ($user && $user->hasRole('technician') && Technician::where('user_id', $user->id)->exists()) {
             $this->isOpen = false;
@@ -234,7 +268,7 @@ class TechnicianAuthModal extends Component
             if (!$user) {
                 $this->authFlow = 'register';
                 $this->step = 3;
-                $this->successMessage = 'شماره همراه شما با موفقیت تایید شد. لطفاً مشخصات فردی و محل فعالیت را وارد فرمایید.';
+                $this->successMessage = 'شماره همراه شما با موفقیت تایید شد. لطفاً اطلاعات ثبت‌نام را وارد فرمایید.';
                 return;
             }
 
@@ -269,45 +303,11 @@ class TechnicianAuthModal extends Component
 
         // New applicant registration flow: Proceed to Step 3 (Personal & Location Info)
         $this->step = 3;
-        $this->successMessage = 'شماره همراه شما با موفقیت تایید شد. لطفاً مشخصات فردی و محل فعالیت را وارد فرمایید.';
+        $this->successMessage = 'شماره همراه شما با موفقیت تایید شد. لطفاً اطلاعات ثبت‌نام را وارد فرمایید.';
     }
 
     // =========================================================================
-    // STEP 3: PROCEED TO SKILLS & DOCUMENTS (STEP 4)
-    // =========================================================================
-
-    public function goToStep4()
-    {
-        $this->clearMessages();
-
-        $this->validate([
-            'firstName'    => 'required|string|max:100',
-            'lastName'     => 'required|string|max:100',
-            'nationalCode' => 'required|string|size:10',
-            'province'     => 'required|string',
-            'city'         => 'required|string',
-            'address'      => 'nullable|string|max:500',
-            'shabaNumber'  => 'nullable|string|max:34',
-        ], [
-            'firstName.required'    => 'وارد کردن نام الزامی است.',
-            'lastName.required'     => 'وارد کردن نام خانوادگی الزامی است.',
-            'nationalCode.required' => 'وارد کردن کد ملی ۱۰ رقمی الزامی است.',
-            'nationalCode.size'     => 'کد ملی باید دقیقاً ۱۰ رقم باشد.',
-            'province.required'     => 'انتخاب استان محل خدمت الزامی است.',
-            'city.required'         => 'انتخاب شهر محل خدمت الزامی است.',
-        ]);
-
-        $this->step = 4;
-    }
-
-    public function goToStep3()
-    {
-        $this->clearMessages();
-        $this->step = 3;
-    }
-
-    // =========================================================================
-    // STEP 4: SUBMIT REGISTRATION (HARMONIZED WITH /register & Technician Fields)
+    // STEP 3: SUBMIT REGISTRATION (ONLY show_in_register FIELDS)
     // =========================================================================
 
     public function submitRegistration()
@@ -320,47 +320,83 @@ class TechnicianAuthModal extends Component
             return;
         }
 
-        $this->validate([
-            'firstName'          => 'required|string|max:100',
-            'lastName'           => 'required|string|max:100',
-            'nationalCode'       => 'required|string|size:10',
-            'province'           => 'required|string',
-            'city'               => 'required|string',
-            'address'            => 'nullable|string|max:500',
-            'shabaNumber'        => 'nullable|string|max:34',
-            'nationalCardImage'  => 'nullable|image|max:5120',
-            'selectedCategories' => 'required|array|min:1',
-        ], [
-            'firstName.required'          => 'وارد کردن نام الزامی است.',
-            'lastName.required'           => 'وارد کردن نام خانوادگی الزامی است.',
-            'nationalCode.required'       => 'وارد کردن کد ملی ۱۰ رقمی الزامی است.',
-            'nationalCode.size'           => 'کد ملی باید دقیقاً ۱۰ رقم باشد.',
-            'province.required'           => 'انتخاب استان محل خدمت الزامی است.',
-            'city.required'               => 'انتخاب شهر محل خدمت الزامی است.',
-            'selectedCategories.required' => 'حداقل یک تخصص یا حوزه فنی را انتخاب نمایید.',
-            'selectedCategories.min'      => 'حداقل یک تخصص یا حوزه فنی را انتخاب نمایید.',
-            'nationalCardImage.image'     => 'فایل انتخابی برای کارت ملی باید تصویر معتبر (JPG, PNG) باشد.',
-            'nationalCardImage.max'       => 'حجم تصویر کارت ملی حداکثر می‌تواند ۵ مگابایت باشد.',
-        ]);
+        $registerFields = TechnicianCustomFieldsHelper::getFields('register');
+        $dynamic = TechnicianCustomFieldsHelper::buildValidation($registerFields, [], false);
 
-        // Upload national card image if provided (matching /register destination)
-        $cardImagePath = null;
-        if ($this->nationalCardImage) {
-            $cardImagePath = $this->nationalCardImage->store('uploads/custom_fields', 'public');
+        $rules = array_merge([
+            'firstName' => 'required|string|max:100',
+            'lastName'  => 'required|string|max:100',
+        ], $dynamic['rules']);
+
+        $messages = array_merge([
+            'firstName.required' => 'وارد کردن نام الزامی است.',
+            'lastName.required'  => 'وارد کردن نام خانوادگی الزامی است.',
+        ], $dynamic['messages']);
+
+        $this->validate($rules, $messages);
+
+        $provinceVal = !empty($this->customFields['province']) ? (string) $this->customFields['province'] : $this->province;
+        $cityVal     = !empty($this->customFields['city']) ? (string) $this->customFields['city'] : $this->city;
+        $nationalCodeVal = $this->customFields['national_code'] ?? null;
+        $addressVal      = $this->customFields['address'] ?? null;
+
+        // Format SHABA
+        $formattedShaba = null;
+        if (!empty(trim((string) ($this->customFields['shaba_number'] ?? '')))) {
+            $cleanShaba = preg_replace('/[^0-9]/', '', (string) $this->customFields['shaba_number']);
+            if ($cleanShaba !== '') {
+                $formattedShaba = 'IR' . $cleanShaba;
+            }
         }
 
         // Resolve city coordinates
         $coveredCities = FieldServiceSetting::getCoveredCitiesWithCoords();
-        $cityData = $coveredCities[$this->city] ?? ['lat' => 36.5444, 'lng' => 52.6780];
+        $cityData = $coveredCities[$cityVal] ?? ['lat' => 36.5444, 'lng' => 52.6780];
 
-        // Format SHABA
-        $formattedShaba = null;
-        if (!empty(trim($this->shabaNumber))) {
-            $cleanShaba = preg_replace('/[^0-9]/', '', $this->shabaNumber);
-            $formattedShaba = 'IR' . $cleanShaba;
+        // Create technician with INACTIVE status initially until verification in /user/profile is submitted
+        $tech = TechnicianLifecycleService::createDirectTechnician([
+            'first_name'            => $this->firstName,
+            'last_name'             => $this->lastName,
+            'mobile'                => $this->phone,
+            'national_code'         => $nationalCodeVal,
+            'shaba_number'          => $formattedShaba,
+            'province'              => $provinceVal,
+            'city'                  => $cityVal,
+            'address'               => $addressVal,
+            'lat'                   => $cityData['lat'] ?? 36.5444,
+            'lng'                   => $cityData['lng'] ?? 52.6780,
+            'operational_radius_km' => (int) \Modules\FieldService\App\Models\FieldServiceSetting::get('default_technician_radius_km', 25),
+            'tier'                  => 'silver',
+            'status'                => \Modules\FieldService\App\Enums\TechnicianStatus::INACTIVE,
+            'is_online'             => false,
+            'meta'                  => ['verification_submitted' => false],
+        ]);
+
+        $user = $tech->user;
+
+        // Persist all dynamic registration custom fields to UserCustomValue & Technician
+        $savedCustomValues = TechnicianCustomFieldsHelper::syncValues(
+            $user,
+            $tech,
+            $registerFields,
+            $this->customFields,
+            $this->customFiles
+        );
+
+        Auth::login($user, true);
+        if (request()->hasSession()) {
+            request()->session()->regenerate();
         }
 
-        // Read registration approval setting for technician role
+        $this->isOpen = false;
+
+        // If verification/profile is still needed, restrict & redirect to /user/profile
+        if (TechnicianCustomFieldsHelper::needsVerification($user, $tech)) {
+            session()->flash('warning', 'ثبت‌نام شما انجام شد. لطفاً اطلاعات احراز هویت و تخصص‌های خود را در این صفحه تکمیل فرمایید.');
+            return $this->redirect(url('/user/profile'), navigate: false);
+        }
+
+        // Otherwise finalize approval status immediately
         $techRole = Role::where('name', 'technician')->first();
         $regSetting = \Modules\Settings\Entities\Setting::where('key', 'registration')->first();
         $regConfig = $regSetting && $regSetting->value ? json_decode($regSetting->value, true) : [];
@@ -369,33 +405,17 @@ class TechnicianAuthModal extends Component
             : 'manual';
 
         $isManualApproval = ($approvalType === 'manual');
-        $initialStatus = $isManualApproval
+        $tech->status = $isManualApproval
             ? \Modules\FieldService\App\Enums\TechnicianStatus::PENDING_APPROVAL
             : \Modules\FieldService\App\Enums\TechnicianStatus::ACTIVE;
+        if (!$isManualApproval) {
+            $tech->verified_at = now();
+        }
+        $meta = is_array($tech->meta) ? $tech->meta : [];
+        $meta['verification_submitted'] = true;
+        $tech->meta = $meta;
+        $tech->save();
 
-        // Create direct technician with User account & role
-        $tech = TechnicianLifecycleService::createDirectTechnician([
-            'first_name'            => $this->firstName,
-            'last_name'             => $this->lastName,
-            'mobile'                => $this->phone,
-            'national_code'         => $this->nationalCode,
-            'shaba_number'          => $formattedShaba,
-            'province'              => $this->province,
-            'city'                  => $this->city,
-            'address'               => $this->address,
-            'lat'                   => $cityData['lat'] ?? 36.5444,
-            'lng'                   => $cityData['lng'] ?? 52.6780,
-            'operational_radius_km' => 25,
-            'tier'                  => 'silver',
-            'status'                => $initialStatus,
-            'is_online'             => false,
-            'categories'            => $this->selectedCategories,
-            'national_card_image'   => $cardImagePath,
-        ]);
-
-        $user = $tech->user;
-
-        // If manual approval, ensure record in registration_requests for admin review pipeline
         if ($isManualApproval) {
             \App\Models\RegistrationRequest::updateOrCreate(
                 ['mobile' => $this->phone],
@@ -406,46 +426,11 @@ class TechnicianAuthModal extends Component
                     'mobile'        => $this->phone,
                     'password'      => $user->password,
                     'status'        => 'pending',
-                    'custom_fields' => [
-                        'national_code'       => $this->nationalCode,
-                        'province'            => $this->province,
-                        'city'                => $this->city,
-                        'address'             => $this->address,
-                        'shaba_number'        => $formattedShaba,
-                        'national_card_image' => $cardImagePath,
-                        'categories'          => $this->selectedCategories,
-                    ],
+                    'custom_fields' => $savedCustomValues,
                 ]
             );
         }
 
-        // Save custom user field values if User has customValues relation
-        if ($user && method_exists($user, 'customValues')) {
-            $customItems = [
-                'national_code'       => $this->nationalCode,
-                'province'            => $this->province,
-                'city'                => $this->city,
-                'address'             => $this->address,
-                'shaba_number'        => $formattedShaba,
-                'national_card_image' => $cardImagePath,
-            ];
-
-            foreach ($customItems as $fieldName => $val) {
-                if ($val !== null && $val !== '') {
-                    $user->customValues()->updateOrCreate(
-                        ['field_name' => $fieldName],
-                        ['field_value' => (string) $val]
-                    );
-                }
-            }
-        }
-
-        Auth::login($user, true);
-        if (request()->hasSession()) {
-            request()->session()->regenerate();
-        }
-
-        $this->isOpen = false;
         return $this->redirect(route('fieldservice.technician'), navigate: false);
     }
 
@@ -470,16 +455,12 @@ class TechnicianAuthModal extends Component
 
     public function render()
     {
-        $allProvinces = ProvinceCity::getProvinces();
-        $allData = ProvinceCity::getAll(); // [ 'مازندران' => ['ساری', 'بابل', ...], ... ]
-        $currentCities = ProvinceCity::getCities($this->province);
-        $categories = Category::where('is_active', true)->orderBy('sort_order')->get();
+        $allData = ProvinceCity::getAll();
+        $registerFields = TechnicianCustomFieldsHelper::getFields('register');
 
         return view('fieldservice::livewire.technician.technician-auth-modal', [
-            'allProvinces'   => $allProvinces,
             'allData'        => $allData,
-            'currentCities'  => $currentCities,
-            'categories'     => $categories,
+            'registerFields' => $registerFields,
         ]);
     }
 }

@@ -9,6 +9,8 @@ use Modules\FieldService\App\Livewire\Admin\CategoriesManager;
 use Modules\FieldService\App\Livewire\Admin\FieldServiceSettings;
 use Modules\FieldService\App\Livewire\Admin\FleetLiveMap;
 use Modules\FieldService\App\Livewire\Admin\OrdersManager;
+use Modules\FieldService\App\Livewire\Admin\SectionsManager;
+use Modules\FieldService\App\Livewire\Admin\ServiceGroupsManager;
 use Modules\FieldService\App\Livewire\Admin\SettlementsManager;
 use Modules\FieldService\App\Livewire\Admin\TechniciansManager;
 use Modules\FieldService\App\Livewire\Admin\VendorsManager;
@@ -21,6 +23,9 @@ use Modules\FieldService\App\Livewire\Technician\DutyToggle;
 use Modules\FieldService\App\Livewire\Technician\InvoiceBuilder;
 use Modules\FieldService\App\Livewire\Technician\MissionFeed;
 use Modules\FieldService\App\Livewire\Technician\TechnicianAuthModal;
+use Modules\FieldService\App\Livewire\Technician\TechnicianContractsPanel;
+use Modules\FieldService\App\Livewire\Technician\TechnicianProfileModal;
+use Modules\FieldService\App\Livewire\Technician\TechnicianVerificationForm;
 use Modules\FieldService\App\Models\ServiceOrder;
 use Modules\FieldService\App\Observers\ServiceOrderObserver;
 use Modules\FieldService\App\Services\DispatchRadarService;
@@ -46,15 +51,33 @@ class FieldServiceServiceProvider extends ServiceProvider
         // Register Eloquent Observers for Real-Time & Workflow Sync
         ServiceOrder::observe(ServiceOrderObserver::class);
 
-        // Cascade delete linked Technician when a User is deleted in CRM
+        // Hard-delete linked Technician when a User is deleted in CRM (since User uses hard delete)
         \App\Models\User::deleting(function ($user) {
-            \Modules\FieldService\App\Models\Technician::where('user_id', $user->id)->delete();
+            if (!\Illuminate\Support\Facades\Schema::hasTable('field_service_technicians')) {
+                return;
+            }
+
+            \Modules\FieldService\App\Models\Technician::withTrashed()
+                ->where('user_id', $user->id)
+                ->get()
+                ->each(function ($technician) {
+                    $technician->skills()->delete();
+                    $technician->forceDelete();
+                });
         });
 
         // Dynamically share platformName from general system settings across all FieldService views
         \Illuminate\Support\Facades\View::composer('fieldservice::*', function ($view) {
             $view->with('platformName', \Modules\FieldService\App\Models\FieldServiceSetting::getPlatformName());
         });
+
+        // Enforce /user/profile restriction across web routes for unapproved technicians
+        if (isset($this->app['router'])) {
+            $this->app['router']->pushMiddlewareToGroup(
+                'web',
+                \Modules\FieldService\App\Http\Middleware\EnsureTechnicianVerificationCompleted::class
+            );
+        }
     }
 
     public function register(): void
@@ -112,6 +135,8 @@ class FieldServiceServiceProvider extends ServiceProvider
         Livewire::component('fieldservice::orders-manager', OrdersManager::class);
         Livewire::component('fieldservice::technicians-manager', TechniciansManager::class);
         Livewire::component('fieldservice::categories-manager', CategoriesManager::class);
+        Livewire::component('fieldservice::sections-manager', SectionsManager::class);
+        Livewire::component('fieldservice::service-groups-manager', ServiceGroupsManager::class);
         Livewire::component('fieldservice::buildings-manager', BuildingsManager::class);
         Livewire::component('fieldservice::vendors-manager', VendorsManager::class);
         Livewire::component('fieldservice::settlements-manager', SettlementsManager::class);
@@ -120,6 +145,9 @@ class FieldServiceServiceProvider extends ServiceProvider
         // Portals Livewire components
         Livewire::component('fieldservice::customer-auth-modal', CustomerAuthModal::class);
         Livewire::component('fieldservice::technician-auth-modal', TechnicianAuthModal::class);
+        Livewire::component('fieldservice::technician-profile-modal', TechnicianProfileModal::class);
+        Livewire::component('fieldservice::technician-contracts-panel', TechnicianContractsPanel::class);
+        Livewire::component('fieldservice::technician-verification-form', TechnicianVerificationForm::class);
         Livewire::component('fieldservice::order-wizard', OrderWizard::class);
         Livewire::component('fieldservice::live-tracking', LiveTracking::class);
         Livewire::component('fieldservice::technician-duty-toggle', DutyToggle::class);

@@ -269,25 +269,23 @@ class RegisteredUserController extends Controller
                     ->with('success', 'به جمع میزبانان ما خوش آمدید! حساب کاربری شما با موفقیت ایجاد شد.');
             }
 
-            // ایجاد خودکار رکورد تکنسین در صورت نقش تکنسین
+            // ایجاد خودکار رکورد تکنسین در صورت نقش تکنسین (در وضعیت غیرفعال تا تکمیل احراز هویت اولیه در پروفایل)
             if (in_array($role->name, ['technician', 'field_service_technician'], true)) {
                 if (class_exists(\Modules\FieldService\App\Services\TechnicianLifecycleService::class)) {
-                    \Modules\FieldService\App\Services\TechnicianLifecycleService::createOrUpdateTechnicianForUser($user, $processedCustomFields);
+                    \Modules\FieldService\App\Services\TechnicianLifecycleService::createOrUpdateTechnicianForUser($user, array_merge($processedCustomFields, [
+                        'status' => \Modules\FieldService\App\Enums\TechnicianStatus::INACTIVE,
+                        'meta'   => ['verification_submitted' => false],
+                    ]));
                 }
 
                 Auth::login($user);
 
-                $platform = class_exists(\Modules\FieldService\App\Models\FieldServiceSetting::class)
-                    ? \Modules\FieldService\App\Models\FieldServiceSetting::getPlatformName()
-                    : config('app.name', 'آنتی‌گرویتی');
-
-                if (\Illuminate\Support\Facades\Route::has('user.fieldservice.technician.index')) {
-                    return redirect()->route('user.fieldservice.technician.index')
-                        ->with('success', "به جمع متخصصین و ناوگان فنی {$platform} خوش آمدید! پرونده شما با موفقیت فعال شد.");
+                if (\Illuminate\Support\Facades\Route::has('profile.show')) {
+                    return redirect()->route('profile.show')
+                        ->with('warning', 'ثبت‌نام اولیه انجام شد. لطفاً بخش «احراز هویت اولیه» و تخصص‌های کاری خود را تکمیل و ارسال نمایید.');
                 }
 
-                return redirect('/dashboard')
-                    ->with('success', "به جمع متخصصین و ناوگان فنی {$platform} خوش آمدید! حساب کاربری شما با موفقیت ایجاد شد.");
+                return redirect('/dashboard');
             }
 
             Auth::login($user);

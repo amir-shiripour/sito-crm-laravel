@@ -32,6 +32,7 @@ class MissionFeed extends Component
     {
         return [
             'technician-authenticated'                          => 'refreshTechnician',
+            'technician-duty-changed'                           => '$refresh',
             'refresh-mission-feed'                              => '$refresh',
             'order-pin-clicked'                                 => 'selectMissionFromMap',
             'echo:fieldservice.fleet,ServiceOrderCreated'       => 'onServiceOrderCreated',
@@ -190,6 +191,15 @@ class MissionFeed extends Component
         $tech = Technician::find($this->technicianId);
 
         if ($order && $tech) {
+            if ($tech->hasPendingContract()) {
+                $this->dispatch('notify', [
+                    'type' => 'warning',
+                    'text' => 'برای پذیرش سفارش‌ها ابتدا باید قرارداد همکاری خود را مطالعه و تایید کنید.',
+                ]);
+                $this->dispatch('open-pending-contract-modal');
+                return;
+            }
+
             $radar = app(DispatchRadarService::class);
             if ($radar->acceptOrder($order, $tech)) {
                 $this->previewOrderId = null;

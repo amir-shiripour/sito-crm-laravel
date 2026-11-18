@@ -20,15 +20,11 @@ class UpdateUserProfileInformation implements UpdatesUserProfileInformation
      */
     public function update(User $user, array $input): void
     {
+        $input['email'] = $input['email'] ?? $user->email;
+
         Validator::make($input, [
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', Rule::unique('users')->ignore($user->id)],
-            'mobile' => [
-                'nullable',
-                'string',
-                'max:30', // همگام با سایز دیتابیس
-                Rule::unique('users')->ignore($user->id),
-            ],
             'photo' => ['nullable', 'mimes:jpg,jpeg,png', 'max:1024'],
         ])->validateWithBag('updateProfileInformation');
 
@@ -54,8 +50,11 @@ class UpdateUserProfileInformation implements UpdatesUserProfileInformation
                 case 'date': $base[] = 'date'; break;
                 case 'email': $base[] = 'email'; break;
                 case 'file':
-                    // اگر فایل از قبل بارگذاری شده باشد، برای ذخیره مجدد پروفایل اجباری در نظر گرفته نمی‌شود
-                    if (($f->is_required ?? false) && !UserCustomValue::where('user_id', $user->id)->where('field_name', $f->field_name)->whereNotNull('value')->where('value', '!=', '')->exists()) {
+                    $incoming = $input['custom'][$f->field_name] ?? null;
+                    if ($incoming instanceof \Illuminate\Http\UploadedFile) {
+                        $base = ['file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:5120'];
+                    } elseif (($f->is_required ?? false) && !UserCustomValue::where('user_id', $user->id)->where('field_name', $f->field_name)->whereNotNull('value')->where('value', '!=', '')->exists()) {
+                        // اگر فایل از قبل بارگذاری شده باشد، برای ذخیره مجدد پروفایل اجباری در نظر گرفته نمی‌شود
                         $base = ['required'];
                     } else {
                         $base = ['nullable'];
@@ -96,7 +95,6 @@ class UpdateUserProfileInformation implements UpdatesUserProfileInformation
             $user->forceFill([
                 'name' => $input['name'],
                 'email' => $input['email'],
-                'mobile' => $input['mobile'] ?? null,
             ])->save();
         }
 
@@ -105,25 +103,33 @@ class UpdateUserProfileInformation implements UpdatesUserProfileInformation
             foreach ($fields as $f) {
                 $type = strtolower($f->field_type ?? 'text');
 
-                // در Livewire چون فایل‌ها به صورت مستقیم به این آرایه نمی‌آیند،
-                // فعلا مدیریت آپلود فایل فیلد کاستوم در صفحه پروفایل را نادیده می‌گیریم یا فقط حالت متنی را ذخیره می‌کنیم
-                if ($type === 'file') {
+                if (!array_key_exists($f->field_name, $input['custom'])) {
                     continue;
                 }
 
-                if (array_key_exists($f->field_name, $input['custom'])) {
-                    $raw = $input['custom'][$f->field_name];
-                    if ($type === 'checkbox' && is_array($raw)) {
-                        $value = json_encode(array_values($raw), JSON_UNESCAPED_UNICODE);
-                    } else {
-                        $value = $raw;
-                    }
+                $raw = $input['custom'][$f->field_name];
 
-                    UserCustomValue::updateOrCreate(
-                        ['user_id' => $user->id, 'field_name' => $f->field_name],
-                        ['value' => $value],
-                    );
+                if ($type === 'file') {
+                    if ($raw instanceof \Illuminate\Http\UploadedFile) {
+                        $value = $raw->store('uploads/custom_fields', 'public');
+                        UserCustomValue::updateOrCreate(
+                            ['user_id' => $user->id, 'field_name' => $f->field_name],
+                            ['value' => $value],
+                        );
+                    }
+                    continue;
                 }
+
+                if ($type === 'checkbox' && is_array($raw)) {
+                    $value = json_encode(array_values($raw), JSON_UNESCAPED_UNICODE);
+                } else {
+                    $value = $raw;
+                }
+
+                UserCustomValue::updateOrCreate(
+                    ['user_id' => $user->id, 'field_name' => $f->field_name],
+                    ['value' => $value],
+                );
             }
         }
     }
@@ -139,7 +145,6 @@ class UpdateUserProfileInformation implements UpdatesUserProfileInformation
             'name' => $input['name'],
             'email' => $input['email'],
             'email_verified_at' => null,
-            'mobile' => $input['mobile'] ?? null,
         ])->save();
 
         $user->sendEmailVerificationNotification();

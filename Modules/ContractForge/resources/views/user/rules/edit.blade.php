@@ -141,14 +141,29 @@
         const paymentOptions = @json($paymentOptions);
         const sysCurrency = '{{ $sysCurrency }}';
 
-        const availableFields = {
-            'patient_name': 'نام بیمار',
-            'plan_status': 'وضعیت طرح درمان',
-            'installment_option_title': 'روش پرداخت (installment_option_title)',
-            'plan_total': 'مبلغ کل طرح درمان',
-            'plan_final_payable': 'مبلغ نهایی قابل پرداخت',
-            'installment_months': 'تعداد ماه‌های اقساط'
-        };
+        const conditionFieldsByEntityType = @json($conditionFieldsByEntityType ?? []);
+        let availableFields = {};
+
+        function refreshAvailableFields() {
+            const entitySelect = document.querySelector('select[name="entity_type"]');
+            const entityType = entitySelect ? entitySelect.value : Object.keys(conditionFieldsByEntityType)[0];
+            availableFields = conditionFieldsByEntityType[entityType] || {};
+        }
+
+        refreshAvailableFields();
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const entitySelect = document.querySelector('select[name="entity_type"]');
+            if (entitySelect) {
+                entitySelect.addEventListener('change', () => {
+                    refreshAvailableFields();
+                    const container = document.getElementById('conditionsContainer');
+                    if (container) {
+                        container.innerHTML = '';
+                    }
+                });
+            }
+        });
 
         let debounceTimer;
         window.searchPatients = function(input, rowNum) {
@@ -319,8 +334,6 @@
                 Object.values(ruleData).forEach(cond => {
                     addConditionRow(cond);
                 });
-            } else {
-                addConditionRow();
             }
         });
     </script>

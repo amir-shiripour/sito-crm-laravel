@@ -28,7 +28,8 @@ class ContractEngine
         foreach ($rules as $rule) {
             // Check status if filter is defined
             if (!empty($rule->trigger_statuses)) {
-                $status = $entity->status ?? null;
+                $rawStatus = $entity->status ?? null;
+                $status = $rawStatus instanceof \BackedEnum ? $rawStatus->value : $rawStatus;
                 if (!in_array($status, $rule->trigger_statuses)) {
                     continue;
                 }
@@ -50,8 +51,9 @@ class ContractEngine
                 }
             }
 
-            // Generate
-            self::generate($rule->template, $entity, $rule->id);
+            // Generate (technician contracts are issued directly as 'active' so technician can sign them)
+            $initialStatus = $entityType === 'field_service_technician' ? 'active' : 'draft';
+            self::generate($rule->template, $entity, $rule->id, null, $initialStatus);
             $generatedCount++;
         }
 
@@ -61,7 +63,7 @@ class ContractEngine
     /**
      * Generate a new contract from a template and entity.
      */
-    public static function generate(ContractTemplate $template, object $entity, ?int $ruleId = null, ?int $userId = null): Contract
+    public static function generate(ContractTemplate $template, object $entity, ?int $ruleId = null, ?int $userId = null, string $initialStatus = 'draft'): Contract
     {
         $blocks = $template->blocks ?: [];
         $number = self::generateNextContractNumber();
@@ -92,7 +94,7 @@ class ContractEngine
             'title' => $title,
             'blocks_data' => $blocks,
             'rendered_body' => $renderedBody,
-            'status' => 'draft',
+            'status' => in_array($initialStatus, ['draft', 'active'], true) ? $initialStatus : 'draft',
         ]);
 
         return $contract;
@@ -145,11 +147,15 @@ class ContractEngine
                     break;
                 case 'table':
                     $tokenKey = $block['content'] ?? '';
-                    $tokens = method_exists($entity, 'getContractTokens') ? $entity->getContractTokens() : [];
-                    if (!empty($extraTokens)) {
-                        $tokens = array_merge($tokens, $extraTokens);
+                    if ($tokenKey === 'technician_signatures_table') {
+                        $tableHtml = self::renderTechnicianSignaturesBox($entity, $extraTokens);
+                    } else {
+                        $tokens = method_exists($entity, 'getContractTokens') ? $entity->getContractTokens() : [];
+                        if (!empty($extraTokens)) {
+                            $tokens = array_merge($tokens, $extraTokens);
+                        }
+                        $tableHtml = $tokens[$tokenKey] ?? '';
                     }
-                    $tableHtml = $tokens[$tokenKey] ?? '';
                     $html .= "<div class='contract-table my-4' style='margin: 16px 0;'>{$tableHtml}</div>";
                     break;
                 case 'page_break':
@@ -164,6 +170,43 @@ class ContractEngine
         }
         $html .= '</div>';
         return $html;
+    }
+
+    /**
+     * Render a structured two-column signature box matching the technician PDF layout.
+     */
+    public static function renderTechnicianSignaturesBox(object $entity, array $extraTokens = []): string
+    {
+        $techName = e(TokenResolver::resolve('{technician_name}', $entity, $extraTokens));
+
+        return <<<HTML
+<table class="signature-grid-table" style="width: 100%; border-collapse: separate; border-spacing: 12px 0; margin: 12px 0; page-break-inside: avoid; direction: rtl;">
+    <tr>
+        <td style="width: 50%; vertical-align: top; border: 1px solid #cbd5e1; padding: 14px 16px; text-align: right; line-height: 2;">
+            <div style="text-align: center; font-weight: bold; margin-bottom: 12px; font-size: 13px;">تکنسین</div>
+            <div style="margin-bottom: 10px;">نام و نام خانوادگی: {$techName}</div>
+            <div style="margin-bottom: 12px;">امضا: ........................................</div>
+            <div style="margin-top: 8px;">
+                <span style="display: inline-block; vertical-align: bottom;">اثر انگشت:</span>
+                <span style="display: inline-block; width: 66px; height: 82px; border: 1px dashed #9ca3af; vertical-align: middle; margin-right: 6px;"></span>
+            </div>
+        </td>
+        <td style="width: 50%; vertical-align: top; border: 1px solid #cbd5e1; padding: 14px 16px; text-align: right; line-height: 2;">
+            <div style="text-align: center; font-weight: bold; margin-bottom: 14px; font-size: 13px;">شرکت زانیار آزادیار سهند</div>
+            <div style="display: table; width: 100%; margin-top: 8px;">
+                <div style="display: table-cell; width: 50%; vertical-align: top; text-align: right; padding-left: 8px;">
+                    <div>آقای برزو ناظری‌راد</div>
+                    <div style="margin-top: 34px;">امضا و مهر:</div>
+                </div>
+                <div style="display: table-cell; width: 50%; vertical-align: top; text-align: right; padding-right: 8px;">
+                    <div>آقای محمد براری تنکابنی</div>
+                    <div style="margin-top: 34px;">امضا و مهر:</div>
+                </div>
+            </div>
+        </td>
+    </tr>
+</table>
+HTML;
     }
 
     /**
@@ -208,7 +251,8 @@ class ContractEngine
         foreach ($rules as $rule) {
             // Check status if filter is defined
             if (!empty($rule->trigger_statuses)) {
-                $status = $entity->status ?? null;
+                $rawStatus = $entity->status ?? null;
+                $status = $rawStatus instanceof \BackedEnum ? $rawStatus->value : $rawStatus;
                 if (!in_array($status, $rule->trigger_statuses)) {
                     continue;
                 }

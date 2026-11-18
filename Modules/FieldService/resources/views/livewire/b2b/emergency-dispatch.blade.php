@@ -20,14 +20,9 @@
             </div>
 
             <div>
-                <label class="block text-xs font-bold text-slate-300 mb-1">بخش حادثه‌دیده</label>
-                <select wire:model="appliance_type" class="w-full h-9 px-3 rounded-xl bg-slate-800 border border-slate-700 text-xs text-white font-sans">
-                    <option value="boiler">موتورخانه مرکزی و مشعل</option>
-                    <option value="plumbing">ترکیدگی لوله و نشتی شدید</option>
-                    <option value="booster_pump">افت فشار آب و از کار افتادن پمپ</option>
-                    <option value="elevator">خرابی آسانسور و گیر افتادن کابین</option>
-                    <option value="chiller">چیلر و تهویه مرکزی</option>
-                </select>
+                <label class="block text-xs font-bold text-slate-300 mb-1">بخش / عنوان حادثه</label>
+                <input type="text" wire:model="emergency_title" placeholder="مثلاً: موتورخانه مرکزی، ترکیدگی لوله، آسانسور..."
+                       class="w-full h-9 px-3 rounded-xl bg-slate-800 border border-slate-700 text-xs text-white font-sans placeholder:text-slate-500">
             </div>
         </div>
 
