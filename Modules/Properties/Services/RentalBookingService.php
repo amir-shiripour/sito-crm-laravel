@@ -162,7 +162,8 @@ class RentalBookingService
 
             $originalNightPrice = $nightPrice;
             $discountAmount = 0;
-            if ($config && $config->has_discount) {
+            // اعمال تخفیف لحظه آخری منحصراً برای تاریخ‌های درون بازه ۴۸ ساعته جاری (امروز و فردا از ساعت ۰۰:۰۰)
+            if ($config && $config->isDateEligibleForDiscount($curr, false)) {
                 $discountAmount = $config->calculateDiscountAmount($nightPrice);
                 $nightPrice = max(0, $nightPrice - $discountAmount);
             }

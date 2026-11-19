@@ -17,18 +17,14 @@ class ReverseGeocodingService
      */
     public function reverse(float $lat, float $lng): array
     {
-        // 0. Boundary Guard: Lock strictly to active covered cities/provinces bounding box
-        $coveredBox = FieldServiceSetting::getCoveredBoundingBox();
-        $sw = $coveredBox['southWest'];
-        $ne = $coveredBox['northEast'];
-
-        if ($lat < $sw[0] || $lat > $ne[0] || $lng < $sw[1] || $lng > $ne[1]) {
+        // 0. Boundary Guard: Allow any location across Iran (lat 24.0 to 40.0, lng 44.0 to 64.0)
+        if ($lat < 24.0 || $lat > 40.0 || $lng < 44.0 || $lng > 64.0) {
             $platform = FieldServiceSetting::getPlatformName();
             return [
                 'formatted_address' => "موقعیت خارج از محدوده تحت پوشش خدمات {$platform}",
                 'short_address'     => 'خارج از محدوده پوشش',
                 'city'              => 'نامشخص',
-                'province'          => 'خارج از محدوده',
+                'province'          => 'خارج از کشور',
                 'neighbourhood'     => '',
                 'place'             => '',
                 'provider'          => 'bounds_guard',
@@ -267,11 +263,14 @@ class ReverseGeocodingService
         $fullAddress = $this->toPersianNumbers(implode('، ', array_unique($parts)));
         $shortAddress = $this->toPersianNumbers($street ?: ($mainCorridor ?: ($neighbourhood ?: $city)));
 
+        $resolvedProvince = $addr['state'] ?? ($addr['province'] ?? 'مازندران');
+        $resolvedProvince = preg_replace('/^استان\s+/u', '', trim($resolvedProvince));
+
         return [
             'formatted_address' => $fullAddress,
             'short_address'     => $shortAddress,
             'city'              => $city,
-            'province'          => 'مازندران',
+            'province'          => $resolvedProvince,
             'neighbourhood'     => $neighbourhood,
             'place'             => $poi,
             'provider'          => 'osm_smart_synthesizer',

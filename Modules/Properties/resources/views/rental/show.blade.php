@@ -98,39 +98,71 @@
         $checkInTimeFormatted = !empty($config?->check_in_time) ? $formatTimeOnly($config->check_in_time) : null;
         $checkOutTimeFormatted = !empty($config?->check_out_time) ? $formatTimeOnly($config->check_out_time) : null;
 
-        // محاسبات قیمت پایه و تخفیف روزانه
+        // محاسبات قیمت پایه و تخفیف روزانه بر اساس بازه ۴۸ ساعته جاری (امروز و فردا از ساعت ۰۰:۰۰)
         $baseNightPrice = (float) ($config?->price_per_night ?: ($property->rent_price ?: ($property->price ?: 0)));
-        $hasDiscount = !empty($config?->has_discount) && (float)($config?->discount_value ?? 0) > 0;
-        $discountAmount = $hasDiscount ? $config->calculateDiscountAmount($baseNightPrice) : 0;
-        $payablePrice = max(0, $baseNightPrice - $discountAmount);
-        $discountBadge = null;
-        if ($hasDiscount) {
-            if ($config->discount_type === 'percent') {
-                $discountBadge = ((int) $config->discount_value) . '٪ تخفیف لحظه آخری';
-            } else {
-                $discountBadge = number_format($config->discount_value) . ' ' . $currencyLabel . ' تخفیف';
-            }
-        }
+        $lastMinuteInfo = $config ? $config->getLastMinutePricingInfo($property) : null;
+        $hasDiscount = $lastMinuteInfo && $lastMinuteInfo['is_active'];
+        $discountAmount = $hasDiscount ? $lastMinuteInfo['discount_amount'] : 0;
+        $payablePrice = $hasDiscount ? $lastMinuteInfo['discounted_price'] : $baseNightPrice;
+        $discountBadge = $hasDiscount ? $lastMinuteInfo['badge_text'] : null;
         $isInstant = !empty($config?->instant_booking);
 
-        $features = $property->attributeValues ? $property->attributeValues->filter(function($attr) {
-            return $attr->attribute && $attr->attribute->section === 'features' && ($attr->value == '1' || $attr->value === true);
-        }) : collect();
+        $features = collect();
+        if ($property->relationLoaded('attributeValues') || $property->attributeValues) {
+            foreach ($property->attributeValues as $av) {
+                if ($av->attribute && $av->attribute->section === 'features' && ($av->value == '1' || $av->value === true || $av->value === 'on')) {
+                    $features->push((object)[
+                        'name' => $av->attribute->name,
+                        'icon' => $av->attribute->icon ?: '✨',
+                        'description' => trim($av->description ?? '')
+                    ]);
+                }
+            }
+        }
+
+        $rawCustomFeatures = $property->meta['features'] ?? [];
+        if (is_array($rawCustomFeatures)) {
+            foreach ($rawCustomFeatures as $cf) {
+                if (is_string($cf) && trim($cf) !== '') {
+                    $features->push((object)[
+                        'name' => trim($cf),
+                        'icon' => '✨',
+                        'description' => ''
+                    ]);
+                } elseif (is_array($cf) && !empty($cf['value'])) {
+                    $features->push((object)[
+                        'name' => trim($cf['value']),
+                        'icon' => '✨',
+                        'description' => trim($cf['description'] ?? '')
+                    ]);
+                }
+            }
+        }
 
         // استخراج و تفکیک مشخصات واقعی اقامتگاه از مقادیر ویژگی‌ها بدون دیتای فیک
         $attrMap = [];
+        $attrDescMap = [];
         if ($property->relationLoaded('attributeValues') || $property->attributeValues) {
             foreach ($property->attributeValues as $av) {
                 if ($av->attribute) {
-                    $attrMap[trim($av->attribute->name)] = $av->value;
+                    $attrName = trim($av->attribute->name);
+                    $attrMap[$attrName] = $av->value;
+                    $attrDescMap[$attrName] = trim($av->description ?? '');
                 }
             }
         }
         $bedroomsCount = $property->bedrooms ?: (!empty($attrMap['تعداد اتاق خواب']) ? (int)$attrMap['تعداد اتاق خواب'] : null);
+        $bedroomDesc = $attrDescMap['تعداد اتاق خواب'] ?? '';
         $doubleBeds = !empty($attrMap['تعداد تخت دو نفره']) ? (int)$attrMap['تعداد تخت دو نفره'] : null;
+        $doubleBedsDesc = $attrDescMap['تعداد تخت دو نفره'] ?? '';
         $singleBeds = !empty($attrMap['تعداد تخت یک نفره']) ? (int)$attrMap['تعداد تخت یک نفره'] : null;
-        $bathroomsCount = $property->bathrooms ?: (!empty($attrMap['تعداد حمام']) ? (int)$attrMap['تعداد حمام'] : (!empty($attrMap['تعداد سرویس بهداشتی']) ? (int)$attrMap['تعداد سرویس بهداشتی'] : null));
+        $singleBedsDesc = $attrDescMap['تعداد تخت یک نفره'] ?? '';
+        $bathCount = !empty($attrMap['تعداد حمام']) ? (int)$attrMap['تعداد حمام'] : ($property->bathrooms ?: null);
+        $bathDesc = $attrDescMap['تعداد حمام'] ?? '';
+        $toiletCount = !empty($attrMap['تعداد سرویس بهداشتی']) ? (int)$attrMap['تعداد سرویس بهداشتی'] : null;
+        $toiletDesc = $attrDescMap['تعداد سرویس بهداشتی'] ?? '';
         $areaValue = $property->area_formatted ?? ($property->area ? $property->area . ' متر' : (!empty($attrMap['متراژ اقامتگاه (زیربنا)']) ? $attrMap['متراژ اقامتگاه (زیربنا)'] . ' متر' : (!empty($attrMap['متراژ']) ? $attrMap['متراژ'] . ' متر' : null)));
+        $areaDesc = $attrDescMap['متراژ اقامتگاه (زیربنا)'] ?? ($attrDescMap['متراژ'] ?? '');
 
         // استخراج و تفکیک دقیق قوانین اقامتگاه
         $allHouseRules = $config?->house_rules ?? [];
@@ -455,7 +487,13 @@
                     $generalSpecs = [];
                     if (!empty($property->property_type_name) || !empty($areaValue)) {
                         $parts = [];
-                        if (!empty($areaValue)) $parts[] = $areaValue . ' زیربنا';
+                        if (!empty($areaValue)) {
+                            $areaStr = $areaValue . ' زیربنا';
+                            if (!empty($areaDesc)) {
+                                $areaStr .= " ({$areaDesc})";
+                            }
+                            $parts[] = $areaStr;
+                        }
                         if (!empty($property->property_type_name)) $parts[] = $property->property_type_name;
                         if (!empty($property->city)) $parts[] = 'محدوده ' . $property->city;
                         $typeName = !empty($property->property_type_name) ? $property->property_type_name : 'اقامتگاه';
@@ -478,20 +516,54 @@
                     }
                     if (!empty($bedroomsCount) || !empty($doubleBeds) || !empty($singleBeds)) {
                         $roomDesc = [];
-                        if (!empty($bedroomsCount)) $roomDesc[] = "دارای {$bedroomsCount} اتاق خواب";
-                        if (!empty($doubleBeds)) $roomDesc[] = "{$doubleBeds} تخت دو نفره";
-                        if (!empty($singleBeds)) $roomDesc[] = "{$singleBeds} تخت یک نفره";
+                        if (!empty($bedroomsCount)) {
+                            $bStr = "دارای {$bedroomsCount} اتاق خواب";
+                            if (!empty($bedroomDesc)) {
+                                $bStr .= " ({$bedroomDesc})";
+                            }
+                            $roomDesc[] = $bStr;
+                        }
+                        if (!empty($doubleBeds)) {
+                            $dbStr = "{$doubleBeds} تخت دو نفره";
+                            if (!empty($doubleBedsDesc)) {
+                                $dbStr .= " ({$doubleBedsDesc})";
+                            }
+                            $roomDesc[] = $dbStr;
+                        }
+                        if (!empty($singleBeds)) {
+                            $sbStr = "{$singleBeds} تخت یک نفره";
+                            if (!empty($singleBedsDesc)) {
+                                $sbStr .= " ({$singleBedsDesc})";
+                            }
+                            $roomDesc[] = $sbStr;
+                        }
                         $generalSpecs[] = [
                             'svg' => '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M3 7v11m0-4h18m0-7v11M3 10a2 2 0 012-2h4a2 2 0 012 2v4H3v-4zm14 0a2 2 0 012-2h0a2 2 0 012 2v4h-4v-4z"/>',
                             'title' => 'سرویس‌های خواب',
                             'desc' => implode(' • ', $roomDesc)
                         ];
                     }
-                    if (!empty($bathroomsCount)) {
+                    $toiletParts = [];
+                    if (!empty($toiletCount)) {
+                        $tStr = "{$toiletCount} سرویس بهداشتی";
+                        if (!empty($toiletDesc)) {
+                            $tStr .= " ({$toiletDesc})";
+                        }
+                        $toiletParts[] = $tStr;
+                    }
+                    if (!empty($bathCount)) {
+                        $bStr = "{$bathCount} حمام";
+                        if (!empty($bathDesc)) {
+                            $bStr .= " ({$bathDesc})";
+                        }
+                        $toiletParts[] = $bStr;
+                    }
+                    if (!empty($toiletParts)) {
+                        $bathTitle = (!empty($toiletCount) && !empty($bathCount)) ? 'سرویس‌های بهداشتی و حمام' : (!empty($toiletCount) ? 'سرویس‌های بهداشتی' : 'حمام');
                         $generalSpecs[] = [
                             'svg' => '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1M4 12h16M7 12V8a5 5 0 0110 0v4"/>',
-                            'title' => 'سرویس‌های بهداشتی',
-                            'desc' => "{$bathroomsCount} سرویس بهداشتی و حمام"
+                            'title' => $bathTitle,
+                            'desc' => implode(' • ', $toiletParts)
                         ];
                     }
                     if (!empty($checkInTimeFormatted) || !empty($checkOutTimeFormatted)) {
@@ -526,6 +598,69 @@
                                         <h4 class="text-sm sm:text-base font-bold text-gray-900 dark:text-white font-sans">{{ $gSpec['title'] }}</h4>
                                         <p class="text-xs sm:text-sm text-gray-500 dark:text-gray-400 font-sans leading-relaxed">{{ $gSpec['desc'] }}</p>
                                     </div>
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
+                @endif
+
+                {{-- ۷. اطلاعات و مشخصات تکمیلی --}}
+                @php
+                    $standardDetailNames = [
+                        'متراژ اقامتگاه (زیربنا)',
+                        'متراژ',
+                        'تعداد اتاق خواب',
+                        'تعداد تخت دو نفره',
+                        'تعداد تخت یک نفره',
+                        'تعداد سرویس بهداشتی',
+                        'تعداد حمام'
+                    ];
+
+                    $supplementaryDetails = collect();
+
+                    if ($property->relationLoaded('attributeValues') || $property->attributeValues) {
+                        foreach ($property->attributeValues as $av) {
+                            if ($av->attribute && $av->attribute->section !== 'features' && $av->value !== null && $av->value !== '') {
+                                $attrName = trim($av->attribute->name);
+                                if (!in_array($attrName, $standardDetailNames)) {
+                                    $supplementaryDetails->push((object)[
+                                        'name' => $attrName,
+                                        'value' => $av->value,
+                                        'description' => trim($av->description ?? '')
+                                    ]);
+                                }
+                            }
+                        }
+                    }
+
+                    $rawCustomDetails = $property->meta['details'] ?? [];
+                    if (is_array($rawCustomDetails)) {
+                        foreach ($rawCustomDetails as $cd) {
+                            if (is_array($cd) && !empty($cd['key']) && !empty($cd['value'])) {
+                                $supplementaryDetails->push((object)[
+                                    'name' => trim($cd['key']),
+                                    'value' => trim($cd['value']),
+                                    'description' => trim($cd['description'] ?? '')
+                                ]);
+                            }
+                        }
+                    }
+                @endphp
+
+                @if($supplementaryDetails->isNotEmpty())
+                    <div class="space-y-4 pt-4 border-t border-gray-100 dark:border-zinc-800">
+                        <h3 class="text-base sm:text-lg font-black text-gray-900 dark:text-white">
+                            اطلاعات و مشخصات تکمیلی
+                        </h3>
+
+                        <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                            @foreach($supplementaryDetails as $detail)
+                                <div class="p-3.5 rounded-2xl bg-gray-50/70 dark:bg-zinc-900/60 border border-gray-200/60 dark:border-zinc-800/60 text-xs">
+                                    <span class="text-gray-500 dark:text-zinc-400 block text-[11px] font-sans">{{ $detail->name }}</span>
+                                    <strong class="text-gray-900 dark:text-zinc-100 block font-bold mt-1 text-xs sm:text-sm font-sans">{{ $detail->value }}</strong>
+                                    @if(!empty($detail->description))
+                                        <p class="text-[11px] text-gray-500 dark:text-zinc-400 font-normal mt-1 leading-relaxed font-sans">{{ $detail->description }}</p>
+                                    @endif
                                 </div>
                             @endforeach
                         </div>
@@ -577,9 +712,14 @@
 
                         <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
                             @foreach($features->take(9) as $feat)
-                                <div class="flex items-center gap-2.5 p-3 rounded-2xl bg-gray-50/70 dark:bg-zinc-900/60 border border-gray-200/60 dark:border-zinc-800/60 text-xs font-bold text-gray-800 dark:text-gray-200">
-                                    <span class="text-base select-none">{{ $feat->attribute->icon ?: '✨' }}</span>
-                                    <span class="truncate">{{ $feat->attribute->name }}</span>
+                                <div class="flex items-start gap-2.5 p-3 rounded-2xl bg-gray-50/70 dark:bg-zinc-900/60 border border-gray-200/60 dark:border-zinc-800/60 text-xs text-gray-800 dark:text-gray-200">
+                                    <span class="text-base select-none shrink-0 mt-0.5">{{ $feat->icon ?: '✨' }}</span>
+                                    <div class="min-w-0 flex-1">
+                                        <span class="font-bold truncate block">{{ $feat->name }}</span>
+                                        @if(!empty($feat->description))
+                                            <p class="text-[11px] text-gray-500 dark:text-zinc-400 font-normal mt-0.5 leading-relaxed font-sans line-clamp-2">{{ $feat->description }}</p>
+                                        @endif
+                                    </div>
                                 </div>
                             @endforeach
                         </div>
@@ -606,9 +746,14 @@
                                 </div>
                                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-2">
                                     @foreach($features as $feat)
-                                        <div class="flex items-center gap-2.5 p-3 rounded-xl bg-gray-50 dark:bg-zinc-800 text-xs font-bold text-gray-800 dark:text-gray-200">
-                                            <span class="text-base select-none">{{ $feat->attribute->icon ?: '✨' }}</span>
-                                            <span>{{ $feat->attribute->name }}</span>
+                                        <div class="flex items-start gap-2.5 p-3 rounded-xl bg-gray-50 dark:bg-zinc-800 text-xs text-gray-800 dark:text-gray-200">
+                                            <span class="text-base select-none shrink-0 mt-0.5">{{ $feat->icon ?: '✨' }}</span>
+                                            <div class="min-w-0 flex-1">
+                                                <span class="font-bold block">{{ $feat->name }}</span>
+                                                @if(!empty($feat->description))
+                                                    <p class="text-[11px] text-gray-500 dark:text-zinc-400 font-normal mt-0.5 leading-relaxed font-sans">{{ $feat->description }}</p>
+                                                @endif
+                                            </div>
                                         </div>
                                     @endforeach
                                 </div>

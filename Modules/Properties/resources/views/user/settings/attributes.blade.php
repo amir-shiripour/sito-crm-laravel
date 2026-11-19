@@ -110,6 +110,11 @@
                                     <input type="text" name="options" class="{{ $inputClass }}" :disabled="newType !== 'select'" placeholder="گزینه ۱، گزینه ۲" x-transition>
                                 </div>
 
+                                <div class="md:col-span-12">
+                                    <label class="{{ $labelClass }}">توضیحات پیش‌فرض / راهنما (اختیاری)</label>
+                                    <input type="text" name="description" class="{{ $inputClass }}" placeholder="توضیحات کوتاه یا راهنمای تکمیلی درباره این ویژگی...">
+                                </div>
+
                                 {{-- چیپ‌های سریع آیکون پیشنهادی --}}
                                 <div class="md:col-span-8 flex flex-wrap items-center gap-1.5 pt-1">
                                     <span class="text-[11px] text-gray-500 dark:text-gray-400 ml-1">پیشنهاد سریع آیکون:</span>
@@ -148,7 +153,7 @@
                     {{-- لیست ویژگی‌ها --}}
                     <div class="space-y-3">
                         @forelse($detailsAttributes as $attr)
-                            <div class="group flex items-center justify-between p-4 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-indigo-300 dark:hover:border-indigo-700 hover:shadow-sm transition-all" x-data="{ editing: false, name: '{{ addslashes($attr->name) }}', icon: '{{ addslashes($attr->icon ?? '') }}', type: '{{ $attr->type }}', isFilterable: {{ $attr->is_filterable ? 'true' : 'false' }}, isRangeFilter: {{ $attr->is_range_filter ? 'true' : 'false' }} }">
+                            <div class="group flex items-center justify-between p-4 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-indigo-300 dark:hover:border-indigo-700 hover:shadow-sm transition-all" x-data="{ editing: false, name: '{{ addslashes($attr->name) }}', icon: '{{ addslashes($attr->icon ?? '') }}', description: '{{ addslashes($attr->description ?? '') }}', type: '{{ $attr->type }}', isFilterable: {{ $attr->is_filterable ? 'true' : 'false' }}, isRangeFilter: {{ $attr->is_range_filter ? 'true' : 'false' }} }">
                                 <div class="flex items-center gap-3.5 flex-1 min-w-0">
                                     {{-- آیکون ویژگی --}}
                                     <div class="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/60 flex items-center justify-center text-lg flex-shrink-0 shadow-2xs">
@@ -170,6 +175,9 @@
                                                     </span>
                                                 @endif
                                             </h4>
+                                            @if(!empty($attr->description))
+                                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 leading-relaxed">{{ $attr->description }}</p>
+                                            @endif
                                             <div class="flex items-center gap-2 mt-1">
                                                 <span class="text-[10px] px-2 py-0.5 rounded bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300">
                                                     {{ match($attr->type) { 'text' => 'متن', 'number' => 'عدد', 'select' => 'لیست', 'checkbox' => 'چک‌باکس', default => $attr->type } }}
@@ -199,6 +207,9 @@
                                                 </select>
 
                                                 <input type="text" name="options" value="{{ implode(',', $attr->options ?? []) }}" class="{{ $inputClass }} py-1.5 text-xs flex-1 min-w-[160px]" placeholder="گزینه‌ها" x-show="type === 'select'">
+                                            </div>
+                                            <div class="w-full">
+                                                <input type="text" name="description" x-model="description" class="{{ $inputClass }} py-1.5 text-xs w-full" placeholder="توضیحات پیش‌فرض / راهنما (اختیاری)">
                                             </div>
                                             <div class="flex flex-wrap items-center gap-4">
                                                 <label class="flex items-center gap-2 cursor-pointer">
@@ -291,6 +302,11 @@
                                     </label>
                                 </div>
 
+                                <div class="md:col-span-12">
+                                    <label class="{{ $labelClass }}">توضیحات پیش‌فرض / راهنما (اختیاری)</label>
+                                    <input type="text" name="description" class="{{ $inputClass }}" placeholder="توضیحات کوتاه یا راهنمای این امکانات رفاهی...">
+                                </div>
+
                                 {{-- چیپ‌های سریع آیکون امکانات رفاهی --}}
                                 <div class="md:col-span-12 flex flex-wrap items-center gap-1.5 pt-1">
                                     <span class="text-[11px] text-gray-500 dark:text-gray-400 ml-1">پیشنهاد سریع آیکون:</span>
@@ -317,7 +333,7 @@
                     {{-- لیست امکانات --}}
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                         @forelse($featuresAttributes as $attr)
-                            <div class="group flex items-center justify-between p-3.5 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-emerald-300 dark:hover:border-emerald-700 hover:shadow-sm transition-all" x-data="{ editing: false, name: '{{ addslashes($attr->name) }}', icon: '{{ addslashes($attr->icon ?? '') }}', type: '{{ $attr->type }}', isFilterable: {{ $attr->is_filterable ? 'true' : 'false' }} }">
+                            <div class="group flex items-center justify-between p-3.5 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-emerald-300 dark:hover:border-emerald-700 hover:shadow-sm transition-all" x-data="{ editing: false, name: '{{ addslashes($attr->name) }}', icon: '{{ addslashes($attr->icon ?? '') }}', description: '{{ addslashes($attr->description ?? '') }}', type: '{{ $attr->type }}', isFilterable: {{ $attr->is_filterable ? 'true' : 'false' }} }">
                                 <div class="flex items-center gap-3 flex-1 min-w-0">
                                     {{-- آیکون امکانات --}}
                                     <div class="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-100 dark:border-emerald-900/60 flex items-center justify-center text-base flex-shrink-0 shadow-2xs">
@@ -325,12 +341,17 @@
                                     </div>
 
                                     <div class="flex-1 min-w-0">
-                                        <div x-show="!editing" class="flex items-center gap-2">
-                                            <h4 class="text-sm font-bold text-gray-800 dark:text-gray-200 truncate">{{ $attr->name }}</h4>
-                                            @if($attr->is_filterable)
-                                                <span class="px-1.5 py-0.5 rounded text-[10px] bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-300 flex-shrink-0" title="قابل فیلتر">
-                                                    <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
-                                                </span>
+                                        <div x-show="!editing">
+                                            <div class="flex items-center gap-2">
+                                                <h4 class="text-sm font-bold text-gray-800 dark:text-gray-200 truncate">{{ $attr->name }}</h4>
+                                                @if($attr->is_filterable)
+                                                    <span class="px-1.5 py-0.5 rounded text-[10px] bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-300 flex-shrink-0" title="قابل فیلتر">
+                                                        <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
+                                                    </span>
+                                                @endif
+                                            </div>
+                                            @if(!empty($attr->description))
+                                                <p class="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5 leading-relaxed truncate">{{ $attr->description }}</p>
                                             @endif
                                         </div>
 
@@ -349,6 +370,10 @@
                                                     <option value="number">عدد</option>
                                                     <option value="select">لیست</option>
                                                 </select>
+                                            </div>
+
+                                            <div class="w-full">
+                                                <input type="text" name="description" x-model="description" class="{{ $inputClass }} py-1 text-xs w-full" placeholder="توضیحات پیش‌فرض / راهنما (اختیاری)">
                                             </div>
 
                                             <div x-show="type === 'select'" class="w-full">

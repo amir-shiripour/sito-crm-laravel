@@ -30,13 +30,67 @@
     $agent = $property->agent ?? $property->creator;
     $agentPhone = $agent->mobile ?? $agent->phone ?? null;
 
-    $features = $property->attributeValues->filter(function($attr) {
-        return $attr->attribute && $attr->attribute->section === 'features' && ($attr->value == '1' || $attr->value === true);
-    });
+    $features = collect();
+    if ($property->attributeValues) {
+        foreach ($property->attributeValues as $av) {
+            if ($av->attribute && $av->attribute->section === 'features' && ($av->value == '1' || $av->value === true || $av->value === 'on')) {
+                $features->push((object)[
+                    'name' => $av->attribute->name,
+                    'icon' => $av->attribute->icon ?: '✨',
+                    'description' => trim($av->description ?? '')
+                ]);
+            }
+        }
+    }
+    $rawCustomFeatures = $property->meta['features'] ?? [];
+    if (is_array($rawCustomFeatures)) {
+        foreach ($rawCustomFeatures as $cf) {
+            if (is_string($cf) && trim($cf) !== '') {
+                $features->push((object)[
+                    'name' => trim($cf),
+                    'icon' => '✨',
+                    'description' => ''
+                ]);
+            } elseif (is_array($cf) && !empty($cf['value'])) {
+                $features->push((object)[
+                    'name' => trim($cf['value']),
+                    'icon' => '✨',
+                    'description' => trim($cf['description'] ?? '')
+                ]);
+            }
+        }
+    }
 
-    $detailAttributes = $property->attributeValues->filter(function($attr) {
-        return $attr->attribute && $attr->attribute->section !== 'features' && $attr->value !== null && $attr->value !== '';
-    });
+    $detailAttributes = collect();
+    if ($property->attributeValues) {
+        foreach ($property->attributeValues as $av) {
+            if ($av->attribute && $av->attribute->section !== 'features' && $av->value !== null && $av->value !== '') {
+                $detailAttributes->push((object)[
+                    'name' => $av->attribute->name,
+                    'value' => $av->value,
+                    'description' => trim($av->description ?? '')
+                ]);
+            }
+        }
+    }
+    $rawCustomDetails = $property->meta['details'] ?? [];
+    if (is_array($rawCustomDetails)) {
+        foreach ($rawCustomDetails as $k => $cd) {
+            if (is_array($cd) && !empty($cd['key']) && !empty($cd['value'])) {
+                $detailAttributes->push((object)[
+                    'name' => trim($cd['key']),
+                    'value' => trim($cd['value']),
+                    'description' => trim($cd['description'] ?? '')
+                ]);
+            } elseif (is_string($cd) && trim($cd) !== '') {
+                $detailAttributes->push((object)[
+                    'name' => is_string($k) ? trim($k) : 'ویژگی سفارشی',
+                    'value' => trim($cd),
+                    'description' => ''
+                ]);
+            }
+        }
+    }
 @endphp
 
 <div class="max-w-[1360px] mx-auto px-4 sm:px-8 py-8 w-full font-sans space-y-8">
@@ -108,8 +162,11 @@
                     <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
                         @foreach($detailAttributes as $detail)
                             <div class="p-3 rounded-xl bg-[#F7F8F9] dark:bg-zinc-800 border border-[#ECECEE] dark:border-zinc-700">
-                                <span class="text-zinc-400 block text-[11px]">{{ $detail->attribute->name }}</span>
-                                <strong class="text-[#18181B] dark:text-zinc-200 block font-bold mt-0.5">{{ $detail->value }}</strong>
+                                <span class="text-zinc-400 block text-[11px] font-sans">{{ $detail->name }}</span>
+                                <strong class="text-[#18181B] dark:text-zinc-200 block font-bold mt-0.5 font-sans">{{ $detail->value }}</strong>
+                                @if(!empty($detail->description))
+                                    <p class="text-[11px] text-zinc-500 dark:text-zinc-400 font-normal mt-1 leading-relaxed font-sans">{{ $detail->description }}</p>
+                                @endif
                             </div>
                         @endforeach
                     </div>
@@ -122,9 +179,14 @@
                     <h3 class="text-base font-black text-[#18181B] dark:text-zinc-100">ویژگی‌ها و امکانات</h3>
                     <div class="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
                         @foreach($features as $feat)
-                            <div class="flex items-center gap-2 p-2.5 rounded-xl bg-[#F7F8F9] dark:bg-zinc-800 border border-[#ECECEE] dark:border-zinc-700 text-xs font-bold text-[#18181B] dark:text-zinc-200">
-                                <span class="w-1.5 h-1.5 rounded-full bg-[#007A5E]"></span>
-                                <span>{{ $feat->attribute->name }}</span>
+                            <div class="p-2.5 rounded-xl bg-[#F7F8F9] dark:bg-zinc-800 border border-[#ECECEE] dark:border-zinc-700 text-xs text-[#18181B] dark:text-zinc-200">
+                                <div class="flex items-center gap-2 font-bold">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-[#007A5E] shrink-0"></span>
+                                    <span class="font-sans">{{ $feat->name }}</span>
+                                </div>
+                                @if(!empty($feat->description))
+                                    <p class="text-[11px] text-zinc-500 dark:text-zinc-400 font-normal mt-1 mr-3.5 leading-relaxed font-sans">{{ $feat->description }}</p>
+                                @endif
                             </div>
                         @endforeach
                     </div>

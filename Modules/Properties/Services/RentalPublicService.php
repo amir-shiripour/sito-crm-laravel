@@ -108,19 +108,23 @@ class RentalPublicService
                     }
                 }
 
-                $originalPrice = $effectivePrice;
-                $discountAmount = 0;
-                if ($config && $config->has_discount) {
-                    $discountAmount = $config->calculateDiscountAmount($effectivePrice);
-                    $effectivePrice = max(0, $effectivePrice - $discountAmount);
-                }
-
                 // بررسی مسدود بودن روز
                 $isBlocked = $blocks->contains(function ($b) use ($dateStr) {
                     return $dateStr >= $b->start_date->format('Y-m-d') && $dateStr <= $b->end_date->format('Y-m-d');
                 });
 
                 $isPast = $cDate->isPast() && !$cDate->isToday();
+
+                $originalPrice = $effectivePrice;
+                $discountAmount = 0;
+                $isLastMinuteDay = false;
+
+                // منطق تخفیف لحظه آخری: فقط برای تاریخ‌های خالی و در دسترس بازه ۴۸ ساعته جاری (امروز و فردا از ساعت ۰۰:۰۰)
+                if ($config && !$isBlocked && !$isPast && $config->isDateEligibleForDiscount($cDate, $isBlocked)) {
+                    $discountAmount = $config->calculateDiscountAmount($effectivePrice);
+                    $effectivePrice = max(0, $effectivePrice - $discountAmount);
+                    $isLastMinuteDay = true;
+                }
 
                 $toFaDigits = function ($str) {
                     $fa = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
@@ -149,6 +153,7 @@ class RentalPublicService
                     'price' => $effectivePrice,
                     'original_price' => $originalPrice,
                     'discount_amount' => $discountAmount,
+                    'is_last_minute' => $isLastMinuteDay,
                     'price_type' => $priceType,
                     'custom_title' => $customPrice ? $customPrice->title : null,
                     'is_past' => $isPast,

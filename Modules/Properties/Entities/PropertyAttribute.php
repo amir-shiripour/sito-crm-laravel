@@ -14,6 +14,7 @@ class PropertyAttribute extends Model
         'type',
         'section',
         'icon',
+        'description',
         'options',
         'sort_order',
         'is_active',

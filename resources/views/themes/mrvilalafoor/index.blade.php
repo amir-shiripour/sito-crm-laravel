@@ -112,6 +112,11 @@
             }
         } catch (\Throwable $e) {}
     }
+
+    $secondsUntilMidnight = max(0, \Carbon\Carbon::now()->diffInSeconds(\Carbon\Carbon::tomorrow()->startOfDay()));
+    $initLmH = class_exists(\Morilog\Jalali\CalendarUtils::class) ? \Morilog\Jalali\CalendarUtils::convertNumbers(str_pad(floor($secondsUntilMidnight / 3600), 2, '0', STR_PAD_LEFT)) : str_pad(floor($secondsUntilMidnight / 3600), 2, '0', STR_PAD_LEFT);
+    $initLmM = class_exists(\Morilog\Jalali\CalendarUtils::class) ? \Morilog\Jalali\CalendarUtils::convertNumbers(str_pad(floor(($secondsUntilMidnight % 3600) / 60), 2, '0', STR_PAD_LEFT)) : str_pad(floor(($secondsUntilMidnight % 3600) / 60), 2, '0', STR_PAD_LEFT);
+    $initLmS = class_exists(\Morilog\Jalali\CalendarUtils::class) ? \Morilog\Jalali\CalendarUtils::convertNumbers(str_pad($secondsUntilMidnight % 60, 2, '0', STR_PAD_LEFT)) : str_pad($secondsUntilMidnight % 60, 2, '0', STR_PAD_LEFT);
 @endphp
 
 @extends('layouts.web')
@@ -248,8 +253,8 @@
                     @if(auth()->check())
                         @php
                             $u = auth()->user();
-                            $isSuperAdmin = ($u->is_super_admin ?? false) || (method_exists($u, 'hasRole') && ($u->hasRole('super-admin') || $u->hasRole('Super Admin')));
-                            $uDash = $isSuperAdmin ? url('/admin') : url('/user');
+                            $isSuperAdmin = !empty($u->is_super_admin) || (method_exists($u, 'isSuperAdmin') ? $u->isSuperAdmin() : (method_exists($u, 'hasRole') && ($u->hasRole('super-admin') || $u->hasRole('Super Admin') || $u->hasRole('superadmin'))));
+                            $uDash = $isSuperAdmin ? url('/admin/dashboard') : url('/user/dashboard');
                         @endphp
                         <a href="{{ $uDash }}" class="flex items-center gap-1.5 text-xs font-bold text-zinc-700 dark:text-zinc-200 bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-2.5 py-1.5">
                             <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
@@ -265,7 +270,7 @@
                             <span class="max-w-[90px] truncate">{{ $cName }}</span>
                         </a>
                     @else
-                        <a href="{{ url('/clients/dashboard') }}" class="flex items-center gap-1.5 text-xs font-bold text-[#18181B] dark:text-zinc-200 hover:text-[#007A5E] dark:hover:text-emerald-400 transition-colors py-1 px-1">
+                        <a href="{{ url('/clients/login') }}" class="flex items-center gap-1.5 text-xs font-bold text-[#18181B] dark:text-zinc-200 hover:text-[#007A5E] dark:hover:text-emerald-400 transition-colors py-1 px-1">
                             <span>ورود یا ثبت‌نام</span>
                             <svg class="w-4 h-4 text-zinc-600 dark:text-zinc-300 rotate-180 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9"/>
@@ -1189,8 +1194,8 @@
                 @if(auth()->check())
                     @php
                         $u = auth()->user();
-                        $isSuperAdmin = ($u->is_super_admin ?? false) || (method_exists($u, 'hasRole') && ($u->hasRole('super-admin') || $u->hasRole('Super Admin')));
-                        $uDash = $isSuperAdmin ? url('/admin') : url('/user');
+                        $isSuperAdmin = !empty($u->is_super_admin) || (method_exists($u, 'isSuperAdmin') ? $u->isSuperAdmin() : (method_exists($u, 'hasRole') && ($u->hasRole('super-admin') || $u->hasRole('Super Admin') || $u->hasRole('superadmin'))));
+                        $uDash = $isSuperAdmin ? url('/admin/dashboard') : url('/user/dashboard');
                     @endphp
                     <div class="w-16 h-16 rounded-full bg-[#ECFDF5] dark:bg-emerald-950/40 text-[#007A5E] dark:text-emerald-400 flex items-center justify-center font-bold text-xl mx-auto mb-3">
                         {{ mb_substr($u->name ?? 'ک', 0, 1) }}
@@ -1219,7 +1224,7 @@
                     </div>
                     <h3 class="text-sm font-bold text-[#18181B] dark:text-zinc-100">کاربر مهمان</h3>
                     <span class="text-xs text-zinc-400 mt-0.5 block">جهت دسترسی به امکانات کامل وارد شوید</span>
-                    <a href="{{ url('/clients/dashboard') }}" class="inline-block mt-3 px-4 py-1.5 rounded-xl bg-[#007A5E] text-white text-xs font-bold shadow-xs">
+                    <a href="{{ url('/clients/login') }}" class="inline-block mt-3 px-4 py-1.5 rounded-xl bg-[#007A5E] text-white text-xs font-bold shadow-xs">
                         ورود / ثبت‌نام
                     </a>
                 @endif
@@ -1316,10 +1321,27 @@
             </button>
 
             {{-- 5. حساب من --}}
-            <button type="button" onclick="switchMobileTab('profile')" id="mob-nav-profile" class="flex flex-col items-center justify-center gap-1 py-1 text-zinc-400 dark:text-zinc-500">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/></svg>
-                <span class="text-[10px] font-medium">حساب من</span>
-            </button>
+            @if(auth()->check())
+                @php
+                    $u = auth()->user();
+                    $isSuperAdmin = !empty($u->is_super_admin) || (method_exists($u, 'isSuperAdmin') ? $u->isSuperAdmin() : (method_exists($u, 'hasRole') && ($u->hasRole('super-admin') || $u->hasRole('Super Admin') || $u->hasRole('superadmin'))));
+                    $uDash = $isSuperAdmin ? url('/admin/dashboard') : url('/user/dashboard');
+                @endphp
+                <a href="{{ $uDash }}" id="mob-nav-profile" class="flex flex-col items-center justify-center gap-1 py-1 text-zinc-400 dark:text-zinc-500 hover:text-[#007A5E] no-underline">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/></svg>
+                    <span class="text-[10px] font-medium">حساب من</span>
+                </a>
+            @elseif(auth('client')->check())
+                <a href="{{ url('/clients/dashboard') }}" id="mob-nav-profile" class="flex flex-col items-center justify-center gap-1 py-1 text-zinc-400 dark:text-zinc-500 hover:text-[#007A5E] no-underline">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/></svg>
+                    <span class="text-[10px] font-medium">حساب من</span>
+                </a>
+            @else
+                <a href="{{ url('/clients/login') }}" id="mob-nav-profile" class="flex flex-col items-center justify-center gap-1 py-1 text-zinc-400 dark:text-zinc-500 hover:text-[#007A5E] no-underline">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/></svg>
+                    <span class="text-[10px] font-medium">حساب من</span>
+                </a>
+            @endif
         </nav>
         <script>
             (function () {
@@ -1679,26 +1701,19 @@
                 $rentalConfig = $prop->rentalConfig;
                 $baseDailyPrice = (float) ($rentalConfig?->price_per_night ?? $prop->rent_price ?? $prop->price ?? 0);
 
-                // محاسبه تخفیف واقعی بر اساس تنظیمات اجاره اقامتگاه (فقط در صورت فعال‌سازی صریح میزبان)
-                $hasDiscount = !empty($rentalConfig?->has_discount) && (float)($rentalConfig?->discount_value ?? $rentalConfig?->discount_percent ?? 0) > 0;
+                // استعلام وضعیت تخفیف لحظه آخری برای بازه ۴۸ ساعته جاری (امروز و فردا از ساعت ۰۰:۰۰)
+                // تخفیف فقط در صورتی فعال است که تنظیمات تخفیف روشن باشد و حداقل یکی از ۲ روز آینده خالی (غیرمسدود) باشد
+                $lastMinuteInfo = $rentalConfig ? $rentalConfig->getLastMinutePricingInfo($prop) : null;
+                $hasLastMinuteDeal = $lastMinuteInfo && $lastMinuteInfo['is_active'];
 
                 $price = $baseDailyPrice;
                 $oldPrice = null;
                 $discount = null;
 
-                if ($hasDiscount && $rentalConfig) {
-                    $discountAmount = $rentalConfig->calculateDiscountAmount($baseDailyPrice);
-                    if ($discountAmount > 0) {
-                        $price = max(0, $baseDailyPrice - $discountAmount);
-                        $oldPrice = $baseDailyPrice;
-                        if ($rentalConfig->discount_type === 'percent' && $rentalConfig->discount_value > 0) {
-                            $discount = (int) $rentalConfig->discount_value;
-                        } else {
-                            $discount = round(($discountAmount / $baseDailyPrice) * 100);
-                        }
-                    } else {
-                        $hasDiscount = false;
-                    }
+                if ($hasLastMinuteDeal) {
+                    $price = $lastMinuteInfo['discounted_price'];
+                    $oldPrice = $lastMinuteInfo['original_price'];
+                    $discount = $lastMinuteInfo['discount_percent'];
                 }
 
                 // بررسی مستقیم تیک «آگهی ویژه» برای سکشن «اقامتگاه‌های خاص»
@@ -1710,8 +1725,8 @@
                 // تخصیص منطقی و هماهنگ با ماژول املاک به سکشن‌ها
                 $assignedSections = [];
 
-                // ۱. تخفیف لحظه آخری: فقط اگر تخفیف واقعی در تنظیمات اجاره فعال باشد
-                if ($hasDiscount && $price < $baseDailyPrice) {
+                // ۱. تخفیف لحظه آخری: فقط در صورتی که حداقل یکی از روزهای بازه ۴۸ ساعته خالی و دارای تخفیف باشد
+                if ($hasLastMinuteDeal && $price < $oldPrice) {
                     $assignedSections[] = 'lastminute';
                 }
 
@@ -2864,11 +2879,11 @@
                                         <div class="flex items-center gap-1.5 bg-black/35 backdrop-blur-xs border border-white/20 text-white px-2.5 sm:px-3 py-1.5 rounded-2xl shadow-inner font-sans shrink-0">
                                             <span class="text-amber-300 text-xs hidden sm:inline">⏳</span>
                                             <div class="flex items-center gap-1 text-xs sm:text-sm font-black tracking-wider" dir="ltr">
-                                                <span id="lm-timer-h" class="tabular-nums inline-block bg-white/15 text-white px-1.5 py-0.5 rounded-lg w-[26px] sm:w-[28px] text-center font-sans">۰۴</span>
+                                                <span id="lm-timer-h" class="tabular-nums inline-block bg-white/15 text-white px-1.5 py-0.5 rounded-lg w-[26px] sm:w-[28px] text-center font-sans">{{ $initLmH }}</span>
                                                 <span class="text-emerald-200 font-bold">:</span>
-                                                <span id="lm-timer-m" class="tabular-nums inline-block bg-white/15 text-white px-1.5 py-0.5 rounded-lg w-[26px] sm:w-[28px] text-center font-sans">۳۸</span>
+                                                <span id="lm-timer-m" class="tabular-nums inline-block bg-white/15 text-white px-1.5 py-0.5 rounded-lg w-[26px] sm:w-[28px] text-center font-sans">{{ $initLmM }}</span>
                                                 <span class="text-emerald-200 font-bold">:</span>
-                                                <span id="lm-timer-s" class="tabular-nums inline-block bg-white/15 text-amber-300 px-1.5 py-0.5 rounded-lg w-[26px] sm:w-[28px] text-center font-sans">۱۹</span>
+                                                <span id="lm-timer-s" class="tabular-nums inline-block bg-white/15 text-amber-300 px-1.5 py-0.5 rounded-lg w-[26px] sm:w-[28px] text-center font-sans">{{ $initLmS }}</span>
                                             </div>
                                         </div>
 
@@ -2943,6 +2958,7 @@
             if (afterWrapper) afterWrapper.innerHTML = afterSectionsHtml.join('');
             if (heroBanner) heroBanner.classList.remove('hidden');
 
+            updateLastMinuteTimerUI();
             initCarouselDrag();
         }
 
@@ -3836,11 +3852,11 @@
     }
 
     function openAuthModal() {
-        window.location.href = '{{ url("/clients/dashboard") }}';
+        window.location.href = '{{ url("/clients/login") }}';
     }
 
-    // Live Countdown Timer for Last-Minute Section
-    let lmRemainingSeconds = (4 * 3600) + (38 * 60) + 19;
+    // Live Countdown Timer for Last-Minute Section (زمان باقی‌مانده تا ساعت ۰۰:۰۰ نیمه‌شب و شروع چرخه بعدی)
+    let lmRemainingSeconds = {{ (int) $secondsUntilMidnight }};
     function updateLastMinuteTimerUI() {
         const hEl = document.getElementById('lm-timer-h');
         const mEl = document.getElementById('lm-timer-m');
@@ -3856,11 +3872,14 @@
         sEl.textContent = toPersianNum(secs);
     }
 
+    updateLastMinuteTimerUI();
+
     setInterval(() => {
         if (lmRemainingSeconds > 0) {
             lmRemainingSeconds--;
         } else {
-            lmRemainingSeconds = (4 * 3600) + (59 * 60) + 59;
+            // در ساعت ۰۰:۰۰ چرخه ۲۴ ساعته بعدی روز جدید فعال می‌شود
+            lmRemainingSeconds = 24 * 3600;
         }
         updateLastMinuteTimerUI();
     }, 1000);

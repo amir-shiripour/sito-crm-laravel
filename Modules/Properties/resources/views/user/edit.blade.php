@@ -500,7 +500,11 @@
                                             @foreach($detailsAttributes as $attr)
                                                 <div>
                                                     <label class="{{ $labelClass }}">{{ $attr->name }}</label>
-                                                    @php $value = $property->attributeValues->where('attribute_id', $attr->id)->first()->value ?? ''; @endphp
+                                                    @php
+                                                        $attrVal = $property->attributeValues->where('attribute_id', $attr->id)->first();
+                                                        $value = $attrVal->value ?? '';
+                                                        $desc = $attrVal->description ?? '';
+                                                    @endphp
 
                                                     @if($attr->type === 'text')
                                                         <input type="text" name="attributes[{{ $attr->id }}]" value="{{ $value }}" class="{{ $inputClass }} ai-attribute" data-attr-id="{{ $attr->id }}">
@@ -519,6 +523,10 @@
                                                             </div>
                                                         </div>
                                                     @endif
+
+                                                    <div class="mt-1.5">
+                                                        <input type="text" name="attribute_descriptions[{{ $attr->id }}]" value="{{ $desc }}" class="{{ $inputClass }} text-xs py-1.5" placeholder="{{ $attr->description ?: 'توضیحات تکمیلی این مشخصه (اختیاری)...' }}">
+                                                    </div>
                                                 </div>
                                             @endforeach
                                         </div>
@@ -540,10 +548,11 @@
                                         </div>
                                         <div class="space-y-3">
                                             <template x-for="(field, index) in customDetails" :key="index">
-                                                <div class="flex gap-3 animate-in fade-in slide-in-from-right-2">
-                                                    <input type="text" :name="`meta[details][${index}][key]`" x-model="field.key" placeholder="عنوان" class="{{ $inputClass }} !w-1/3">
-                                                    <input type="text" :name="`meta[details][${index}][value]`" x-model="field.value" placeholder="مقدار" class="{{ $inputClass }}">
-                                                    <button type="button" @click="removeDetailField(index)" class="p-2 text-red-500 bg-red-50 hover:bg-red-100 rounded-xl transition-colors dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/40">
+                                                <div class="flex flex-col sm:flex-row gap-3 bg-gray-50/70 dark:bg-gray-900/40 p-3 rounded-xl border border-gray-100 dark:border-gray-800 animate-in fade-in slide-in-from-right-2">
+                                                    <input type="text" :name="`meta[details][${index}][key]`" x-model="field.key" placeholder="عنوان ویژگی" class="{{ $inputClass }} sm:w-1/4">
+                                                    <input type="text" :name="`meta[details][${index}][value]`" x-model="field.value" placeholder="مقدار" class="{{ $inputClass }} sm:w-1/3">
+                                                    <input type="text" :name="`meta[details][${index}][description]`" x-model="field.description" placeholder="توضیحات تکمیلی (اختیاری)" class="{{ $inputClass }} flex-1">
+                                                    <button type="button" @click="removeDetailField(index)" class="p-2 self-end sm:self-center text-red-500 bg-red-50 hover:bg-red-100 rounded-xl transition-colors dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/40" title="حذف">
                                                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                                                     </button>
                                                 </div>
@@ -563,16 +572,25 @@
                                             <span class="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
                                             امکانات رفاهی
                                         </h3>
-                                        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                                        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                                             @foreach($featuresAttributes as $attr)
-                                                @php $hasValue = $property->attributeValues->where('attribute_id', $attr->id)->isNotEmpty(); @endphp
-                                                <label class="group flex items-center gap-2.5 p-3 rounded-xl border border-gray-200 bg-gray-50 hover:bg-white hover:border-indigo-200 cursor-pointer transition-all dark:bg-gray-700/30 dark:border-gray-700 dark:hover:bg-gray-700 dark:hover:border-indigo-700">
-                                                    <input type="checkbox" name="features[]" value="{{ $attr->id }}" {{ $hasValue ? 'checked' : '' }} class="w-5 h-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:bg-gray-800 dark:border-gray-600 ai-feature" data-attr-id="{{ $attr->id }}">
-                                                    @if(!empty($attr->icon))
-                                                        <span class="text-base select-none">{{ $attr->icon }}</span>
-                                                    @endif
-                                                    <span class="text-xs font-medium text-gray-700 group-hover:text-indigo-700 dark:text-gray-300 dark:group-hover:text-indigo-300 truncate">{{ $attr->name }}</span>
-                                                </label>
+                                                @php
+                                                    $attrVal = $property->attributeValues->where('attribute_id', $attr->id)->first();
+                                                    $hasValue = !empty($attrVal);
+                                                    $desc = $attrVal->description ?? '';
+                                                @endphp
+                                                <div class="p-3 rounded-xl border border-gray-200 bg-gray-50 hover:bg-white hover:border-indigo-200 transition-all dark:bg-gray-700/30 dark:border-gray-700 dark:hover:bg-gray-700 dark:hover:border-indigo-700 space-y-2" x-data="{ checked: {{ $hasValue ? 'true' : 'false' }} }">
+                                                    <label class="group flex items-center gap-2.5 cursor-pointer">
+                                                        <input type="checkbox" name="features[]" value="{{ $attr->id }}" x-model="checked" class="w-5 h-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:bg-gray-800 dark:border-gray-600 ai-feature" data-attr-id="{{ $attr->id }}">
+                                                        @if(!empty($attr->icon))
+                                                            <span class="text-base select-none">{{ $attr->icon }}</span>
+                                                        @endif
+                                                        <span class="text-xs font-medium text-gray-700 group-hover:text-indigo-700 dark:text-gray-300 dark:group-hover:text-indigo-300 truncate">{{ $attr->name }}</span>
+                                                    </label>
+                                                    <div x-show="checked" x-transition class="pt-1">
+                                                        <input type="text" name="attribute_descriptions[{{ $attr->id }}]" value="{{ $desc }}" class="{{ $inputClass }} text-xs py-1.5" placeholder="{{ $attr->description ?: 'توضیحات تکمیلی (ابعاد، ساعت، برند و...)' }}">
+                                                    </div>
+                                                </div>
                                             @endforeach
                                         </div>
                                         @if($featuresAttributes->isEmpty())
@@ -593,9 +611,10 @@
                                         </div>
                                         <div class="space-y-3">
                                             <template x-for="(field, index) in customFeatures" :key="index">
-                                                <div class="flex gap-3 animate-in fade-in slide-in-from-right-2">
-                                                    <input type="text" :name="`meta[features][${index}][value]`" x-model="field.value" placeholder="عنوان امکانات" class="{{ $inputClass }}">
-                                                    <button type="button" @click="removeFeatureField(index)" class="p-2 text-red-500 bg-red-50 hover:bg-red-100 rounded-xl transition-colors dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/40">
+                                                <div class="flex flex-col sm:flex-row gap-3 bg-gray-50/70 dark:bg-gray-900/40 p-3 rounded-xl border border-gray-100 dark:border-gray-800 animate-in fade-in slide-in-from-right-2">
+                                                    <input type="text" :name="`meta[features][${index}][value]`" x-model="field.value" placeholder="عنوان امکانات" class="{{ $inputClass }} sm:w-1/3">
+                                                    <input type="text" :name="`meta[features][${index}][description]`" x-model="field.description" placeholder="توضیحات تکمیلی (اختیاری)" class="{{ $inputClass }} flex-1">
+                                                    <button type="button" @click="removeFeatureField(index)" class="p-2 self-end sm:self-center text-red-500 bg-red-50 hover:bg-red-100 rounded-xl transition-colors dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/40" title="حذف">
                                                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                                                     </button>
                                                 </div>
@@ -1676,13 +1695,13 @@
 
                 // --- Custom Fields Handling ---
                 addDetailField() {
-                    this.customDetails.push({ key: '', value: '' });
+                    this.customDetails.push({ key: '', value: '', description: '' });
                 },
                 removeDetailField(index) {
                     this.customDetails.splice(index, 1);
                 },
                 addFeatureField() {
-                    this.customFeatures.push({ value: '' });
+                    this.customFeatures.push({ value: '', description: '' });
                 },
                 removeFeatureField(index) {
                     this.customFeatures.splice(index, 1);

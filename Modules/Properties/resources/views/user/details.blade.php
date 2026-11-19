@@ -56,8 +56,10 @@
                                         <label class="{{ $labelClass }}">{{ $attr->name }}</label>
 
                                         @php
-                                            // دریافت مقدار ذخیره شده قبلی
-                                            $value = $property->attributeValues->where('attribute_id', $attr->id)->first()->value ?? '';
+                                            // دریافت مقدار و توضیحات ذخیره شده قبلی
+                                            $attrVal = $property->attributeValues->where('attribute_id', $attr->id)->first();
+                                            $value = $attrVal->value ?? '';
+                                            $desc = $attrVal->description ?? '';
                                         @endphp
 
                                         @if($attr->type === 'text')
@@ -83,6 +85,10 @@
                                                 <span class="text-sm text-gray-600 dark:text-gray-400">دارد</span>
                                             </div>
                                         @endif
+
+                                        <div class="mt-1.5">
+                                            <input type="text" name="attribute_descriptions[{{ $attr->id }}]" value="{{ $desc }}" class="{{ $inputClass }} text-xs py-1.5" placeholder="{{ $attr->description ?: 'توضیحات تکمیلی این مشخصه (اختیاری)...' }}">
+                                        </div>
                                     </div>
                                 @endforeach
                             </div>
@@ -107,12 +113,15 @@
 
                         <div class="space-y-3">
                             <template x-for="(field, index) in customFields" :key="index">
-                                <div class="flex items-start gap-3 bg-gray-50 dark:bg-gray-900/30 p-3 rounded-xl border border-gray-100 dark:border-gray-700/50 animate-in fade-in slide-in-from-right-2">
-                                    <div class="w-1/3">
+                                <div class="flex flex-col sm:flex-row items-start gap-3 bg-gray-50 dark:bg-gray-900/30 p-3 rounded-xl border border-gray-100 dark:border-gray-700/50 animate-in fade-in slide-in-from-right-2">
+                                    <div class="w-full sm:w-1/4">
                                         <input type="text" :name="`meta[${index}][key]`" x-model="field.key" placeholder="عنوان (مثلاً: ویو ابدی)" class="{{ $inputClass }} bg-white dark:bg-gray-800 !py-2">
                                     </div>
-                                    <div class="flex-1">
+                                    <div class="w-full sm:w-1/3">
                                         <input type="text" :name="`meta[${index}][value]`" x-model="field.value" placeholder="مقدار (مثلاً: دارد)" class="{{ $inputClass }} bg-white dark:bg-gray-800 !py-2">
+                                    </div>
+                                    <div class="w-full sm:flex-1">
+                                        <input type="text" :name="`meta[${index}][description]`" x-model="field.description" placeholder="توضیحات تکمیلی (اختیاری)" class="{{ $inputClass }} bg-white dark:bg-gray-800 !py-2">
                                     </div>
                                     <button type="button" @click="removeField(index)" class="mt-1 p-2 text-red-500 bg-white dark:bg-gray-800 hover:bg-red-50 hover:text-red-700 border border-gray-200 dark:border-gray-600 rounded-lg transition-colors dark:hover:bg-red-900/20 dark:hover:text-red-300 dark:hover:border-red-900/30 shadow-sm" title="حذف">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>

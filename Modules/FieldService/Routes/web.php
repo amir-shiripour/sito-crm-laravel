@@ -43,9 +43,7 @@ Route::middleware(['auth', \Modules\FieldService\App\Http\Middleware\EnsureTechn
 // Interactive Web-App Portals (Customer, Technician, B2B)
 Route::middleware(['web'])->prefix('fieldservice')->name('fieldservice.')->group(function () {
     Route::get('/customer', [CustomerPortalController::class, 'index'])->name('customer');
-    Route::get('/technician', [TechnicianPortalController::class, 'index'])
-        ->middleware([\Modules\FieldService\App\Http\Middleware\EnsureTechnicianVerificationCompleted::class])
-        ->name('technician');
+    Route::get('/technician', [TechnicianPortalController::class, 'index'])->name('technician');
     Route::match(['get', 'post'], '/technician/logout', [TechnicianPortalController::class, 'logout'])->name('technician.logout');
     Route::get('/b2b', [B2BPortalController::class, 'index'])->name('b2b');
     Route::get('/api/reverse-geocode', [ReverseGeocodeController::class, 'reverse'])

@@ -505,10 +505,19 @@
                         $coverUrl = asset('images/property-placeholder.svg');
                     }
 
-                    $rate = $rentalConfig?->price_per_night ?: ($property->rent_price ?: $property->price);
-                    $oldRate = $rentalConfig?->old_daily_rate ?: ($rentalConfig?->normal_price_per_night ?: ($property->price > $rate ? $property->price : null));
-                    $hasDiscount = $oldRate && $oldRate > $rate;
-                    $discountPercent = $hasDiscount ? round((($oldRate - $rate) / $oldRate) * 100) : 0;
+                    $basePrice = $rentalConfig?->price_per_night ?: ($property->rent_price ?: $property->price);
+                    $lastMinuteInfo = $rentalConfig ? $rentalConfig->getLastMinutePricingInfo($property) : null;
+                    $hasDiscount = $lastMinuteInfo && $lastMinuteInfo['is_active'];
+
+                    if ($hasDiscount) {
+                        $rate = $lastMinuteInfo['discounted_price'];
+                        $oldRate = $lastMinuteInfo['original_price'];
+                        $discountPercent = $lastMinuteInfo['discount_percent'];
+                    } else {
+                        $rate = $basePrice;
+                        $oldRate = null;
+                        $discountPercent = 0;
+                    }
 
                     // Specs Line
                     $rooms = $property->bedrooms ?? $property->rooms ?? ($property->meta['rooms'] ?? ($property->meta['bedrooms'] ?? null));

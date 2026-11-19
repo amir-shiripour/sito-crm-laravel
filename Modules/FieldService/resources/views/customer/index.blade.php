@@ -736,12 +736,11 @@
                         inertiaMaxSpeed: 2000,
                     });
 
-                    // Add map tile layer with STRICT covered bounds:
+                    // Add map tile layer (Hardware Accelerated & Nationwide Coverage):
                     const subdomains = this.config.subdomains || ['a', 'b', 'c'];
                     L.tileLayer(this.config.tile_url, {
                         maxZoom: this.config.max_zoom || 19,
                         minZoom: this.config.min_zoom || 10,
-                        bounds: coveredBounds,
                         subdomains: subdomains,
                         keepBuffer: 6,
                         updateWhenIdle: false,
@@ -801,6 +800,8 @@
                         }
                     } else {
                         this.onLocationChanged(defaultLat, defaultLng);
+                        // Auto-acquire real GPS location
+                        this.locateMe(true);
                     }
 
                     // Listeners from Livewire
@@ -1026,9 +1027,9 @@
                     }, 250);
                 },
 
-                locateMe() {
+                locateMe(silent = false) {
                     if (!navigator.geolocation) {
-                        alert('مرورگر شما از قابلیت مکان‌یابی پشتیبانی نمی‌کند.');
+                        if (!silent) alert('مرورگر شما از قابلیت مکان‌یابی پشتیبانی نمی‌کند.');
                         return;
                     }
 
@@ -1038,13 +1039,18 @@
                             this.isLocating = false;
                             const lat = pos.coords.latitude;
                             const lng = pos.coords.longitude;
-                            this.map.setView([lat, lng], 16, { animate: true });
+                            if (this.map) {
+                                this.map.setView([lat, lng], 16, { animate: true });
+                            }
+                            this.onLocationChanged(lat, lng);
                         },
                         (err) => {
                             this.isLocating = false;
-                            alert('دسترسی به موقعیت مکانی داده نشد یا GPS خاموش است.');
+                            if (!silent) {
+                                alert('دسترسی به موقعیت مکانی داده نشد یا GPS خاموش است.');
+                            }
                         },
-                        { enableHighAccuracy: true, timeout: 8000 }
+                        { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 }
                     );
                 },
 

@@ -235,6 +235,175 @@ class PropertyRentalConfig extends Model
     }
 
     /**
+     * بررسی اینکه آیا تاریخ مشخص‌شده در بازه ۴۸ ساعته تخفیف لحظه آخری (امروز و فردا از ساعت ۰۰:۰۰) قرار دارد یا خیر
+     *
+     * @param \Carbon\CarbonInterface|string $date
+     * @return bool
+     */
+    public static function isDateInLastMinuteWindow($date): bool
+    {
+        $cDate = $date instanceof \Carbon\CarbonInterface 
+            ? $date->copy()->startOfDay() 
+            : \Carbon\Carbon::parse($date)->startOfDay();
+
+        $today = \Carbon\Carbon::today();
+        $tomorrow = \Carbon\Carbon::tomorrow();
+
+        return $cDate->equalTo($today) || $cDate->equalTo($tomorrow);
+    }
+
+    /**
+     * بررسی اینکه آیا یک شب معین مشمول تخفیف لحظه آخری است یا خیر
+     * (تخفیف اقامتگاه فعال باشد، تاریخ در بازه ۴۸ ساعته امروز یا فردا باشد و روز مسدود یا در گذشته نباشد)
+     *
+     * @param \Carbon\CarbonInterface|string $date
+     * @param bool $isBlocked
+     * @return bool
+     */
+    public function isDateEligibleForDiscount($date, bool $isBlocked = false): bool
+    {
+        if (!$this->has_discount || empty($this->discount_value) || (float)$this->discount_value <= 0) {
+            return false;
+        }
+
+        if ($isBlocked) {
+            return false;
+        }
+
+        $cDate = $date instanceof \Carbon\CarbonInterface 
+            ? $date->copy()->startOfDay() 
+            : \Carbon\Carbon::parse($date)->startOfDay();
+
+        // روزهای گذشته مشمول تخفیف نیستند
+        if ($cDate->isPast() && !$cDate->isToday()) {
+            return false;
+        }
+
+        return self::isDateInLastMinuteWindow($cDate);
+    }
+
+    /**
+     * بررسی دسترسی‌پذیری روزهای بازه ۴۸ ساعته (امروز و فردا)
+     * در صورتی که حداقل یکی از این دو روز خالی (غیرمسدود) باشد، پیشنهاد لحظه آخری معتبر است.
+     *
+     * @param mixed $property
+     * @param mixed $blocks
+     * @return array{has_deal: bool, today_available: bool, tomorrow_available: bool}
+     */
+    public function checkLastMinuteAvailability($property = null, $blocks = null): array
+    {
+        if (!$this->has_discount || empty($this->discount_value) || (float)$this->discount_value <= 0) {
+            return [
+                'has_deal' => false,
+                'today_available' => false,
+                'tomorrow_available' => false,
+            ];
+        }
+
+        $todayStr = \Carbon\Carbon::today()->format('Y-m-d');
+        $tomorrowStr = \Carbon\Carbon::tomorrow()->format('Y-m-d');
+
+        $prop = $property ?? ($this->relationLoaded('property') ? $this->property : null);
+        $blocksCollection = $blocks ?? ($prop && $prop->relationLoaded('rentalBlocks') ? $prop->rentalBlocks : ($prop ? $prop->rentalBlocks()->get() : collect()));
+
+        $isDateBlocked = function ($dateStr) use ($blocksCollection) {
+            if (!$blocksCollection || $blocksCollection->isEmpty()) {
+                return false;
+            }
+            return $blocksCollection->contains(function ($b) use ($dateStr) {
+                $s = $b->start_date instanceof \Carbon\CarbonInterface ? $b->start_date->format('Y-m-d') : substr((string)$b->start_date, 0, 10);
+                $e = $b->end_date instanceof \Carbon\CarbonInterface ? $b->end_date->format('Y-m-d') : substr((string)$b->end_date, 0, 10);
+                return $dateStr >= $s && $dateStr <= $e;
+            });
+        };
+
+        $todayAvailable = !$isDateBlocked($todayStr);
+        $tomorrowAvailable = !$isDateBlocked($tomorrowStr);
+
+        return [
+            'has_deal' => $todayAvailable || $tomorrowAvailable,
+            'today_available' => $todayAvailable,
+            'tomorrow_available' => $tomorrowAvailable,
+        ];
+    }
+
+    /**
+     * دریافت اطلاعات جامع قیمت‌گذاری و نشان تخفیف لحظه آخری برای نمایش در کارت‌ها و هدر اقامتگاه
+     *
+     * @param mixed $property
+     * @param mixed $blocks
+     * @return array{
+     *     is_active: bool,
+     *     today_available: bool,
+     *     tomorrow_available: bool,
+     *     original_price: float,
+     *     discounted_price: float,
+     *     discount_percent: int,
+     *     discount_amount: float,
+     *     discount_type: string,
+     *     badge_text: ?string
+     * }
+     */
+    public function getLastMinutePricingInfo($property = null, $blocks = null): array
+    {
+        $availability = $this->checkLastMinuteAvailability($property, $blocks);
+
+        $prop = $property ?? ($this->relationLoaded('property') ? $this->property : null);
+        $baseNightPrice = (float) ($this->price_per_night ?: ($prop?->rent_price ?: ($prop?->price ?: 0)));
+
+        if (!$availability['has_deal'] || $baseNightPrice <= 0) {
+            return [
+                'is_active' => false,
+                'today_available' => $availability['today_available'],
+                'tomorrow_available' => $availability['tomorrow_available'],
+                'original_price' => $baseNightPrice,
+                'discounted_price' => $baseNightPrice,
+                'discount_percent' => 0,
+                'discount_amount' => 0,
+                'discount_type' => $this->discount_type ?? 'percent',
+                'badge_text' => null,
+            ];
+        }
+
+        // اولویت تعیین نرخ: اگر امروز خالی باشد، نرخ امروز؛ در غیر این صورت نرخ فردا
+        $targetDate = $availability['today_available'] ? \Carbon\Carbon::today() : \Carbon\Carbon::tomorrow();
+        $targetRate = $baseNightPrice;
+
+        // بررسی آیا روز هدف جزء روزهای آخر هفته اقامتگاه است
+        if ($this->price_weekend > 0) {
+            $jDate = \Morilog\Jalali\Jalalian::fromCarbon($targetDate);
+            $dayOfWeek = $jDate->getDayOfWeek(); // ۰ تا ۶
+            if ($this->isWeekendDay($dayOfWeek)) {
+                $targetRate = (float) $this->price_weekend;
+            }
+        }
+
+        $discountAmount = $this->calculateDiscountAmount($targetRate);
+        $discountedPrice = max(0, $targetRate - $discountAmount);
+
+        $percent = 0;
+        if ($this->discount_type === 'percent' && (float)$this->discount_value > 0) {
+            $percent = (int) $this->discount_value;
+        } elseif ($targetRate > 0) {
+            $percent = (int) round(($discountAmount / $targetRate) * 100);
+        }
+
+        $badgeText = $percent > 0 ? "{$percent}٪ تخفیف لحظه آخری" : "تخفیف لحظه آخری";
+
+        return [
+            'is_active' => true,
+            'today_available' => $availability['today_available'],
+            'tomorrow_available' => $availability['tomorrow_available'],
+            'original_price' => $targetRate,
+            'discounted_price' => $discountedPrice,
+            'discount_percent' => $percent,
+            'discount_amount' => $discountAmount,
+            'discount_type' => $this->discount_type ?? 'percent',
+            'badge_text' => $badgeText,
+        ];
+    }
+
+    /**
      * محاسبه مبلغ تخفیف برای یک نرخ مشخص
      */
     public function calculateDiscountAmount(float $originalPrice): float
