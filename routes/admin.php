@@ -24,8 +24,10 @@ use App\Http\Controllers\Admin\CronManagementController;
 // --- داشبورد اصلی ادمین ---
 // نکته: مسیر به حالت قدیمی '/dashboard' برگشت تا لینک‌های فعلی شما خراب نشود.
 // متد جدید layout هم به آن اضافه شد.
-Route::middleware(['role:super-admin'])->group(function () {
-    Route::get('/', [DashboardController::class, 'index'])->name('index');
+Route::middleware(['super_admin'])->group(function () {
+    Route::get('/', function () {
+        return redirect()->route('admin.dashboard');
+    })->name('index');
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::post('/dashboard/layout', [DashboardController::class, 'updateLayout'])->name('dashboard.update-layout');
     Route::get('/optimizer-report', [DashboardController::class, 'optimizerReport'])->name('optimizer-report');
@@ -108,7 +110,7 @@ Route::prefix('modules')->name('modules.')->group(function () {
     Route::delete('/{module}', [ModuleController::class, 'destroy'])->name('destroy')->middleware('role:super-admin');
 
     // عملیات حیاتی ماژول‌ها — برگردانده شد (دسترسی فقط برای super-admin)
-    Route::middleware(['role:super-admin'])->group(function () {
+    Route::middleware(['super_admin'])->group(function () {
         Route::post('/install', [ModuleController::class, 'install'])->name('install');
         Route::post('/enable', [ModuleController::class, 'enableModule'])->name('enable');
         Route::post('/disable', [ModuleController::class, 'disableModule'])->name('disable');

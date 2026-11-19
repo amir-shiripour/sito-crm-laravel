@@ -195,16 +195,27 @@
                                 if ($attr->attribute->section === 'features') return false;
                                 return $attr->value !== null && $attr->value !== '';
                             });
-                            foreach($details as $detail) $specs->push(['name' => $detail->attribute->name, 'value' => $detail->value]);
+                            foreach($details as $detail) $specs->push(['name' => $detail->attribute->name, 'value' => $detail->value, 'desc' => $detail->description]);
                             if (isset($property->meta['details']) && is_array($property->meta['details'])) {
-                                foreach ($property->meta['details'] as $key => $value) if ($value !== null && $value !== '') $specs->push(['name' => $key, 'value' => $value]);
+                                foreach ($property->meta['details'] as $key => $item) {
+                                    if (is_array($item)) {
+                                        if (!empty($item['key']) && !empty($item['value'])) {
+                                            $specs->push(['name' => $item['key'], 'value' => $item['value'], 'desc' => $item['description'] ?? null]);
+                                        }
+                                    } elseif ($item !== null && $item !== '') {
+                                        $specs->push(['name' => $key, 'value' => $item, 'desc' => null]);
+                                    }
+                                }
                             }
                         @endphp
 
                         @foreach($specs as $spec)
-                            <div class="flex flex-col gap-1.5 p-3 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                            <div class="flex flex-col gap-1 p-3 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
                                 <span class="text-sm font-bold text-gray-400 dark:text-gray-500">{{ $spec['name'] }}</span>
                                 <span class="font-black text-gray-900 dark:text-gray-100 text-lg">{{ $spec['value'] }}</span>
+                                @if(!empty($spec['desc']))
+                                    <span class="text-xs text-gray-500 dark:text-gray-400 font-normal mt-0.5">{{ $spec['desc'] }}</span>
+                                @endif
                             </div>
                         @endforeach
                     </div>
@@ -271,16 +282,32 @@
 
                         <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                             @foreach($features as $feature)
-                                <div class="flex items-center gap-2 text-gray-700 dark:text-gray-200 bg-gray-50 dark:bg-gray-800/50 px-4 py-2.5 rounded-xl border border-gray-100 dark:border-gray-700">
-                                    <svg class="w-5 h-5 text-emerald-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
-                                    <span class="font-bold text-sm">{{ $feature->attribute->name }}</span>
+                                <div class="flex flex-col gap-1 text-gray-700 dark:text-gray-200 bg-gray-50 dark:bg-gray-800/50 px-4 py-2.5 rounded-xl border border-gray-100 dark:border-gray-700">
+                                    <div class="flex items-center gap-2">
+                                        <svg class="w-5 h-5 text-emerald-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
+                                        <span class="font-bold text-sm">{{ $feature->attribute->name }}</span>
+                                    </div>
+                                    @if(!empty($feature->description))
+                                        <p class="text-xs text-gray-500 dark:text-gray-400 font-normal mr-7 leading-relaxed font-sans">{{ $feature->description }}</p>
+                                    @endif
                                 </div>
                             @endforeach
                             @foreach($customFeatures as $customFeature)
-                                <div class="flex items-center gap-2 text-gray-700 dark:text-gray-200 bg-gray-50 dark:bg-gray-800/50 px-4 py-2.5 rounded-xl border border-gray-100 dark:border-gray-700">
-                                    <svg class="w-5 h-5 text-emerald-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
-                                    <span class="font-bold text-sm">{{ $customFeature }}</span>
-                                </div>
+                                @php
+                                    $cfName = is_array($customFeature) ? ($customFeature['value'] ?? '') : $customFeature;
+                                    $cfDesc = is_array($customFeature) ? ($customFeature['description'] ?? null) : null;
+                                @endphp
+                                @if(!empty($cfName))
+                                    <div class="flex flex-col gap-1 text-gray-700 dark:text-gray-200 bg-gray-50 dark:bg-gray-800/50 px-4 py-2.5 rounded-xl border border-gray-100 dark:border-gray-700">
+                                        <div class="flex items-center gap-2">
+                                            <svg class="w-5 h-5 text-emerald-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
+                                            <span class="font-bold text-sm">{{ $cfName }}</span>
+                                        </div>
+                                        @if(!empty($cfDesc))
+                                            <p class="text-xs text-gray-500 dark:text-gray-400 font-normal mr-7 leading-relaxed font-sans">{{ $cfDesc }}</p>
+                                        @endif
+                                    </div>
+                                @endif
                             @endforeach
                         </div>
                     </div>

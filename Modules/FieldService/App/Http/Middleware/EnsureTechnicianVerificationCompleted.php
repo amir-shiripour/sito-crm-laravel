@@ -15,6 +15,11 @@ class EnsureTechnicianVerificationCompleted
      */
     public function handle(Request $request, Closure $next): Response
     {
+        // Never restrict public or frontend portals (e.g. /fieldservice/*)
+        if (!$request->is('user/*')) {
+            return $next($request);
+        }
+
         if (
             $request->is('user/profile*')
             || $request->is('user/contracts/*/print')

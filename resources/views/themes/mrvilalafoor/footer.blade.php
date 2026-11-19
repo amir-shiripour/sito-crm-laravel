@@ -206,8 +206,8 @@
                     @if(auth()->check())
                         @php
                             $u = auth()->user();
-                            $isSuperAdmin = ($u->is_super_admin ?? false) || (method_exists($u, 'hasRole') && ($u->hasRole('super-admin') || $u->hasRole('Super Admin')));
-                            $uDash = $isSuperAdmin ? url('/admin') : url('/user');
+                            $isSuperAdmin = !empty($u->is_super_admin) || (method_exists($u, 'isSuperAdmin') ? $u->isSuperAdmin() : (method_exists($u, 'hasRole') && ($u->hasRole('super-admin') || $u->hasRole('Super Admin') || $u->hasRole('superadmin'))));
+                            $uDash = $isSuperAdmin ? url('/admin/dashboard') : url('/user/dashboard');
                         @endphp
                         <li>
                             <a href="{{ $uDash }}" class="group inline-flex items-center gap-1.5 text-zinc-600 dark:text-zinc-300 hover:text-[#007A5E] dark:hover:text-emerald-400 transition-colors">
@@ -224,7 +224,7 @@
                         </li>
                     @else
                         <li>
-                            <a href="{{ url('/clients/dashboard') }}" class="group inline-flex items-center gap-1.5 text-zinc-600 dark:text-zinc-300 hover:text-[#007A5E] dark:hover:text-emerald-400 transition-colors">
+                            <a href="{{ url('/clients/login') }}" class="group inline-flex items-center gap-1.5 text-zinc-600 dark:text-zinc-300 hover:text-[#007A5E] dark:hover:text-emerald-400 transition-colors">
                                 <span class="text-zinc-300 dark:text-zinc-600 group-hover:text-[#007A5E] dark:group-hover:text-emerald-400 transition-colors text-[10px]">‹</span>
                                 <span>ورود / ثبت‌نام</span>
                             </a>

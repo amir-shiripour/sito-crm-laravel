@@ -315,19 +315,42 @@ class PropertyRevisionService
             }
         }
 
+        // بررسی توضیحات ویژگی‌ها و امکانات (Attribute Descriptions)
+        if (isset($additionalMeta['attribute_descriptions'])) {
+            $newAttrDescs = (array) $additionalMeta['attribute_descriptions'];
+            $currentAttrDescs = \Modules\Properties\Entities\PropertyAttributeValue::where('property_id', $property->id)
+                ->whereNotNull('description')
+                ->pluck('description', 'attribute_id')
+                ->toArray();
+
+            if ($newAttrDescs != $currentAttrDescs) {
+                $oldData['attribute_descriptions'] = $currentAttrDescs;
+                $newData['attribute_descriptions'] = $newAttrDescs;
+            }
+        }
+
         // بررسی ویژگی‌های سفارشی (Custom Meta Details)
         if (isset($additionalMeta['meta_details'])) {
             $currentMetaDetails = (is_array($property->meta) && isset($property->meta['details'])) ? $property->meta['details'] : [];
             $newMetaDetails = $additionalMeta['meta_details'];
 
             if ($currentMetaDetails !== $newMetaDetails) {
+                $formatDetailItem = function($k, $v) {
+                    if (is_array($v)) {
+                        $val = $v['value'] ?? '';
+                        $desc = !empty($v['description']) ? " ({$v['description']})" : '';
+                        return "{$k}: {$val}{$desc}";
+                    }
+                    return "{$k}: {$v}";
+                };
+
                 $oldDetailsStr = [];
                 foreach ($currentMetaDetails as $k => $v) {
-                    $oldDetailsStr[] = $k . ': ' . $v;
+                    $oldDetailsStr[] = $formatDetailItem($k, $v);
                 }
                 $newDetailsStr = [];
                 foreach ($newMetaDetails as $k => $v) {
-                    $newDetailsStr[] = $k . ': ' . $v;
+                    $newDetailsStr[] = $formatDetailItem($k, $v);
                 }
 
                 $summary[] = [
@@ -348,8 +371,19 @@ class PropertyRevisionService
             $currentMetaFeatures = (is_array($property->meta) && isset($property->meta['features'])) ? (array) $property->meta['features'] : [];
             $newMetaFeatures = (array) $additionalMeta['meta_features'];
 
-            $tempOld = array_values(array_filter($currentMetaFeatures));
-            $tempNew = array_values(array_filter($newMetaFeatures));
+            $formatFeatureItem = function($f) {
+                if (is_array($f)) {
+                    $val = $f['value'] ?? '';
+                    $desc = !empty($f['description']) ? " ({$f['description']})" : '';
+                    return "{$val}{$desc}";
+                }
+                return (string) $f;
+            };
+
+            $oldFeaturesStr = array_values(array_filter(array_map($formatFeatureItem, $currentMetaFeatures)));
+            $newFeaturesStr = array_values(array_filter(array_map($formatFeatureItem, $newMetaFeatures)));
+            $tempOld = $oldFeaturesStr;
+            $tempNew = $newFeaturesStr;
             sort($tempOld);
             sort($tempNew);
 
@@ -358,8 +392,8 @@ class PropertyRevisionService
                     'field' => 'meta_features',
                     'label' => 'امکانات سفارشی اقامتگاه',
                     'type' => 'text',
-                    'old' => !empty($currentMetaFeatures) ? implode('، ', $currentMetaFeatures) : '—',
-                    'new' => !empty($newMetaFeatures) ? implode('، ', $newMetaFeatures) : '—',
+                    'old' => !empty($oldFeaturesStr) ? implode('، ', $oldFeaturesStr) : '—',
+                    'new' => !empty($newFeaturesStr) ? implode('، ', $newFeaturesStr) : '—',
                 ];
 
                 $oldData['meta_features'] = $currentMetaFeatures;
@@ -719,7 +753,7 @@ class PropertyRevisionService
             } elseif ($revision->type === 'property_update') {
                 // اعمال تغییرات مشخصات اصلی ملک (Property)
                 $propertyAttributes = [];
-                $reservedKeys = ['gallery_added', 'gallery_removed', 'attributes', 'features', 'meta_details', 'meta_features'];
+                $reservedKeys = ['gallery_added', 'gallery_removed', 'attributes', 'features', 'attribute_descriptions', 'meta_details', 'meta_features'];
 
                 foreach ($newData as $key => $value) {
                     if (!in_array($key, $reservedKeys) && \Illuminate\Support\Facades\Schema::hasColumn('properties', $key)) {
@@ -739,13 +773,18 @@ class PropertyRevisionService
                     }
                 }
 
+                $attrDescriptions = isset($newData['attribute_descriptions']) && is_array($newData['attribute_descriptions'])
+                    ? $newData['attribute_descriptions']
+                    : [];
+
                 // اعمال ویژگی‌ها یا امکانات در صورت وجود
                 if (isset($newData['attributes']) && is_array($newData['attributes'])) {
                     foreach ($newData['attributes'] as $attrId => $val) {
                         if (!empty($val)) {
+                            $desc = !empty($attrDescriptions[$attrId]) ? trim($attrDescriptions[$attrId]) : null;
                             \Modules\Properties\Entities\PropertyAttributeValue::updateOrCreate(
                                 ['property_id' => $property->id, 'attribute_id' => $attrId],
-                                ['value' => $val]
+                                ['value' => $val, 'description' => $desc]
                             );
                         } else {
                             \Modules\Properties\Entities\PropertyAttributeValue::where('property_id', $property->id)
@@ -762,10 +801,12 @@ class PropertyRevisionService
                         ->delete();
 
                     foreach ($newData['features'] as $fId) {
+                        $desc = !empty($attrDescriptions[$fId]) ? trim($attrDescriptions[$fId]) : null;
                         \Modules\Properties\Entities\PropertyAttributeValue::create([
                             'property_id' => $property->id,
                             'attribute_id' => $fId,
                             'value' => '1',
+                            'description' => $desc,
                         ]);
                     }
                 }

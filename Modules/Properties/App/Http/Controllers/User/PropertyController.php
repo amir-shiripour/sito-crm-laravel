@@ -335,14 +335,16 @@ class PropertyController extends Controller
             'advance_price' => 'nullable|numeric|min:0',
             'attributes' => 'nullable|array',
             'features' => 'nullable|array',
+            'attribute_descriptions' => 'nullable|array',
             'meta' => 'nullable|array',
         ]);
 
         $attributesData = $request->input('attributes', []);
         $featuresData = $request->input('features', []);
+        $attributeDescriptions = $request->input('attribute_descriptions', []);
 
         $data = $validated;
-        unset($data['attributes'], $data['features']);
+        unset($data['attributes'], $data['features'], $data['attribute_descriptions']);
 
         if ($request->input('code_type') === 'auto' || empty($data['code'])) {
             $data['code'] = $this->generateUniquePropertyCode($data['category_id'] ?? null);
@@ -398,10 +400,29 @@ class PropertyController extends Controller
             'is_special' => $canManagePublication ? $request->has('is_special') : false,
             'show_on_site' => $canManagePublication ? $request->has('show_on_site') : true,
         ];
-        if (isset($metaRequest['details'])) foreach ($metaRequest['details'] as $k => $v) if (!empty($k)) $processedMeta['details'][$k] = $v;
-        if (isset($metaRequest['features'])) foreach ($metaRequest['features'] as $f) {
-            if (is_array($f) && !empty($f['value'])) $processedMeta['features'][] = $f['value'];
-            elseif (is_string($f)) $processedMeta['features'][] = $f;
+        if (isset($metaRequest['details'])) {
+            foreach ($metaRequest['details'] as $k => $v) {
+                if (is_array($v) && !empty($v['key'])) {
+                    $processedMeta['details'][$v['key']] = [
+                        'value' => $v['value'] ?? '',
+                        'description' => !empty($v['description']) ? trim($v['description']) : '',
+                    ];
+                } elseif (!empty($k)) {
+                    $processedMeta['details'][$k] = is_array($v) ? $v : ['value' => $v, 'description' => ''];
+                }
+            }
+        }
+        if (isset($metaRequest['features'])) {
+            foreach ($metaRequest['features'] as $f) {
+                if (is_array($f) && !empty($f['value'])) {
+                    $processedMeta['features'][] = [
+                        'value' => $f['value'],
+                        'description' => !empty($f['description']) ? trim($f['description']) : '',
+                    ];
+                } elseif (is_string($f) && !empty($f)) {
+                    $processedMeta['features'][] = ['value' => $f, 'description' => ''];
+                }
+            }
         }
         $data['meta'] = $processedMeta;
 
@@ -458,11 +479,13 @@ class PropertyController extends Controller
         }
 
         foreach ($attributesData as $id => $val) {
-            if (!empty($val)) PropertyAttributeValue::create(['property_id' => $property->id, 'attribute_id' => $id, 'value' => $val]);
+            $desc = !empty($attributeDescriptions[$id]) ? trim($attributeDescriptions[$id]) : null;
+            if (!empty($val)) PropertyAttributeValue::create(['property_id' => $property->id, 'attribute_id' => $id, 'value' => $val, 'description' => $desc]);
         }
 
         foreach ($featuresData as $fid) {
-            PropertyAttributeValue::create(['property_id' => $property->id, 'attribute_id' => $fid, 'value' => '1']);
+            $desc = !empty($attributeDescriptions[$fid]) ? trim($attributeDescriptions[$fid]) : null;
+            PropertyAttributeValue::create(['property_id' => $property->id, 'attribute_id' => $fid, 'value' => '1', 'description' => $desc]);
         }
 
         if ($property->listing_type === 'daily_rental') {
@@ -597,7 +620,15 @@ class PropertyController extends Controller
         $customDetails = [];
         if (isset($property->meta['details']) && is_array($property->meta['details'])) {
             foreach ($property->meta['details'] as $key => $value) {
-                $customDetails[] = ['key' => $key, 'value' => $value];
+                if (is_array($value)) {
+                    $customDetails[] = [
+                        'key' => $key,
+                        'value' => $value['value'] ?? '',
+                        'description' => $value['description'] ?? '',
+                    ];
+                } else {
+                    $customDetails[] = ['key' => $key, 'value' => $value, 'description' => ''];
+                }
             }
         }
 
@@ -618,17 +649,22 @@ class PropertyController extends Controller
         $data = $request->validate([
             'attributes' => 'array',
             'attributes.*' => 'nullable|string|max:255',
+            'attribute_descriptions' => 'nullable|array',
+            'attribute_descriptions.*' => 'nullable|string|max:1000',
             'meta' => 'array',
             'meta.*.key' => 'required_with:meta.*.value|string|max:255',
             'meta.*.value' => 'nullable|string|max:255',
+            'meta.*.description' => 'nullable|string|max:1000',
         ]);
 
         if (isset($data['attributes'])) {
+            $attributeDescriptions = $request->input('attribute_descriptions', []);
             foreach ($data['attributes'] as $attributeId => $value) {
                 if (!empty($value)) {
+                    $desc = !empty($attributeDescriptions[$attributeId]) ? trim($attributeDescriptions[$attributeId]) : null;
                     PropertyAttributeValue::updateOrCreate(
                         ['property_id' => $property->id, 'attribute_id' => $attributeId],
-                        ['value' => $value]
+                        ['value' => $value, 'description' => $desc]
                     );
                 } else {
                     PropertyAttributeValue::where('property_id', $property->id)
@@ -649,7 +685,10 @@ class PropertyController extends Controller
         if (isset($data['meta'])) {
             foreach ($data['meta'] as $item) {
                 if (!empty($item['key'])) {
-                    $meta['details'][$item['key']] = $item['value'];
+                    $meta['details'][$item['key']] = [
+                        'value' => $item['value'] ?? '',
+                        'description' => !empty($item['description']) ? trim($item['description']) : '',
+                    ];
                 }
             }
         }
@@ -676,7 +715,14 @@ class PropertyController extends Controller
         $customFeatures = [];
         if (isset($property->meta['features']) && is_array($property->meta['features'])) {
             foreach ($property->meta['features'] as $feature) {
-                $customFeatures[] = ['value' => $feature];
+                if (is_array($feature)) {
+                    $customFeatures[] = [
+                        'value' => $feature['value'] ?? '',
+                        'description' => $feature['description'] ?? '',
+                    ];
+                } else {
+                    $customFeatures[] = ['value' => $feature, 'description' => ''];
+                }
             }
         }
 
@@ -696,8 +742,11 @@ class PropertyController extends Controller
 
         $data = $request->validate([
             'attributes' => 'nullable|array',
+            'attribute_descriptions' => 'nullable|array',
+            'attribute_descriptions.*' => 'nullable|string|max:1000',
             'meta' => 'nullable|array',
             'meta.*.value' => 'nullable|string|max:255',
+            'meta.*.description' => 'nullable|string|max:1000',
         ]);
 
         $featureAttributeIds = PropertyAttribute::where('section', 'features')->pluck('id')->toArray();
@@ -707,12 +756,15 @@ class PropertyController extends Controller
             ->delete();
 
         if (isset($data['attributes'])) {
+            $attributeDescriptions = $request->input('attribute_descriptions', []);
             foreach ($data['attributes'] as $attributeId => $value) {
                 if (!empty($value)) {
+                    $desc = !empty($attributeDescriptions[$attributeId]) ? trim($attributeDescriptions[$attributeId]) : null;
                     PropertyAttributeValue::create([
                         'property_id' => $property->id,
                         'attribute_id' => $attributeId,
                         'value' => $value,
+                        'description' => $desc,
                     ]);
                 }
             }
@@ -729,7 +781,12 @@ class PropertyController extends Controller
         if (isset($request->meta) && is_array($request->meta)) {
             foreach ($request->meta as $item) {
                 if (is_array($item) && !empty($item['value'])) {
-                    $meta['features'][] = $item['value'];
+                    $meta['features'][] = [
+                        'value' => $item['value'],
+                        'description' => !empty($item['description']) ? trim($item['description']) : '',
+                    ];
+                } elseif (is_string($item) && !empty($item)) {
+                    $meta['features'][] = ['value' => $item, 'description' => ''];
                 }
             }
         }
@@ -772,14 +829,29 @@ class PropertyController extends Controller
         $customDetails = [];
         if (isset($property->meta['details']) && is_array($property->meta['details'])) {
             foreach ($property->meta['details'] as $key => $value) {
-                $customDetails[] = ['key' => $key, 'value' => $value];
+                if (is_array($value)) {
+                    $customDetails[] = [
+                        'key' => $key,
+                        'value' => $value['value'] ?? '',
+                        'description' => $value['description'] ?? '',
+                    ];
+                } else {
+                    $customDetails[] = ['key' => $key, 'value' => $value, 'description' => ''];
+                }
             }
         }
 
         $customFeatures = [];
         if (isset($property->meta['features']) && is_array($property->meta['features'])) {
             foreach ($property->meta['features'] as $feature) {
-                $customFeatures[] = ['value' => $feature];
+                if (is_array($feature)) {
+                    $customFeatures[] = [
+                        'value' => $feature['value'] ?? '',
+                        'description' => $feature['description'] ?? '',
+                    ];
+                } else {
+                    $customFeatures[] = ['value' => $feature, 'description' => ''];
+                }
             }
         }
 
@@ -915,12 +987,16 @@ class PropertyController extends Controller
             'attributes.*' => 'nullable|string|max:255',
             'features' => 'nullable|array',
             'features.*' => 'exists:property_attributes,id',
+            'attribute_descriptions' => 'nullable|array',
+            'attribute_descriptions.*' => 'nullable|string|max:1000',
             'meta' => 'nullable|array',
             'meta.features' => 'nullable|array',
             'meta.features.*.value' => 'nullable|string|max:255',
+            'meta.features.*.description' => 'nullable|string|max:1000',
             'meta.details' => 'nullable|array',
             'meta.details.*.key' => 'required_with:meta.details.*.value|string|max:255',
             'meta.details.*.value' => 'nullable|string|max:255',
+            'meta.details.*.description' => 'nullable|string|max:1000',
         ]);
 
         if ($request->input('remove_cover_image') == '1') {
@@ -973,7 +1049,10 @@ class PropertyController extends Controller
         if (isset($request->meta['details']) && is_array($request->meta['details'])) {
             foreach ($request->meta['details'] as $item) {
                 if (!empty($item['key'])) {
-                    $processedMeta['details'][$item['key']] = $item['value'] ?? '';
+                    $processedMeta['details'][$item['key']] = [
+                        'value' => $item['value'] ?? '',
+                        'description' => !empty($item['description']) ? trim($item['description']) : '',
+                    ];
                 }
             }
         }
@@ -981,7 +1060,12 @@ class PropertyController extends Controller
         if (isset($request->meta['features']) && is_array($request->meta['features'])) {
             foreach ($request->meta['features'] as $item) {
                 if (is_array($item) && !empty($item['value'])) {
-                    $processedMeta['features'][] = $item['value'];
+                    $processedMeta['features'][] = [
+                        'value' => $item['value'],
+                        'description' => !empty($item['description']) ? trim($item['description']) : '',
+                    ];
+                } elseif (is_string($item) && !empty($item)) {
+                    $processedMeta['features'][] = ['value' => $item, 'description' => ''];
                 }
             }
         }
@@ -1056,6 +1140,7 @@ class PropertyController extends Controller
                 'gallery_added' => $addedGalleryPaths,
                 'attributes' => $data['attributes'] ?? [],
                 'features' => $data['features'] ?? [],
+                'attribute_descriptions' => $request->input('attribute_descriptions', []),
                 'meta_details' => $processedMeta['details'] ?? [],
                 'meta_features' => $processedMeta['features'] ?? [],
             ]);
@@ -1087,12 +1172,15 @@ class PropertyController extends Controller
             // برای مدیران یا در زمان ثبت اولیه اقامتگاه (پیش از اولین تأیید):
             $property->save();
 
+            $attributeDescriptions = $request->input('attribute_descriptions', []);
+
             if (isset($data['attributes'])) {
                 foreach ($data['attributes'] as $attributeId => $value) {
                     if (!empty($value)) {
+                        $desc = !empty($attributeDescriptions[$attributeId]) ? trim($attributeDescriptions[$attributeId]) : null;
                         PropertyAttributeValue::updateOrCreate(
                             ['property_id' => $property->id, 'attribute_id' => $attributeId],
-                            ['value' => $value]
+                            ['value' => $value, 'description' => $desc]
                         );
                     } else {
                         PropertyAttributeValue::where('property_id', $property->id)
@@ -1107,10 +1195,12 @@ class PropertyController extends Controller
 
             if (isset($data['features'])) {
                 foreach ($data['features'] as $fId) {
+                    $desc = !empty($attributeDescriptions[$fId]) ? trim($attributeDescriptions[$fId]) : null;
                     PropertyAttributeValue::create([
                         'property_id' => $property->id,
                         'attribute_id' => $fId,
                         'value' => '1',
+                        'description' => $desc,
                     ]);
                 }
             }

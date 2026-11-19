@@ -267,6 +267,11 @@
                             </div>
 
                             <div x-show="hasDiscount" x-cloak x-transition class="space-y-3.5 pt-3.5 border-t border-slate-200 dark:border-slate-700/80">
+                                <div class="p-2.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200/80 dark:border-emerald-800/50 flex items-start gap-2 text-xs text-emerald-800 dark:text-emerald-300 font-sans leading-relaxed">
+                                    <svg class="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                    <span><strong>منطق تخفیف لحظه آخری:</strong> از ساعت ۰۰:۰۰ هر روز، تاریخ‌های خالی و رزرو نشده در بازه ۴۸ ساعت آینده (امروز و فردا) به صورت خودکار شامل این تخفیف می‌شوند.</span>
+                                </div>
+
                                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                                     <div>
                                         <label class="{{ $labelClass }}">نوع محاسبه تخفیف</label>

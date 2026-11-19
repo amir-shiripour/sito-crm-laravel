@@ -402,12 +402,24 @@ class PropertyController extends Controller
             });
         }
 
-        // 14. Discounted Properties Filter
+        // 14. Discounted Properties Filter (تخفیف لحظه آخری فعال با حداقل یک تاریخ خالی در بازه ۴۸ ساعته جاری)
         if ($request->filled('has_discount') && ($request->has_discount == '1' || $request->has_discount === 'true')) {
+            $todayStr = \Carbon\Carbon::today()->format('Y-m-d');
+            $tomorrowStr = \Carbon\Carbon::tomorrow()->format('Y-m-d');
+
             $query->whereHas('rentalConfig', function($rq) {
-                $rq->where(function($dq) {
-                    $dq->where('has_discount', true)
-                       ->orWhereNotNull('old_daily_rate');
+                $rq->where('has_discount', true)
+                   ->where(function($vq) {
+                       $vq->where('discount_value', '>', 0)
+                          ->orWhere('discount_percent', '>', 0);
+                   });
+            })->where(function($q) use ($todayStr, $tomorrowStr) {
+                $q->whereDoesntHave('rentalBlocks', function($bq) use ($todayStr) {
+                    $bq->where('start_date', '<=', $todayStr)
+                       ->where('end_date', '>=', $todayStr);
+                })->orWhereDoesntHave('rentalBlocks', function($bq) use ($tomorrowStr) {
+                    $bq->where('start_date', '<=', $tomorrowStr)
+                       ->where('end_date', '>=', $tomorrowStr);
                 });
             });
         }

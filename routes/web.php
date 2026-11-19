@@ -68,6 +68,9 @@ Route::middleware([
 
 
 Route::middleware(['web', 'auth'])->prefix('user')->name('user.')->group(function () {
+    Route::get('/', function () {
+        return redirect()->route('user.dashboard');
+    })->name('index');
     Route::get('/dashboard', [UserDashboardController::class, 'index'])->name('dashboard');
     Route::post('/dashboard/layout', [UserDashboardController::class, 'updateLayout'])->name('dashboard.update-layout');
 

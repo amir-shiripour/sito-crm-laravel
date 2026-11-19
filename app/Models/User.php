@@ -98,6 +98,18 @@ class User extends Authenticatable
         return $this->hasMany(\App\Models\UserCustomValue::class);
     }
 
+    /**
+     * بررسی اینکه آیا کاربر نقش یا دسترسی سوپر ادمین دارد یا خیر
+     */
+    public function isSuperAdmin(): bool
+    {
+        if (!empty($this->is_super_admin)) {
+            return true;
+        }
+
+        return $this->hasAnyRole(['super-admin', 'Super Admin', 'superadmin']);
+    }
+
     // Relationships and accessors for market vendor are loaded via HasMarketVendor trait.
 
     /**

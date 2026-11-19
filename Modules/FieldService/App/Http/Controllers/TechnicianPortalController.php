@@ -136,12 +136,28 @@ class TechnicianPortalController extends Controller
             ];
         }
 
+        // Active database categories matching /user/fieldservice/categories
+        $activeCategories = \Modules\FieldService\App\Models\Category::where('is_active', true)
+            ->orderBy('sort_order')
+            ->get(['id', 'name', 'slug', 'base_labor_fee', 'description'])
+            ->toArray();
+
+        $techSkills = [];
+        if ($technician) {
+            $techSkills = $technician->categories()
+                ->where('is_active', true)
+                ->get(['field_service_categories.id', 'field_service_categories.name', 'field_service_categories.base_labor_fee', 'field_service_categories.description'])
+                ->toArray();
+        }
+
         return view('fieldservice::technician.index', compact(
             'mapConfig',
             'technician',
             'activeMission',
             'availableMissions',
-            'todayStats'
+            'todayStats',
+            'activeCategories',
+            'techSkills'
         ));
     }
 
