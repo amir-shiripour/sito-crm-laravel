@@ -320,7 +320,6 @@
                                 <td class="py-3.5 px-4 min-w-[215px]">
                                     @php
                                         $currentStage = $order->current_stage;
-                                        $nextStage = $order->next_stage;
                                         $totalStages = $order->total_stages_count;
                                         $completedStages = $order->completed_stages_count;
                                         $progressPercent = $order->progress_percentage;
@@ -372,13 +371,6 @@
                                                         </div>
                                                     @endif
                                                 </div>
-
-                                                @if($nextStage)
-                                                    <div class="text-[11px] text-slate-600 dark:text-slate-300 flex items-center gap-1 px-1 truncate">
-                                                        <span class="text-slate-400 dark:text-slate-400 shrink-0">مرحله بعدی:</span>
-                                                        <span class="font-semibold truncate" title="{{ $nextStage->stage_title }}">{{ $nextStage->stage_title }}</span>
-                                                    </div>
-                                                @endif
                                             @else
                                                 <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/50">
                                                     <svg class="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
