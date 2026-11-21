@@ -336,15 +336,15 @@ class CsvImporter extends Component
             return null;
         }
 
-        if (str_starts_with($digits, '0098') && strlen($digits) === 14) {
+        if (str_starts_with($digits, '0098') && strlen($digits) >= 14) {
             return '0' . substr($digits, 4);
         }
 
-        if (str_starts_with($digits, '98') && strlen($digits) === 12) {
+        if (str_starts_with($digits, '98') && strlen($digits) >= 12) {
             return '0' . substr($digits, 2);
         }
 
-        if (!str_starts_with($digits, '0') && strlen($digits) === 10) {
+        if (!str_starts_with($digits, '0')) {
             return '0' . $digits;
         }
 
