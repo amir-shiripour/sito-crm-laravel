@@ -202,6 +202,7 @@
                             <th class="py-3 px-4">تاریخ ارسال</th>
                             <th class="py-3 px-4">مراحل پیگیری و زمان‌بندی</th>
                             <th class="py-3 px-4">موعد تحویل</th>
+                            <th class="py-3 px-4">توضیحات سفارش</th>
                             <th class="py-3 px-4 text-center">عملیات</th>
                         </tr>
                     </thead>
@@ -396,17 +397,27 @@
                                     </div>
                                     @if($isReceived)
                                         @php
-                                            $receiveStageNote = $order->stages->where('is_receive_stage', true)->firstWhere('notes', '!=', null)?->notes;
-                                            $receivedDisplayNote = trim((string) ($receiveStageNote ?: $order->notes));
+                                            $receiveStageNote = trim((string) ($order->stages->where('is_receive_stage', true)->firstWhere('notes', '!=', null)?->notes ?? ''));
                                         @endphp
-                                        <span title="{{ $receivedDisplayNote !== '' ? $receivedDisplayNote : 'دریافت شده در مطب' }}"
+                                        <span title="{{ $receiveStageNote !== '' ? $receiveStageNote : 'دریافت شده در مطب' }}"
                                               class="inline-flex items-center max-w-[210px] px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border dark:border-emerald-800/40 mt-1">
-                                            <span class="truncate">{{ $receivedDisplayNote !== '' ? $receivedDisplayNote : 'دریافت شده در مطب' }}</span>
+                                            <span class="truncate">{{ $receiveStageNote !== '' ? $receiveStageNote : 'دریافت شده در مطب' }}</span>
                                         </span>
                                     @elseif($isOverdue)
                                         <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 dark:border dark:border-rose-800/40 mt-1">
                                             دارای تاخیر
                                         </span>
+                                    @endif
+                                </td>
+
+                                {{-- ستون مجزا برای توضیحات سفارش --}}
+                                <td class="py-3.5 px-4 max-w-[220px]">
+                                    @if(filled($order->notes))
+                                        <p class="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed line-clamp-2" title="{{ $order->notes }}">
+                                            {{ $order->notes }}
+                                        </p>
+                                    @else
+                                        <span class="text-[11px] text-slate-400 dark:text-slate-500">—</span>
                                     @endif
                                 </td>
 
@@ -486,7 +497,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="9" class="py-12 text-center text-gray-400 dark:text-gray-500">
+                                <td colspan="10" class="py-12 text-center text-gray-400 dark:text-gray-500">
                                     <svg class="w-12 h-12 mx-auto mb-3 opacity-40 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
                                     </svg>

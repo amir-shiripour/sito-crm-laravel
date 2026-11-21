@@ -234,6 +234,51 @@ class LaboratoryService
                 $orderChanged = false;
                 $sortOrder = 1;
 
+                // Pass 1: Pre-match by stage_key, then by stage_title, so inserting a new stage
+                // in the middle never steals a later stage (especially completed ones) by sort_order.
+                $matchedByIndex = [];
+                foreach ($stagesConfig as $idx => $cfg) {
+                    $sortOrderNum = $idx + 1;
+                    $key = $cfg['key'] ?? $cfg['stage_key'] ?? "stage_{$sortOrderNum}";
+                    $match = $existingStages->first(function ($st) use ($key, $matchedIds) {
+                        return !in_array($st->id, $matchedIds, true) && $st->stage_key === $key;
+                    });
+                    if ($match) {
+                        $matchedByIndex[$idx] = $match;
+                        $matchedIds[] = $match->id;
+                    }
+                }
+                foreach ($stagesConfig as $idx => $cfg) {
+                    if (isset($matchedByIndex[$idx])) {
+                        continue;
+                    }
+                    $sortOrderNum = $idx + 1;
+                    $title = $cfg['title'] ?? $cfg['stage_title'] ?? "مرحله {$sortOrderNum}";
+                    $match = $existingStages->first(function ($st) use ($title, $matchedIds) {
+                        return !in_array($st->id, $matchedIds, true) && $st->stage_title === $title;
+                    });
+                    if ($match) {
+                        $matchedByIndex[$idx] = $match;
+                        $matchedIds[] = $match->id;
+                    }
+                }
+                // Pass 2: Fallback to unreserved pending stage at the same sort_order
+                foreach ($stagesConfig as $idx => $cfg) {
+                    if (isset($matchedByIndex[$idx])) {
+                        continue;
+                    }
+                    $sortOrderNum = $idx + 1;
+                    $match = $existingStages->first(function ($st) use ($sortOrderNum, $matchedIds) {
+                        return !in_array($st->id, $matchedIds, true)
+                            && !$st->is_completed
+                            && (int) $st->sort_order === $sortOrderNum;
+                    });
+                    if ($match) {
+                        $matchedByIndex[$idx] = $match;
+                        $matchedIds[] = $match->id;
+                    }
+                }
+
                 foreach ($stagesConfig as $idx => $cfg) {
                     $key = $cfg['key'] ?? $cfg['stage_key'] ?? "stage_{$sortOrder}";
                     $title = $cfg['title'] ?? $cfg['stage_title'] ?? "مرحله {$sortOrder}";
@@ -241,18 +286,9 @@ class LaboratoryService
                     $offsetUnit = $cfg['unit'] ?? $cfg['offset_unit'] ?? 'days';
                     $isReceive = !empty($cfg['is_receive']) || !empty($cfg['is_receive_stage']);
 
-                    // Match by stage_key first, then fallback to unmatched stage at same sort_order
-                    $existing = $existingStages->first(function ($st) use ($key, $matchedIds) {
-                        return !in_array($st->id, $matchedIds, true) && $st->stage_key === $key;
-                    });
-                    if (!$existing) {
-                        $existing = $existingStages->first(function ($st) use ($sortOrder, $matchedIds) {
-                            return !in_array($st->id, $matchedIds, true) && (int) $st->sort_order === $sortOrder;
-                        });
-                    }
+                    $existing = $matchedByIndex[$idx] ?? null;
 
                     if ($existing) {
-                        $matchedIds[] = $existing->id;
 
                         if ($existing->is_completed) {
                             // Never alter completed stages; anchor cursor to completion/due time
