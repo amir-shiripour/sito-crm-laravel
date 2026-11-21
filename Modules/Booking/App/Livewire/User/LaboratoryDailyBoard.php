@@ -12,7 +12,7 @@ use Modules\Booking\Entities\BookingSetting;
 use Modules\Booking\Services\LaboratoryService;
 use App\Models\User;
 use Carbon\Carbon;
-use Morilog\Jalalian;
+use Morilog\Jalali\Jalalian;
 
 #[Layout('layouts.user')]
 class LaboratoryDailyBoard extends Component
@@ -46,6 +46,11 @@ class LaboratoryDailyBoard extends Component
     public bool $showStageModal = false;
     public ?int $stageToCompleteId = null;
     public string $stageNote = '';
+
+    // Quick Stage Revert Modal
+    public bool $showRevertStageModal = false;
+    public ?int $stageToRevertId = null;
+    public string $revertStageNote = '';
 
     // Receive Order Modal (Make green)
     public bool $showReceiveModal = false;
@@ -190,6 +195,39 @@ class LaboratoryDailyBoard extends Component
 
         $this->showStageModal = false;
         $this->stageToCompleteId = null;
+    }
+
+    public function openRevertStageModal(int $stageId): void
+    {
+        $user = auth()->user();
+        if (!$user || (!$user->hasRole('super-admin') && !$user->canAny(['booking.laboratory.stages.manage', 'booking.laboratory.manage']))) {
+            $this->toastError = 'شما مجوز مدیریت مراحل سفارش را ندارید.';
+            return;
+        }
+
+        $this->stageToRevertId = $stageId;
+        $this->revertStageNote = '';
+        $this->showRevertStageModal = true;
+    }
+
+    public function confirmStageRevert(): void
+    {
+        $user = auth()->user();
+        if (!$user || (!$user->hasRole('super-admin') && !$user->canAny(['booking.laboratory.stages.manage', 'booking.laboratory.manage']))) {
+            $this->toastError = 'شما مجوز مدیریت مراحل سفارش را ندارید.';
+            return;
+        }
+
+        if (!$this->stageToRevertId) return;
+
+        $stage = BookingLaboratoryStage::with('order')->find($this->stageToRevertId);
+        if ($stage && $stage->is_completed) {
+            app(LaboratoryService::class)->revertStage($stage, trim($this->revertStageNote) ?: null, auth()->id());
+            $this->toastSuccess = "مرحله «{$stage->stage_title}» به حالت در انتظار بازگردانده شد و در تاریخچه ثبت گردید.";
+        }
+
+        $this->showRevertStageModal = false;
+        $this->stageToRevertId = null;
     }
 
     public function openReceiveModal(int $orderId): void

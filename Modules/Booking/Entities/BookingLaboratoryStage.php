@@ -119,4 +119,23 @@ class BookingLaboratoryStage extends Model
             ]);
         }
     }
+
+    public function markPending(?string $note = null): void
+    {
+        $this->update([
+            'is_completed'         => false,
+            'completed_at'         => null,
+            'completed_by_user_id' => null,
+            'status'               => self::STATUS_PENDING,
+            'notes'                => $note ?: $this->notes,
+        ]);
+
+        // If the parent order was marked as received, revert it back to in_progress
+        if ($this->order && $this->order->isReceived()) {
+            $this->order->update([
+                'status'      => BookingLaboratoryOrder::STATUS_IN_PROGRESS,
+                'received_at' => null,
+            ]);
+        }
+    }
 }
