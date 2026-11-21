@@ -554,11 +554,17 @@ class SettingsController extends Controller
         $settings->ads = $currentAds;
         $settings->save();
 
+        $successMessage = 'تنظیمات با موفقیت ذخیره شد.';
+        if ($request->boolean('sync_laboratory_active_orders')) {
+            $syncStats = app(\Modules\Booking\Services\LaboratoryService::class)->syncActiveOrdersWithSettings();
+            $successMessage .= " ({$syncStats['updated_orders']} سفارش فعال با مراحل جدید همگام‌سازی شد.)";
+        }
+
         // ═══════════════════════════════════════
         //  PART 7: Redirect back to the same tab
         // ═══════════════════════════════════════
         $activeTab = $request->input('_active_tab', 'general');
         return redirect()->route('user.booking.settings.edit', ['tab' => $activeTab])
-            ->with('success', 'تنظیمات با موفقیت ذخیره شد.');
+            ->with('success', $successMessage);
     }
 }
