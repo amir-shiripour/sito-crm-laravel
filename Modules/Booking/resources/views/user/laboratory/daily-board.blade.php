@@ -41,7 +41,16 @@
         $isToday = ($selectedDateJalali === $todayJalali);
     @endphp
 
-    <div class="space-y-6">
+    <div class="space-y-6 relative">
+        {{-- نوار و نشانگر لودینگ سراسری --}}
+        <div wire:loading.delay.shortest class="fixed top-0 inset-x-0 h-1 bg-gradient-to-r from-indigo-500 via-sky-400 to-indigo-600 animate-pulse z-[70]"></div>
+        <div wire:loading.delay.shortest class="fixed bottom-5 left-5 z-[70] inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-gray-900/90 dark:bg-slate-800/95 text-white text-xs font-bold shadow-lg border border-indigo-500/30 backdrop-blur-xs">
+            <svg class="w-4 h-4 animate-spin text-indigo-400" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <span>در حال پردازش...</span>
+        </div>
         {{-- هدر صفحه کارتابل پیگیری روزانه --}}
         <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-gray-800 rounded-3xl border border-gray-200 dark:border-gray-700 shadow-xs p-5 sm:p-6">
             <div class="flex items-center gap-3.5">
@@ -285,7 +294,9 @@
         </div>
 
         {{-- جدول پیشرفته کارتابل پیگیری روزانه --}}
-        <div class="bg-white dark:bg-gray-800 rounded-3xl border border-gray-200 dark:border-gray-700 shadow-xs overflow-hidden">
+        <div class="bg-white dark:bg-gray-800 rounded-3xl border border-gray-200 dark:border-gray-700 shadow-xs overflow-hidden transition-opacity duration-150"
+             wire:loading.class="opacity-60 pointer-events-none"
+             wire:target="selectedDateJalali,setDateYesterday,setDateToday,setDateTomorrow,setKpiFilter,search,selectedLabPartner,selectedDoctorId,kpiFilter,gotoPage,previousPage,nextPage">
             <div class="overflow-x-auto">
                 <table class="w-full text-right text-xs">
                     <thead>
@@ -474,9 +485,11 @@
                                         @canany(['booking.laboratory.stages.manage', 'booking.laboratory.manage'])
                                         <button type="button" 
                                                 wire:click="openLogModal({{ $order->id }}, {{ $stage?->id }})" 
-                                                class="inline-flex items-center gap-1.5 h-8 px-3 rounded-xl bg-amber-500 hover:bg-amber-600 dark:bg-amber-500/20 dark:hover:bg-amber-500/30 text-white dark:text-amber-300 dark:border dark:border-amber-500/40 font-bold text-[11px] shadow-xs hover:shadow-sm transition-all cursor-pointer"
+                                                wire:loading.attr="disabled"
+                                                class="inline-flex items-center gap-1.5 h-8 px-3 rounded-xl bg-amber-500 hover:bg-amber-600 dark:bg-amber-500/20 dark:hover:bg-amber-500/30 disabled:opacity-60 text-white dark:text-amber-300 dark:border dark:border-amber-500/40 font-bold text-[11px] shadow-xs hover:shadow-sm transition-all cursor-pointer"
                                                 title="ثبت نتیجه تماس و تغییر وضعیت">
-                                            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" /></svg>
+                                            <svg wire:loading.remove wire:target="openLogModal({{ $order->id }}, {{ $stage?->id }})" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" /></svg>
+                                            <svg wire:loading wire:target="openLogModal({{ $order->id }}, {{ $stage?->id }})" class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                                             <span>تماس و ثبت</span>
                                         </button>
                                         @endcanany
@@ -486,9 +499,11 @@
                                             @canany(['booking.laboratory.stages.manage', 'booking.laboratory.manage'])
                                             <button type="button" 
                                                     wire:click="openStageModal({{ $stage->id }})" 
-                                                    class="inline-flex items-center justify-center w-8 h-8 rounded-xl bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-500/15 dark:hover:bg-indigo-500/25 text-indigo-700 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-500/30 shadow-2xs transition-all cursor-pointer"
+                                                    wire:loading.attr="disabled"
+                                                    class="inline-flex items-center justify-center w-8 h-8 rounded-xl bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-500/15 dark:hover:bg-indigo-500/25 disabled:opacity-60 text-indigo-700 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-500/30 shadow-2xs transition-all cursor-pointer"
                                                     title="تایید و تکمیل مرحله">
-                                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" /></svg>
+                                                <svg wire:loading.remove wire:target="openStageModal({{ $stage->id }})" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" /></svg>
+                                                <svg wire:loading wire:target="openStageModal({{ $stage->id }})" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                                             </button>
                                             @endcanany
                                         @endif
@@ -497,9 +512,11 @@
                                         @canany(['booking.laboratory.receive', 'booking.laboratory.manage'])
                                         <button type="button" 
                                                 wire:click="openReceiveModal({{ $order->id }})" 
-                                                class="inline-flex items-center justify-center w-8 h-8 rounded-xl bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-500/15 dark:hover:bg-emerald-500/25 text-emerald-700 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-500/30 shadow-2xs transition-all cursor-pointer"
+                                                wire:loading.attr="disabled"
+                                                class="inline-flex items-center justify-center w-8 h-8 rounded-xl bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-500/15 dark:hover:bg-emerald-500/25 disabled:opacity-60 text-emerald-700 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-500/30 shadow-2xs transition-all cursor-pointer"
                                                 title="دریافت نهایی کار (سبز شدن ردیف)">
-                                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>
+                                            <svg wire:loading.remove wire:target="openReceiveModal({{ $order->id }})" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>
+                                            <svg wire:loading wire:target="openReceiveModal({{ $order->id }})" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                                         </button>
                                         @endcanany
 
@@ -526,9 +543,11 @@
                                 {{-- دکمه مشاهده کامل جزئیات و نقشه دندانی --}}
                                         <button type="button" 
                                                 wire:click="openDetailModal({{ $order->id }}, 'overview')" 
-                                                class="inline-flex items-center justify-center w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800/80 dark:hover:bg-slate-700/80 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 shadow-2xs transition-all cursor-pointer"
+                                                wire:loading.attr="disabled"
+                                                class="inline-flex items-center justify-center w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800/80 dark:hover:bg-slate-700/80 disabled:opacity-60 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 shadow-2xs transition-all cursor-pointer"
                                                 title="مشاهده جزئیات کامل و نقشه دندانی">
-                                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                                            <svg wire:loading.remove wire:target="openDetailModal({{ $order->id }}, 'overview')" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                                            <svg wire:loading wire:target="openDetailModal({{ $order->id }}, 'overview')" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                                         </button>
                                     </div>
                                 </td>
@@ -558,7 +577,7 @@
 
     {{-- مودال هوشمند ثبت پیگیری و نتیجه تماس --}}
     @if($showLogModal && $modalOrder)
-        <div class="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
+        <div class="fixed inset-0 z-[60] overflow-y-auto bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
             <div class="bg-white dark:bg-gray-800 rounded-3xl border border-gray-200 dark:border-gray-700 shadow-2xl w-full max-w-xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
                 
                 {{-- هدر مودال لاگ --}}
@@ -670,7 +689,13 @@
                 {{-- فوتر مودال لاگ --}}
                 <div class="p-5 border-t border-gray-100 dark:border-gray-700 bg-gray-50/80 dark:bg-gray-900/60 flex items-center justify-end gap-2.5">
                     <button type="button" wire:click="$set('showLogModal', false)" class="px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 text-xs font-bold text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/60 transition-colors cursor-pointer">انصراف</button>
-                    <button type="button" wire:click="saveDailyLog" class="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold shadow-md shadow-amber-500/20 transition-all cursor-pointer">ثبت و ذخیره گزارش</button>
+                    <button type="button" wire:click="saveDailyLog" wire:loading.attr="disabled" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 disabled:opacity-60 text-white text-xs font-bold shadow-md shadow-amber-500/20 transition-all cursor-pointer">
+                        <span wire:loading.remove wire:target="saveDailyLog">ثبت و ذخیره گزارش</span>
+                        <span wire:loading wire:target="saveDailyLog" class="inline-flex items-center gap-2">
+                            <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                            <span>در حال ذخیره...</span>
+                        </span>
+                    </button>
                 </div>
             </div>
         </div>
@@ -678,7 +703,7 @@
 
     {{-- مودال تایید / تکمیل سریع مرحله --}}
     @if($showStageModal)
-        <div class="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+        <div class="fixed inset-0 z-[60] overflow-y-auto bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
             <div class="bg-white dark:bg-gray-800 rounded-3xl border border-gray-200 dark:border-gray-700 shadow-2xl w-full max-w-md p-6 space-y-4">
                 <h3 class="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
                     <svg class="w-5 h-5 text-indigo-600 dark:text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
@@ -694,7 +719,43 @@
 
                 <div class="flex items-center justify-end gap-2.5 pt-2">
                     <button type="button" wire:click="$set('showStageModal', false)" class="px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 text-xs font-bold text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/60 transition-colors cursor-pointer">انصراف</button>
-                    <button type="button" wire:click="confirmStageCompletion" class="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-md shadow-indigo-500/20 transition-all cursor-pointer">تایید و تکمیل مرحله</button>
+                    <button type="button" wire:click="confirmStageCompletion" wire:loading.attr="disabled" class="inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white text-xs font-bold shadow-md shadow-indigo-500/20 transition-all cursor-pointer">
+                        <span wire:loading.remove wire:target="confirmStageCompletion">تایید و تکمیل مرحله</span>
+                        <span wire:loading wire:target="confirmStageCompletion" class="inline-flex items-center gap-2">
+                            <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                            <span>در حال ثبت...</span>
+                        </span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    @endif
+
+    {{-- مودال بازگشت مرحله تکمیل‌شده به حالت در انتظار --}}
+    @if($showRevertStageModal)
+        <div class="fixed inset-0 z-[60] overflow-y-auto bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+            <div class="bg-white dark:bg-gray-800 rounded-3xl border border-amber-300 dark:border-amber-700/60 shadow-2xl w-full max-w-md p-6 space-y-4">
+                <h3 class="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                    <svg class="w-5 h-5 text-amber-600 dark:text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" /></svg>
+                    بازگشت مرحله به حالت در انتظار
+                </h3>
+
+                <p class="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                    با بازگشت این مرحله، وضعیت آن از حالت «تکمیل شده» به «در انتظار» تغییر می‌کند و گزارش این بازگشت در تاریخچه پیگیری‌ها ثبت خواهد شد.
+                </p>
+
+                <textarea wire:model="revertStageNote" rows="2" placeholder="علت بازگشت مرحله (اختیاری، مثلاً: نیاز به اصلاح مجدد قالب یا فریم)..."
+                          class="w-full rounded-2xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 p-3 text-xs text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-amber-500 focus:bg-white dark:focus:bg-gray-800 focus:ring-1 focus:ring-amber-500/20 transition-all"></textarea>
+
+                <div class="flex items-center justify-end gap-2.5 pt-2">
+                    <button type="button" wire:click="$set('showRevertStageModal', false)" class="px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 text-xs font-bold text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/60 transition-colors cursor-pointer">انصراف</button>
+                    <button type="button" wire:click="confirmStageRevert" wire:loading.attr="disabled" class="inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 disabled:opacity-60 text-white text-xs font-bold shadow-md shadow-amber-500/20 transition-all cursor-pointer">
+                        <span wire:loading.remove wire:target="confirmStageRevert">تایید بازگشت مرحله</span>
+                        <span wire:loading wire:target="confirmStageRevert" class="inline-flex items-center gap-2">
+                            <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                            <span>در حال ثبت...</span>
+                        </span>
+                    </button>
                 </div>
             </div>
         </div>
@@ -702,7 +763,7 @@
 
     {{-- مودال دریافت نهایی کار (سبز شدن ردیف) --}}
     @if($showReceiveModal)
-        <div class="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+        <div class="fixed inset-0 z-[60] overflow-y-auto bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
             <div class="bg-white dark:bg-gray-800 rounded-3xl border border-emerald-300 dark:border-emerald-700/60 shadow-2xl w-full max-w-md p-6 space-y-4">
                 <div class="flex items-center gap-3 text-emerald-600 dark:text-emerald-400">
                     <div class="w-10 h-10 rounded-2xl bg-emerald-100 dark:bg-emerald-950/60 flex items-center justify-center">
@@ -723,7 +784,13 @@
 
                 <div class="flex items-center justify-end gap-2.5 pt-2">
                     <button type="button" wire:click="$set('showReceiveModal', false)" class="px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 text-xs font-bold text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/60 transition-colors cursor-pointer">انصراف</button>
-                    <button type="button" wire:click="confirmReceiveOrder" class="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white text-xs font-bold shadow-md shadow-emerald-500/20 transition-all cursor-pointer">تایید دریافت کار (سبز)</button>
+                    <button type="button" wire:click="confirmReceiveOrder" wire:loading.attr="disabled" class="inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-500 disabled:opacity-60 text-white text-xs font-bold shadow-md shadow-emerald-500/20 transition-all cursor-pointer">
+                        <span wire:loading.remove wire:target="confirmReceiveOrder">تایید دریافت کار (سبز)</span>
+                        <span wire:loading wire:target="confirmReceiveOrder" class="inline-flex items-center gap-2">
+                            <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                            <span>در حال ثبت...</span>
+                        </span>
+                    </button>
                 </div>
             </div>
         </div>
@@ -800,15 +867,19 @@
                 <div class="px-5 sm:px-6 pt-3 pb-0 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex items-center gap-2 overflow-x-auto">
                     <button type="button" 
                             wire:click="setDetailTab('overview')" 
-                            class="pb-3 px-3.5 text-xs font-bold transition-all border-b-2 flex items-center gap-1.5 whitespace-nowrap cursor-pointer {{ $detailModalTab === 'overview' ? 'border-indigo-600 text-indigo-600 dark:text-indigo-400 dark:border-indigo-400' : 'border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200' }}">
-                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
+                            wire:loading.attr="disabled"
+                            class="pb-3 px-3.5 text-xs font-bold transition-all border-b-2 flex items-center gap-1.5 whitespace-nowrap cursor-pointer disabled:opacity-60 {{ $detailModalTab === 'overview' ? 'border-indigo-600 text-indigo-600 dark:text-indigo-400 dark:border-indigo-400' : 'border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200' }}">
+                        <svg wire:loading.remove wire:target="setDetailTab('overview')" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
+                        <svg wire:loading wire:target="setDetailTab('overview')" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                         <span>خلاصه و مراحل ساخت</span>
                     </button>
 
                     <button type="button" 
                             wire:click="setDetailTab('dental_chart')" 
-                            class="pb-3 px-3.5 text-xs font-bold transition-all border-b-2 flex items-center gap-1.5 whitespace-nowrap cursor-pointer {{ $detailModalTab === 'dental_chart' ? 'border-indigo-600 text-indigo-600 dark:text-indigo-400 dark:border-indigo-400' : 'border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200' }}">
-                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
+                            wire:loading.attr="disabled"
+                            class="pb-3 px-3.5 text-xs font-bold transition-all border-b-2 flex items-center gap-1.5 whitespace-nowrap cursor-pointer disabled:opacity-60 {{ $detailModalTab === 'dental_chart' ? 'border-indigo-600 text-indigo-600 dark:text-indigo-400 dark:border-indigo-400' : 'border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200' }}">
+                        <svg wire:loading.remove wire:target="setDetailTab('dental_chart')" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
+                        <svg wire:loading wire:target="setDetailTab('dental_chart')" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                         <span>نقشه دندانی و واحدها</span>
                         @if($detailOrder->units_count > 0)
                             <span class="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-indigo-100 text-indigo-700 dark:bg-indigo-900/60 dark:text-indigo-300">{{ $detailOrder->units_count }}</span>
@@ -817,8 +888,10 @@
 
                     <button type="button" 
                             wire:click="setDetailTab('logs')" 
-                            class="pb-3 px-3.5 text-xs font-bold transition-all border-b-2 flex items-center gap-1.5 whitespace-nowrap cursor-pointer {{ $detailModalTab === 'logs' ? 'border-indigo-600 text-indigo-600 dark:text-indigo-400 dark:border-indigo-400' : 'border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200' }}">
-                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                            wire:loading.attr="disabled"
+                            class="pb-3 px-3.5 text-xs font-bold transition-all border-b-2 flex items-center gap-1.5 whitespace-nowrap cursor-pointer disabled:opacity-60 {{ $detailModalTab === 'logs' ? 'border-indigo-600 text-indigo-600 dark:text-indigo-400 dark:border-indigo-400' : 'border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200' }}">
+                        <svg wire:loading.remove wire:target="setDetailTab('logs')" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                        <svg wire:loading wire:target="setDetailTab('logs')" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                         <span>لاگ‌های پیگیری روزانه</span>
                         @if($detailOrder->dailyLogs && $detailOrder->dailyLogs->count() > 0)
                             <span class="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200">{{ $detailOrder->dailyLogs->count() }}</span>
@@ -1021,8 +1094,22 @@
                                                 @canany(['booking.laboratory.stages.manage', 'booking.laboratory.manage'])
                                                 <button type="button" 
                                                         wire:click="openStageModal({{ $st->id }})" 
-                                                        class="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-sm shadow-indigo-500/20 transition-all shrink-0 cursor-pointer">
-                                                    تایید و ثبت انجام
+                                                        wire:loading.attr="disabled"
+                                                        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white font-bold text-xs shadow-sm shadow-indigo-500/20 transition-all shrink-0 cursor-pointer">
+                                                    <svg wire:loading wire:target="openStageModal({{ $st->id }})" class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                                    <span>تایید و ثبت انجام</span>
+                                                </button>
+                                                @endcanany
+                                            @else
+                                                @canany(['booking.laboratory.stages.manage', 'booking.laboratory.manage'])
+                                                <button type="button"
+                                                        wire:click="openRevertStageModal({{ $st->id }})"
+                                                        wire:loading.attr="disabled"
+                                                        title="بازگشت این مرحله به حالت در انتظار"
+                                                        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/50 dark:hover:bg-amber-900/60 border border-amber-200 dark:border-amber-700/60 text-amber-700 dark:text-amber-300 font-bold text-xs disabled:opacity-60 transition-all shrink-0 cursor-pointer">
+                                                    <svg wire:loading.remove wire:target="openRevertStageModal({{ $st->id }})" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" /></svg>
+                                                    <svg wire:loading wire:target="openRevertStageModal({{ $st->id }})" class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                                    <span>برگشت مرحله</span>
                                                 </button>
                                                 @endcanany
                                             @endif

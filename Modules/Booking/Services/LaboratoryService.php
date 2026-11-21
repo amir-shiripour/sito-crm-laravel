@@ -232,6 +232,29 @@ class LaboratoryService
     }
 
     /**
+     * Revert a completed stage back to pending and log it in daily logs
+     */
+    public function revertStage(BookingLaboratoryStage $stage, ?string $note = null, ?int $userId = null): void
+    {
+        DB::transaction(function () use ($stage, $note, $userId) {
+            $stage->markPending($note);
+
+            $order = $stage->order;
+            $reason = trim((string) $note);
+            $logText = "بازگشت مرحله «{$stage->stage_title}» به حالت در انتظار" . ($reason !== '' ? " (علت: {$reason})" : '');
+
+            BookingLaboratoryDailyLog::create([
+                'order_id'         => $order->id,
+                'stage_id'         => $stage->id,
+                'log_date'         => now()->toDateString(),
+                'needs_followup'   => true,
+                'followup_result'  => $logText,
+                'operator_user_id' => $userId ?: auth()->id(),
+            ]);
+        });
+    }
+
+    /**
      * Mark entire order as received (turns green!)
      */
     public function markOrderReceived(BookingLaboratoryOrder $order, ?string $note = null, ?int $userId = null): void

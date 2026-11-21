@@ -57,6 +57,11 @@ class LaboratoryManager extends Component
     public ?int $activeOrderId = null;
     public string $receiveNote = '';
 
+    // Quick Stage Revert Modal
+    public bool $showRevertStageModal = false;
+    public ?int $stageToRevertId = null;
+    public string $revertStageNote = '';
+
     // Order Detail Modal
     public bool $showDetailModal = false;
     public ?int $detailOrderId = null;
@@ -198,6 +203,8 @@ class LaboratoryManager extends Component
             $this->toastError = 'سفارش مورد نظر یافت نشد.';
             return;
         }
+
+        $this->closeDetailModal();
 
         $this->editingOrderId = $order->id;
         $this->orderNumber = $order->order_number;
@@ -374,6 +381,39 @@ class LaboratoryManager extends Component
         $this->activeStageId = null;
     }
 
+    public function openRevertStageModal(int $stageId): void
+    {
+        $user = auth()->user();
+        if (!$user || (!$user->hasRole('super-admin') && !$user->canAny(['booking.laboratory.stages.manage', 'booking.laboratory.manage']))) {
+            $this->toastError = 'شما مجوز مدیریت مراحل سفارش را ندارید.';
+            return;
+        }
+
+        $this->stageToRevertId = $stageId;
+        $this->revertStageNote = '';
+        $this->showRevertStageModal = true;
+    }
+
+    public function confirmStageRevert(): void
+    {
+        $user = auth()->user();
+        if (!$user || (!$user->hasRole('super-admin') && !$user->canAny(['booking.laboratory.stages.manage', 'booking.laboratory.manage']))) {
+            $this->toastError = 'شما مجوز مدیریت مراحل سفارش را ندارید.';
+            return;
+        }
+
+        if (!$this->stageToRevertId) return;
+
+        $stage = BookingLaboratoryStage::with('order')->find($this->stageToRevertId);
+        if ($stage && $stage->is_completed) {
+            app(LaboratoryService::class)->revertStage($stage, trim($this->revertStageNote) ?: null, auth()->id());
+            $this->toastSuccess = "مرحله «{$stage->stage_title}» به حالت در انتظار بازگردانده شد و در تاریخچه ثبت گردید.";
+        }
+
+        $this->showRevertStageModal = false;
+        $this->stageToRevertId = null;
+    }
+
     public function openReceiveModal(int $orderId): void
     {
         $user = auth()->user();
@@ -382,6 +422,7 @@ class LaboratoryManager extends Component
             return;
         }
 
+        $this->closeDetailModal();
         $this->activeOrderId = $orderId;
         $this->receiveNote = '';
         $this->showReceiveModal = true;
