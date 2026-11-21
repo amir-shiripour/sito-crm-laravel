@@ -31,10 +31,18 @@ class PropertyController extends Controller
             }
         }
 
-        // Start with the visibleToUser scope and frontend filters
-        $query = Property::visibleToUser()
-            ->where('publication_status', 'published')
-            ->whereHas('status', function ($q) {
+        $isLafoorTheme = false;
+        try {
+            $themeChain = app(\App\Services\ThemeManager::class)->getThemeChain();
+            $isLafoorTheme = in_array('mrvilalafoor', $themeChain, true);
+        } catch (\Throwable $e) {}
+
+        // Start with the visibleToUser scope (or strict publishedAndApproved for mrvilalafoor storefront)
+        $query = $isLafoorTheme
+            ? Property::publishedAndApproved()
+            : Property::visibleToUser()->where('publication_status', 'published');
+
+        $query->whereHas('status', function ($q) {
                 $q->where('show_in_crm', true);
             })
             ->with(['status', 'attributeValues', 'category', 'building', 'rentalConfig', 'host']);
@@ -76,8 +84,11 @@ class PropertyController extends Controller
         $buildings = PropertyBuilding::latest()->get();
 
         // مقاصد در دسترس (استان‌ها و شهرهای دارای ملک قابل نمایش)
-        $availableDestinations = Property::visibleToUser()
-            ->where('publication_status', 'published')
+        $destQuery = $isLafoorTheme
+            ? Property::publishedAndApproved()
+            : Property::visibleToUser()->where('publication_status', 'published');
+
+        $availableDestinations = $destQuery
             ->whereNotNull('province')
             ->select('province', 'city')
             ->distinct()
@@ -120,10 +131,18 @@ class PropertyController extends Controller
             }
         }
 
-        // Start with the visibleToUser scope and frontend filters
-        $query = Property::visibleToUser()
-            ->where('publication_status', 'published')
-            ->whereHas('status', function ($q) {
+        $isLafoorTheme = false;
+        try {
+            $themeChain = app(\App\Services\ThemeManager::class)->getThemeChain();
+            $isLafoorTheme = in_array('mrvilalafoor', $themeChain, true);
+        } catch (\Throwable $e) {}
+
+        // Start with the visibleToUser scope (or strict publishedAndApproved for mrvilalafoor storefront)
+        $query = $isLafoorTheme
+            ? Property::publishedAndApproved()
+            : Property::visibleToUser()->where('publication_status', 'published');
+
+        $query->whereHas('status', function ($q) {
                 $q->where('show_in_crm', true);
             })
             ->with(['status', 'attributeValues', 'category', 'building', 'rentalConfig', 'host']);
