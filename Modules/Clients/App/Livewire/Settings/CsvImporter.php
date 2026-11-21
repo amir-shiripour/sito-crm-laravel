@@ -96,6 +96,9 @@ class CsvImporter extends Component
             // Headers
             $file->rewind();
             $this->csvHeaders = $file->fgetcsv() ?: [];
+            if (isset($this->csvHeaders[0])) {
+                $this->csvHeaders[0] = preg_replace('/^\x{FEFF}/u', '', $this->csvHeaders[0]);
+            }
             if (!$this->hasHeaders) {
                 $file->rewind();
                 $firstRow = $file->fgetcsv() ?: [];
@@ -135,13 +138,15 @@ class CsvImporter extends Component
 
     protected function guessField($header)
     {
-        $header = trim(mb_strtolower($header));
+        $header = trim(mb_strtolower(preg_replace('/^\x{FEFF}/u', '', (string) $header)));
         $commonMappings = [
             'نام' => 'full_name', 'نام و نام خانوادگی' => 'full_name',
-            'موبایل' => 'phone', 'تلفن' => 'phone',
+            'موبایل' => 'phone', 'تلفن' => 'phone', 'شماره تماس' => 'phone',
             'ایمیل' => 'email', 'کدملی' => 'national_code',
             'کد ملی' => 'national_code', 'شماره پرونده' => 'case_number',
-            'یادداشت' => 'notes', 'وضعیت' => 'status_id', 'رمز عبور' => 'password',
+            'یادداشت' => 'notes', 'یادداشت مدیریتی' => 'notes',
+            'وضعیت' => 'status_id', 'وضعیت پرونده' => 'status_id',
+            'رمز عبور' => 'password', 'رمز عبور ورود به پنل' => 'password',
         ];
 
         if (isset($commonMappings[$header])) {
@@ -207,35 +212,57 @@ class CsvImporter extends Component
         $metaData = [];
         foreach ($this->fieldMapping as $index => $fieldId) {
             if (empty($fieldId) || !isset($row[$index])) continue;
-            $value = trim($row[$index]);
-            if ($value !== '') {
-                if (ClientForm::isSystemFieldId($fieldId)) $clientData[$fieldId] = $value;
-                else $metaData[$fieldId] = $value;
+            $value = trim(preg_replace('/^\x{FEFF}/u', '', (string) $row[$index]));
+            if ($this->isPlaceholderValue($value)) continue;
+
+            if (ClientForm::isSystemFieldId($fieldId)) {
+                if (in_array($fieldId, ['national_code', 'case_number'], true)) {
+                    $value = $this->normalizeDigits($value);
+                }
+                $clientData[$fieldId] = $value;
+            } else {
+                $metaData[$fieldId] = $value;
             }
         }
 
         if (empty($clientData) && empty($metaData)) return;
 
-        if ($this->updateExisting && empty($clientData['phone']) && empty($clientData['email']) && empty($clientData['national_code']) && empty($clientData['case_number'])) {
+        $normalizedPhone = null;
+        if (!empty($clientData['phone'])) {
+            $normalizedPhone = $this->normalizePhone($clientData['phone']);
+            if ($normalizedPhone !== null) {
+                $clientData['phone'] = $normalizedPhone;
+            } else {
+                unset($clientData['phone']);
+            }
+        }
+
+        if ($usernameStrategy === 'mobile') {
+            if (empty($clientData['phone'])) {
+                $this->importErrors[] = ['row' => $rowNumber, 'error' => 'شماره تماس معتبر برای این ردیف یافت نشد.'];
+                return;
+            }
+        } elseif ($this->updateExisting && empty($clientData['phone']) && empty($clientData['email']) && empty($clientData['national_code']) && empty($clientData['case_number'])) {
             $this->importErrors[] = ['row' => $rowNumber, 'error' => 'برای آپدیت، حداقل یکی از فیلدهای شناسه الزامی است.'];
             return;
         }
 
-        if (!empty($clientData['phone'])) {
-            $phone = preg_replace('/[^0-9]/', '', $clientData['phone']);
-            if (!str_starts_with($phone, '0') && strlen($phone) === 10) $phone = '0' . $phone;
-            $clientData['phone'] = $phone;
-        }
-
         $existingClient = null;
         if ($this->updateExisting) {
-            $query = Client::query()->where(function ($q) use ($clientData) {
-                if (!empty($clientData['phone'])) $q->orWhere('phone', $clientData['phone']);
-                if (!empty($clientData['email'])) $q->orWhere('email', $clientData['email']);
-                if (!empty($clientData['national_code'])) $q->orWhere('national_code', $clientData['national_code']);
-                if (!empty($clientData['case_number'])) $q->orWhere('case_number', $clientData['case_number']);
-            });
-            $existingClient = $query->first();
+            if ($usernameStrategy === 'mobile') {
+                $existingClient = $this->findClientByPhone($clientData['phone'], true);
+            } else {
+                if (!empty($clientData['phone'])) {
+                    $existingClient = $this->findClientByPhone($clientData['phone']);
+                }
+                if (!$existingClient && (!empty($clientData['email']) || !empty($clientData['national_code']) || !empty($clientData['case_number']))) {
+                    $existingClient = Client::query()->where(function ($q) use ($clientData) {
+                        if (!empty($clientData['email'])) $q->orWhere('email', $clientData['email']);
+                        if (!empty($clientData['national_code'])) $q->orWhere('national_code', $clientData['national_code']);
+                        if (!empty($clientData['case_number'])) $q->orWhere('case_number', $clientData['case_number']);
+                    })->first();
+                }
+            }
         }
 
         if ($existingClient) {
@@ -250,9 +277,12 @@ class CsvImporter extends Component
             $existingClient->update($clientData);
             $this->updateCount++;
         } else {
-            if (empty($clientData['full_name'])) {
+            if ($usernameStrategy !== 'mobile' && empty($clientData['full_name'])) {
                 $this->importErrors[] = ['row' => $rowNumber, 'error' => 'فیلد "نام و نام خانوادگی" برای ایجاد کاربر جدید الزامی است.'];
                 return;
+            }
+            if (!isset($clientData['full_name'])) {
+                $clientData['full_name'] = '';
             }
             if (empty($clientData['username'])) $clientData['username'] = $this->generateUsername($clientData);
             if ($usernameStrategy === 'mobile' && !empty($clientData['username']) && Client::where('username', $clientData['username'])->exists()) {
@@ -266,6 +296,93 @@ class CsvImporter extends Component
             Client::create($clientData);
             $this->importCount++;
         }
+    }
+
+    /**
+     * Convert Persian and Arabic numerals to ASCII digits.
+     */
+    protected function normalizeDigits(?string $value): string
+    {
+        if ($value === null) {
+            return '';
+        }
+
+        $persian = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
+        $arabic  = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
+        $english = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
+
+        return str_replace(
+            array_merge($persian, $arabic),
+            array_merge($english, $english),
+            $value
+        );
+    }
+
+    /**
+     * Ignore empty or placeholder-only CSV values such as "_" or "-".
+     */
+    protected function isPlaceholderValue(string $value): bool
+    {
+        return $value === '' || preg_match('/^[_\-\s]+$/u', $value) === 1;
+    }
+
+    /**
+     * Normalize a phone number to a canonical digit string, returning null if invalid.
+     */
+    protected function normalizePhone(?string $raw): ?string
+    {
+        $digits = preg_replace('/[^0-9]/', '', $this->normalizeDigits($raw));
+        if ($digits === '' || strlen($digits) < 10) {
+            return null;
+        }
+
+        if (str_starts_with($digits, '0098') && strlen($digits) === 14) {
+            return '0' . substr($digits, 4);
+        }
+
+        if (str_starts_with($digits, '98') && strlen($digits) === 12) {
+            return '0' . substr($digits, 2);
+        }
+
+        if (!str_starts_with($digits, '0') && strlen($digits) === 10) {
+            return '0' . $digits;
+        }
+
+        return $digits;
+    }
+
+    /**
+     * Locate an existing client by normalized phone, handling Persian/Arabic digits and formatting differences in DB.
+     */
+    protected function findClientByPhone(string $normalizedPhone, bool $alsoCheckUsername = false): ?Client
+    {
+        $client = Client::where('phone', $normalizedPhone)->first();
+        if ($client) {
+            return $client;
+        }
+
+        $last10 = substr($normalizedPhone, -10);
+        if (strlen($last10) === 10) {
+            $client = Client::where('phone', 'LIKE', '%' . $last10)->first();
+            if ($client) {
+                return $client;
+            }
+        }
+
+        $persianExpr = "REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(phone, '۰','0'), '۱','1'), '۲','2'), '۳','3'), '۴','4'), '۵','5'), '۶','6'), '۷','7'), '۸','8'), '۹','9')";
+        $arabicExpr  = "REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE($persianExpr, '٠','0'), '١','1'), '٢','2'), '٣','3'), '٤','4'), '٥','5'), '٦','6'), '٧','7'), '٨','8'), '٩','9')";
+        $cleanExpr   = "REPLACE(REPLACE(REPLACE($arabicExpr, ' ', ''), '-', ''), '+', '')";
+
+        $client = Client::whereRaw("($cleanExpr = ? OR $cleanExpr LIKE ?)", [$normalizedPhone, '%' . $last10])->first();
+        if ($client) {
+            return $client;
+        }
+
+        if ($alsoCheckUsername) {
+            return Client::where('username', $normalizedPhone)->first();
+        }
+
+        return null;
     }
 
     protected function generateUsername(array $data): string
