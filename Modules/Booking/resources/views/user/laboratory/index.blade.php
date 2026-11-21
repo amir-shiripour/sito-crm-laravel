@@ -316,8 +316,8 @@
                                     {{ $order->sent_at_jalali }}
                                 </td>
 
-                                {{-- ستون هوشمند و فشرده مراحل پیگیری و پیشرفت کار --}}
-                                <td class="py-3.5 px-4 min-w-[210px]">
+                                {{-- ستون مراحل پیگیری و زمان‌بندی --}}
+                                <td class="py-3.5 px-4 min-w-[215px]">
                                     @php
                                         $currentStage = $order->current_stage;
                                         $nextStage = $order->next_stage;
@@ -328,66 +328,66 @@
 
                                     @if($totalStages > 0)
                                         <div class="space-y-1.5 max-w-[240px]">
-                                            {{-- نوار پیشرفت مینیاتوری --}}
-                                            <div class="flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400">
-                                                <span class="font-bold">پیشرفت: {{ $completedStages }} از {{ $totalStages }} مرحله</span>
-                                                <span class="font-black text-indigo-600 dark:text-indigo-400">{{ $progressPercent }}٪</span>
-                                            </div>
-                                            <div class="w-full bg-slate-100 dark:bg-slate-700/60 rounded-full h-1.5 overflow-hidden">
-                                                <div class="bg-indigo-600 dark:bg-indigo-500 h-1.5 rounded-full transition-all duration-300" style="width: {{ $progressPercent }}%"></div>
+                                            {{-- نوار پیشرفت --}}
+                                            <div class="flex items-center gap-2">
+                                                <div class="flex-1 bg-slate-100 dark:bg-slate-700/70 rounded-full h-1.5 overflow-hidden">
+                                                    <div class="bg-indigo-600 dark:bg-indigo-500 h-1.5 rounded-full transition-all duration-300" style="width: {{ $progressPercent }}%"></div>
+                                                </div>
+                                                <span class="text-[10px] font-bold text-slate-600 dark:text-slate-300 shrink-0">
+                                                    {{ $completedStages }}/{{ $totalStages }} ({{ $progressPercent }}٪)
+                                                </span>
                                             </div>
 
-                                            {{-- مرحله جاری --}}
+                                            {{-- مرحله فعلی و مرحله بعدی --}}
                                             @if($currentStage)
                                                 @php
                                                     $stOverdue = $currentStage->isOverdue();
                                                     $stDueToday = $currentStage->isDueToday();
-                                                    $badgeBg = $stOverdue 
-                                                        ? 'bg-rose-50 text-rose-800 border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800/50 animate-pulse' 
-                                                        : ($stDueToday 
-                                                            ? 'bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800/50' 
-                                                            : 'bg-indigo-50/90 text-indigo-800 border-indigo-200 dark:bg-indigo-950/40 dark:text-indigo-300 dark:border-indigo-800/50');
+                                                    $cardStyle = $stOverdue
+                                                        ? 'bg-rose-50/70 border-rose-200/80 dark:bg-rose-950/30 dark:border-rose-800/50'
+                                                        : ($stDueToday
+                                                            ? 'bg-amber-50/70 border-amber-200/80 dark:bg-amber-950/30 dark:border-amber-800/50'
+                                                            : 'bg-slate-50/80 border-slate-200/80 dark:bg-slate-900/50 dark:border-slate-700/70');
+                                                    $dotColor = $stOverdue ? 'bg-rose-500' : ($stDueToday ? 'bg-amber-500' : 'bg-indigo-500');
+                                                    $currentDueDate = \Illuminate\Support\Str::before($currentStage->due_at_jalali, ' ');
                                                 @endphp
-                                                <div class="flex items-center justify-between gap-1 p-1.5 rounded-xl border {{ $badgeBg }}">
-                                                    <div class="flex items-center gap-1.5 min-w-0">
-                                                        <span class="w-2 h-2 rounded-full {{ $stOverdue ? 'bg-rose-500' : ($stDueToday ? 'bg-amber-500' : 'bg-indigo-500') }} shrink-0"></span>
-                                                        <span class="text-xs font-bold truncate" title="{{ $currentStage->stage_title }}">
-                                                            {{ $currentStage->stage_title }}
-                                                        </span>
+                                                <div class="rounded-lg border px-2.5 py-1.5 space-y-1 {{ $cardStyle }}">
+                                                    <div class="flex items-center justify-between gap-2">
+                                                        <div class="flex items-center gap-1.5 min-w-0">
+                                                            <span class="w-2 h-2 rounded-full {{ $dotColor }} shrink-0"></span>
+                                                            <span class="text-xs font-bold text-slate-900 dark:text-white truncate" title="{{ $currentStage->stage_title }}">
+                                                                {{ $currentStage->stage_title }}
+                                                            </span>
+                                                        </div>
+                                                        @if($stOverdue)
+                                                            <span class="px-1.5 py-0.5 rounded bg-rose-100 dark:bg-rose-900/60 text-rose-700 dark:text-rose-300 text-[10px] font-bold shrink-0">تاخیر</span>
+                                                        @elseif($stDueToday)
+                                                            <span class="px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-900/60 text-amber-700 dark:text-amber-300 text-[10px] font-bold shrink-0">امروز</span>
+                                                        @endif
                                                     </div>
-                                                    @canany(['booking.laboratory.stages.manage', 'booking.laboratory.manage'])
-                                                    <button type="button" 
-                                                            wire:click="openStageModal({{ $currentStage->id }})"
-                                                            wire:loading.attr="disabled"
-                                                            title="تایید و تکمیل مرحله (موعد: {{ $currentStage->due_at_jalali }})"
-                                                            class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-2xs hover:bg-indigo-600 hover:text-white dark:hover:bg-indigo-600 dark:hover:text-white disabled:opacity-60 transition-all shrink-0">
-                                                        <svg wire:loading wire:target="openStageModal({{ $currentStage->id }})" class="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                                                        <span>{{ $currentStage->due_at_jalali }} ↵</span>
-                                                    </button>
-                                                    @else
-                                                    <span class="px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-2xs text-slate-700 dark:text-slate-300 shrink-0">
-                                                        {{ $currentStage->due_at_jalali }}
-                                                    </span>
-                                                    @endcanany
+
+                                                    @if($currentDueDate !== '')
+                                                        <div class="text-[10px] text-slate-600 dark:text-slate-300">
+                                                            تاریخ: <span class="font-semibold text-slate-800 dark:text-slate-200">{{ $currentDueDate }}</span>
+                                                        </div>
+                                                    @endif
                                                 </div>
 
-                                                {{-- مرحله بعدی --}}
                                                 @if($nextStage)
-                                                    <div class="text-[10px] text-slate-500 dark:text-slate-400 flex items-center gap-1 pr-1 truncate">
-                                                        <span class="text-slate-400 dark:text-slate-500">بعدی:</span>
-                                                        <span class="font-medium truncate">{{ $nextStage->stage_title }}</span>
-                                                        <span class="opacity-75 shrink-0">({{ $nextStage->due_at_jalali }})</span>
+                                                    <div class="text-[11px] text-slate-600 dark:text-slate-300 flex items-center gap-1 px-1 truncate">
+                                                        <span class="text-slate-400 dark:text-slate-400 shrink-0">مرحله بعدی:</span>
+                                                        <span class="font-semibold truncate" title="{{ $nextStage->stage_title }}">{{ $nextStage->stage_title }}</span>
                                                     </div>
                                                 @endif
                                             @else
-                                                <div class="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/50">
+                                                <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/50">
                                                     <svg class="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
                                                     تمام مراحل انجام شد
                                                 </div>
                                             @endif
                                         </div>
                                     @else
-                                        <span class="text-[11px] text-slate-400 dark:text-slate-500">مرحله‌ای ثبت نشده</span>
+                                        <span class="text-[11px] text-slate-400 dark:text-slate-400">مرحله‌ای ثبت نشده</span>
                                     @endif
                                 </td>
 
@@ -437,23 +437,7 @@
                                             <svg wire:loading wire:target="openDetailModal({{ $order->id }})" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                                         </button>
 
-                                        @if($isReceived && $order->client_id)
-                                            @canany(['booking.appointments.create', 'booking.appointments.manage'])
-                                            <a href="{{ route('user.booking.appointments.create', [
-                                                    'client_id' => $order->client_id,
-                                                    'doctor_id' => $order->doctor_id,
-                                                    'notes' => 'تحویل پروتز سفارش ' . $order->order_number . ' (' . ($order->category_label ?? 'لابراتوار') . ')'
-                                                ]) }}"
-                                               target="_blank"
-                                               title="رزرو نوبت تحویل پروتز به بیمار"
-                                               class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white font-bold text-[11px] shadow-sm shadow-emerald-500/20 transition-all">
-                                                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                                </svg>
-                                                رزرو نوبت
-                                            </a>
-                                            @endcanany
-                                        @elseif(!$isReceived)
+                                        @if(!$isReceived)
                                             @canany(['booking.laboratory.receive', 'booking.laboratory.manage'])
                                             <button type="button"
                                                     wire:click="openReceiveModal({{ $order->id }})"
