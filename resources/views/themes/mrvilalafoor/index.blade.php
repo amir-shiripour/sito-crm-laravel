@@ -51,7 +51,7 @@
     try {
         if (class_exists(\Modules\Properties\Entities\PropertyCategory::class)) {
             $propertyCategories = \Modules\Properties\Entities\PropertyCategory::withCount(['properties' => function($q) {
-                $q->where('publication_status', 'published');
+                $q->publishedAndApproved();
             }])->get();
         }
     } catch (\Throwable $e) {}
@@ -59,7 +59,7 @@
     $rentalTypeCounts = [];
     try {
         if (class_exists(\Modules\Properties\Entities\Property::class)) {
-            $rentalTypeCounts = \Modules\Properties\Entities\Property::where('publication_status', 'published')
+            $rentalTypeCounts = \Modules\Properties\Entities\Property::publishedAndApproved()
                 ->whereNotNull('property_type')
                 ->groupBy('property_type')
                 ->selectRaw('property_type, count(*) as total')
@@ -1687,12 +1687,15 @@
         $propertyList = $properties ?? $latestProperties ?? [];
         if (count($propertyList) > 0) {
             foreach ($propertyList as $prop) {
-                // اعتبارسنجی قطعی وضعیت انتشار و تایید اقامتگاه
-                if (($prop->publication_status ?? 'published') !== 'published') {
-                    continue;
-                }
-                if (($prop->approval_status ?? 'approved') !== 'approved') {
-                    continue;
+                // اعتبارسنجی قطعی وضعیت انتشار و تایید اقامتگاه (با حفظ آخرین نسخه تاییدشده هنگام ویرایش)
+                if (method_exists($prop, 'isPubliclyVisible')) {
+                    if (!$prop->isPubliclyVisible()) {
+                        continue;
+                    }
+                } else {
+                    if (($prop->publication_status ?? 'published') !== 'published' || ($prop->approval_status ?? 'approved') !== 'approved') {
+                        continue;
+                    }
                 }
                 if (($prop->listing_type ?? 'daily_rental') !== 'daily_rental') {
                     continue;

@@ -411,6 +411,56 @@ class Property extends Model
     }
 
     /**
+     * Scope to filter properties that are published and approved
+     * (or currently pending review of an edit while having a previously approved version).
+     *
+     * @param Builder $query
+     * @return Builder
+     */
+    public function scopePublishedAndApproved(Builder $query): Builder
+    {
+        return $query->where('publication_status', 'published')
+            ->where(function (Builder $q) {
+                $q->where('approval_status', 'approved')
+                  ->orWhere(function (Builder $sub) {
+                      $sub->where('approval_status', 'pending_review')
+                          ->whereHas('revisions', function (Builder $rq) {
+                              $rq->where('status', 'approved');
+                          });
+                  });
+            })
+            ->where(function (Builder $q) {
+                $q->whereNull('host_id')
+                  ->orWhereHas('host', function (Builder $hq) {
+                      $hq->where('status', 'active');
+                  });
+            });
+    }
+
+    /**
+     * Check if the property is publicly visible (published & approved or has an approved revision while under edit).
+     */
+    public function isPubliclyVisible(): bool
+    {
+        if (($this->publication_status ?? null) !== 'published') {
+            return false;
+        }
+
+        if ($this->approval_status === 'approved') {
+            return true;
+        }
+
+        if ($this->approval_status === 'pending_review') {
+            if ($this->relationLoaded('revisions')) {
+                return $this->revisions->contains('status', 'approved');
+            }
+            return $this->revisions()->where('status', 'approved')->exists();
+        }
+
+        return false;
+    }
+
+    /**
      * Scope to filter properties visible to the current user.
      *
      * @param Builder $query

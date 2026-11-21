@@ -115,15 +115,7 @@ class PageController extends Controller
         if (in_array($appThemeLower, ['properties', 'mrvilalafoor'])) {
             if (class_exists(\Modules\Properties\Entities\Property::class)) {
                 // دریافت املاک و اقامتگاه‌ها برای نمایش در صفحه اصلی با بررسی وضعیت انتشار، تایید و میزبان فعال
-                $propertiesQuery = \Modules\Properties\Entities\Property::query()
-                    ->where('publication_status', 'published')
-                    ->where('approval_status', 'approved')
-                    ->where(function($q) {
-                        $q->whereNull('host_id')
-                          ->orWhereHas('host', function($hq) {
-                              $hq->where('status', 'active');
-                          });
-                    });
+                $propertiesQuery = \Modules\Properties\Entities\Property::publishedAndApproved();
 
                 // برای تم اختصاصی لفور، فقط اقامتگاه‌های اجاره روزانه واکشی شوند
                 if ($appThemeLower === 'mrvilalafoor') {
@@ -132,7 +124,7 @@ class PageController extends Controller
 
                 $propertiesLimit = $appThemeLower === 'mrvilalafoor' ? 100 : 16;
                 $data['latestProperties'] = $propertiesQuery
-                    ->with(['status', 'category', 'attributeValues.attribute', 'rentalConfig', 'host.user', 'images'])
+                    ->with(['status', 'category', 'attributeValues.attribute', 'rentalConfig', 'host.user', 'images', 'revisions'])
                     ->latest()
                     ->take($propertiesLimit)
                     ->get();
@@ -165,16 +157,8 @@ class PageController extends Controller
                 $data['rentalSeoContentBody'] = \Modules\Properties\Entities\PropertySetting::get('rental_seo_content_body', "مستر ویلا سال‌ها است که به عنوان مرجع تخصصی رزرو و اجاره آنلاین انواع اقامتگاه، کلبه‌های جنگلی، سوئیت و ویلاهای استخردار در زیباترین مناطق شمال کشور به‌ویژه منطقه سرسبز لفور و سوادکوه شناخته می‌شود. هدف ما ایجاد تجربه‌ای بی‌دغدغه و مطمئن از سفر برای تمام میهمانان گرامی است. تضمین تطابق کامل تصاویر با اقامتگاه، پشتیبانی ۲۴ ساعته در تمام روزهای هفته، تحویل تضمین‌شده و تسویه با میزبان پس از رضایت و ورود میهمان، از استانداردهای بنیادین مستر ویلا می‌باشد. با خیالی آسوده اقامتگاه رویایی خود را بررسی کرده و تنها با چند کلیک، خاطره‌ای ماندگار در دل طبیعت بسازید.");
 
                 // مقاصد در دسترس (استان‌ها و شهرهایی که اقامتگاه فعال و قابل رزرو دارند)
-                $data['availableDestinations'] = \Modules\Properties\Entities\Property::query()
-                    ->where('publication_status', 'published')
-                    ->where('approval_status', 'approved')
+                $data['availableDestinations'] = \Modules\Properties\Entities\Property::publishedAndApproved()
                     ->where('listing_type', 'daily_rental')
-                    ->where(function($q) {
-                        $q->whereNull('host_id')
-                          ->orWhereHas('host', function($hq) {
-                              $hq->where('status', 'active');
-                          });
-                    })
                     ->whereNotNull('province')
                     ->select('province', 'city')
                     ->distinct()

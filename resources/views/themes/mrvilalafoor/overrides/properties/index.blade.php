@@ -494,6 +494,9 @@
         <!-- ============================================================= -->
         <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5.5">
             @forelse($displayProperties as $property)
+                @if(method_exists($property, 'isPubliclyVisible') && !$property->isPubliclyVisible())
+                    @continue
+                @endif
                 @php
                     $rentalConfig = $property->rentalConfig;
                     $coverUrl = null;
