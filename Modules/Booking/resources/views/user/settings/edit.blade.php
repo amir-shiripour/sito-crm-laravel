@@ -2260,6 +2260,22 @@
                     </div>
 
                     <div class="p-6 space-y-6">
+                        {{-- گزینه همگام‌سازی سفارشات فعال با تغییرات جدید --}}
+                        <label class="flex items-start gap-3 p-4 rounded-2xl border border-amber-200/80 dark:border-amber-800/50 bg-amber-50/60 dark:bg-amber-950/25 cursor-pointer hover:bg-amber-50 dark:hover:bg-amber-950/35 transition-colors">
+                            <input type="checkbox"
+                                   name="sync_laboratory_active_orders"
+                                   value="1"
+                                   class="mt-0.5 w-4 h-4 rounded border-amber-300 dark:border-amber-700 text-indigo-600 focus:ring-indigo-500">
+                            <div class="space-y-0.5">
+                                <span class="block text-xs font-bold text-gray-900 dark:text-white">
+                                    همگام‌سازی سفارشات فعال (در حال انجام) با تغییرات مراحل و زمان‌بندی جدید هنگام ذخیره
+                                </span>
+                                <span class="block text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">
+                                    در صورت فعال بودن، سفارشاتی که هنوز تحویل گرفته نشده‌اند به‌صورت ایمن با تغییرات جدید هماهنگ می‌شوند (مراحل تکمیل‌شده قبلی و تاریخچه لاگ‌ها دست‌نخورده باقی می‌مانند).
+                                </span>
+                            </div>
+                        </label>
+
                         {{-- تب‌های انتخاب نوع لابراتوار --}}
                         <div class="flex items-center gap-2 overflow-x-auto pb-2 border-b border-gray-200 dark:border-gray-700">
                             <template x-for="(type, tIndex) in types" :key="type.id">

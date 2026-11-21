@@ -43,13 +43,15 @@
 
     <div class="space-y-6 relative">
         {{-- نوار و نشانگر لودینگ سراسری --}}
-        <div wire:loading.delay.shortest class="fixed top-0 inset-x-0 h-1 bg-gradient-to-r from-indigo-500 via-sky-400 to-indigo-600 animate-pulse z-[70]"></div>
-        <div wire:loading.delay.shortest class="fixed bottom-5 left-5 z-[70] inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-gray-900/90 dark:bg-slate-800/95 text-white text-xs font-bold shadow-lg border border-indigo-500/30 backdrop-blur-xs">
-            <svg class="w-4 h-4 animate-spin text-indigo-400" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-            <span>در حال پردازش...</span>
+        <div wire:loading.delay.shortest class="fixed top-0 inset-x-0 h-1 bg-gradient-to-r from-indigo-600 via-indigo-400 to-indigo-600 animate-pulse z-[70]"></div>
+        <div wire:loading.delay.shortest class="fixed bottom-5 left-5 z-[70]">
+            <div class="flex items-center gap-2.5 px-4 py-2.5 rounded-2xl bg-white/95 dark:bg-slate-800/95 text-slate-800 dark:text-slate-100 text-xs font-bold shadow-xl shadow-slate-900/10 dark:shadow-black/40 border border-slate-200 dark:border-slate-700 backdrop-blur-md">
+                <svg class="w-4 h-4 animate-spin text-indigo-600 dark:text-indigo-400 shrink-0" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <span>در حال پردازش...</span>
+            </div>
         </div>
         {{-- هدر صفحه کارتابل پیگیری روزانه --}}
         <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-gray-800 rounded-3xl border border-gray-200 dark:border-gray-700 shadow-xs p-5 sm:p-6">
@@ -691,7 +693,7 @@
                     <button type="button" wire:click="$set('showLogModal', false)" class="px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 text-xs font-bold text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/60 transition-colors cursor-pointer">انصراف</button>
                     <button type="button" wire:click="saveDailyLog" wire:loading.attr="disabled" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 disabled:opacity-60 text-white text-xs font-bold shadow-md shadow-amber-500/20 transition-all cursor-pointer">
                         <span wire:loading.remove wire:target="saveDailyLog">ثبت و ذخیره گزارش</span>
-                        <span wire:loading wire:target="saveDailyLog" class="inline-flex items-center gap-2">
+                        <span wire:loading.inline-flex wire:target="saveDailyLog" class="items-center gap-2">
                             <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                             <span>در حال ذخیره...</span>
                         </span>
@@ -721,7 +723,7 @@
                     <button type="button" wire:click="$set('showStageModal', false)" class="px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 text-xs font-bold text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/60 transition-colors cursor-pointer">انصراف</button>
                     <button type="button" wire:click="confirmStageCompletion" wire:loading.attr="disabled" class="inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white text-xs font-bold shadow-md shadow-indigo-500/20 transition-all cursor-pointer">
                         <span wire:loading.remove wire:target="confirmStageCompletion">تایید و تکمیل مرحله</span>
-                        <span wire:loading wire:target="confirmStageCompletion" class="inline-flex items-center gap-2">
+                        <span wire:loading.inline-flex wire:target="confirmStageCompletion" class="items-center gap-2">
                             <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                             <span>در حال ثبت...</span>
                         </span>
@@ -751,7 +753,7 @@
                     <button type="button" wire:click="$set('showRevertStageModal', false)" class="px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 text-xs font-bold text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/60 transition-colors cursor-pointer">انصراف</button>
                     <button type="button" wire:click="confirmStageRevert" wire:loading.attr="disabled" class="inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 disabled:opacity-60 text-white text-xs font-bold shadow-md shadow-amber-500/20 transition-all cursor-pointer">
                         <span wire:loading.remove wire:target="confirmStageRevert">تایید بازگشت مرحله</span>
-                        <span wire:loading wire:target="confirmStageRevert" class="inline-flex items-center gap-2">
+                        <span wire:loading.inline-flex wire:target="confirmStageRevert" class="items-center gap-2">
                             <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                             <span>در حال ثبت...</span>
                         </span>
@@ -786,7 +788,7 @@
                     <button type="button" wire:click="$set('showReceiveModal', false)" class="px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 text-xs font-bold text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/60 transition-colors cursor-pointer">انصراف</button>
                     <button type="button" wire:click="confirmReceiveOrder" wire:loading.attr="disabled" class="inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-500 disabled:opacity-60 text-white text-xs font-bold shadow-md shadow-emerald-500/20 transition-all cursor-pointer">
                         <span wire:loading.remove wire:target="confirmReceiveOrder">تایید دریافت کار (سبز)</span>
-                        <span wire:loading wire:target="confirmReceiveOrder" class="inline-flex items-center gap-2">
+                        <span wire:loading.inline-flex wire:target="confirmReceiveOrder" class="items-center gap-2">
                             <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                             <span>در حال ثبت...</span>
                         </span>

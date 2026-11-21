@@ -203,6 +203,173 @@ class LaboratoryService
     }
 
     /**
+     * Sync active (non-received, non-delivered, non-canceled) orders with updated laboratory stage settings.
+     * Preserves all completed stages and daily logs.
+     */
+    public function syncActiveOrdersWithSettings(): array
+    {
+        $updatedOrders = 0;
+        $addedStages = 0;
+
+        $activeOrders = BookingLaboratoryOrder::with('stages')
+            ->whereNotIn('status', [
+                BookingLaboratoryOrder::STATUS_RECEIVED,
+                BookingLaboratoryOrder::STATUS_DELIVERED,
+                BookingLaboratoryOrder::STATUS_CANCELED,
+            ])
+            ->get();
+
+        foreach ($activeOrders as $order) {
+            $stagesConfig = BookingSetting::getLaboratoryCategoryStages($order->lab_type, $order->category_type);
+            if (empty($stagesConfig)) {
+                continue;
+            }
+
+            DB::transaction(function () use ($order, $stagesConfig, &$updatedOrders, &$addedStages) {
+                $existingStages = $order->stages->sortBy('sort_order')->values();
+                $matchedIds = [];
+                $cursor = $order->sent_at ? $order->sent_at->copy() : now();
+                $finalDueAt = null;
+                $precedingPendingShifted = false;
+                $orderChanged = false;
+                $sortOrder = 1;
+
+                foreach ($stagesConfig as $idx => $cfg) {
+                    $key = $cfg['key'] ?? $cfg['stage_key'] ?? "stage_{$sortOrder}";
+                    $title = $cfg['title'] ?? $cfg['stage_title'] ?? "مرحله {$sortOrder}";
+                    $offsetVal = (int) ($cfg['offset'] ?? $cfg['offset_value'] ?? 1);
+                    $offsetUnit = $cfg['unit'] ?? $cfg['offset_unit'] ?? 'days';
+                    $isReceive = !empty($cfg['is_receive']) || !empty($cfg['is_receive_stage']);
+
+                    // Match by stage_key first, then fallback to unmatched stage at same sort_order
+                    $existing = $existingStages->first(function ($st) use ($key, $matchedIds) {
+                        return !in_array($st->id, $matchedIds, true) && $st->stage_key === $key;
+                    });
+                    if (!$existing) {
+                        $existing = $existingStages->first(function ($st) use ($sortOrder, $matchedIds) {
+                            return !in_array($st->id, $matchedIds, true) && (int) $st->sort_order === $sortOrder;
+                        });
+                    }
+
+                    if ($existing) {
+                        $matchedIds[] = $existing->id;
+
+                        if ($existing->is_completed) {
+                            // Never alter completed stages; anchor cursor to completion/due time
+                            if ((int) $existing->sort_order !== $sortOrder) {
+                                $existing->update(['sort_order' => $sortOrder]);
+                            }
+                            $cursor = $existing->completed_at
+                                ? $existing->completed_at->copy()
+                                : ($existing->due_at ? $existing->due_at->copy() : $cursor);
+                            $finalDueAt = $existing->due_at;
+                            $sortOrder++;
+                            continue;
+                        }
+
+                        // Pending stage: check if its own config changed
+                        $ownConfigChanged = (
+                            $existing->stage_title !== $title ||
+                            (int) $existing->offset_value !== $offsetVal ||
+                            $existing->offset_unit !== $offsetUnit ||
+                            (bool) $existing->is_receive_stage !== $isReceive
+                        );
+
+                        if ($ownConfigChanged || $precedingPendingShifted) {
+                            $cursor = $offsetUnit === 'hours'
+                                ? $cursor->copy()->addHours($offsetVal)
+                                : $cursor->copy()->addDays($offsetVal);
+
+                            $existing->update([
+                                'stage_key'        => $key,
+                                'stage_title'      => $title,
+                                'offset_value'     => $offsetVal,
+                                'offset_unit'      => $offsetUnit,
+                                'sort_order'       => $sortOrder,
+                                'due_at'           => $cursor,
+                                'is_receive_stage' => $isReceive,
+                                'status'           => $cursor->isPast()
+                                    ? BookingLaboratoryStage::STATUS_OVERDUE
+                                    : BookingLaboratoryStage::STATUS_PENDING,
+                            ]);
+
+                            $precedingPendingShifted = true;
+                            $orderChanged = true;
+                            $finalDueAt = $cursor;
+                        } else {
+                            // Config for this pending stage didn't change and no earlier pending stage shifted
+                            if ((int) $existing->sort_order !== $sortOrder) {
+                                $existing->update(['sort_order' => $sortOrder]);
+                                $orderChanged = true;
+                            }
+                            $cursor = $existing->due_at ? $existing->due_at->copy() : $cursor;
+                            $finalDueAt = $existing->due_at;
+                        }
+                    } else {
+                        // Newly added stage in settings
+                        $cursor = $offsetUnit === 'hours'
+                            ? $cursor->copy()->addHours($offsetVal)
+                            : $cursor->copy()->addDays($offsetVal);
+
+                        BookingLaboratoryStage::create([
+                            'order_id'         => $order->id,
+                            'stage_key'        => $key,
+                            'stage_title'      => $title,
+                            'offset_value'     => $offsetVal,
+                            'offset_unit'      => $offsetUnit,
+                            'sort_order'       => $sortOrder,
+                            'due_at'           => $cursor,
+                            'is_completed'     => false,
+                            'is_receive_stage' => $isReceive,
+                            'status'           => $cursor->isPast()
+                                ? BookingLaboratoryStage::STATUS_OVERDUE
+                                : BookingLaboratoryStage::STATUS_PENDING,
+                        ]);
+
+                        $precedingPendingShifted = true;
+                        $orderChanged = true;
+                        $addedStages++;
+                        $finalDueAt = $cursor;
+                    }
+
+                    $sortOrder++;
+                }
+
+                // Safely remove unmatched pending stages without losing any daily logs
+                foreach ($existingStages as $orphan) {
+                    if (!in_array($orphan->id, $matchedIds, true) && !$orphan->is_completed) {
+                        BookingLaboratoryDailyLog::where('stage_id', $orphan->id)->update(['stage_id' => null]);
+                        $orphan->delete();
+                        $orderChanged = true;
+                    }
+                }
+
+                if ($orderChanged) {
+                    if ($finalDueAt) {
+                        $order->update(['expected_delivery_at' => $finalDueAt]);
+                    }
+
+                    BookingLaboratoryDailyLog::create([
+                        'order_id'         => $order->id,
+                        'stage_id'         => null,
+                        'log_date'         => now()->toDateString(),
+                        'needs_followup'   => false,
+                        'followup_result'  => 'همگام‌سازی خودکار مراحل سفارش با تنظیمات جدید لابراتوار',
+                        'operator_user_id' => auth()->id(),
+                    ]);
+
+                    $updatedOrders++;
+                }
+            });
+        }
+
+        return [
+            'updated_orders' => $updatedOrders,
+            'added_stages'   => $addedStages,
+        ];
+    }
+
+    /**
      * Mark a stage as completed
      */
     public function completeStage(BookingLaboratoryStage $stage, ?string $note = null, ?int $userId = null): void
