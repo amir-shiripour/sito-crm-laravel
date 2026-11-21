@@ -66,8 +66,8 @@
                     @foreach($property->images as $image)
                         <div class="relative aspect-square rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 group" id="image-{{ $image->id }}">
                             <img src="{{ asset('storage/' . $image->path) }}" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" onerror="this.src='https://via.placeholder.com/150'">
-                            <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                            <button type="button" @click="deleteImage({{ $image->id }})" class="absolute top-1 right-1 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-all hover:bg-red-600 hover:scale-110" title="حذف تصویر">
+                            <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"></div>
+                            <button type="button" @click="deleteImage({{ $image->id }})" class="absolute top-1 right-1 bg-red-500 text-white p-1 rounded-full shadow-md z-10 transition-all hover:bg-red-600 hover:scale-110" title="حذف تصویر">
                                 <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                             </button>
                         </div>
@@ -82,7 +82,7 @@
                 <template x-for="(img, index) in galleryPreviews" :key="index">
                     <div class="relative aspect-square rounded-lg overflow-hidden border border-indigo-200 dark:border-indigo-800 group">
                         <img :src="img" class="w-full h-full object-cover">
-                        <button type="button" @click="removeGalleryImage(index)" class="absolute top-1 right-1 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button type="button" @click="removeGalleryImage(index)" class="absolute top-1 right-1 bg-red-500 text-white p-1 rounded-full shadow-md z-10 transition-all hover:bg-red-600 hover:scale-110" title="حذف تصویر">
                             <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                         </button>
                     </div>
