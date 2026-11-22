@@ -37,14 +37,28 @@ class CalendarController extends Controller
     }
 
     /**
-     * دریافت گزینه‌های مخاطبان، الگوها و توکن‌های پیامک برای مودال رویداد تقویم
+     * دریافت گزینه‌های مخاطبان، الگوها و توکن‌های پیامک یا جستجوی زنده کاربران/مشتریان
      */
-    public function smsOptions(): JsonResponse
+    public function smsOptions(Request $request): JsonResponse
     {
         $user = auth()->user();
+
+        if ($request->filled('search_type')) {
+            $type = (string)$request->query('search_type');
+            $q    = (string)$request->query('q', '');
+
+            return response()->json([
+                'success' => true,
+                'items'   => $this->eventSmsService->searchRecipients($user, $type, $q),
+            ]);
+        }
+
+        $selectedUserIds   = array_filter(array_map('intval', explode(',', (string)$request->query('selected_user_ids', ''))));
+        $selectedClientIds = array_filter(array_map('intval', explode(',', (string)$request->query('selected_client_ids', ''))));
+
         return response()->json([
             'success' => true,
-            'data'    => $this->eventSmsService->getFormOptions($user),
+            'data'    => $this->eventSmsService->getFormOptions($user, $selectedUserIds, $selectedClientIds),
         ]);
     }
 
