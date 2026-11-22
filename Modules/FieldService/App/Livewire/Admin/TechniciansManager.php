@@ -717,7 +717,14 @@ class TechniciansManager extends Component
 
         $filterGroups = collect();
         if ($this->sectionFilter !== 'all') {
-            $filterGroups = ServiceGroup::where('section_id', (int) $this->sectionFilter)->where('is_active', true)->orderBy('sort_order')->get();
+            $secId = (int) $this->sectionFilter;
+            $filterGroups = ServiceGroup::where('is_active', true)
+                ->where(function ($q) use ($secId) {
+                    $q->where('section_id', $secId)
+                      ->orWhereHas('services', fn ($sq) => $sq->where('section_id', $secId));
+                })
+                ->orderBy('sort_order')
+                ->get();
         } else {
             $filterGroups = ServiceGroup::where('is_active', true)->orderBy('sort_order')->get();
         }

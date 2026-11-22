@@ -254,11 +254,11 @@
             <form wire:submit.prevent="saveGroup" class="p-6 space-y-4">
                 <div>
                     <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                        بخش / تایپ والد <span class="text-rose-500">*</span>
+                        بخش مرتبط <span class="text-[11px] font-normal text-slate-400">(اختیاری — دسته‌ها می‌توانند مستقل باشند)</span>
                     </label>
                     <select wire:model.live="sectionId"
                             class="w-full h-11 px-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-xs font-sans text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer">
-                        <option value="">انتخاب بخش...</option>
+                        <option value="">مستقل (بدون بخش پیش‌فرض)</option>
                         @foreach($sections as $sec)
                             <option value="{{ $sec->id }}">{{ $sec->icon }} {{ $sec->name }}</option>
                         @endforeach

@@ -250,6 +250,18 @@
                 isLocating: false,
                 currentCityName: '',
                 currentAreaName: '',
+                toast: { show: false, type: 'info', text: '', timer: null },
+
+                showToast(type, text) {
+                    if (!text) return;
+                    if (this.toast.timer) clearTimeout(this.toast.timer);
+                    this.toast.type = type || 'info';
+                    this.toast.text = text;
+                    this.toast.show = true;
+                    this.toast.timer = setTimeout(() => {
+                        this.toast.show = false;
+                    }, 5000);
+                },
 
                 // Offline State & Procedural Dynamic Demand Engine
                 isOffline: (!technician || !technician.is_online),
@@ -511,6 +523,13 @@
 
                         if (navigator.vibrate) {
                             try { navigator.vibrate([100, 50, 100]); } catch(err) {}
+                        }
+                    });
+
+                    window.addEventListener('notify', (e) => {
+                        const d = (Array.isArray(e.detail) ? e.detail[0] : (e.detail?.[0] || e.detail)) || {};
+                        if (d.text || d.message) {
+                            this.showToast(d.type || 'info', d.text || d.message);
                         }
                     });
 
@@ -1178,22 +1197,22 @@
                         const popupHtml = `
                             <div style="padding: 12px 14px; font-family: IRANYekanX, sans-serif; direction: rtl; text-align: right; min-width: 210px; max-width: 260px;">
                                 <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px;">
-                                    <span style="font-size: 10px; font-weight: bold; background: ${isEmergency ? 'rgba(217,119,6,0.15)' : 'rgba(79,70,229,0.15)'}; color: ${isEmergency ? '#d97706' : '#4f46e5'}; padding: 2px 8px; border-radius: 6px;">
+                                    <span class="text-[10px] font-bold px-2 py-0.5 rounded-md ${isEmergency ? 'bg-amber-500/15 text-amber-700 dark:text-amber-300' : 'bg-indigo-500/15 text-indigo-700 dark:text-indigo-300'}">
                                         ${isEmergency ? 'تقاضای فوری' : d.category}
                                     </span>
-                                    <span style="font-size: 10px; color: #94a3b8;">${d.time_ago}</span>
+                                    <span class="text-[10px] text-slate-500 dark:text-slate-400">${d.time_ago}</span>
                                 </div>
-                                <div style="font-weight: 800; font-size: 12px; color: #0f172a; margin-bottom: 6px; line-height: 1.4;" class="dark:text-white">
+                                <div class="font-extrabold text-xs text-slate-900 dark:text-white mb-1.5 leading-snug">
                                     ${d.title}
                                 </div>
-                                <div style="font-size: 11px; color: #64748b; margin-bottom: 10px; display: flex; align-items: center; gap: 4px;">
+                                <div class="text-[11px] text-slate-600 dark:text-slate-300 mb-2.5 flex items-center gap-1">
                                     <span>📍</span>
                                     <span>${d.location_approx} (${d.distance_km} کیلومتر)</span>
                                 </div>
                                 <button type="button" onclick="window.triggerPromptGoOnline()"
-                                        style="width: 100%; padding: 8px 12px; background: #4f46e5; color: white; border: none; border-radius: 10px; font-size: 11px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; font-family: inherit;">
+                                        class="w-full py-2 px-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-[11px] font-bold cursor-pointer flex items-center justify-center gap-1.5 transition">
                                     <span>روشن کردن وضعیت و دریافت</span>
-                                    <span style="font-size: 12px;">←</span>
+                                    <span class="text-xs">←</span>
                                 </button>
                             </div>
                         `;
@@ -1357,8 +1376,22 @@
                          x-transition:enter="transition ease-out duration-150"
                          x-transition:enter-start="opacity-0 scale-95"
                          x-transition:enter-end="opacity-100 scale-100"
-                         class="absolute left-0 top-full mt-2 w-52 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl p-1.5 space-y-1 z-50 font-sans">
+                         class="absolute left-0 top-full mt-2 w-56 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl p-1.5 space-y-1 z-50 font-sans">
                         
+                        @if($technician && ($isPendingApproval ?? false))
+                        <a href="{{ url('/user/profile') }}"
+                           class="flex items-center gap-2.5 p-2 rounded-xl bg-amber-50 dark:bg-amber-500/15 hover:bg-amber-100 dark:hover:bg-amber-500/25 text-xs text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-500/30 transition font-bold">
+                            <svg class="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
+                            <span>{{ ($verificationSubmitted ?? false) ? 'پیگیری تایید احراز هویت' : 'تکمیل احراز هویت و مدارک' }}</span>
+                        </a>
+                        @elseif($technician && ($hasPendingContract ?? false))
+                        <button type="button" @click="$dispatch('open-pending-contract-modal'); menuOpen = false;"
+                                class="w-full flex items-center gap-2.5 p-2 rounded-xl bg-indigo-50 dark:bg-indigo-500/15 hover:bg-indigo-100 dark:hover:bg-indigo-500/25 text-xs text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-500/30 transition text-right font-bold">
+                            <svg class="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                            <span>مطالعه و امضای قرارداد</span>
+                        </button>
+                        @endif
+
                         <a href="{{ route('user.fieldservice.dashboard') }}"
                            class="flex items-center gap-2.5 p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-xs text-slate-700 dark:text-slate-200 transition font-bold">
                             <svg class="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path><circle cx="12" cy="12" r="3"></circle></svg>
@@ -1405,7 +1438,7 @@
          x-transition:leave-start="opacity-100 translate-y-0"
          x-transition:leave-end="opacity-0 -translate-y-3"
          class="fixed top-18 sm:top-20 inset-x-3 sm:inset-x-0 z-20 pointer-events-none flex justify-center">
-        <div class="pointer-events-auto max-w-md w-full bg-slate-900/90 dark:bg-slate-900/95 backdrop-blur-md text-white rounded-2xl p-2 sm:p-2.5 shadow-xl border border-slate-700/80 dark:border-slate-800 flex items-center justify-between gap-2.5 font-sans">
+        <div class="pointer-events-auto max-w-md w-full bg-white/95 dark:bg-slate-900/95 backdrop-blur-md text-slate-800 dark:text-white rounded-2xl p-2 sm:p-2.5 shadow-md dark:shadow-xl border border-slate-200/90 dark:border-slate-800 flex items-center justify-between gap-2.5 font-sans">
             <div class="flex items-center gap-2 min-w-0 pr-1">
                 <span class="relative flex h-3 w-3 shrink-0">
                     <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
@@ -1414,16 +1447,53 @@
                 <div class="min-w-0 text-right">
                     <div class="text-xs font-bold truncate flex items-center gap-1.5">
                         <span>تقاضای فعال در منطقه شما:</span>
-                        <span class="text-amber-400 font-extrabold" x-text="offlineDemands.length + ' سفارش'"></span>
+                        <span class="text-amber-600 dark:text-amber-400 font-extrabold" x-text="offlineDemands.length + ' سفارش'"></span>
                     </div>
-                    <div class="text-[10px] text-slate-300 truncate">برای دریافت و تخصیص مستقیم، آنلاین شوید</div>
+                    <div class="text-[10px] text-slate-600 dark:text-slate-300 truncate">برای دریافت و تخصیص مستقیم، آنلاین شوید</div>
                 </div>
             </div>
+            @if($technician && ($isPendingApproval ?? false))
+            <a href="{{ url('/user/profile') }}"
+               class="shrink-0 px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 active:scale-95 text-slate-950 font-bold text-xs transition shadow-sm flex items-center gap-1">
+                <span>{{ ($verificationSubmitted ?? false) ? 'پیگیری احراز هویت' : 'تکمیل احراز هویت' }}</span>
+                <svg class="w-3.5 h-3.5 rtl:rotate-180" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+            </a>
+            @elseif($technician && ($hasPendingContract ?? false))
+            <button type="button" @click="$dispatch('open-pending-contract-modal')"
+                    class="shrink-0 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white font-bold text-xs transition shadow-sm flex items-center gap-1">
+                <span>امضای قرارداد</span>
+                <svg class="w-3.5 h-3.5 rtl:rotate-180" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+            </button>
+            @else
             <button type="button" @click="promptGoOnline()"
                     class="shrink-0 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white font-bold text-xs transition shadow-sm flex items-center gap-1">
                 <span>شروع به کار</span>
                 <svg class="w-3.5 h-3.5 rtl:rotate-180" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
             </button>
+            @endif
+        </div>
+    </div>
+
+    {{-- ========================================================================= --}}
+    {{-- 2.2 LIVEWIRE / APP TOAST NOTIFICATION                                     --}}
+    {{-- ========================================================================= --}}
+    <div x-show="toast.show" x-cloak
+         x-transition:enter="transition ease-out duration-250"
+         x-transition:enter-start="opacity-0 -translate-y-4"
+         x-transition:enter-end="opacity-100 translate-y-0"
+         x-transition:leave="transition ease-in duration-200"
+         x-transition:leave-start="opacity-100 translate-y-0"
+         x-transition:leave-end="opacity-0 -translate-y-4"
+         class="fixed top-20 sm:top-24 inset-x-4 z-50 pointer-events-none flex justify-center font-sans">
+        <div class="pointer-events-auto max-w-md w-full rounded-2xl px-4 py-3 shadow-2xl border backdrop-blur-md flex items-center justify-between gap-3 text-xs font-bold"
+             :class="{
+                 'bg-amber-50/95 dark:bg-amber-950/95 border-amber-300 dark:border-amber-600/50 text-amber-900 dark:text-amber-200': toast.type === 'warning',
+                 'bg-emerald-50/95 dark:bg-emerald-950/95 border-emerald-300 dark:border-emerald-600/50 text-emerald-900 dark:text-emerald-200': toast.type === 'success',
+                 'bg-rose-50/95 dark:bg-rose-950/95 border-rose-300 dark:border-rose-600/50 text-rose-900 dark:text-rose-200': toast.type === 'error',
+                 'bg-white/95 dark:bg-slate-900/95 border-slate-200 dark:border-slate-700 text-slate-800 dark:text-white': toast.type === 'info'
+             }">
+            <span x-text="toast.text" class="leading-relaxed"></span>
+            <button type="button" @click="toast.show = false" class="shrink-0 opacity-70 hover:opacity-100 text-xs px-1">✕</button>
         </div>
     </div>
 
@@ -1522,29 +1592,81 @@
 
                     {{-- Offline Simple Status Notice (Clean, Minimal & Informative) --}}
                     <div x-show="isOffline && !hasActiveMission" x-cloak class="p-4 sm:p-5 rounded-3xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-center space-y-3 font-sans">
-                        <div class="w-12 h-12 mx-auto rounded-2xl bg-amber-100 dark:bg-amber-500/15 border border-amber-300 dark:border-amber-500/30 flex items-center justify-center text-amber-600 dark:text-amber-400">
-                            <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <circle cx="12" cy="12" r="10"></circle>
-                                <line x1="12" y1="8" x2="12" y2="12"></line>
-                                <line x1="12" y1="16" x2="12.01" y2="16"></line>
-                            </svg>
-                        </div>
-                        <div class="space-y-1">
-                            <h4 class="text-sm font-bold text-slate-800 dark:text-white">وضعیت شما: استراحت (آفلاین)</h4>
-                            <p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed max-w-sm mx-auto">
-                                برای دریافت و مشاهده سفارش‌های جدید، وضعیت خود را آنلاین کنید.
-                            </p>
-                        </div>
-                        <div class="pt-1">
-                            <button type="button" @click="promptGoOnline()"
-                                    class="w-full py-2.5 rounded-2xl bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white font-bold text-xs transition shadow-sm flex items-center justify-center gap-2">
-                                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path>
-                                    <line x1="12" y1="2" x2="12" y2="12"></line>
+                        @if($technician && ($isPendingApproval ?? false))
+                            <div class="w-12 h-12 mx-auto rounded-2xl bg-amber-100 dark:bg-amber-500/15 border border-amber-300 dark:border-amber-500/30 flex items-center justify-center text-amber-600 dark:text-amber-400">
+                                <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                                    <path d="m9 12 2 2 4-4"></path>
                                 </svg>
-                                <span>روشن کردن وضعیت (آنلاین)</span>
-                            </button>
-                        </div>
+                            </div>
+                            <div class="space-y-1">
+                                <h4 class="text-sm font-bold text-slate-800 dark:text-white">
+                                    {{ ($verificationSubmitted ?? false) ? 'مدارک شما در حال بررسی ناظران است' : 'تکمیل احراز هویت و مدارک الزامی است' }}
+                                </h4>
+                                <p class="text-xs text-slate-600 dark:text-slate-300 leading-relaxed max-w-sm mx-auto">
+                                    تا زمان تکمیل و تایید احراز هویت، وضعیت شما آفلاین می‌ماند. برای مشاهده یا تکمیل مدارک به صفحه پروفایل بروید.
+                                </p>
+                            </div>
+                            <div class="pt-1">
+                                <a href="{{ url('/user/profile') }}"
+                                   class="w-full py-2.5 rounded-2xl bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white font-bold text-xs transition shadow-sm flex items-center justify-center gap-2">
+                                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path>
+                                        <circle cx="12" cy="7" r="4"></circle>
+                                    </svg>
+                                    <span>{{ ($verificationSubmitted ?? false) ? 'مشاهده وضعیت احراز هویت' : 'انتقال به صفحه احراز هویت و مدارک' }}</span>
+                                </a>
+                            </div>
+                        @elseif($technician && ($hasPendingContract ?? false))
+                            <div class="w-12 h-12 mx-auto rounded-2xl bg-indigo-100 dark:bg-indigo-500/15 border border-indigo-300 dark:border-indigo-500/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+                                <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                    <polyline points="14 2 14 8 20 8"></polyline>
+                                    <line x1="16" y1="13" x2="8" y2="13"></line>
+                                    <line x1="16" y1="17" x2="8" y2="17"></line>
+                                </svg>
+                            </div>
+                            <div class="space-y-1">
+                                <h4 class="text-sm font-bold text-slate-800 dark:text-white">قرارداد همکاری در انتظار امضا</h4>
+                                <p class="text-xs text-slate-600 dark:text-slate-300 leading-relaxed max-w-sm mx-auto">
+                                    برای امکان آنلاین شدن و شروع دریافت سفارش‌ها، ابتدا قرارداد همکاری خود را مطالعه و تایید کنید.
+                                </p>
+                            </div>
+                            <div class="pt-1 flex flex-col gap-2">
+                                <button type="button" @click="$dispatch('open-pending-contract-modal')"
+                                        class="w-full py-2.5 rounded-2xl bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white font-bold text-xs transition shadow-sm flex items-center justify-center gap-2">
+                                    <span>مطالعه و امضای قرارداد</span>
+                                </button>
+                                <a href="{{ url('/user/profile') }}"
+                                   class="w-full py-2 rounded-2xl bg-slate-200/80 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs transition flex items-center justify-center">
+                                    <span>مشاهده پروفایل و قراردادها</span>
+                                </a>
+                            </div>
+                        @else
+                            <div class="w-12 h-12 mx-auto rounded-2xl bg-amber-100 dark:bg-amber-500/15 border border-amber-300 dark:border-amber-500/30 flex items-center justify-center text-amber-600 dark:text-amber-400">
+                                <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <circle cx="12" cy="12" r="10"></circle>
+                                    <line x1="12" y1="8" x2="12" y2="12"></line>
+                                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                                </svg>
+                            </div>
+                            <div class="space-y-1">
+                                <h4 class="text-sm font-bold text-slate-800 dark:text-white">وضعیت شما: استراحت (آفلاین)</h4>
+                                <p class="text-xs text-slate-600 dark:text-slate-300 leading-relaxed max-w-sm mx-auto">
+                                    برای دریافت و مشاهده سفارش‌های جدید، وضعیت خود را آنلاین کنید.
+                                </p>
+                            </div>
+                            <div class="pt-1">
+                                <button type="button" @click="promptGoOnline()"
+                                        class="w-full py-2.5 rounded-2xl bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white font-bold text-xs transition shadow-sm flex items-center justify-center gap-2">
+                                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path>
+                                        <line x1="12" y1="2" x2="12" y2="12"></line>
+                                    </svg>
+                                    <span>روشن کردن وضعیت (آنلاین)</span>
+                                </button>
+                            </div>
+                        @endif
                     </div>
 
                     <div x-show="!isOffline || hasActiveMission">
@@ -1609,6 +1731,23 @@
             </div>
 
             <div class="space-y-2 pt-1">
+                @if($isPendingApproval ?? false)
+                <a href="{{ url('/user/profile') }}"
+                   class="w-full py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-2xl transition flex items-center justify-center gap-2">
+                    <span>{{ ($verificationSubmitted ?? false) ? 'مشاهده وضعیت احراز هویت' : 'تکمیل احراز هویت و مدارک' }}</span>
+                </a>
+                @elseif($hasPendingContract ?? false)
+                <button type="button" @click="statsModalOpen = false; $dispatch('open-pending-contract-modal');"
+                        class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-2xl transition flex items-center justify-center gap-2">
+                    <span>مطالعه و امضای قرارداد همکاری</span>
+                </button>
+                @else
+                <a href="{{ url('/user/profile') }}"
+                   class="w-full py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs rounded-2xl transition flex items-center justify-center gap-2">
+                    <span>پروفایل و مدارک من</span>
+                </a>
+                @endif
+
                 <button type="button" @click="statsModalOpen = false"
                         class="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-2xl transition">
                     بازگشت به نقشه

@@ -148,7 +148,7 @@
                     class="h-9 px-3 rounded-xl bg-white dark:bg-slate-900 border border-indigo-200 dark:border-indigo-500/40 text-xs font-sans text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer">
                 <option value="">بدون دسته (لغو انتساب)</option>
                 @foreach($allGroups as $grp)
-                    <option value="{{ $grp->id }}">{{ $grp->section?->name }} › {{ $grp->name }}</option>
+                    <option value="{{ $grp->id }}">{{ $grp->section?->name ? $grp->section->name . ' › ' : '' }}{{ $grp->name }}</option>
                 @endforeach
             </select>
             <button type="button" wire:click="assignSelectedToGroup"
@@ -385,9 +385,9 @@
                         <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
                             دسته مرتبط
                         </label>
-                        <select wire:model.live="groupId" @if(!$selectedSectionId) disabled @endif
-                                class="w-full h-11 px-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-xs font-sans text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer disabled:opacity-60">
-                            <option value="">{{ $selectedSectionId ? 'انتخاب دسته...' : 'ابتدا بخش را انتخاب کنید' }}</option>
+                        <select wire:model.live="groupId"
+                                class="w-full h-11 px-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-xs font-sans text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer">
+                            <option value="">بدون دسته (اختیاری)</option>
                             @foreach($modalGroups as $grp)
                                 <option value="{{ $grp->id }}">{{ $grp->icon }} {{ $grp->name }}</option>
                             @endforeach

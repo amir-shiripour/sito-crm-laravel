@@ -150,6 +150,10 @@ class TechnicianPortalController extends Controller
                 ->toArray();
         }
 
+        $isPendingApproval = $technician && $technician->status !== \Modules\FieldService\App\Enums\TechnicianStatus::ACTIVE;
+        $hasPendingContract = $technician && $technician->hasPendingContract();
+        $verificationSubmitted = $technician && !empty($technician->meta['verification_submitted']);
+
         return view('fieldservice::technician.index', compact(
             'mapConfig',
             'technician',
@@ -157,7 +161,10 @@ class TechnicianPortalController extends Controller
             'availableMissions',
             'todayStats',
             'activeCategories',
-            'techSkills'
+            'techSkills',
+            'isPendingApproval',
+            'hasPendingContract',
+            'verificationSubmitted'
         ));
     }
 
