@@ -30,6 +30,7 @@ class CalendarEvent extends Model
         'recurrence_days',
         'repeat_until',
         'repeat_count',
+        'sms_config',
         'status',
     ];
 
@@ -42,11 +43,17 @@ class CalendarEvent extends Model
         'recurrence_days'     => 'array',
         'repeat_until'        => 'date',
         'repeat_count'        => 'integer',
+        'sms_config'          => 'array',
     ];
 
     public function exceptions(): \Illuminate\Database\Eloquent\Relations\HasMany
     {
         return $this->hasMany(CalendarEventException::class, 'calendar_event_id');
+    }
+
+    public function smsLogs(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(CalendarEventSmsLog::class, 'calendar_event_id');
     }
 
     public function isRecurring(): bool

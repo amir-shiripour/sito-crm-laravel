@@ -80,6 +80,7 @@ Route::middleware(['web', 'auth'])->prefix('user')->name('user.')->group(functio
     // روت‌های ویجت و صفحه تقویم
     Route::get('/calendar', [\App\Http\Controllers\User\CalendarController::class, 'index'])->name('calendar');
     Route::get('/calendar/events', [\App\Http\Controllers\User\CalendarController::class, 'events'])->name('calendar.events');
+    Route::get('/calendar/sms-options', [\App\Http\Controllers\User\CalendarController::class, 'smsOptions'])->name('calendar.sms-options');
     Route::post('/calendar/events', [\App\Http\Controllers\User\CalendarController::class, 'storeEvent'])->name('calendar.events.store');
     Route::put('/calendar/events/{id}', [\App\Http\Controllers\User\CalendarController::class, 'updateEvent'])->name('calendar.events.update');
     Route::delete('/calendar/events/{id}', [\App\Http\Controllers\User\CalendarController::class, 'deleteEvent'])->name('calendar.events.delete');

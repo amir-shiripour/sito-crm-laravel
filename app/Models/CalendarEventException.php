@@ -23,6 +23,7 @@ class CalendarEventException extends Model
         'start_time',
         'end_time',
         'is_all_day',
+        'sms_config',
     ];
 
     protected $casts = [
@@ -30,6 +31,7 @@ class CalendarEventException extends Model
         'start_time'     => 'datetime',
         'end_time'       => 'datetime',
         'is_all_day'     => 'boolean',
+        'sms_config'     => 'array',
     ];
 
     public function parentEvent(): BelongsTo

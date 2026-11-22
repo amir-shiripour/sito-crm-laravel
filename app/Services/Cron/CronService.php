@@ -212,6 +212,16 @@ class CronService
                 'is_active' => false,
                 'is_system' => true,
             ],
+            [
+                'module' => 'Sms',
+                'command' => 'calendar:dispatch-sms',
+                'name' => 'ارسال پیامک یادآوری رویدادهای تقویم',
+                'description' => 'بررسی و ارسال پیامک‌های زمان‌بندی‌شده برای رویدادهای یک‌باره و تکرارپذیر تقویم',
+                'expression' => 'everyMinute',
+                'prevent_overlap' => true,
+                'is_active' => true,
+                'is_system' => true,
+            ],
         ];
 
         foreach ($defaults as $taskData) {
