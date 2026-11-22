@@ -9,7 +9,7 @@
     </button>
     @else
     <button type="button" wire:click="toggleOnline"
-            class="relative flex items-center gap-2 px-3 sm:px-3.5 py-1.5 rounded-full border transition-all duration-200 active:scale-95 shadow-xs {{ $isOnline ? 'bg-emerald-50 dark:bg-emerald-500/15 border-emerald-300 dark:border-emerald-500/35 text-emerald-700 dark:text-emerald-300' : 'bg-slate-100 dark:bg-slate-850/80 border-slate-200 dark:border-slate-750 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white' }}">
+            class="relative flex items-center gap-2 px-3 sm:px-3.5 py-1.5 rounded-full border transition-all duration-200 active:scale-95 shadow-xs {{ $isOnline ? 'bg-emerald-50 dark:bg-emerald-500/15 border-emerald-300 dark:border-emerald-500/35 text-emerald-700 dark:text-emerald-300' : 'bg-slate-100 dark:bg-slate-800/95 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white' }}">
         
         {{-- Status indicator dot --}}
         <div class="relative flex items-center justify-center">

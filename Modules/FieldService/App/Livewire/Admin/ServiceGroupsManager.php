@@ -59,7 +59,7 @@ class ServiceGroupsManager extends Component
         ]);
         $this->sectionId = $this->sectionFilter !== 'all'
             ? (int) $this->sectionFilter
-            : Section::orderBy('sort_order')->orderBy('id')->value('id');
+            : null;
         $this->icon = '📂';
         $this->sortOrder = (ServiceGroup::max('sort_order') ?? 0) + 1;
         $this->isActive = true;
@@ -151,15 +151,16 @@ class ServiceGroupsManager extends Component
             $uniqueRule .= ',' . $this->editingGroupId;
         }
 
+        $this->sectionId = $this->sectionId ?: null;
+
         $this->validate([
-            'sectionId'   => 'required|integer|exists:field_service_sections,id',
+            'sectionId'   => 'nullable|integer|exists:field_service_sections,id',
             'name'        => 'required|string|max:100',
             'slug'        => 'required|string|max:100|' . $uniqueRule,
             'icon'        => 'nullable|string|max:20',
             'sortOrder'   => 'required|integer|min:0',
             'description' => 'nullable|string|max:1000',
         ], [
-            'sectionId.required' => 'انتخاب بخش مرتبط الزامی است.',
             'sectionId.exists'   => 'بخش انتخاب‌شده معتبر نیست.',
             'name.required'      => 'وارد کردن عنوان دسته الزامی است.',
             'slug.required'      => 'وارد کردن نامک الزامی است.',
@@ -168,7 +169,7 @@ class ServiceGroupsManager extends Component
         ]);
 
         $data = [
-            'section_id'  => $this->sectionId,
+            'section_id'  => $this->sectionId ?: null,
             'name'        => trim($this->name),
             'slug'        => Str::slug($this->slug, '-', null),
             'icon'        => $this->icon ?: '📂',

@@ -15,8 +15,8 @@ class EnsureTechnicianVerificationCompleted
      */
     public function handle(Request $request, Closure $next): Response
     {
-        // Never restrict public or frontend portals (e.g. /fieldservice/*)
-        if (!$request->is('user/*')) {
+        // Restrict all /user and /user/* routes for unapproved/unsigned technicians; never restrict public frontend portals
+        if (!$request->is('user') && !$request->is('user/*')) {
             return $next($request);
         }
 

@@ -220,7 +220,7 @@
             {{-- Secondary Actions: External Navigation & Backup Tech --}}
             <div class="grid grid-cols-2 gap-2">
                 <button type="button" wire:click="openBackupModal({{ $activeMission->id }})" 
-                        class="py-2.5 px-3 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-750 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-500/30 text-xs font-bold transition flex items-center justify-center gap-2 active:scale-95">
+                        class="py-2.5 px-3 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-500/30 text-xs font-bold transition flex items-center justify-center gap-2 active:scale-95">
                     <svg class="w-4 h-4 text-amber-600 dark:text-amber-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
                     <span>درخواست نصاب کمکی</span>
                 </button>
@@ -231,7 +231,7 @@
                 @endphp
                 <div x-data="{ navOpen: false }" class="relative">
                     <button type="button" @click="navOpen = !navOpen"
-                            class="w-full py-2.5 px-3 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-700 text-xs font-bold transition flex items-center justify-center gap-2 active:scale-95">
+                            class="w-full py-2.5 px-3 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-700 text-xs font-bold transition flex items-center justify-center gap-2 active:scale-95">
                         <svg class="w-4 h-4 text-indigo-600 dark:text-indigo-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/><line x1="9" x2="9" y1="3" y2="18"/><line x1="15" x2="15" y1="6" y2="21"/></svg>
                         <span>مسیریابی هوشمند</span>
                         <svg class="w-3 h-3 text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m6 9 6 6 6-6"/></svg>
@@ -271,7 +271,7 @@
         {{-- Embedded Invoice Builder Drawer --}}
         <div class="pt-3 border-t border-slate-200 dark:border-slate-800" x-data="{ showInvoice: false }">
             <button type="button" @click="showInvoice = !showInvoice"
-                    class="w-full py-2.5 px-3 rounded-xl bg-slate-50 dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-850 border border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center justify-between transition">
+                    class="w-full py-2.5 px-3 rounded-xl bg-slate-50 dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center justify-between transition">
                 <span class="flex items-center gap-2">
                     <svg class="w-4 h-4 text-indigo-600 dark:text-indigo-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M16 8h-6"/><path d="M16 12h-6"/><path d="M14 16h-4"/></svg>
                     <span>صدور فاکتور و مشاهده اقلام اجرت</span>
@@ -296,7 +296,7 @@
             <div id="mission-card-{{ $m->id }}"
                  wire:key="mission-card-item-{{ $m->id }}"
                  wire:click="focusMission({{ $m->id }})"
-                 class="p-4 rounded-3xl cursor-pointer transition-all duration-200 shadow-xs space-y-3 border {{ $previewOrderId === $m->id ? 'bg-indigo-50/70 dark:bg-slate-850 border-indigo-500 ring-2 ring-indigo-500/20' : 'bg-white dark:bg-slate-900/90 border-slate-200 dark:border-slate-800 hover:border-indigo-400 dark:hover:border-indigo-500/60' }}">
+                 class="p-4 rounded-3xl cursor-pointer transition-all duration-200 shadow-xs space-y-3 border {{ $previewOrderId === $m->id ? 'bg-indigo-50/70 dark:bg-slate-800 border-indigo-500 ring-2 ring-indigo-500/20' : 'bg-white dark:bg-slate-900/90 border-slate-200 dark:border-slate-800 hover:border-indigo-400 dark:hover:border-indigo-500/60' }}">
                 
                 <div class="flex items-start justify-between gap-2">
                     <div class="min-w-0 flex-1">
@@ -407,12 +407,12 @@
             </div>
 
             <div class="space-y-2.5 text-[11px]">
-                <div class="p-3 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 space-y-1.5">
+                <div class="p-3 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-1.5">
                     <div class="text-slate-500 dark:text-slate-400 font-bold">شرح عیب یا تقاضای کارفرما:</div>
                     <div class="text-slate-800 dark:text-white leading-relaxed">{{ $previewOrder->problem_description ?: 'توضیحات ثبت نشده است.' }}</div>
                 </div>
 
-                <div class="p-3 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 flex items-start gap-2">
+                <div class="p-3 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 flex items-start gap-2">
                     <svg class="w-4 h-4 text-rose-500 dark:text-rose-400 shrink-0 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"></path><circle cx="12" cy="10" r="3"></circle></svg>
                     <div class="min-w-0 flex-1">
                         <div class="text-slate-500 dark:text-slate-400 font-bold">نشانی تقریبی خدمت:</div>
@@ -422,13 +422,13 @@
 
                 <div class="grid grid-cols-2 gap-2">
                     @if($previewOrder->preferred_time)
-                    <div class="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 flex items-center justify-between">
+                    <div class="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 flex items-center justify-between">
                         <span class="text-slate-500 dark:text-slate-400">زمان ترجیحی:</span>
                         <span class="font-bold text-indigo-600 dark:text-indigo-300">{{ $previewOrder->preferred_time }}</span>
                     </div>
                     @endif
 
-                    <div class="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 flex items-center justify-between">
+                    <div class="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 flex items-center justify-between">
                         <span class="text-slate-500 dark:text-slate-400">ایاب و ذهاب:</span>
                         <span class="font-bold text-emerald-600 dark:text-emerald-400">۶۰,۰۰۰ تومان</span>
                     </div>
@@ -436,7 +436,7 @@
             </div>
 
             <div class="flex items-center gap-2 pt-2 border-t border-slate-200 dark:border-slate-800">
-                <button type="button" wire:click="dismissOrder({{ $previewOrder->id }})" class="w-1/3 py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-750 text-slate-600 dark:text-slate-400 hover:text-rose-600 dark:hover:text-rose-300 font-bold text-xs rounded-xl transition">
+                <button type="button" wire:click="dismissOrder({{ $previewOrder->id }})" class="w-1/3 py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-400 hover:text-rose-600 dark:hover:text-rose-300 font-bold text-xs rounded-xl transition">
                     رد سفارش
                 </button>
                 <button type="button" wire:click="acceptMission({{ $previewOrder->id }})" class="w-2/3 py-2.5 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold text-xs rounded-xl shadow-md transition flex items-center justify-center gap-2">
@@ -486,7 +486,7 @@
             </div>
 
             <div class="flex items-center gap-2 pt-1">
-                <button type="button" @click="$wire.showBackupModal = false" class="w-1/3 py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-300 font-bold text-xs rounded-xl transition">
+                <button type="button" @click="$wire.showBackupModal = false" class="w-1/3 py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs rounded-xl transition">
                     انصراف
                 </button>
                 <button type="button" wire:click="submitBackupRequest" class="w-2/3 py-2.5 bg-amber-600 hover:bg-amber-500 active:scale-95 text-white font-bold text-xs rounded-xl shadow-md transition">
@@ -566,7 +566,7 @@
 
             <div class="flex items-center gap-2 pt-1 border-t border-slate-200 dark:border-slate-800">
                 <button type="button" wire:click="closeCancelModal"
-                        class="w-1/3 py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-300 font-bold text-xs rounded-xl transition">
+                        class="w-1/3 py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs rounded-xl transition">
                     بازگشت
                 </button>
                 <button type="button" wire:click="confirmTechnicianCancel"

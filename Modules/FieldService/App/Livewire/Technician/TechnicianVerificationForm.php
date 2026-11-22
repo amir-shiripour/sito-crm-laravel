@@ -23,7 +23,8 @@ class TechnicianVerificationForm extends Component
     public array $customFiles = [];
     public array $existingFiles = [];
     public array $selectedCategories = [];
-    public string $activeSectionTab = '';
+    public array $selectedStandaloneGroups = [];
+    public string $activeSectionTab = 'all';
     public string $specialtySearch = '';
     public ?string $errorMessage = null;
     public ?string $successMessage = null;
@@ -118,9 +119,18 @@ class TechnicianVerificationForm extends Component
         ));
     }
 
+    public function removeStandaloneGroup(int $groupId): void
+    {
+        $this->selectedStandaloneGroups = array_values(array_filter(
+            array_map('intval', $this->selectedStandaloneGroups),
+            fn (int $id) => $id !== $groupId
+        ));
+    }
+
     public function clearCategories(): void
     {
         $this->selectedCategories = [];
+        $this->selectedStandaloneGroups = [];
     }
 
     public function toggleGroupCategories(int $groupId): void
@@ -176,20 +186,22 @@ class TechnicianVerificationForm extends Component
         }
 
         $profileFields = TechnicianCustomFieldsHelper::getFields('profile');
+        $hasAnySelection = !empty($this->selectedCategories) || !empty($this->selectedStandaloneGroups);
 
         if ($this->isInitial) {
             $dynamic = TechnicianCustomFieldsHelper::buildValidation($profileFields, $this->existingFiles, false);
 
-            $rules = array_merge([
-                'selectedCategories' => 'required|array|min:1',
-            ], $dynamic['rules']);
+            $rules = $dynamic['rules'];
+            $messages = $dynamic['messages'];
+            if (!$hasAnySelection) {
+                $rules['selectedCategories'] = 'required|array|min:1';
+                $messages['selectedCategories.required'] = 'انتخاب حداقل یک تخصص یا حوزه کاری الزامی است.';
+                $messages['selectedCategories.min'] = 'انتخاب حداقل یک تخصص یا حوزه کاری الزامی است.';
+            }
 
-            $messages = array_merge([
-                'selectedCategories.required' => 'انتخاب حداقل یک تخصص یا حوزه کاری الزامی است.',
-                'selectedCategories.min'      => 'انتخاب حداقل یک تخصص یا حوزه کاری الزامی است.',
-            ], $dynamic['messages']);
-
-            $this->validate($rules, $messages);
+            if (!empty($rules)) {
+                $this->validate($rules, $messages);
+            }
 
             $nameParts = explode(' ', trim((string) $user->name), 2);
             $technician->first_name = $nameParts[0] ?: $technician->first_name;
@@ -210,19 +222,41 @@ class TechnicianVerificationForm extends Component
             }
             $this->customFiles = [];
         } else {
-            $this->validate([
-                'selectedCategories' => 'required|array|min:1',
-            ], [
-                'selectedCategories.required' => 'انتخاب حداقل یک تخصص یا حوزه کاری الزامی است.',
-                'selectedCategories.min'      => 'انتخاب حداقل یک تخصص یا حوزه کاری الزامی است.',
-            ]);
+            if (!$hasAnySelection) {
+                $this->validate([
+                    'selectedCategories' => 'required|array|min:1',
+                ], [
+                    'selectedCategories.required' => 'انتخاب حداقل یک تخصص یا حوزه کاری الزامی است.',
+                    'selectedCategories.min'      => 'انتخاب حداقل یک تخصص یا حوزه کاری الزامی است.',
+                ]);
+            }
 
             $existingValues = TechnicianCustomFieldsHelper::loadExistingValues($user, $technician, $profileFields);
             $saved = TechnicianCustomFieldsHelper::syncValues($user, $technician, $profileFields, $existingValues, []);
         }
 
-        // Sync categories / skills
+        // Convert any selected standalone groups (categories without sub-services) into active Category records
         $selectedIds = array_values(array_unique(array_filter(array_map('intval', $this->selectedCategories))));
+        foreach (array_unique(array_filter(array_map('intval', $this->selectedStandaloneGroups))) as $grpId) {
+            $grp = ServiceGroup::find($grpId);
+            if ($grp && $grp->is_active) {
+                $autoCat = Category::firstOrCreate(
+                    ['group_id' => $grp->id, 'name' => $grp->name],
+                    [
+                        'section_id' => $grp->section_id,
+                        'slug'       => \Illuminate\Support\Str::slug($grp->name, '-', null) ?: ('group-' . $grp->id . '-' . uniqid()),
+                        'is_active'  => true,
+                        'sort_order' => $grp->sort_order ?? 0,
+                    ]
+                );
+                $selectedIds[] = (int) $autoCat->id;
+            }
+        }
+        $selectedIds = array_values(array_unique($selectedIds));
+        $this->selectedCategories = $selectedIds;
+        $this->selectedStandaloneGroups = [];
+
+        // Sync categories / skills
         $technician->skills()->whereNotIn('category_id', $selectedIds)->delete();
         foreach ($selectedIds as $catId) {
             if (Category::where('id', $catId)->exists()) {
@@ -323,6 +357,18 @@ class TechnicianVerificationForm extends Component
             ])
             ->get();
 
+        $groups = ServiceGroup::where('is_active', true)
+            ->orderBy('sort_order')
+            ->orderBy('id')
+            ->with([
+                'section',
+                'services' => fn ($sq) => $sq->where('is_active', true)
+                    ->with('section')
+                    ->orderBy('sort_order')
+                    ->orderBy('id'),
+            ])
+            ->get();
+
         $ungroupedCategories = Category::where('is_active', true)
             ->whereNull('section_id')
             ->whereNull('group_id')
@@ -337,11 +383,7 @@ class TechnicianVerificationForm extends Component
             ->get();
 
         if ($this->activeSectionTab === '') {
-            if ($sections->isNotEmpty()) {
-                $this->activeSectionTab = (string) $sections->first()->id;
-            } elseif ($ungroupedCategories->isNotEmpty()) {
-                $this->activeSectionTab = 'ungrouped';
-            }
+            $this->activeSectionTab = 'all';
         }
 
         $needsVerification = $user ? TechnicianCustomFieldsHelper::needsVerification($user, $technician) : false;
@@ -354,6 +396,7 @@ class TechnicianVerificationForm extends Component
             'technician'          => $technician,
             'profileFields'       => $profileFields,
             'sections'            => $sections,
+            'groups'              => $groups,
             'ungroupedCategories' => $ungroupedCategories,
             'categories'          => $categories,
             'needsVerification'   => $needsVerification,

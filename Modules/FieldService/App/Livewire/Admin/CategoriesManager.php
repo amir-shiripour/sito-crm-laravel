@@ -56,18 +56,12 @@ class CategoriesManager extends Component
 
     public function updatingSectionFilter()
     {
-        $this->groupFilter = 'all';
         $this->resetPage();
     }
 
     public function updatingGroupFilter()
     {
         $this->resetPage();
-    }
-
-    public function updatedSelectedSectionId()
-    {
-        $this->groupId = null;
     }
 
     public function assignSelectedToGroup(): void
@@ -78,16 +72,14 @@ class CategoriesManager extends Component
         }
 
         if ($this->bulkGroupId === '' || $this->bulkGroupId === null) {
-            Category::whereIn('id', $ids)->update(['section_id' => null, 'group_id' => null]);
-            session()->flash('message', count($ids) . ' خدمت به حالت «بدون بخش و دسته» منتقل شدند.');
+            Category::whereIn('id', $ids)->update(['group_id' => null]);
+            session()->flash('message', count($ids) . ' خدمت به حالت «بدون دسته» منتقل شدند.');
         } else {
-            $group = ServiceGroup::with('section')->findOrFail((int) $this->bulkGroupId);
+            $group = ServiceGroup::findOrFail((int) $this->bulkGroupId);
             Category::whereIn('id', $ids)->update([
-                'section_id' => $group->section_id,
-                'group_id'   => $group->id,
+                'group_id' => $group->id,
             ]);
-            $sectionName = $group->section?->name ? $group->section->name . ' › ' : '';
-            session()->flash('message', count($ids) . " خدمت به دسته «{$sectionName}{$group->name}» منتقل شدند.");
+            session()->flash('message', count($ids) . " خدمت به دسته «{$group->name}» منتقل شدند.");
         }
 
         $this->selectedIds = [];
@@ -234,11 +226,8 @@ class CategoriesManager extends Component
             'sortOrder.required'       => 'اولویت مرتب‌سازی الزامی است.',
         ]);
 
-        // Keep section_id consistent with group_id if a group is selected
-        $resolvedSectionId = $this->selectedSectionId;
-        if ($this->groupId) {
-            $resolvedSectionId = ServiceGroup::whereKey($this->groupId)->value('section_id') ?? $this->selectedSectionId;
-        }
+        // Keep section_id and group_id completely independent on each service
+        $resolvedSectionId = $this->selectedSectionId ?: null;
 
         // Convert cleaned Toman (including Persian/Arabic digits) to Rials for database storage
         $normalizedToman = strtr((string) $this->baseLaborFeeToman, [
@@ -365,13 +354,8 @@ class CategoriesManager extends Component
         $sections = Section::orderBy('sort_order', 'asc')->orderBy('id', 'asc')->get();
         $allGroups = ServiceGroup::with('section')->orderBy('sort_order', 'asc')->orderBy('id', 'asc')->get();
 
-        $filterGroups = $this->sectionFilter !== 'all'
-            ? $allGroups->where('section_id', (int) $this->sectionFilter)
-            : $allGroups;
-
-        $modalGroups = $this->selectedSectionId
-            ? $allGroups->where('section_id', (int) $this->selectedSectionId)
-            : collect();
+        $filterGroups = $allGroups;
+        $modalGroups = $allGroups;
 
         return view('fieldservice::livewire.admin.categories-manager', [
             'categories'     => $categories,
