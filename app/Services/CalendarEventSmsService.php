@@ -36,42 +36,26 @@ class CalendarEventSmsService
     }
 
     /**
-     * دریافت گزینه‌های فرم تنظیمات پیامک برای مودال تقویم
+     * دریافت گزینه‌های سبک اولیه فرم تنظیمات پیامک برای مودال تقویم (بدون بارگذاری لیست کامل کاربران و مشتریان)
      */
-    public function getFormOptions(User $user): array
+    public function getFormOptions(User $user, array $selectedUserIds = [], array $selectedClientIds = []): array
     {
         if (!$this->calendarService->isSmsWorkflowAvailable()) {
             return [
-                'available'          => false,
-                'users'              => [],
-                'roles'              => [],
-                'can_target_clients' => false,
-                'clients'            => [],
-                'client_statuses'    => [],
-                'templates'          => [],
-                'tokens'             => [],
+                'available'             => false,
+                'roles'                 => [],
+                'can_target_clients'    => false,
+                'client_label_singular' => 'مشتری',
+                'client_label_plural'   => 'مشتریان',
+                'client_statuses'       => [],
+                'templates'             => [],
+                'tokens'                => [],
+                'selected_users'        => [],
+                'selected_clients'      => [],
             ];
         }
 
         $isSuperAdmin = method_exists($user, 'hasRole') && $user->hasRole('super-admin');
-
-        $usersQuery = User::query()
-            ->select(['id', 'name', 'mobile'])
-            ->orderBy('name');
-
-        if (!$isSuperAdmin) {
-            $usersQuery->whereDoesntHave('roles', fn($q) => $q->where('name', 'super-admin'));
-        }
-
-        $users = $usersQuery
-            ->get()
-            ->map(fn(User $u) => [
-                'id'    => $u->id,
-                'name'  => $u->name,
-                'phone' => $this->normalizePhone($u->mobile ?? ''),
-            ])
-            ->values()
-            ->all();
 
         $roles = [];
         if (class_exists(Role::class)) {
@@ -82,9 +66,25 @@ class CalendarEventSmsService
             $roles = $rolesQuery->get(['id', 'name'])->toArray();
         }
 
+        $selectedUsers = [];
+        $cleanUserIds = array_values(array_unique(array_filter(array_map('intval', $selectedUserIds))));
+        if (!empty($cleanUserIds)) {
+            $uQuery = User::query()->whereIn('id', $cleanUserIds)->select(['id', 'name', 'mobile']);
+            if (!$isSuperAdmin) {
+                $uQuery->whereDoesntHave('roles', fn($q) => $q->where('name', 'super-admin'));
+            }
+            $selectedUsers = $uQuery->get()->map(fn(User $u) => [
+                'id'    => $u->id,
+                'name'  => $u->name,
+                'phone' => $this->normalizePhone($u->mobile ?? ''),
+            ])->values()->all();
+        }
+
         $canTargetClients = false;
-        $clients = [];
         $clientStatuses = [];
+        $selectedClients = [];
+        $clientLabelSingular = config('clients.labels.singular', 'مشتری');
+        $clientLabelPlural   = config('clients.labels.plural', 'مشتریان');
 
         if (
             class_exists(\Modules\Clients\Entities\Client::class)
@@ -92,25 +92,30 @@ class CalendarEventSmsService
             && $user->can('clients.view')
         ) {
             $canTargetClients = true;
-            $clients = \Modules\Clients\Entities\Client::query()
-                ->visibleForUser($user)
-                ->select(['id', 'full_name', 'phone', 'status_id'])
-                ->orderBy('full_name')
-                ->get()
-                ->map(fn($c) => [
-                    'id'        => $c->id,
-                    'name'      => $c->full_name,
-                    'phone'     => $this->normalizePhone($c->phone ?? ''),
-                    'status_id' => $c->status_id,
-                ])
-                ->values()
-                ->all();
 
             if (class_exists(\Modules\Clients\Entities\ClientStatus::class) && Schema::hasTable('client_statuses')) {
                 $clientStatuses = \Modules\Clients\Entities\ClientStatus::query()
                     ->active()
                     ->get(['id', 'label', 'key'])
                     ->toArray();
+            }
+
+            $cleanClientIds = array_values(array_unique(array_filter(array_map('intval', $selectedClientIds))));
+            if (!empty($cleanClientIds)) {
+                $selectedClients = \Modules\Clients\Entities\Client::query()
+                    ->visibleForUser($user)
+                    ->whereIn('id', $cleanClientIds)
+                    ->select(['id', 'full_name', 'phone', 'national_code', 'case_number'])
+                    ->get()
+                    ->map(fn($c) => [
+                        'id'            => $c->id,
+                        'name'          => $c->full_name,
+                        'phone'         => $this->normalizePhone($c->phone ?? ''),
+                        'national_code' => $c->national_code ?? '',
+                        'case_number'   => $c->case_number ?? '',
+                    ])
+                    ->values()
+                    ->all();
             }
         }
 
@@ -124,15 +129,90 @@ class CalendarEventSmsService
         }
 
         return [
-            'available'          => true,
-            'users'              => $users,
-            'roles'              => $roles,
-            'can_target_clients' => $canTargetClients,
-            'clients'            => $clients,
-            'client_statuses'    => $clientStatuses,
-            'templates'          => $templates,
-            'tokens'             => $this->getAvailableTokens(),
+            'available'             => true,
+            'roles'                 => $roles,
+            'can_target_clients'    => $canTargetClients,
+            'client_label_singular' => $clientLabelSingular,
+            'client_label_plural'   => $clientLabelPlural,
+            'client_statuses'       => $clientStatuses,
+            'templates'             => $templates,
+            'tokens'                => $this->getAvailableTokens(),
+            'selected_users'        => $selectedUsers,
+            'selected_clients'      => $selectedClients,
         ];
+    }
+
+    /**
+     * جستجوی زنده کاربران یا مشتریان (حداقل ۳ کاراکتر)
+     */
+    public function searchRecipients(User $user, string $type, string $query): array
+    {
+        if (!$this->calendarService->isSmsWorkflowAvailable()) {
+            return [];
+        }
+
+        $rawQuery = trim($query);
+        if (mb_strlen($rawQuery) < 3) {
+            return [];
+        }
+
+        $normQuery = $this->normalizeDigits($rawQuery);
+        $isSuperAdmin = method_exists($user, 'hasRole') && $user->hasRole('super-admin');
+
+        if ($type === 'users') {
+            $uQuery = User::query()
+                ->select(['id', 'name', 'mobile'])
+                ->where(function ($q) use ($rawQuery, $normQuery) {
+                    $q->where('name', 'like', "%{$rawQuery}%")
+                      ->orWhere('mobile', 'like', "%{$normQuery}%");
+                })
+                ->orderBy('name')
+                ->limit(20);
+
+            if (!$isSuperAdmin) {
+                $uQuery->whereDoesntHave('roles', fn($q) => $q->where('name', 'super-admin'));
+            }
+
+            return $uQuery->get()
+                ->map(fn(User $u) => [
+                    'id'    => $u->id,
+                    'name'  => $u->name,
+                    'phone' => $this->normalizePhone($u->mobile ?? ''),
+                ])
+                ->values()
+                ->all();
+        }
+
+        if (
+            $type === 'clients'
+            && class_exists(\Modules\Clients\Entities\Client::class)
+            && Schema::hasTable('clients')
+            && $user->can('clients.view')
+        ) {
+            return \Modules\Clients\Entities\Client::query()
+                ->visibleForUser($user)
+                ->select(['id', 'full_name', 'phone', 'national_code', 'case_number'])
+                ->where(function ($q) use ($rawQuery, $normQuery) {
+                    $q->where('full_name', 'like', "%{$rawQuery}%")
+                      ->orWhere('phone', 'like', "%{$normQuery}%")
+                      ->orWhere('national_code', 'like', "%{$normQuery}%")
+                      ->orWhere('case_number', 'like', "%{$normQuery}%");
+                })
+                ->orderBy('full_name')
+                ->limit(20)
+                ->get()
+                ->map(fn($c) => [
+                    'id'            => $c->id,
+                    'name'          => $c->full_name,
+                    'phone'         => $this->normalizePhone($c->phone ?? ''),
+                    'national_code' => $c->national_code ?? '',
+                    'case_number'   => $c->case_number ?? '',
+                ])
+                ->values()
+                ->all();
+        }
+
+        return [];
     }
 
     /**

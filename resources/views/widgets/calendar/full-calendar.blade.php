@@ -1408,6 +1408,10 @@
                             </svg>
                             <span>در حال بارگذاری مخاطبان و الگوهای پیامک...</span>
                         </div>
+                        <div x-show="smsOptionsError" class="text-xs font-medium text-rose-600 dark:text-rose-400 flex items-center justify-between gap-2 py-1.5 px-3 rounded-xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800/40">
+                            <span x-text="smsOptionsError"></span>
+                            <button type="button" @click="loadSmsOptions(true)" class="px-2 py-1 rounded-lg bg-rose-600 text-white text-[11px] font-bold hover:bg-rose-700 cursor-pointer">تلاش مجدد</button>
+                        </div>
 
                         {{-- الف) زمان‌بندی ارسال --}}
                         <div class="space-y-2.5">
@@ -1468,40 +1472,31 @@
                         </div>
 
                         {{-- ب) کنترل دقیق مخاطبان --}}
-                        <div class="space-y-2.5 pt-2 border-t border-indigo-200/50 dark:border-indigo-500/20">
-                            <div class="flex items-center justify-between">
-                                <label class="text-[11px] font-bold text-slate-700 dark:text-slate-200">مخاطبان پیامک (امکان انتخاب ترکیبی)</label>
-                                <label class="flex items-center gap-1.5 cursor-pointer text-[11px] font-bold text-slate-700 dark:text-slate-200">
-                                    <input type="checkbox" x-model="eventForm.sms_config.recipients.include_creator" class="rounded text-indigo-600 focus:ring-indigo-500">
-                                    <span>ثبت‌کننده رویداد</span>
-                                </label>
+                        <div class="space-y-3 pt-2 border-t border-indigo-200/50 dark:border-indigo-500/20">
+                            <div class="flex flex-wrap items-center justify-between gap-2">
+                                <label class="text-[11px] font-bold text-slate-700 dark:text-slate-200">مخاطبان پیامک (انتخاب نوع مخاطب)</label>
+                                <div class="flex flex-wrap items-center gap-3">
+                                    <label class="flex items-center gap-1.5 cursor-pointer text-[11px] font-bold text-slate-700 dark:text-slate-200">
+                                        <input type="checkbox" x-model="eventForm.sms_config.recipients.include_creator" class="rounded text-indigo-600 focus:ring-indigo-500">
+                                        <span>ثبت‌کننده رویداد</span>
+                                    </label>
+                                    <label class="flex items-center gap-1.5 cursor-pointer text-[11px] font-bold text-slate-700 dark:text-slate-200">
+                                        <input type="checkbox" x-model="smsTargetUsers" class="rounded text-indigo-600 focus:ring-indigo-500">
+                                        <span>کاربران سیستم</span>
+                                    </label>
+                                    <label x-show="smsOptions.can_target_clients" class="flex items-center gap-1.5 cursor-pointer text-[11px] font-bold text-slate-700 dark:text-slate-200">
+                                        <input type="checkbox" x-model="smsTargetClients" class="rounded text-indigo-600 focus:ring-indigo-500">
+                                        <span x-text="smsOptions.client_label_plural || 'مشتریان'"></span>
+                                    </label>
+                                </div>
                             </div>
 
-                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                                {{-- کاربران سیستم --}}
-                                <div class="bg-white dark:bg-gray-800/90 p-2.5 rounded-xl border border-gray-200 dark:border-gray-700 space-y-1.5">
-                                    <div class="flex items-center justify-between">
-                                        <span class="text-[11px] font-bold text-slate-700 dark:text-slate-200">کاربران سیستم</span>
-                                        <span class="text-[10px] font-bold text-indigo-600 dark:text-indigo-300" x-text="(eventForm.sms_config.recipients.user_ids?.length || 0) + ' انتخاب'"></span>
-                                    </div>
-                                    <input type="text" x-model="smsUserSearch" placeholder="جستجوی کاربر..." class="w-full px-2.5 py-1 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-[11px] text-gray-900 dark:text-white">
-                                    <div class="max-h-24 overflow-y-auto space-y-1 custom-modal-scrollbar">
-                                        <template x-for="u in filteredSmsUsers()" :key="u.id">
-                                            <label class="flex items-center justify-between gap-2 px-1.5 py-1 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/60 cursor-pointer text-[11px]">
-                                                <div class="flex items-center gap-1.5 min-w-0">
-                                                    <input type="checkbox" :value="u.id" x-model.number="eventForm.sms_config.recipients.user_ids" class="rounded text-indigo-600 focus:ring-indigo-500">
-                                                    <span class="truncate text-slate-700 dark:text-slate-200 font-medium" x-text="u.name"></span>
-                                                </div>
-                                                <span class="text-[10px] text-slate-500 dark:text-slate-400 dir-ltr" x-text="u.phone || 'بدون شماره'"></span>
-                                            </label>
-                                        </template>
-                                    </div>
-                                </div>
-
+                            {{-- پنل انتخاب کاربران (بر اساس نقش یا جستجوی زنده کاربر) --}}
+                            <div x-show="smsTargetUsers" x-transition class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 bg-white/70 dark:bg-gray-900/30 p-2.5 rounded-xl border border-indigo-200/60 dark:border-indigo-500/20">
                                 {{-- نقش‌های کاربری --}}
                                 <div class="bg-white dark:bg-gray-800/90 p-2.5 rounded-xl border border-gray-200 dark:border-gray-700 space-y-1.5">
                                     <div class="flex items-center justify-between">
-                                        <span class="text-[11px] font-bold text-slate-700 dark:text-slate-200">نقش‌های کاربری</span>
+                                        <span class="text-[11px] font-bold text-slate-700 dark:text-slate-200">بر اساس نقش کاربری</span>
                                         <span class="text-[10px] font-bold text-indigo-600 dark:text-indigo-300" x-text="(eventForm.sms_config.recipients.role_ids?.length || 0) + ' نقش'"></span>
                                     </div>
                                     <div class="max-h-28 overflow-y-auto space-y-1 custom-modal-scrollbar">
@@ -1513,16 +1508,61 @@
                                         </template>
                                     </div>
                                 </div>
-                            </div>
 
-                            {{-- مشتریان و وضعیت پرونده (در صورت دسترسی) --}}
-                            <div x-show="smsOptions.can_target_clients" class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                                {{-- کاربران خاص (جستجوی زنده پس از ۳ حرف) --}}
                                 <div class="bg-white dark:bg-gray-800/90 p-2.5 rounded-xl border border-gray-200 dark:border-gray-700 space-y-1.5">
                                     <div class="flex items-center justify-between">
-                                        <span class="text-[11px] font-bold text-slate-700 dark:text-slate-200">وضعیت پرونده مشتریان</span>
+                                        <span class="text-[11px] font-bold text-slate-700 dark:text-slate-200">کاربران خاص</span>
+                                        <span class="text-[10px] font-bold text-indigo-600 dark:text-indigo-300" x-text="(eventForm.sms_config.recipients.user_ids?.length || 0) + ' انتخاب'"></span>
+                                    </div>
+
+                                    {{-- چیپ‌های کاربران انتخاب‌شده --}}
+                                    <div x-show="selectedSmsUsers.length > 0" class="flex flex-wrap gap-1">
+                                        <template x-for="su in selectedSmsUsers" :key="su.id">
+                                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-indigo-50 dark:bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 border border-indigo-200/70 dark:border-indigo-500/30 text-[10px] font-bold">
+                                                <span x-text="su.name"></span>
+                                                <button type="button" @click="removeSelectedSmsUser(su.id)" class="text-indigo-500 hover:text-rose-600 cursor-pointer">&times;</button>
+                                            </span>
+                                        </template>
+                                    </div>
+
+                                    <input
+                                        type="text"
+                                        x-model="smsUserSearch"
+                                        @input.debounce.300ms="searchSmsRecipients('users')"
+                                        placeholder="حداقل ۳ حرف: نام یا شماره موبایل..."
+                                        class="w-full px-2.5 py-1 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-[11px] text-gray-900 dark:text-white"
+                                    >
+
+                                    <div class="max-h-24 overflow-y-auto space-y-1 custom-modal-scrollbar">
+                                        <template x-if="(smsUserSearch || '').trim().length < 3">
+                                            <p class="text-[10px] text-slate-500 dark:text-slate-400 py-1 text-center">برای جستجوی زنده کاربر حداقل ۳ حرف وارد کنید</p>
+                                        </template>
+                                        <template x-if="smsUserSearching">
+                                            <p class="text-[10px] text-indigo-600 dark:text-indigo-300 py-1 text-center">در حال جستجو...</p>
+                                        </template>
+                                        <template x-if="!smsUserSearching && (smsUserSearch || '').trim().length >= 3 && smsUserResults.length === 0">
+                                            <p class="text-[10px] text-slate-500 dark:text-slate-400 py-1 text-center">کاربری یافت نشد</p>
+                                        </template>
+                                        <template x-for="u in smsUserResults" :key="u.id">
+                                            <button type="button" @click="toggleSmsUser(u)" class="w-full flex items-center justify-between gap-2 px-2 py-1 rounded-lg hover:bg-indigo-50/70 dark:hover:bg-indigo-500/15 text-[11px] text-right cursor-pointer">
+                                                <span class="truncate text-slate-700 dark:text-slate-200 font-medium" x-text="(isSmsUserSelected(u.id) ? '✓ ' : '+ ') + u.name"></span>
+                                                <span class="text-[10px] text-slate-500 dark:text-slate-400 dir-ltr" x-text="u.phone || 'بدون شماره'"></span>
+                                            </button>
+                                        </template>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {{-- پنل انتخاب مشتریان / کلاینت‌ها (بر اساس وضعیت یا جستجوی زنده) --}}
+                            <div x-show="smsTargetClients && smsOptions.can_target_clients" x-transition class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 bg-white/70 dark:bg-gray-900/30 p-2.5 rounded-xl border border-indigo-200/60 dark:border-indigo-500/20">
+                                {{-- وضعیت پرونده --}}
+                                <div class="bg-white dark:bg-gray-800/90 p-2.5 rounded-xl border border-gray-200 dark:border-gray-700 space-y-1.5">
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-[11px] font-bold text-slate-700 dark:text-slate-200" x-text="'بر اساس وضعیت ' + (smsOptions.client_label_singular || 'مشتری')"></span>
                                         <span class="text-[10px] font-bold text-indigo-600 dark:text-indigo-300" x-text="(eventForm.sms_config.recipients.client_status_ids?.length || 0) + ' وضعیت'"></span>
                                     </div>
-                                    <div class="max-h-24 overflow-y-auto space-y-1 custom-modal-scrollbar">
+                                    <div class="max-h-28 overflow-y-auto space-y-1 custom-modal-scrollbar">
                                         <template x-for="st in smsOptions.client_statuses" :key="st.id">
                                             <label class="flex items-center gap-1.5 px-1.5 py-1 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/60 cursor-pointer text-[11px]">
                                                 <input type="checkbox" :value="st.id" x-model.number="eventForm.sms_config.recipients.client_status_ids" class="rounded text-indigo-600 focus:ring-indigo-500">
@@ -1532,21 +1572,49 @@
                                     </div>
                                 </div>
 
+                                {{-- مشتریان خاص (جستجوی زنده پس از ۳ حرف) --}}
                                 <div class="bg-white dark:bg-gray-800/90 p-2.5 rounded-xl border border-gray-200 dark:border-gray-700 space-y-1.5">
                                     <div class="flex items-center justify-between">
-                                        <span class="text-[11px] font-bold text-slate-700 dark:text-slate-200">مشتریان خاص</span>
-                                        <span class="text-[10px] font-bold text-indigo-600 dark:text-indigo-300" x-text="(eventForm.sms_config.recipients.client_ids?.length || 0) + ' مشتری'"></span>
+                                        <span class="text-[11px] font-bold text-slate-700 dark:text-slate-200" x-text="(smsOptions.client_label_plural || 'مشتریان') + ' خاص'"></span>
+                                        <span class="text-[10px] font-bold text-indigo-600 dark:text-indigo-300" x-text="(eventForm.sms_config.recipients.client_ids?.length || 0) + ' انتخاب'"></span>
                                     </div>
-                                    <input type="text" x-model="smsClientSearch" placeholder="جستجوی مشتری..." class="w-full px-2.5 py-1 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-[11px] text-gray-900 dark:text-white">
-                                    <div class="max-h-20 overflow-y-auto space-y-1 custom-modal-scrollbar">
-                                        <template x-for="c in filteredSmsClients()" :key="c.id">
-                                            <label class="flex items-center justify-between gap-2 px-1.5 py-1 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/60 cursor-pointer text-[11px]">
-                                                <div class="flex items-center gap-1.5 min-w-0">
-                                                    <input type="checkbox" :value="c.id" x-model.number="eventForm.sms_config.recipients.client_ids" class="rounded text-indigo-600 focus:ring-indigo-500">
-                                                    <span class="truncate text-slate-700 dark:text-slate-200 font-medium" x-text="c.name"></span>
+
+                                    {{-- چیپ‌های مشتریان انتخاب‌شده --}}
+                                    <div x-show="selectedSmsClients.length > 0" class="flex flex-wrap gap-1">
+                                        <template x-for="sc in selectedSmsClients" :key="sc.id">
+                                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-indigo-50 dark:bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 border border-indigo-200/70 dark:border-indigo-500/30 text-[10px] font-bold">
+                                                <span x-text="sc.name"></span>
+                                                <button type="button" @click="removeSelectedSmsClient(sc.id)" class="text-indigo-500 hover:text-rose-600 cursor-pointer">&times;</button>
+                                            </span>
+                                        </template>
+                                    </div>
+
+                                    <input
+                                        type="text"
+                                        x-model="smsClientSearch"
+                                        @input.debounce.300ms="searchSmsRecipients('clients')"
+                                        placeholder="حداقل ۳ حرف: نام، موبایل، کد ملی یا پرونده..."
+                                        class="w-full px-2.5 py-1 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-[11px] text-gray-900 dark:text-white"
+                                    >
+
+                                    <div class="max-h-24 overflow-y-auto space-y-1 custom-modal-scrollbar">
+                                        <template x-if="(smsClientSearch || '').trim().length < 3">
+                                            <p class="text-[10px] text-slate-500 dark:text-slate-400 py-1 text-center">برای جستجوی زنده حداقل ۳ حرف وارد کنید</p>
+                                        </template>
+                                        <template x-if="smsClientSearching">
+                                            <p class="text-[10px] text-indigo-600 dark:text-indigo-300 py-1 text-center">در حال جستجو...</p>
+                                        </template>
+                                        <template x-if="!smsClientSearching && (smsClientSearch || '').trim().length >= 3 && smsClientResults.length === 0">
+                                            <p class="text-[10px] text-slate-500 dark:text-slate-400 py-1 text-center">موردی یافت نشد</p>
+                                        </template>
+                                        <template x-for="c in smsClientResults" :key="c.id">
+                                            <button type="button" @click="toggleSmsClient(c)" class="w-full flex items-center justify-between gap-2 px-2 py-1 rounded-lg hover:bg-indigo-50/70 dark:hover:bg-indigo-500/15 text-[11px] text-right cursor-pointer">
+                                                <div class="min-w-0">
+                                                    <span class="truncate block text-slate-700 dark:text-slate-200 font-medium" x-text="(isSmsClientSelected(c.id) ? '✓ ' : '+ ') + c.name"></span>
+                                                    <span x-show="c.case_number || c.national_code" class="text-[10px] text-slate-500 dark:text-slate-400" x-text="[c.case_number ? 'پرونده: ' + c.case_number : '', c.national_code ? 'کدملی: ' + c.national_code : ''].filter(Boolean).join(' | ')"></span>
                                                 </div>
-                                                <span class="text-[10px] text-slate-500 dark:text-slate-400 dir-ltr" x-text="c.phone || '-'"></span>
-                                            </label>
+                                                <span class="text-[10px] text-slate-500 dark:text-slate-400 dir-ltr flex-shrink-0" x-text="c.phone || '-'"></span>
+                                            </button>
                                         </template>
                                     </div>
                                 </div>
@@ -1839,15 +1907,24 @@ function fullCalendarManager() {
         canConfigureEventSms: @json(!empty($canConfigureEventSms)),
         smsOptionsLoaded: false,
         smsOptionsLoading: false,
+        smsOptionsError: null,
+        smsTargetUsers: false,
+        smsTargetClients: false,
         smsUserSearch: '',
         smsClientSearch: '',
+        smsUserSearching: false,
+        smsClientSearching: false,
+        smsUserResults: [],
+        smsClientResults: [],
+        selectedSmsUsers: [],
+        selectedSmsClients: [],
         smsCustomPhonesText: '',
         smsOptions: {
             available: false,
-            users: [],
             roles: [],
             can_target_clients: false,
-            clients: [],
+            client_label_singular: 'مشتری',
+            client_label_plural: 'مشتریان',
             client_statuses: [],
             templates: [],
             tokens: []
@@ -1968,39 +2045,123 @@ function fullCalendarManager() {
             };
         },
 
-        async loadSmsOptions() {
-            if (!this.canConfigureEventSms || this.smsOptionsLoaded || this.smsOptionsLoading) return;
+        async loadSmsOptions(force = false) {
+            if (!this.canConfigureEventSms || this.smsOptionsLoading) return;
+            if (this.smsOptionsLoaded && !force) return;
             this.smsOptionsLoading = true;
+            this.smsOptionsError = null;
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 10000);
             try {
-                const res = await fetch(`{{ route('user.calendar.sms-options') }}`, {
-                    headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+                const params = new URLSearchParams();
+                const selectedUserIds = this.eventForm?.sms_config?.recipients?.user_ids || [];
+                const selectedClientIds = this.eventForm?.sms_config?.recipients?.client_ids || [];
+                if (selectedUserIds.length > 0) params.set('selected_user_ids', selectedUserIds.join(','));
+                if (selectedClientIds.length > 0) params.set('selected_client_ids', selectedClientIds.join(','));
+                const baseUrl = `{{ route('user.calendar.sms-options', [], false) }}`;
+                const url = params.toString() ? `${baseUrl}?${params.toString()}` : baseUrl;
+                const res = await fetch(url, {
+                    headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                    signal: controller.signal
                 });
                 const json = await res.json();
                 if (res.ok && json.success && json.data) {
                     this.smsOptions = json.data;
+                    this.selectedSmsUsers = json.data.selected_users || [];
+                    this.selectedSmsClients = json.data.selected_clients || [];
                     this.smsOptionsLoaded = true;
+                } else {
+                    this.smsOptionsError = json.message || 'خطا در دریافت تنظیمات پیامک.';
                 }
             } catch (e) {
                 console.error('Error loading calendar SMS options:', e);
+                this.smsOptionsError = e.name === 'AbortError'
+                    ? 'زمان دریافت تنظیمات پیامک به پایان رسید.'
+                    : 'خطا در ارتباط با سرور هنگام دریافت تنظیمات پیامک.';
             } finally {
+                clearTimeout(timeoutId);
                 this.smsOptionsLoading = false;
             }
         },
 
-        filteredSmsUsers() {
-            const q = (this.smsUserSearch || '').trim().toLowerCase();
-            if (!q) return this.smsOptions.users || [];
-            return (this.smsOptions.users || []).filter(u =>
-                (u.name || '').toLowerCase().includes(q) || (u.phone || '').includes(q)
-            );
+        async searchSmsRecipients(type) {
+            const q = (type === 'users' ? this.smsUserSearch : this.smsClientSearch).trim();
+            if (q.length < 3) {
+                if (type === 'users') this.smsUserResults = [];
+                else this.smsClientResults = [];
+                return;
+            }
+
+            if (type === 'users') this.smsUserSearching = true;
+            else this.smsClientSearching = true;
+
+            try {
+                const baseUrl = `{{ route('user.calendar.sms-options', [], false) }}`;
+                const params = new URLSearchParams({ search_type: type, q });
+                const res = await fetch(`${baseUrl}?${params.toString()}`, {
+                    headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+                });
+                const json = await res.json();
+                if (res.ok && json.success) {
+                    if (type === 'users') this.smsUserResults = json.items || [];
+                    else this.smsClientResults = json.items || [];
+                }
+            } catch (e) {
+                console.error('Error searching SMS recipients:', e);
+            } finally {
+                if (type === 'users') this.smsUserSearching = false;
+                else this.smsClientSearching = false;
+            }
         },
 
-        filteredSmsClients() {
-            const q = (this.smsClientSearch || '').trim().toLowerCase();
-            if (!q) return this.smsOptions.clients || [];
-            return (this.smsOptions.clients || []).filter(c =>
-                (c.name || '').toLowerCase().includes(q) || (c.phone || '').includes(q)
-            );
+        isSmsUserSelected(id) {
+            return (this.eventForm.sms_config.recipients.user_ids || []).includes(Number(id));
+        },
+
+        toggleSmsUser(u) {
+            const ids = this.eventForm.sms_config.recipients.user_ids || [];
+            const id = Number(u.id);
+            const idx = ids.indexOf(id);
+            if (idx > -1) {
+                ids.splice(idx, 1);
+                this.selectedSmsUsers = this.selectedSmsUsers.filter(item => Number(item.id) !== id);
+            } else {
+                ids.push(id);
+                if (!this.selectedSmsUsers.some(item => Number(item.id) === id)) {
+                    this.selectedSmsUsers.push(u);
+                }
+            }
+        },
+
+        removeSelectedSmsUser(id) {
+            const numId = Number(id);
+            this.eventForm.sms_config.recipients.user_ids = (this.eventForm.sms_config.recipients.user_ids || []).filter(i => Number(i) !== numId);
+            this.selectedSmsUsers = this.selectedSmsUsers.filter(item => Number(item.id) !== numId);
+        },
+
+        isSmsClientSelected(id) {
+            return (this.eventForm.sms_config.recipients.client_ids || []).includes(Number(id));
+        },
+
+        toggleSmsClient(c) {
+            const ids = this.eventForm.sms_config.recipients.client_ids || [];
+            const id = Number(c.id);
+            const idx = ids.indexOf(id);
+            if (idx > -1) {
+                ids.splice(idx, 1);
+                this.selectedSmsClients = this.selectedSmsClients.filter(item => Number(item.id) !== id);
+            } else {
+                ids.push(id);
+                if (!this.selectedSmsClients.some(item => Number(item.id) === id)) {
+                    this.selectedSmsClients.push(c);
+                }
+            }
+        },
+
+        removeSelectedSmsClient(id) {
+            const numId = Number(id);
+            this.eventForm.sms_config.recipients.client_ids = (this.eventForm.sms_config.recipients.client_ids || []).filter(i => Number(i) !== numId);
+            this.selectedSmsClients = this.selectedSmsClients.filter(item => Number(item.id) !== numId);
         },
 
         addSmsRule() {
@@ -2341,10 +2502,19 @@ function fullCalendarManager() {
                 sms_config: this.defaultSmsConfig()
             };
             this.smsCustomPhonesText = '';
+            this.smsTargetUsers = false;
+            this.smsTargetClients = false;
             this.smsUserSearch = '';
             this.smsClientSearch = '';
+            this.smsUserResults = [];
+            this.smsClientResults = [];
+            this.selectedSmsUsers = [];
+            this.selectedSmsClients = [];
 
             this.isEventModalOpen = true;
+            if (this.canConfigureEventSms) {
+                this.loadSmsOptions();
+            }
             this.$nextTick(() => {
                 this.initJalaliPickers();
                 this.$refs.eventTitleInput?.focus();
@@ -2444,10 +2614,18 @@ function fullCalendarManager() {
                 sms_config: this.normalizeSmsConfigForForm(ev.sms_config)
             };
             this.smsCustomPhonesText = (this.eventForm.sms_config.recipients.custom_phones || []).join(', ');
+            const rec = this.eventForm.sms_config.recipients || {};
+            this.smsTargetUsers = (rec.user_ids?.length || 0) > 0 || (rec.role_ids?.length || 0) > 0;
+            this.smsTargetClients = (rec.client_ids?.length || 0) > 0 || (rec.client_status_ids?.length || 0) > 0;
             this.smsUserSearch = '';
             this.smsClientSearch = '';
-            if (this.eventForm.sms_config.enabled) {
-                this.loadSmsOptions();
+            this.smsUserResults = [];
+            this.smsClientResults = [];
+            this.selectedSmsUsers = [];
+            this.selectedSmsClients = [];
+            if (this.canConfigureEventSms) {
+                const needForce = (rec.user_ids?.length || 0) > 0 || (rec.client_ids?.length || 0) > 0;
+                this.loadSmsOptions(needForce);
             }
 
             this.isEventModalOpen = true;
@@ -2497,6 +2675,14 @@ function fullCalendarManager() {
             const payload = { ...this.eventForm };
             if (this.canConfigureEventSms && payload.sms_config) {
                 payload.sms_config = JSON.parse(JSON.stringify(payload.sms_config));
+                if (!this.smsTargetUsers) {
+                    payload.sms_config.recipients.user_ids = [];
+                    payload.sms_config.recipients.role_ids = [];
+                }
+                if (!this.smsTargetClients) {
+                    payload.sms_config.recipients.client_ids = [];
+                    payload.sms_config.recipients.client_status_ids = [];
+                }
                 payload.sms_config.recipients.custom_phones = (this.smsCustomPhonesText || '')
                     .split(/[\s,،;\n]+/)
                     .map(s => s.trim())
