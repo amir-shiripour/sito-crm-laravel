@@ -4,6 +4,7 @@ namespace App\Http\Controllers\User;
 
 use App\Http\Controllers\Controller;
 use App\Services\CalendarEventService;
+use App\Services\CalendarEventSmsService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -12,11 +13,13 @@ use Morilog\Jalali\Jalalian;
 class CalendarController extends Controller
 {
     protected CalendarEventService $eventService;
+    protected CalendarEventSmsService $eventSmsService;
 
-    public function __construct(CalendarEventService $eventService)
+    public function __construct(CalendarEventService $eventService, CalendarEventSmsService $eventSmsService)
     {
         $this->middleware('auth');
         $this->eventService = $eventService;
+        $this->eventSmsService = $eventSmsService;
     }
 
     /**
@@ -28,8 +31,21 @@ class CalendarController extends Controller
         $sources = $this->eventService->getAvailableSources();
         $todayJalali = Jalalian::now();
         $allowEventCreation = $this->eventService->isEventCreationAllowed();
+        $canConfigureEventSms = $allowEventCreation && $this->eventService->isSmsWorkflowAvailable();
 
-        return view('widgets.calendar.full-calendar', compact('sources', 'todayJalali', 'allowEventCreation'));
+        return view('widgets.calendar.full-calendar', compact('sources', 'todayJalali', 'allowEventCreation', 'canConfigureEventSms'));
+    }
+
+    /**
+     * دریافت گزینه‌های مخاطبان، الگوها و توکن‌های پیامک برای مودال رویداد تقویم
+     */
+    public function smsOptions(): JsonResponse
+    {
+        $user = auth()->user();
+        return response()->json([
+            'success' => true,
+            'data'    => $this->eventSmsService->getFormOptions($user),
+        ]);
     }
 
     /**
@@ -285,6 +301,7 @@ class CalendarController extends Controller
             'recurrence_days.*'   => 'integer|min:0|max:6',
             'repeat_until'        => 'nullable|date',
             'repeat_count'        => 'nullable|integer|min:1|max:999',
+            'sms_config'          => 'nullable|array',
         ], [
             'title.required' => 'عنوان رویداد الزامی است.',
             'title.max'      => 'عنوان رویداد حداکثر ۲۵۵ کاراکتر است.',
@@ -317,6 +334,7 @@ class CalendarController extends Controller
             $repeatUntil = $this->parseDateInput($request->input('repeat_until'))?->toDateString();
         }
         $repeatCount = ($recurrenceType && $request->filled('repeat_count')) ? (int)$request->input('repeat_count') : null;
+        $smsConfig = $this->extractSmsConfigFromRequest($request);
 
         $event = \App\Models\CalendarEvent::create([
             'user_id'             => $user->id,
@@ -334,8 +352,13 @@ class CalendarController extends Controller
             'recurrence_days'     => $recurrenceDays,
             'repeat_until'        => $repeatUntil,
             'repeat_count'        => $repeatCount,
+            'sms_config'          => $smsConfig,
             'status'              => 'active',
         ]);
+
+        if ($smsConfig) {
+            $this->eventSmsService->dispatchOnCreate($event);
+        }
 
         return response()->json([
             'success' => true,
@@ -347,6 +370,7 @@ class CalendarController extends Controller
                 'color'        => $event->color,
                 'is_public'    => (bool)$event->is_public,
                 'is_recurring' => $event->isRecurring(),
+                'sms_config'   => $event->sms_config,
                 'date_fa'      => $event->jalali_date,
                 'time'         => $event->formatted_time,
             ],
@@ -388,6 +412,7 @@ class CalendarController extends Controller
             'recurrence_days.*'   => 'integer|min:0|max:6',
             'repeat_until'        => 'nullable|date',
             'repeat_count'        => 'nullable|integer|min:1|max:999',
+            'sms_config'          => 'nullable|array',
         ]);
 
         [$startDateTime, $endDateTime, $isAllDay] = $this->parseEventDateTimes($request);
@@ -400,6 +425,8 @@ class CalendarController extends Controller
 
         $editScope = $request->input('edit_scope', 'all');
         $occurrenceDate = $request->input('occurrence_date');
+        $smsConfigProvided = $request->has('sms_config');
+        $smsConfig = $smsConfigProvided ? $this->extractSmsConfigFromRequest($request) : $event->sms_config;
 
         // اگر رویداد تکرارشونده است و فقط همین نمونه ویرایش می‌شود
         if ($event->isRecurring() && $editScope === 'this_only' && !empty($occurrenceDate)) {
@@ -417,6 +444,7 @@ class CalendarController extends Controller
                     'start_time'  => $startDateTime,
                     'end_time'    => $endDateTime,
                     'is_all_day'  => $isAllDay,
+                    'sms_config'  => $smsConfig,
                 ]
             );
 
@@ -471,6 +499,7 @@ class CalendarController extends Controller
                 'recurrence_days'     => $recurrenceDays,
                 'repeat_until'        => $repeatUntil,
                 'repeat_count'        => $request->filled('repeat_count') ? (int)$request->input('repeat_count') : $event->repeat_count,
+                'sms_config'          => $smsConfig,
                 'status'              => 'active',
             ]);
 
@@ -528,6 +557,7 @@ class CalendarController extends Controller
             'recurrence_days'     => $recurrenceDays,
             'repeat_until'        => $repeatUntil,
             'repeat_count'        => $repeatCount,
+            'sms_config'          => $smsConfig,
         ]);
 
         return response()->json([
@@ -540,6 +570,7 @@ class CalendarController extends Controller
                 'color'        => $event->color,
                 'is_public'    => (bool)$event->is_public,
                 'is_recurring' => $event->isRecurring(),
+                'sms_config'   => $event->sms_config,
                 'date_fa'      => $event->jalali_date,
                 'time'         => $event->formatted_time,
             ],
@@ -690,6 +721,19 @@ class CalendarController extends Controller
         }
 
         return [$startDateTime, $endDateTime, $isAllDay];
+    }
+
+    /**
+     * استخراج و نرمال‌سازی تنظیمات پیامک رویداد در صورت فعال بودن ماژول‌های پیامک و گردش کار
+     */
+    protected function extractSmsConfigFromRequest(Request $request): ?array
+    {
+        if (!$this->eventService->isSmsWorkflowAvailable()) {
+            return null;
+        }
+
+        $raw = $request->input('sms_config');
+        return is_array($raw) ? $this->eventSmsService->normalizeSmsConfig($raw, auth()->user()) : null;
     }
 
     /**

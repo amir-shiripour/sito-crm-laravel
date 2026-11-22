@@ -34,6 +34,15 @@ class CalendarEventService
     }
 
     /**
+     * بررسی فعال بودن هم‌زمان ماژول پیامک و ماژول گردش کار برای ارسال پیامک رویدادها
+     */
+    public function isSmsWorkflowAvailable(): bool
+    {
+        return $this->isModuleAvailable('Sms', \Modules\Sms\Entities\SmsMessage::class, 'sms_messages')
+            && $this->isModuleAvailable('Workflows', \Modules\Workflows\Entities\Workflow::class, 'workflows');
+    }
+
+    /**
      * بررسی فعال بودن یک منبع رویداد در تنظیمات عمومی سیستم
      */
     public function isSourceEnabled(string $sourceKey): bool
@@ -793,6 +802,7 @@ class CalendarEventService
             'is_public'        => $isPublic,
             'is_recurring'     => false,
             'recurrence_type'  => null,
+            'sms_config'       => $ev->sms_config ?? null,
             'creator_name'     => $ev->creator?->name ?? '',
             'date_fa'          => $jalaliDate ? $jalaliDate->format('Y/m/d') : '',
             'date_en'          => $startDt ? $startDt->format('Y-m-d') : '',
@@ -807,9 +817,17 @@ class CalendarEventService
     }
 
     /**
+     * بازکردن و گسترش نمونه‌های یک رویداد تکرارشونده در بازه زمانی درخواستی (قابل استفاده در سرویس‌های پس‌زمینه)
+     */
+    public function expandOccurrencesInRange(\App\Models\CalendarEvent $parent, Carbon $from, Carbon $to, ?User $user = null): Collection
+    {
+        return $this->expandRecurringEvent($parent, $from, $to, $user);
+    }
+
+    /**
      * بازکردن و گسترش نمونه‌های یک رویداد تکرارشونده در بازه زمانی درخواستی
      */
-    protected function expandRecurringEvent(\App\Models\CalendarEvent $parent, Carbon $from, Carbon $to, User $user): Collection
+    protected function expandRecurringEvent(\App\Models\CalendarEvent $parent, Carbon $from, Carbon $to, ?User $user): Collection
     {
         $occurrences = collect();
         $exceptions = $parent->exceptions ? $parent->exceptions->keyBy(fn($item) => Carbon::parse($item->exception_date)->toDateString()) : collect();
@@ -834,7 +852,7 @@ class CalendarEventService
         $startSecond = (int)$baseStart->second;
         $baseStartDay = $baseStart->copy()->startOfDay(); // کپی مستقل روز شروع بدون دستکاری شیء اصلی
 
-        $canEdit = ($parent->created_by === $user->id || $parent->user_id === $user->id || (method_exists($user, 'hasRole') && $user->hasRole('super-admin')));
+        $canEdit = $user ? ($parent->created_by === $user->id || $parent->user_id === $user->id || (method_exists($user, 'hasRole') && $user->hasRole('super-admin'))) : false;
 
         // اگر نوع هفتگی است و روزی انتخاب نشده، روزِ شروع والد به عنوان روز تکرار انتخاب می‌شود
         if ($type === 'weekly' && empty($days)) {
@@ -995,6 +1013,7 @@ class CalendarEventService
         $location    = $isModified && $exception->location !== null ? $exception->location : ($parent->location ?? '');
         $color       = $isModified && $exception->color !== null ? $exception->color : ($parent->color ?: '#4f46e5');
         $isAllDay    = $isModified && $exception->is_all_day !== null ? (bool)$exception->is_all_day : (bool)$parent->is_all_day;
+        $smsConfig   = ($isModified && $exception->sms_config !== null) ? $exception->sms_config : ($parent->sms_config ?? null);
 
         $startDt = $occurrenceStart->copy();
         if ($isModified && $exception->start_time) {
@@ -1054,6 +1073,7 @@ class CalendarEventService
             'duration_minutes'     => $duration,
             'is_all_day'           => $isAllDay,
             'is_public'            => (bool)$parent->is_public,
+            'sms_config'           => $smsConfig,
             'creator_name'         => $parent->creator?->name ?? '',
             'date_fa'              => $jalaliDate ? $jalaliDate->format('Y/m/d') : '',
             'date_en'              => $startDt->format('Y-m-d'),

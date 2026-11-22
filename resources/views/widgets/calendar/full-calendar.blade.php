@@ -1377,6 +1377,270 @@
                     ></textarea>
                 </div>
 
+                @if(!empty($canConfigureEventSms))
+                {{-- ۷. تنظیمات ارسال پیامک و اطلاع‌رسانی (در صورت فعال بودن ماژول پیامک و گردش کار) --}}
+                <div class="rounded-2xl border border-indigo-200/80 dark:border-indigo-500/30 bg-indigo-50/40 dark:bg-indigo-950/20 p-3.5 space-y-3.5">
+                    <div class="flex items-center justify-between gap-3">
+                        <label class="flex items-center gap-2.5 cursor-pointer select-none">
+                            <input
+                                type="checkbox"
+                                x-model="eventForm.sms_config.enabled"
+                                @change="if(eventForm.sms_config.enabled) { loadSmsOptions(); $nextTick(() => initJalaliPickers()); }"
+                                class="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 border-gray-300 dark:border-gray-600"
+                            >
+                            <span class="text-xs font-black text-indigo-900 dark:text-indigo-200 flex items-center gap-1.5">
+                                <svg class="w-4 h-4 text-indigo-600 dark:text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                                </svg>
+                                ارسال پیامک یادآور / اطلاع‌رسانی
+                            </span>
+                        </label>
+                        <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-500/30">
+                            پیامک + گردش کار
+                        </span>
+                    </div>
+
+                    <div x-show="eventForm.sms_config.enabled" x-transition class="space-y-4 pt-3 border-t border-indigo-200/60 dark:border-indigo-500/20">
+                        <div x-show="smsOptionsLoading" class="text-xs font-medium text-slate-600 dark:text-slate-300 flex items-center gap-2 py-2">
+                            <svg class="w-4 h-4 animate-spin text-indigo-600 dark:text-indigo-400" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                            </svg>
+                            <span>در حال بارگذاری مخاطبان و الگوهای پیامک...</span>
+                        </div>
+
+                        {{-- الف) زمان‌بندی ارسال --}}
+                        <div class="space-y-2.5">
+                            <div class="flex items-center justify-between">
+                                <label class="text-[11px] font-bold text-slate-700 dark:text-slate-200">زمان‌بندی ارسال پیامک</label>
+                                <button type="button" @click="addSmsRule()" class="text-[11px] font-bold text-indigo-600 dark:text-indigo-300 hover:underline flex items-center gap-1 cursor-pointer">
+                                    <span>+ افزودن زمان‌بندی</span>
+                                </button>
+                            </div>
+
+                            <div class="space-y-2">
+                                <template x-for="(rule, rIdx) in eventForm.sms_config.rules" :key="rIdx">
+                                    <div class="flex flex-wrap items-center gap-2 bg-white dark:bg-gray-800/90 p-2 rounded-xl border border-gray-200 dark:border-gray-700">
+                                        <select x-model="rule.timing" class="px-2.5 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-xs font-bold text-gray-900 dark:text-white">
+                                            <option value="before">قبل از شروع رویداد</option>
+                                            <option value="at_start">همزمان با شروع رویداد</option>
+                                            <option value="after">بعد از شروع رویداد</option>
+                                            <option value="on_create">بلافاصله هنگام ثبت رویداد</option>
+                                        </select>
+
+                                        <template x-if="rule.timing === 'before' || rule.timing === 'after'">
+                                            <div class="flex items-center gap-1.5">
+                                                <input type="number" min="1" max="999" x-model.number="rule.offset_value" class="w-16 px-2 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-xs font-bold text-center text-gray-900 dark:text-white">
+                                                <select x-model="rule.offset_unit" class="px-2 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-xs font-bold text-gray-900 dark:text-white">
+                                                    <option value="minutes">دقیقه</option>
+                                                    <option value="hours">ساعت</option>
+                                                    <option value="days">روز</option>
+                                                </select>
+                                            </div>
+                                        </template>
+
+                                        <button type="button" x-show="eventForm.sms_config.rules.length > 1" @click="removeSmsRule(rIdx)" class="mr-auto text-rose-500 hover:text-rose-700 p-1 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/30 cursor-pointer" title="حذف زمان‌بندی">
+                                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                        </button>
+                                    </div>
+                                </template>
+                            </div>
+
+                            {{-- ساعت ارسال برای رویدادهای تمام‌روز با جلالی تایم‌پیکر هسته --}}
+                            <div x-show="eventForm.is_all_day" class="flex items-center gap-3 bg-white dark:bg-gray-800/90 p-2.5 rounded-xl border border-gray-200 dark:border-gray-700">
+                                <label class="text-[11px] font-bold text-slate-700 dark:text-slate-200 flex-shrink-0">ساعت ارسال در رویداد تمام‌روز:</label>
+                                <div class="relative w-32">
+                                    <input
+                                        type="text"
+                                        data-jdp
+                                        data-jdp-only-time
+                                        x-model="eventForm.sms_config.all_day_send_time"
+                                        @change="eventForm.sms_config.all_day_send_time = $el.value"
+                                        @input="eventForm.sms_config.all_day_send_time = $el.value"
+                                        placeholder="09:00"
+                                        class="w-full px-3 py-1.5 pr-8 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-xs font-bold text-gray-900 dark:text-white dir-ltr text-center cursor-pointer"
+                                    >
+                                    <span class="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
+                                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {{-- ب) کنترل دقیق مخاطبان --}}
+                        <div class="space-y-2.5 pt-2 border-t border-indigo-200/50 dark:border-indigo-500/20">
+                            <div class="flex items-center justify-between">
+                                <label class="text-[11px] font-bold text-slate-700 dark:text-slate-200">مخاطبان پیامک (امکان انتخاب ترکیبی)</label>
+                                <label class="flex items-center gap-1.5 cursor-pointer text-[11px] font-bold text-slate-700 dark:text-slate-200">
+                                    <input type="checkbox" x-model="eventForm.sms_config.recipients.include_creator" class="rounded text-indigo-600 focus:ring-indigo-500">
+                                    <span>ثبت‌کننده رویداد</span>
+                                </label>
+                            </div>
+
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                                {{-- کاربران سیستم --}}
+                                <div class="bg-white dark:bg-gray-800/90 p-2.5 rounded-xl border border-gray-200 dark:border-gray-700 space-y-1.5">
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-[11px] font-bold text-slate-700 dark:text-slate-200">کاربران سیستم</span>
+                                        <span class="text-[10px] font-bold text-indigo-600 dark:text-indigo-300" x-text="(eventForm.sms_config.recipients.user_ids?.length || 0) + ' انتخاب'"></span>
+                                    </div>
+                                    <input type="text" x-model="smsUserSearch" placeholder="جستجوی کاربر..." class="w-full px-2.5 py-1 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-[11px] text-gray-900 dark:text-white">
+                                    <div class="max-h-24 overflow-y-auto space-y-1 custom-modal-scrollbar">
+                                        <template x-for="u in filteredSmsUsers()" :key="u.id">
+                                            <label class="flex items-center justify-between gap-2 px-1.5 py-1 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/60 cursor-pointer text-[11px]">
+                                                <div class="flex items-center gap-1.5 min-w-0">
+                                                    <input type="checkbox" :value="u.id" x-model.number="eventForm.sms_config.recipients.user_ids" class="rounded text-indigo-600 focus:ring-indigo-500">
+                                                    <span class="truncate text-slate-700 dark:text-slate-200 font-medium" x-text="u.name"></span>
+                                                </div>
+                                                <span class="text-[10px] text-slate-500 dark:text-slate-400 dir-ltr" x-text="u.phone || 'بدون شماره'"></span>
+                                            </label>
+                                        </template>
+                                    </div>
+                                </div>
+
+                                {{-- نقش‌های کاربری --}}
+                                <div class="bg-white dark:bg-gray-800/90 p-2.5 rounded-xl border border-gray-200 dark:border-gray-700 space-y-1.5">
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-[11px] font-bold text-slate-700 dark:text-slate-200">نقش‌های کاربری</span>
+                                        <span class="text-[10px] font-bold text-indigo-600 dark:text-indigo-300" x-text="(eventForm.sms_config.recipients.role_ids?.length || 0) + ' نقش'"></span>
+                                    </div>
+                                    <div class="max-h-28 overflow-y-auto space-y-1 custom-modal-scrollbar">
+                                        <template x-for="r in smsOptions.roles" :key="r.id">
+                                            <label class="flex items-center gap-1.5 px-1.5 py-1 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/60 cursor-pointer text-[11px]">
+                                                <input type="checkbox" :value="r.id" x-model.number="eventForm.sms_config.recipients.role_ids" class="rounded text-indigo-600 focus:ring-indigo-500">
+                                                <span class="text-slate-700 dark:text-slate-200 font-medium" x-text="r.name"></span>
+                                            </label>
+                                        </template>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {{-- مشتریان و وضعیت پرونده (در صورت دسترسی) --}}
+                            <div x-show="smsOptions.can_target_clients" class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                                <div class="bg-white dark:bg-gray-800/90 p-2.5 rounded-xl border border-gray-200 dark:border-gray-700 space-y-1.5">
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-[11px] font-bold text-slate-700 dark:text-slate-200">وضعیت پرونده مشتریان</span>
+                                        <span class="text-[10px] font-bold text-indigo-600 dark:text-indigo-300" x-text="(eventForm.sms_config.recipients.client_status_ids?.length || 0) + ' وضعیت'"></span>
+                                    </div>
+                                    <div class="max-h-24 overflow-y-auto space-y-1 custom-modal-scrollbar">
+                                        <template x-for="st in smsOptions.client_statuses" :key="st.id">
+                                            <label class="flex items-center gap-1.5 px-1.5 py-1 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/60 cursor-pointer text-[11px]">
+                                                <input type="checkbox" :value="st.id" x-model.number="eventForm.sms_config.recipients.client_status_ids" class="rounded text-indigo-600 focus:ring-indigo-500">
+                                                <span class="text-slate-700 dark:text-slate-200 font-medium" x-text="st.label || st.key"></span>
+                                            </label>
+                                        </template>
+                                    </div>
+                                </div>
+
+                                <div class="bg-white dark:bg-gray-800/90 p-2.5 rounded-xl border border-gray-200 dark:border-gray-700 space-y-1.5">
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-[11px] font-bold text-slate-700 dark:text-slate-200">مشتریان خاص</span>
+                                        <span class="text-[10px] font-bold text-indigo-600 dark:text-indigo-300" x-text="(eventForm.sms_config.recipients.client_ids?.length || 0) + ' مشتری'"></span>
+                                    </div>
+                                    <input type="text" x-model="smsClientSearch" placeholder="جستجوی مشتری..." class="w-full px-2.5 py-1 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-[11px] text-gray-900 dark:text-white">
+                                    <div class="max-h-20 overflow-y-auto space-y-1 custom-modal-scrollbar">
+                                        <template x-for="c in filteredSmsClients()" :key="c.id">
+                                            <label class="flex items-center justify-between gap-2 px-1.5 py-1 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/60 cursor-pointer text-[11px]">
+                                                <div class="flex items-center gap-1.5 min-w-0">
+                                                    <input type="checkbox" :value="c.id" x-model.number="eventForm.sms_config.recipients.client_ids" class="rounded text-indigo-600 focus:ring-indigo-500">
+                                                    <span class="truncate text-slate-700 dark:text-slate-200 font-medium" x-text="c.name"></span>
+                                                </div>
+                                                <span class="text-[10px] text-slate-500 dark:text-slate-400 dir-ltr" x-text="c.phone || '-'"></span>
+                                            </label>
+                                        </template>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {{-- شماره‌های دلخواه --}}
+                            <div class="bg-white dark:bg-gray-800/90 p-2.5 rounded-xl border border-gray-200 dark:border-gray-700 space-y-1.5">
+                                <label class="block text-[11px] font-bold text-slate-700 dark:text-slate-200">شماره‌های موبایل دلخواه <span class="text-[10px] font-normal text-slate-500 dark:text-slate-400">(با کاما یا خط جدید جدا کنید)</span></label>
+                                <input
+                                    type="text"
+                                    x-model="smsCustomPhonesText"
+                                    placeholder="09121234567, 09351234567"
+                                    class="w-full px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-xs font-medium text-gray-900 dark:text-white dir-ltr text-left"
+                                >
+                            </div>
+                        </div>
+
+                        {{-- ج) نوع ارسال و محتوای پیامک --}}
+                        <div class="space-y-3 pt-2 border-t border-indigo-200/50 dark:border-indigo-500/20">
+                            <div class="flex flex-wrap items-center gap-1.5 bg-white dark:bg-gray-800/90 p-1 rounded-xl border border-gray-200 dark:border-gray-700">
+                                <button type="button" @click="eventForm.sms_config.mode = 'text'" :class="eventForm.sms_config.mode === 'text' ? 'bg-indigo-600 text-white dark:bg-indigo-500/20 dark:text-indigo-300 dark:border dark:border-indigo-500/40 shadow-xs' : 'text-slate-600 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-gray-700'" class="flex-1 py-1.5 px-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer">ارسال متنی عادی</button>
+                                <button type="button" @click="eventForm.sms_config.mode = 'pattern'" :class="eventForm.sms_config.mode === 'pattern' ? 'bg-indigo-600 text-white dark:bg-indigo-500/20 dark:text-indigo-300 dark:border dark:border-indigo-500/40 shadow-xs' : 'text-slate-600 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-gray-700'" class="flex-1 py-1.5 px-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer">ارسال پترنی (Pattern)</button>
+                                <button type="button" @click="eventForm.sms_config.mode = 'template'" :class="eventForm.sms_config.mode === 'template' ? 'bg-indigo-600 text-white dark:bg-indigo-500/20 dark:text-indigo-300 dark:border dark:border-indigo-500/40 shadow-xs' : 'text-slate-600 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-gray-700'" class="flex-1 py-1.5 px-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer">الگوهای آماده</button>
+                            </div>
+
+                            {{-- انتخاب از الگوهای آماده --}}
+                            <div x-show="eventForm.sms_config.mode === 'template'" class="space-y-2">
+                                <label class="block text-[11px] font-bold text-slate-700 dark:text-slate-200">انتخاب الگوی ذخیره‌شده</label>
+                                <select x-model.number="eventForm.sms_config.template_id" @change="onSelectSmsTemplate()" class="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs font-bold text-gray-900 dark:text-white">
+                                    <option value="">-- انتخاب الگو --</option>
+                                    <template x-for="tpl in smsOptions.templates" :key="tpl.id">
+                                        <option :value="tpl.id" x-text="tpl.title + (tpl.provider_pattern ? ' (پترن: ' + tpl.provider_pattern + ')' : ' (متنی)')"></option>
+                                    </template>
+                                </select>
+                            </div>
+
+                            {{-- فیلدهای پترن --}}
+                            <div x-show="eventForm.sms_config.mode === 'pattern' || (eventForm.sms_config.mode === 'template' && eventForm.sms_config.pattern_key)" class="space-y-2.5 bg-white dark:bg-gray-800/90 p-3 rounded-xl border border-gray-200 dark:border-gray-700">
+                                <div>
+                                    <label class="block text-[11px] font-bold text-slate-700 dark:text-slate-200 mb-1">کد الگوی سامانه پیامک (Pattern / OtpId)</label>
+                                    <input type="text" x-model="eventForm.sms_config.pattern_key" placeholder="مثلاً 34567" class="w-full px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-xs font-bold text-gray-900 dark:text-white dir-ltr text-left">
+                                </div>
+
+                                <div class="space-y-1.5">
+                                    <div class="flex items-center justify-between">
+                                        <label class="text-[11px] font-bold text-slate-700 dark:text-slate-200">پارامترهای الگو (به ترتیب {0}, {1}, ...)</label>
+                                        <button type="button" @click="addSmsPatternParam()" class="text-[11px] font-bold text-indigo-600 dark:text-indigo-300 hover:underline cursor-pointer">+ افزودن پارامتر</button>
+                                    </div>
+                                    <template x-for="(param, pIdx) in eventForm.sms_config.params" :key="pIdx">
+                                        <div class="flex items-center gap-1.5">
+                                            <span class="text-[11px] font-bold text-slate-500 dark:text-slate-400 w-7 text-center" x-text="'{' + pIdx + '}'"></span>
+                                            <select x-model="param.type" class="px-2 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-[11px] font-bold text-gray-900 dark:text-white">
+                                                <option value="token">توکن رویداد</option>
+                                                <option value="static">متن ثابت</option>
+                                            </select>
+                                            <template x-if="param.type === 'token'">
+                                                <select x-model="param.value" class="flex-1 px-2.5 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-xs font-medium text-gray-900 dark:text-white">
+                                                    <option value="">-- انتخاب مقدار --</option>
+                                                    <template x-for="tk in smsOptions.tokens" :key="tk.key">
+                                                        <option :value="tk.key" x-text="tk.label"></option>
+                                                    </template>
+                                                </select>
+                                            </template>
+                                            <template x-if="param.type === 'static'">
+                                                <input type="text" x-model="param.value" placeholder="مقدار ثابت..." class="flex-1 px-2.5 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-xs text-gray-900 dark:text-white">
+                                            </template>
+                                            <button type="button" @click="removeSmsPatternParam(pIdx)" class="text-rose-500 hover:text-rose-700 p-1 cursor-pointer">
+                                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                            </button>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+
+                            {{-- متن عادی پیامک + توکن‌های پویا --}}
+                            <div x-show="eventForm.sms_config.mode === 'text' || (eventForm.sms_config.mode === 'template' && !eventForm.sms_config.pattern_key)" class="space-y-2">
+                                <div class="flex flex-wrap gap-1.5">
+                                    <template x-for="tk in smsOptions.tokens" :key="tk.key">
+                                        <button type="button" @click="insertSmsToken(tk.key)" class="px-2 py-1 rounded-lg bg-white dark:bg-gray-800 border border-indigo-200/70 dark:border-indigo-500/30 text-[10px] font-bold text-indigo-700 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-500/15 transition-colors cursor-pointer" x-text="'+ ' + tk.label"></button>
+                                    </template>
+                                </div>
+                                <textarea
+                                    x-ref="eventSmsTextarea"
+                                    x-model="eventForm.sms_config.message"
+                                    rows="3"
+                                    placeholder="متن پیامک را وارد کنید (می‌توانید از دکمه‌های بالا متغیرهای رویداد را درج کنید)..."
+                                    class="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs font-medium text-gray-900 dark:text-white placeholder-gray-400"
+                                ></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                @endif
+
                 </div>
 
                 {{-- دکمه‌های اقدام (پاورقی ثابت در انتهای مدال) --}}
@@ -1570,6 +1834,24 @@ function fullCalendarManager() {
         scopeModalAction: 'edit', // 'edit' or 'delete'
         selectedScope: 'this_only',
         pendingScopeEvent: null,
+
+        // تنظیمات پیامک رویدادها
+        canConfigureEventSms: @json(!empty($canConfigureEventSms)),
+        smsOptionsLoaded: false,
+        smsOptionsLoading: false,
+        smsUserSearch: '',
+        smsClientSearch: '',
+        smsCustomPhonesText: '',
+        smsOptions: {
+            available: false,
+            users: [],
+            roles: [],
+            can_target_clients: false,
+            clients: [],
+            client_statuses: [],
+            templates: [],
+            tokens: []
+        },
         colorPalette: [
             { hex: '#4f46e5', label: 'نیلی کلاسیک' },
             { hex: '#0284c7', label: 'آبی آسمانی' },
@@ -1610,7 +1892,162 @@ function fullCalendarManager() {
             repeat_until_fa: '',
             repeat_until: '',
             edit_scope: 'all',
-            occurrence_date: ''
+            occurrence_date: '',
+            sms_config: {
+                enabled: false,
+                all_day_send_time: '09:00',
+                rules: [{ timing: 'before', offset_value: 30, offset_unit: 'minutes' }],
+                recipients: {
+                    include_creator: true,
+                    user_ids: [],
+                    role_ids: [],
+                    client_ids: [],
+                    client_status_ids: [],
+                    custom_phones: []
+                },
+                mode: 'text',
+                template_id: '',
+                pattern_key: '',
+                params: [{ type: 'token', value: 'event_title' }],
+                message: ''
+            }
+        },
+
+        defaultSmsConfig() {
+            return {
+                enabled: false,
+                all_day_send_time: '09:00',
+                rules: [{ timing: 'before', offset_value: 30, offset_unit: 'minutes' }],
+                recipients: {
+                    include_creator: true,
+                    user_ids: [],
+                    role_ids: [],
+                    client_ids: [],
+                    client_status_ids: [],
+                    custom_phones: []
+                },
+                mode: 'text',
+                template_id: '',
+                pattern_key: '',
+                params: [{ type: 'token', value: 'event_title' }],
+                message: ''
+            };
+        },
+
+        normalizeSmsConfigForForm(cfg) {
+            const def = this.defaultSmsConfig();
+            if (!cfg || typeof cfg !== 'object') {
+                return def;
+            }
+            const rec = cfg.recipients || {};
+            return {
+                enabled: !!cfg.enabled,
+                all_day_send_time: cfg.all_day_send_time || '09:00',
+                rules: Array.isArray(cfg.rules) && cfg.rules.length > 0
+                    ? cfg.rules.map(r => ({
+                        timing: r.timing || 'before',
+                        offset_value: r.offset_value ?? 30,
+                        offset_unit: r.offset_unit || 'minutes'
+                    }))
+                    : def.rules,
+                recipients: {
+                    include_creator: rec.include_creator !== undefined ? !!rec.include_creator : true,
+                    user_ids: Array.isArray(rec.user_ids) ? rec.user_ids.map(Number) : [],
+                    role_ids: Array.isArray(rec.role_ids) ? rec.role_ids.map(Number) : [],
+                    client_ids: Array.isArray(rec.client_ids) ? rec.client_ids.map(Number) : [],
+                    client_status_ids: Array.isArray(rec.client_status_ids) ? rec.client_status_ids.map(Number) : [],
+                    custom_phones: Array.isArray(rec.custom_phones) ? [...rec.custom_phones] : []
+                },
+                mode: cfg.mode || 'text',
+                template_id: cfg.template_id || '',
+                pattern_key: cfg.pattern_key || '',
+                params: Array.isArray(cfg.params) && cfg.params.length > 0
+                    ? cfg.params.map(p => (typeof p === 'object' ? { type: p.type || 'token', value: p.value || '' } : { type: 'token', value: String(p) }))
+                    : def.params,
+                message: cfg.message || ''
+            };
+        },
+
+        async loadSmsOptions() {
+            if (!this.canConfigureEventSms || this.smsOptionsLoaded || this.smsOptionsLoading) return;
+            this.smsOptionsLoading = true;
+            try {
+                const res = await fetch(`{{ route('user.calendar.sms-options') }}`, {
+                    headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+                });
+                const json = await res.json();
+                if (res.ok && json.success && json.data) {
+                    this.smsOptions = json.data;
+                    this.smsOptionsLoaded = true;
+                }
+            } catch (e) {
+                console.error('Error loading calendar SMS options:', e);
+            } finally {
+                this.smsOptionsLoading = false;
+            }
+        },
+
+        filteredSmsUsers() {
+            const q = (this.smsUserSearch || '').trim().toLowerCase();
+            if (!q) return this.smsOptions.users || [];
+            return (this.smsOptions.users || []).filter(u =>
+                (u.name || '').toLowerCase().includes(q) || (u.phone || '').includes(q)
+            );
+        },
+
+        filteredSmsClients() {
+            const q = (this.smsClientSearch || '').trim().toLowerCase();
+            if (!q) return this.smsOptions.clients || [];
+            return (this.smsOptions.clients || []).filter(c =>
+                (c.name || '').toLowerCase().includes(q) || (c.phone || '').includes(q)
+            );
+        },
+
+        addSmsRule() {
+            this.eventForm.sms_config.rules.push({ timing: 'before', offset_value: 15, offset_unit: 'minutes' });
+        },
+
+        removeSmsRule(idx) {
+            if (this.eventForm.sms_config.rules.length > 1) {
+                this.eventForm.sms_config.rules.splice(idx, 1);
+            }
+        },
+
+        addSmsPatternParam() {
+            this.eventForm.sms_config.params.push({ type: 'token', value: 'event_date_fa' });
+        },
+
+        removeSmsPatternParam(idx) {
+            this.eventForm.sms_config.params.splice(idx, 1);
+        },
+
+        insertSmsToken(tokenKey) {
+            const el = this.$refs.eventSmsTextarea;
+            const snippet = '{' + tokenKey + '}';
+            if (!el) {
+                this.eventForm.sms_config.message = (this.eventForm.sms_config.message || '') + snippet;
+                return;
+            }
+            const start = el.selectionStart ?? el.value.length;
+            const end = el.selectionEnd ?? el.value.length;
+            const val = this.eventForm.sms_config.message || '';
+            this.eventForm.sms_config.message = val.substring(0, start) + snippet + val.substring(end);
+            this.$nextTick(() => {
+                el.focus();
+                el.selectionStart = el.selectionEnd = start + snippet.length;
+            });
+        },
+
+        onSelectSmsTemplate() {
+            const tplId = Number(this.eventForm.sms_config.template_id);
+            const tpl = (this.smsOptions.templates || []).find(t => Number(t.id) === tplId);
+            if (!tpl) return;
+            if (tpl.provider_pattern) {
+                this.eventForm.sms_config.pattern_key = tpl.provider_pattern;
+            } else {
+                this.eventForm.sms_config.pattern_key = '';
+                this.eventForm.sms_config.message = tpl.body || '';
+            }
         },
 
         get activeDisplayTitle() {
@@ -1900,8 +2337,12 @@ function fullCalendarManager() {
                 repeat_until_fa: '',
                 repeat_until: '',
                 edit_scope: 'all',
-                occurrence_date: ''
+                occurrence_date: '',
+                sms_config: this.defaultSmsConfig()
             };
+            this.smsCustomPhonesText = '';
+            this.smsUserSearch = '';
+            this.smsClientSearch = '';
 
             this.isEventModalOpen = true;
             this.$nextTick(() => {
@@ -1999,8 +2440,15 @@ function fullCalendarManager() {
                 repeat_until_fa: ev.repeat_until_fa || (ev.repeat_until ? ev.repeat_until.replace(/-/g, '/') : ''),
                 repeat_until: ev.repeat_until || '',
                 edit_scope: scope,
-                occurrence_date: ev.occurrence_date || ''
+                occurrence_date: ev.occurrence_date || '',
+                sms_config: this.normalizeSmsConfigForForm(ev.sms_config)
             };
+            this.smsCustomPhonesText = (this.eventForm.sms_config.recipients.custom_phones || []).join(', ');
+            this.smsUserSearch = '';
+            this.smsClientSearch = '';
+            if (this.eventForm.sms_config.enabled) {
+                this.loadSmsOptions();
+            }
 
             this.isEventModalOpen = true;
             this.$nextTick(() => {
@@ -2047,6 +2495,15 @@ function fullCalendarManager() {
 
             // تمیزسازی داده‌های ارسالی فرم تکرار
             const payload = { ...this.eventForm };
+            if (this.canConfigureEventSms && payload.sms_config) {
+                payload.sms_config = JSON.parse(JSON.stringify(payload.sms_config));
+                payload.sms_config.recipients.custom_phones = (this.smsCustomPhonesText || '')
+                    .split(/[\s,،;\n]+/)
+                    .map(s => s.trim())
+                    .filter(Boolean);
+            } else {
+                delete payload.sms_config;
+            }
             if (!payload.is_recurring) {
                 payload.recurrence_type = null;
                 payload.recurrence_interval = null;
