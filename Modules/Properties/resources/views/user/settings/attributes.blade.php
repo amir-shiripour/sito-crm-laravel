@@ -153,15 +153,16 @@
                     {{-- لیست ویژگی‌ها --}}
                     <div class="space-y-3">
                         @forelse($detailsAttributes as $attr)
-                            <div class="group flex items-center justify-between p-4 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-indigo-300 dark:hover:border-indigo-700 hover:shadow-sm transition-all" x-data="{ editing: false, name: '{{ addslashes($attr->name) }}', icon: '{{ addslashes($attr->icon ?? '') }}', description: '{{ addslashes($attr->description ?? '') }}', type: '{{ $attr->type }}', isFilterable: {{ $attr->is_filterable ? 'true' : 'false' }}, isRangeFilter: {{ $attr->is_range_filter ? 'true' : 'false' }} }">
-                                <div class="flex items-center gap-3.5 flex-1 min-w-0">
-                                    {{-- آیکون ویژگی --}}
-                                    <div class="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/60 flex items-center justify-center text-lg flex-shrink-0 shadow-2xs">
-                                        <span>{{ $attr->icon ?: '📐' }}</span>
-                                    </div>
+                            <div class="group p-4 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-indigo-300 dark:hover:border-indigo-700 hover:shadow-sm transition-all" x-data="{ editing: false, name: '{{ addslashes($attr->name) }}', icon: '{{ addslashes($attr->icon ?? '') }}', description: '{{ addslashes($attr->description ?? '') }}', type: '{{ $attr->type }}', isFilterable: {{ $attr->is_filterable ? 'true' : 'false' }}, isRangeFilter: {{ $attr->is_range_filter ? 'true' : 'false' }} }">
+                                {{-- حالت نمایش (عادی) --}}
+                                <div x-show="!editing" class="flex items-center justify-between gap-3">
+                                    <div class="flex items-center gap-3.5 flex-1 min-w-0">
+                                        {{-- آیکون ویژگی --}}
+                                        <div class="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/60 flex items-center justify-center text-lg flex-shrink-0 shadow-2xs">
+                                            <span>{{ $attr->icon ?: '📐' }}</span>
+                                        </div>
 
-                                    <div class="flex-1 min-w-0">
-                                        <div x-show="!editing">
+                                        <div class="flex-1 min-w-0">
                                             <h4 class="text-sm font-bold text-gray-800 dark:text-gray-200 flex items-center gap-2 truncate">
                                                 <span>{{ $attr->name }}</span>
                                                 @if($attr->is_filterable)
@@ -179,7 +180,7 @@
                                                 <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 leading-relaxed">{{ $attr->description }}</p>
                                             @endif
                                             <div class="flex items-center gap-2 mt-1">
-                                                <span class="text-[10px] px-2 py-0.5 rounded bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300">
+                                                <span class="text-[10px] px-2 py-0.5 rounded bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300 font-medium">
                                                     {{ match($attr->type) { 'text' => 'متن', 'number' => 'عدد', 'select' => 'لیست', 'checkbox' => 'چک‌باکس', default => $attr->type } }}
                                                 </span>
                                                 @if($attr->type === 'select')
@@ -189,59 +190,95 @@
                                                 @endif
                                             </div>
                                         </div>
+                                    </div>
 
-                                        {{-- فرم ویرایش --}}
-                                        <form x-show="editing" action="{{ route('user.settings.properties.attributes.update', $attr) }}" method="POST" class="flex flex-col gap-3 mt-2">
+                                    <div class="flex items-center gap-2 flex-shrink-0">
+                                        <button @click="editing = true" class="p-2 text-gray-400 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg transition-colors" title="ویرایش">
+                                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                                        </button>
+                                        <form action="{{ route('user.settings.properties.attributes.destroy', $attr) }}" method="POST" onsubmit="return confirm('آیا از حذف این ویژگی اطمینان دارید؟ تمام مقادیر مرتبط در املاک نیز حذف خواهند شد.')">
                                             @csrf
-                                            @method('PUT')
-
-                                            <div class="flex flex-wrap gap-2 items-center">
-                                                <input type="text" name="icon" x-model="icon" class="{{ $inputClass }} py-1.5 text-xs w-16 text-center text-sm" placeholder="آیکون" title="آیکون">
-                                                <input type="text" name="name" x-model="name" class="{{ $inputClass }} py-1.5 text-xs flex-1 min-w-[140px]" required placeholder="عنوان ویژگی">
-
-                                                <select name="type" x-model="type" class="{{ $selectClass }} py-1.5 text-xs w-28">
-                                                    <option value="text">متن</option>
-                                                    <option value="number">عدد</option>
-                                                    <option value="select">لیست</option>
-                                                    <option value="checkbox">چک‌باکس</option>
-                                                </select>
-
-                                                <input type="text" name="options" value="{{ implode(',', $attr->options ?? []) }}" class="{{ $inputClass }} py-1.5 text-xs flex-1 min-w-[160px]" placeholder="گزینه‌ها" x-show="type === 'select'">
-                                            </div>
-                                            <div class="w-full">
-                                                <input type="text" name="description" x-model="description" class="{{ $inputClass }} py-1.5 text-xs w-full" placeholder="توضیحات پیش‌فرض / راهنما (اختیاری)">
-                                            </div>
-                                            <div class="flex flex-wrap items-center gap-4">
-                                                <label class="flex items-center gap-2 cursor-pointer">
-                                                    <input type="checkbox" name="is_filterable" value="1" class="{{ $checkboxClass }}" x-model="isFilterable">
-                                                    <span class="text-xs text-gray-700 dark:text-gray-300">قابل فیلتر</span>
-                                                </label>
-
-                                                <label class="flex items-center gap-2 cursor-pointer" x-show="isFilterable && type === 'number'">
-                                                    <input type="checkbox" name="is_range_filter" value="1" class="{{ $checkboxClass }}" x-model="isRangeFilter">
-                                                    <span class="text-xs text-gray-700 dark:text-gray-300">فیلتر بازه‌ای</span>
-                                                </label>
-                                            </div>
-                                            <div class="flex gap-2">
-                                                <button type="submit" class="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg transition-colors">ذخیره تغییرات</button>
-                                                <button type="button" @click="editing = false" class="px-3.5 py-1.5 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 text-xs font-bold rounded-lg transition-colors">انصراف</button>
-                                            </div>
+                                            @method('DELETE')
+                                            <button type="submit" class="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors" title="حذف">
+                                                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                            </button>
                                         </form>
                                     </div>
                                 </div>
 
-                                <div class="flex items-center gap-2 flex-shrink-0" x-show="!editing">
-                                    <button @click="editing = true" class="p-2 text-gray-400 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg transition-colors" title="ویرایش">
-                                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
-                                    </button>
-                                    <form action="{{ route('user.settings.properties.attributes.destroy', $attr) }}" method="POST" onsubmit="return confirm('آیا از حذف این ویژگی اطمینان دارید؟ تمام مقادیر مرتبط در املاک نیز حذف خواهند شد.')">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit" class="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors" title="حذف">
-                                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                {{-- فرم ویرایش --}}
+                                <form x-show="editing" x-cloak action="{{ route('user.settings.properties.attributes.update', $attr) }}" method="POST" class="space-y-3">
+                                    @csrf
+                                    @method('PUT')
+
+                                    <div class="flex items-center justify-between pb-2 border-b border-gray-100 dark:border-gray-700/60">
+                                        <span class="text-xs font-bold text-indigo-600 dark:text-indigo-400 flex items-center gap-1.5">
+                                            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                                            ویرایش ویژگی اصلی
+                                        </span>
+                                        <button type="button" @click="editing = false" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-xs p-1" title="انصراف">
+                                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
                                         </button>
-                                    </form>
-                                </div>
+                                    </div>
+
+                                    {{-- ردیف اول: آیکون، عنوان فیلد، نوع فیلد، گزینه‌ها --}}
+                                    <div class="grid grid-cols-12 gap-2.5 items-end">
+                                        <div class="col-span-3 sm:col-span-2 md:col-span-1">
+                                            <label class="block text-[11px] font-bold text-gray-700 dark:text-gray-300 mb-1">آیکون</label>
+                                            <input type="text" name="icon" x-model="icon" class="w-full text-center text-base rounded-xl border border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 px-2 py-1.5 focus:border-indigo-500 focus:bg-white dark:focus:bg-gray-800 focus:ring-2 focus:ring-indigo-500/20 transition-all" placeholder="📐" title="آیکون">
+                                        </div>
+
+                                        <div class="col-span-9 sm:col-span-6 md:col-span-5">
+                                            <label class="block text-[11px] font-bold text-gray-700 dark:text-gray-300 mb-1">عنوان ویژگی <span class="text-red-500">*</span></label>
+                                            <input type="text" name="name" x-model="name" class="w-full rounded-xl border border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 px-3 py-1.5 text-xs focus:border-indigo-500 focus:bg-white dark:focus:bg-gray-800 focus:ring-2 focus:ring-indigo-500/20 transition-all" required placeholder="عنوان ویژگی">
+                                        </div>
+
+                                        <div class="col-span-6 sm:col-span-4 md:col-span-3">
+                                            <label class="block text-[11px] font-bold text-gray-700 dark:text-gray-300 mb-1">نوع فیلد</label>
+                                            <select name="type" x-model="type" class="w-full rounded-xl border border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 px-2.5 py-1.5 text-xs focus:border-indigo-500 focus:bg-white dark:focus:bg-gray-800 focus:ring-2 focus:ring-indigo-500/20 transition-all cursor-pointer">
+                                                <option value="text">متن</option>
+                                                <option value="number">عدد</option>
+                                                <option value="select">لیست</option>
+                                                <option value="checkbox">چک‌باکس</option>
+                                            </select>
+                                        </div>
+
+                                        <div class="col-span-6 sm:col-span-12 md:col-span-3" x-show="type === 'select'" x-cloak>
+                                            <label class="block text-[11px] font-bold text-gray-700 dark:text-gray-300 mb-1">گزینه‌ها (با کاما)</label>
+                                            <input type="text" name="options" value="{{ implode(',', $attr->options ?? []) }}" class="w-full rounded-xl border border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 px-3 py-1.5 text-xs focus:border-indigo-500 focus:bg-white dark:focus:bg-gray-800 focus:ring-2 focus:ring-indigo-500/20 transition-all placeholder-gray-400 dark:placeholder-gray-600" placeholder="گزینه‌ها با کاما">
+                                        </div>
+                                    </div>
+
+                                    {{-- ردیف دوم: توضیحات پیش‌فرض --}}
+                                    <div>
+                                        <label class="block text-[11px] font-bold text-gray-700 dark:text-gray-300 mb-1">توضیحات پیش‌فرض / راهنما (اختیاری)</label>
+                                        <input type="text" name="description" x-model="description" class="w-full rounded-xl border border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 px-3 py-1.5 text-xs focus:border-indigo-500 focus:bg-white dark:focus:bg-gray-800 focus:ring-2 focus:ring-indigo-500/20 transition-all placeholder-gray-400 dark:placeholder-gray-600" placeholder="توضیحات پیش‌فرض / راهنما (اختیاری)...">
+                                    </div>
+
+                                    {{-- فوتر فرم ویرایش --}}
+                                    <div class="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-gray-100 dark:border-gray-700/60">
+                                        <div class="flex items-center gap-4">
+                                            <label class="flex items-center gap-2 cursor-pointer select-none">
+                                                <input type="checkbox" name="is_filterable" value="1" class="{{ $checkboxClass }}" x-model="isFilterable">
+                                                <span class="text-xs font-medium text-gray-700 dark:text-gray-300">قابل فیلتر</span>
+                                            </label>
+
+                                            <label class="flex items-center gap-2 cursor-pointer select-none" x-show="isFilterable && type === 'number'" x-cloak>
+                                                <input type="checkbox" name="is_range_filter" value="1" class="{{ $checkboxClass }}" x-model="isRangeFilter">
+                                                <span class="text-xs font-medium text-gray-700 dark:text-gray-300">فیلتر بازه‌ای</span>
+                                            </label>
+                                        </div>
+
+                                        <div class="flex items-center gap-2">
+                                            <button type="submit" class="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg shadow-sm shadow-indigo-500/20 transition-all active:scale-95">
+                                                ذخیره تغییرات
+                                            </button>
+                                            <button type="button" @click="editing = false" class="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 text-xs font-bold rounded-lg transition-colors">
+                                                انصراف
+                                            </button>
+                                        </div>
+                                    </div>
+                                </form>
                             </div>
                         @empty
                             <div class="text-center py-10 px-4 flex flex-col items-center justify-center text-gray-400 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-2xl">
@@ -333,15 +370,16 @@
                     {{-- لیست امکانات --}}
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                         @forelse($featuresAttributes as $attr)
-                            <div class="group flex items-center justify-between p-3.5 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-emerald-300 dark:hover:border-emerald-700 hover:shadow-sm transition-all" x-data="{ editing: false, name: '{{ addslashes($attr->name) }}', icon: '{{ addslashes($attr->icon ?? '') }}', description: '{{ addslashes($attr->description ?? '') }}', type: '{{ $attr->type }}', isFilterable: {{ $attr->is_filterable ? 'true' : 'false' }} }">
-                                <div class="flex items-center gap-3 flex-1 min-w-0">
-                                    {{-- آیکون امکانات --}}
-                                    <div class="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-100 dark:border-emerald-900/60 flex items-center justify-center text-base flex-shrink-0 shadow-2xs">
-                                        <span>{{ $attr->icon ?: '✨' }}</span>
-                                    </div>
+                            <div class="group p-3.5 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-emerald-300 dark:hover:border-emerald-700 hover:shadow-sm transition-all" x-data="{ editing: false, name: '{{ addslashes($attr->name) }}', icon: '{{ addslashes($attr->icon ?? '') }}', description: '{{ addslashes($attr->description ?? '') }}', type: '{{ $attr->type }}', isFilterable: {{ $attr->is_filterable ? 'true' : 'false' }} }">
+                                {{-- حالت نمایش (عادی) --}}
+                                <div x-show="!editing" class="flex items-center justify-between gap-3">
+                                    <div class="flex items-center gap-3 flex-1 min-w-0">
+                                        {{-- آیکون امکانات --}}
+                                        <div class="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-100 dark:border-emerald-900/60 flex items-center justify-center text-base flex-shrink-0 shadow-2xs">
+                                            <span>{{ $attr->icon ?: '✨' }}</span>
+                                        </div>
 
-                                    <div class="flex-1 min-w-0">
-                                        <div x-show="!editing">
+                                        <div class="flex-1 min-w-0">
                                             <div class="flex items-center gap-2">
                                                 <h4 class="text-sm font-bold text-gray-800 dark:text-gray-200 truncate">{{ $attr->name }}</h4>
                                                 @if($attr->is_filterable)
@@ -354,58 +392,91 @@
                                                 <p class="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5 leading-relaxed truncate">{{ $attr->description }}</p>
                                             @endif
                                         </div>
+                                    </div>
 
-                                        {{-- فرم ویرایش --}}
-                                        <form x-show="editing" action="{{ route('user.settings.properties.attributes.update', $attr) }}" method="POST" class="flex flex-col gap-2.5 mt-2 w-full">
+                                    <div class="flex items-center gap-1.5 flex-shrink-0">
+                                        <button @click="editing = true" class="p-1.5 text-gray-400 hover:text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg transition-colors" title="ویرایش">
+                                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                                        </button>
+                                        <form action="{{ route('user.settings.properties.attributes.destroy', $attr) }}" method="POST" onsubmit="return confirm('آیا از حذف این مورد اطمینان دارید؟')">
                                             @csrf
-                                            @method('PUT')
-
-                                            <div class="flex gap-2 w-full items-center">
-                                                <input type="text" name="icon" x-model="icon" class="{{ $inputClass }} py-1 text-xs w-16 text-center text-sm" placeholder="آیکون" title="آیکون">
-                                                <input type="text" name="name" x-model="name" class="{{ $inputClass }} py-1 text-xs flex-1" required placeholder="عنوان امکانات">
-
-                                                <select name="type" x-model="type" class="{{ $selectClass }} py-1 text-xs w-24">
-                                                    <option value="checkbox">چک‌باکس</option>
-                                                    <option value="text">متن</option>
-                                                    <option value="number">عدد</option>
-                                                    <option value="select">لیست</option>
-                                                </select>
-                                            </div>
-
-                                            <div class="w-full">
-                                                <input type="text" name="description" x-model="description" class="{{ $inputClass }} py-1 text-xs w-full" placeholder="توضیحات پیش‌فرض / راهنما (اختیاری)">
-                                            </div>
-
-                                            <div x-show="type === 'select'" class="w-full">
-                                                <input type="text" name="options" value="{{ implode(',', $attr->options ?? []) }}" class="{{ $inputClass }} py-1 text-xs w-full" placeholder="گزینه‌ها (با کاما جدا کنید)">
-                                            </div>
-
-                                            <div class="flex items-center justify-between gap-2">
-                                                <label class="flex items-center gap-1.5 cursor-pointer">
-                                                    <input type="checkbox" name="is_filterable" value="1" class="{{ $checkboxClass }}" x-model="isFilterable">
-                                                    <span class="text-xs text-gray-700 dark:text-gray-300">قابل فیلتر</span>
-                                                </label>
-                                                <div class="flex gap-1.5">
-                                                    <button type="submit" class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg transition-colors">ذخیره</button>
-                                                    <button type="button" @click="editing = false" class="px-2.5 py-1 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 text-xs font-bold rounded-lg transition-colors">انصراف</button>
-                                                </div>
-                                            </div>
+                                            @method('DELETE')
+                                            <button type="submit" class="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors" title="حذف">
+                                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                            </button>
                                         </form>
                                     </div>
                                 </div>
 
-                                <div class="flex items-center gap-1.5 flex-shrink-0" x-show="!editing">
-                                    <button @click="editing = true" class="p-1.5 text-gray-400 hover:text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg transition-colors" title="ویرایش">
-                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
-                                    </button>
-                                    <form action="{{ route('user.settings.properties.attributes.destroy', $attr) }}" method="POST" onsubmit="return confirm('آیا از حذف این مورد اطمینان دارید؟')">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit" class="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors" title="حذف">
-                                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                {{-- فرم ویرایش --}}
+                                <form x-show="editing" x-cloak action="{{ route('user.settings.properties.attributes.update', $attr) }}" method="POST" class="space-y-3">
+                                    @csrf
+                                    @method('PUT')
+
+                                    <div class="flex items-center justify-between pb-2 border-b border-gray-100 dark:border-gray-700/60">
+                                        <span class="text-xs font-bold text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5">
+                                            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                                            ویرایش امکانات رفاهی
+                                        </span>
+                                        <button type="button" @click="editing = false" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-xs p-1" title="انصراف">
+                                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
                                         </button>
-                                    </form>
-                                </div>
+                                    </div>
+
+                                    {{-- ردیف اول: آیکون، عنوان فیلد، نوع فیلد --}}
+                                    <div class="grid grid-cols-12 gap-2.5 items-end">
+                                        {{-- آیکون --}}
+                                        <div class="col-span-3 sm:col-span-2">
+                                            <label class="block text-[11px] font-bold text-gray-700 dark:text-gray-300 mb-1">آیکون</label>
+                                            <input type="text" name="icon" x-model="icon" class="w-full text-center text-base rounded-xl border border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 px-2 py-1.5 focus:border-emerald-500 focus:bg-white dark:focus:bg-gray-800 focus:ring-2 focus:ring-emerald-500/20 transition-all" placeholder="✨" title="آیکون">
+                                        </div>
+
+                                        {{-- عنوان فیلد / امکانات --}}
+                                        <div class="col-span-9 sm:col-span-6">
+                                            <label class="block text-[11px] font-bold text-gray-700 dark:text-gray-300 mb-1">عنوان فیلد <span class="text-red-500">*</span></label>
+                                            <input type="text" name="name" x-model="name" class="w-full rounded-xl border border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 px-3 py-1.5 text-xs focus:border-emerald-500 focus:bg-white dark:focus:bg-gray-800 focus:ring-2 focus:ring-emerald-500/20 transition-all" required placeholder="عنوان امکانات">
+                                        </div>
+
+                                        {{-- نوع فیلد --}}
+                                        <div class="col-span-12 sm:col-span-4">
+                                            <label class="block text-[11px] font-bold text-gray-700 dark:text-gray-300 mb-1">نوع فیلد</label>
+                                            <select name="type" x-model="type" class="w-full rounded-xl border border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 px-2.5 py-1.5 text-xs focus:border-emerald-500 focus:bg-white dark:focus:bg-gray-800 focus:ring-2 focus:ring-emerald-500/20 transition-all cursor-pointer">
+                                                <option value="checkbox">چک‌باکس</option>
+                                                <option value="text">متن</option>
+                                                <option value="number">عدد</option>
+                                                <option value="select">لیست</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    {{-- ردیف دوم: توضیحات پیش‌فرض --}}
+                                    <div>
+                                        <label class="block text-[11px] font-bold text-gray-700 dark:text-gray-300 mb-1">توضیحات پیش‌فرض / راهنما (اختیاری)</label>
+                                        <input type="text" name="description" x-model="description" class="w-full rounded-xl border border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 px-3 py-1.5 text-xs focus:border-emerald-500 focus:bg-white dark:focus:bg-gray-800 focus:ring-2 focus:ring-emerald-500/20 transition-all placeholder-gray-400 dark:placeholder-gray-600" placeholder="توضیحات پیش‌فرض / راهنما (اختیاری)...">
+                                    </div>
+
+                                    {{-- گزینه‌ها در صورت انتخاب لیست --}}
+                                    <div x-show="type === 'select'" x-cloak>
+                                        <label class="block text-[11px] font-bold text-gray-700 dark:text-gray-300 mb-1">گزینه‌ها (با کاما جدا کنید)</label>
+                                        <input type="text" name="options" value="{{ implode(',', $attr->options ?? []) }}" class="w-full rounded-xl border border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 px-3 py-1.5 text-xs focus:border-emerald-500 focus:bg-white dark:focus:bg-gray-800 focus:ring-2 focus:ring-emerald-500/20 transition-all placeholder-gray-400 dark:placeholder-gray-600" placeholder="گزینه‌ها (با کاما جدا کنید)">
+                                    </div>
+
+                                    {{-- فوتر فرم ویرایش: قابل فیلتر + دکمه‌ها --}}
+                                    <div class="flex items-center justify-between gap-2 pt-2 border-t border-gray-100 dark:border-gray-700/60">
+                                        <label class="flex items-center gap-2 cursor-pointer select-none">
+                                            <input type="checkbox" name="is_filterable" value="1" class="{{ $checkboxClass }}" x-model="isFilterable">
+                                            <span class="text-xs font-medium text-gray-700 dark:text-gray-300">قابل فیلتر</span>
+                                        </label>
+                                        <div class="flex items-center gap-2">
+                                            <button type="submit" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg shadow-sm shadow-emerald-500/20 transition-all active:scale-95">
+                                                ذخیره
+                                            </button>
+                                            <button type="button" @click="editing = false" class="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 text-xs font-bold rounded-lg transition-colors">
+                                                انصراف
+                                            </button>
+                                        </div>
+                                    </div>
+                                </form>
                             </div>
                         @empty
                             <div class="col-span-2 text-center py-10 px-4 flex flex-col items-center justify-center text-gray-400 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-2xl">
