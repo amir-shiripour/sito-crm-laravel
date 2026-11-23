@@ -42,8 +42,8 @@ class RouteServiceProvider extends ServiceProvider
                 ->group(base_path('routes/web.php'));
 
             // این بخش حیاتی برای پنل ادمین است
-            // ما فایل روت ادمین را جداگانه با پیشوند 'admin' و میدل‌ورهای 'auth' و 'super_admin' بارگذاری می‌کنیم
-            Route::middleware(['web', 'auth', 'super_admin'])
+            // ما فایل روت ادمین را جداگانه با پیشوند 'admin' و میدل‌ور 'auth' بارگذاری می‌کنیم
+            Route::middleware(['web', 'auth'])
                 ->prefix('admin')
                 ->name('admin.') // این به روت‌ها پیشوند 'admin.' می‌دهد (مثلاً admin.dashboard)
                 ->group(base_path('routes/admin.php'));

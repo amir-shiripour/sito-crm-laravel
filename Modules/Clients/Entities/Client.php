@@ -231,6 +231,25 @@ class Client extends Authenticatable
                         $c = trim($decoded['city'] ?? '');
                         $value = array_filter([$p, $c]) ? implode(' - ', array_filter([$p, $c])) : $value;
                     }
+                } elseif ($fType === 'date') {
+                    if (is_string($value) && trim($value) !== '') {
+                        $vTrim = trim($value);
+                        if (preg_match('/^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})/', $vTrim, $m)) {
+                            $y = (int)$m[1];
+                            $mo = (int)$m[2];
+                            $d = (int)$m[3];
+                            if ($y >= 1900) {
+                                try {
+                                    if (class_exists(\Morilog\Jalali\CalendarUtils::class)) {
+                                        [$jy, $jm, $jd] = \Morilog\Jalali\CalendarUtils::toJalali($y, $mo, $d);
+                                        $value = sprintf('%04d/%02d/%02d', $jy, $jm, $jd);
+                                    }
+                                } catch (\Throwable $e) {}
+                            } else {
+                                $value = sprintf('%04d/%02d/%02d', $y, $mo, $d);
+                            }
+                        }
+                    }
                 } else {
                     $rawOpts = !empty($fieldDef['options_json']) ? $fieldDef['options_json'] : ($fieldDef['options'] ?? null);
                     if (!empty($rawOpts)) {

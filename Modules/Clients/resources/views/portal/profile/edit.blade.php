@@ -194,6 +194,18 @@
                                                 $clientCols = \Illuminate\Support\Facades\Schema::getColumnListing('clients');
                                                 $val = in_array($fid, $clientCols) ? ($client->{$fid} ?? '') : ($client->meta[$fid] ?? '');
                                                 $fieldValue = old($fid, $val);
+                                                if (($field['type'] ?? '') === 'date' && is_string($fieldValue) && trim($fieldValue) !== '') {
+                                                    $vTrim = trim($fieldValue);
+                                                    if (preg_match('/^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})/', $vTrim, $m)) {
+                                                        $y = (int)$m[1];
+                                                        if ($y >= 1900 && class_exists(\Morilog\Jalali\CalendarUtils::class)) {
+                                                            try {
+                                                                [$jy, $jm, $jd] = \Morilog\Jalali\CalendarUtils::toJalali($y, (int)$m[2], (int)$m[3]);
+                                                                $fieldValue = sprintf('%04d/%02d/%02d', $jy, $jm, $jd);
+                                                            } catch (\Throwable $e) {}
+                                                        }
+                                                    }
+                                                }
 
                                                 $widthClass = match($field['width'] ?? 'full') {
                                                     '1/3', '1/2' => 'md:col-span-1',

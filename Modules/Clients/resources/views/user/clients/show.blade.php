@@ -900,6 +900,36 @@
                                                         @endforeach
                                                     </div>
                                                 @endif
+                                            @elseif($fieldType === 'date')
+                                                @php
+                                                    $displayDate = (string)$v;
+                                                    if (is_string($v) && trim($v) !== '') {
+                                                        $vTrim = trim($v);
+                                                        if (preg_match('/^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})/', $vTrim, $m)) {
+                                                            $y = (int)$m[1];
+                                                            $mo = (int)$m[2];
+                                                            $d = (int)$m[3];
+                                                            if ($y >= 1900) {
+                                                                try {
+                                                                    if (class_exists(\Morilog\Jalali\CalendarUtils::class)) {
+                                                                        [$jy, $jm, $jd] = \Morilog\Jalali\CalendarUtils::toJalali($y, $mo, $d);
+                                                                        $displayDate = sprintf('%04d/%02d/%02d', $jy, $jm, $jd);
+                                                                    }
+                                                                } catch (\Throwable $e) {
+                                                                    $displayDate = $vTrim;
+                                                                }
+                                                            } else {
+                                                                $displayDate = sprintf('%04d/%02d/%02d', $y, $mo, $d);
+                                                            }
+                                                        }
+                                                    }
+                                                @endphp
+                                                <div class="inline-flex items-center gap-1.5 dir-ltr text-right">
+                                                    <svg class="w-4 h-4 text-indigo-500 dark:text-indigo-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                                                    </svg>
+                                                    <span>{{ $displayDate }}</span>
+                                                </div>
                                             @elseif($fieldType === 'select-province-city' && is_string($v))
                                                 @php $decoded = json_decode($v, true); @endphp
                                                 {{ is_array($decoded) ? ($decoded['province'] ?? '') . ' - ' . ($decoded['city'] ?? '') : $v }}
