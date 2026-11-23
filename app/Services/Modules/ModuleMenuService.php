@@ -306,6 +306,7 @@ class ModuleMenuService
             'followups' => 'پیگیری‌ها',
             'clientcalls' => 'تماس‌ها',
             'projects' => 'پروژه‌ها',
+            'warehouse' => 'انبارداری و اموال',
             'fieldservice' => 'مدیریت اجی مجی',
             'single' => 'آیتم‌های عمومی و مستقل',
         ];
