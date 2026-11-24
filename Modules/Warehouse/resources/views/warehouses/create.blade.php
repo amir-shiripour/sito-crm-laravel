@@ -15,10 +15,10 @@
             </span>
             <div>
                 <h1 class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
-                    {{ $type === 'inventory' ? 'تعریف انبارک موجودی جدید' : 'تعریف انبارک اموال جدید' }}
+                    {{ $type === 'inventory' ? 'تعریف انبار جدید' : 'تعریف مکان اموال جدید' }}
                 </h1>
                 <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                    {{ $type === 'inventory' ? 'ایجاد انبارک یا شعبه جدید تحت انبار مرکزی موجودی' : 'ایجاد مکان، طبقه یا واحد استقرار دارایی‌های سازمانی' }}
+                    مشخصات، انبار والد و مسئول انبار
                 </p>
             </div>
         </div>

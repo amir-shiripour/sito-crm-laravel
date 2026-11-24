@@ -11,7 +11,7 @@
                         <h4 class="text-sm font-bold text-gray-900 dark:text-white truncate">
                             {{ $marketWarehouse->name }}
                         </h4>
-                        <span class="px-2 py-0.5 text-[11px] font-bold rounded bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-900">
+                        <span class="px-2 py-0.5 text-[11px] font-bold rounded-lg bg-amber-50 dark:bg-amber-500/15 text-amber-800 dark:text-amber-300 border border-amber-200/60 dark:border-amber-500/30">
                             انبار فروشگاه
                         </span>
                     </div>
@@ -23,7 +23,7 @@
 
             @if(\Illuminate\Support\Facades\Route::has('admin.market.warehouses.index'))
                 <a href="{{ route('admin.market.warehouses.index') }}"
-                   class="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-xs font-bold bg-amber-50 hover:bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:hover:bg-amber-900/60 dark:text-amber-300 border border-amber-200/60 dark:border-amber-800/60 transition-colors shrink-0">
+                   class="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-xs font-bold bg-amber-50 hover:bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:hover:bg-amber-500/25 dark:text-amber-300 border border-amber-200/60 dark:border-amber-500/30 transition-colors shrink-0">
                     <span>مشاهده</span>
                     <svg class="w-3 h-3 rtl:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>

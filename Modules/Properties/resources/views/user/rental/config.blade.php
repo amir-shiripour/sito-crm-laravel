@@ -608,17 +608,35 @@
                         <div>
                             <label class="{{ $labelClass }}">ظرفیت استاندارد <span class="text-red-500">*</span></label>
                             <div class="relative">
-                                <input type="number" name="base_guests" value="{{ old('base_guests', $rentalConfig->base_guests ?? 2) }}" min="1" max="50" required class="{{ $inputClass }} text-center font-sans">
+                                <input type="number" 
+                                       name="base_guests" 
+                                       x-model.number="baseGuests" 
+                                       @input="if(maxGuests < baseGuests) maxGuests = baseGuests" 
+                                       value="{{ old('base_guests', $rentalConfig->base_guests ?? 2) }}" 
+                                       min="1" 
+                                       max="50" 
+                                       required 
+                                       class="{{ $inputClass }} text-center font-sans">
                                 <span class="absolute inset-y-0 left-3 flex items-center text-xs text-slate-500 dark:text-slate-400 font-sans pointer-events-none">نفر</span>
                             </div>
+                            <p class="text-[10px] text-slate-500 dark:text-slate-400 font-sans mt-1">تعداد نفرات مشمول نرخ پایه</p>
                         </div>
 
                         <div>
                             <label class="{{ $labelClass }}">حداکثر با اضافه <span class="text-red-500">*</span></label>
                             <div class="relative">
-                                <input type="number" name="max_guests" value="{{ old('max_guests', $rentalConfig->max_guests ?? 4) }}" min="1" max="100" required class="{{ $inputClass }} text-center font-sans">
+                                <input type="number" 
+                                       name="max_guests" 
+                                       x-model.number="maxGuests" 
+                                       :min="baseGuests" 
+                                       value="{{ old('max_guests', $rentalConfig->max_guests ?? 4) }}" 
+                                       min="1" 
+                                       max="100" 
+                                       required 
+                                       class="{{ $inputClass }} text-center font-sans">
                                 <span class="absolute inset-y-0 left-3 flex items-center text-xs text-slate-500 dark:text-slate-400 font-sans pointer-events-none">نفر</span>
                             </div>
+                            <p class="text-[10px] text-slate-500 dark:text-slate-400 font-sans mt-1">سقف کل پذیرش (حداقل برابر ظرفیت استاندارد)</p>
                         </div>
                     </div>
 
@@ -825,6 +843,8 @@
         return {
             showHolidayModal: false,
             isSubmitting: false,
+            baseGuests: {{ (int) old('base_guests', $rentalConfig->base_guests ?? 2) }},
+            maxGuests: {{ (int) old('max_guests', $rentalConfig->max_guests ?? 4) }},
             pricePerNight: '{{ old('price_per_night', $rentalConfig->price_per_night ? number_format($rentalConfig->price_per_night) : '') }}',
             priceWeekend: '{{ old('price_weekend', $rentalConfig->price_weekend ? number_format($rentalConfig->price_weekend) : '') }}',
             priceHoliday: '{{ old('price_holiday', $rentalConfig->price_holiday ? number_format($rentalConfig->price_holiday) : '') }}',

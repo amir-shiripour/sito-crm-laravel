@@ -16,6 +16,11 @@ class Installer extends BaseModuleInstaller
     protected string $moduleName = 'Warehouse';
 
     protected array $tables = [
+        'warehouse_item_stocks',
+        'warehouse_item_batches',
+        'warehouse_items',
+        'warehouse_categories',
+        'warehouse_managers',
         'warehouse_market_links',
         'warehouse_settings',
         'warehouse_warehouses',

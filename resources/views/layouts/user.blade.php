@@ -27,6 +27,10 @@
         body { font-size: 14px;}
         jdp-container { z-index: 9999 !important; }
         [x-cloak] { display: none !important; }
+        html.dark, .dark { color-scheme: dark; }
+        html.dark select, .dark select { color-scheme: dark !important; }
+        html.dark select option, .dark select option { background-color: #1f2937 !important; color: #f3f4f6 !important; }
+        select option { background-color: #ffffff; color: #111827; }
 
         /* Sleek scrollbars for both Light and Dark mode */
         ::-webkit-scrollbar { width: 6px; height: 6px; }

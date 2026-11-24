@@ -44,7 +44,7 @@ class UserController extends Controller
             $roles = $allRoles->except('super-admin');
         }
 
-        // کاربران برای انتخاب اتصال (مانند پزشکان)
+        // کاربران برای انتخاب اتصال
         $allUsers = User::where('id', '!=', $user->id)->get(['id', 'name']);
 
         $selectedRoles = []; // جلوگیری از null
@@ -114,7 +114,7 @@ class UserController extends Controller
             $roles = $allRoles->except('super-admin');
         }
 
-        // کاربران برای انتخاب اتصال (مانند پزشکان)
+        // کاربران برای انتخاب اتصال
         $allUsers = User::where('id', '!=', $user->id)->get(['id', 'name']);
 
         $selectedRoles = $user->roles->pluck('name')->toArray();

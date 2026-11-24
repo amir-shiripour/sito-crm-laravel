@@ -164,8 +164,15 @@
                         @endif
                     </div>
                 @else
-                    <div class="p-4 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-center text-xs text-gray-500 dark:text-gray-400">
-                        انبار مرکزی موجودی ثبت نشده است.
+                    <div class="p-6 rounded-2xl border border-gray-200 dark:border-gray-700/80 bg-white dark:bg-gray-800 text-center space-y-2">
+                        <p class="text-xs font-bold text-gray-600 dark:text-gray-400">انبار مرکزی موجودی ثبت نشده است.</p>
+                        <a href="{{ route('admin.warehouse.warehouses.create', ['type' => 'inventory']) }}"
+                           class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs transition-all shadow-sm">
+                            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                            </svg>
+                            تعریف انبار موجودی
+                        </a>
                     </div>
                 @endif
             </div>
@@ -205,8 +212,15 @@
                         @endif
                     </div>
                 @else
-                    <div class="p-4 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 text-center text-xs text-gray-500 dark:text-gray-400">
-                        انبار مرکزی اموال ثبت نشده است.
+                    <div class="p-6 rounded-2xl border border-gray-200 dark:border-gray-700/80 bg-white dark:bg-gray-800 text-center space-y-2">
+                        <p class="text-xs font-bold text-gray-600 dark:text-gray-400">انبار مرکزی اموال ثبت نشده است.</p>
+                        <a href="{{ route('admin.warehouse.warehouses.create', ['type' => 'asset']) }}"
+                           class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs transition-all shadow-sm">
+                            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                            </svg>
+                            تعریف انبار اموال
+                        </a>
                     </div>
                 @endif
             </div>

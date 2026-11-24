@@ -8,9 +8,10 @@ class WarehouseDatabaseSeeder extends Seeder
 {
     /**
      * Run the database seeds.
+     * No default data is seeded automatically.
      */
     public function run(): void
     {
-        $this->call(WarehouseSeeder::class);
+        // No automatic data creation
     }
 }
