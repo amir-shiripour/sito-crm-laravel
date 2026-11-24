@@ -106,13 +106,13 @@
                 <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                         <label class="{{ $labelClass }}">رمز عبور <span class="text-red-500">*</span></label>
-                        <input type="password" name="password" class="{{ $inputClass }} dir-ltr text-left font-mono" required placeholder="••••••••">
+                        <input type="password" name="password" class="{{ $inputClass }} dir-ltr text-left" required placeholder="••••••••">
                         <p class="text-[10px] text-gray-400 mt-1.5 text-right">حداقل ۸ کاراکتر شامل حروف و اعداد</p>
                     </div>
 
                     <div>
                         <label class="{{ $labelClass }}">تأیید رمز عبور <span class="text-red-500">*</span></label>
-                        <input type="password" name="password_confirmation" class="{{ $inputClass }} dir-ltr text-left font-mono" required placeholder="••••••••">
+                        <input type="password" name="password_confirmation" class="{{ $inputClass }} dir-ltr text-left" required placeholder="••••••••">
                     </div>
                 </div>
             </div>

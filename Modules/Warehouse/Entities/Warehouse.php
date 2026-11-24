@@ -86,6 +86,12 @@ class Warehouse extends Model
         return $this->hasMany(WarehouseMarketLink::class, 'warehouse_id');
     }
 
+    public function managers(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
+    {
+        return $this->belongsToMany(\App\Models\User::class, 'warehouse_managers', 'warehouse_id', 'user_id')
+            ->withTimestamps();
+    }
+
     public function scopeMain($query)
     {
         return $query->where('is_main', true);

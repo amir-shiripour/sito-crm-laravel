@@ -48,7 +48,7 @@
                     @forelse($users as $user)
                         <tr class="group hover:bg-gray-50 dark:hover:bg-gray-700/20 transition-colors duration-150">
                             {{-- شناسه --}}
-                            <td class="px-6 py-4 text-gray-400 dark:text-gray-500 font-mono text-xs font-semibold">
+                            <td class="px-6 py-4 text-gray-400 dark:text-gray-500 font-sans text-xs font-semibold">
                                 {{ $user->id }}
                             </td>
 
@@ -67,7 +67,7 @@
 
                             {{-- موبایل --}}
                             <td class="px-6 py-4">
-                                <span class="font-mono text-gray-600 dark:text-gray-300 dir-ltr inline-block">
+                                <span class="font-sans text-gray-600 dark:text-gray-300 dir-ltr inline-block">
                                     {{ $user->mobile ?? '—' }}
                                 </span>
                             </td>

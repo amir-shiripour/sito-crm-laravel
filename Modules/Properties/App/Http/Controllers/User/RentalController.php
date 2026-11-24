@@ -192,6 +192,10 @@ class RentalController extends Controller
             'custom_rules.*' => 'nullable|string|max:255',
             'cancellation_policy' => 'nullable|string',
             'special_prices' => 'nullable|array',
+        ], [
+            'max_guests.gte' => 'حداکثر ظرفیت مهمان (با نفرات اضافه) باید بزرگتر یا مساوی با ظرفیت استاندارد (:value نفر) باشد.',
+            'base_guests.required' => 'وارد کردن ظرفیت استاندارد الزامی است.',
+            'max_guests.required' => 'وارد کردن حداکثر ظرفیت مهمان الزامی است.',
         ]);
 
         $validated['instant_booking'] = $request->boolean('instant_booking');

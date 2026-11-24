@@ -164,5 +164,21 @@ return [
         'rent_price' => 'اجاره ماهیانه',
         'advance_price' => 'مبلغ پیش‌پرداخت',
         'video' => 'ویدیو',
+
+        // فیلدهای اقامتگاه و اجاره
+        'base_guests' => 'ظرفیت استاندارد',
+        'max_guests' => 'حداکثر ظرفیت مهمان',
+        'price_per_night' => 'قیمت هر شب',
+        'price_weekend' => 'قیمت آخر هفته',
+        'price_holiday' => 'قیمت ایام خاص و تعطیلات',
+        'discount_value' => 'مقدار تخفیف',
+        'discount_type' => 'نوع تخفیف',
+        'extra_guest_fee' => 'هزینه نفر اضافه',
+        'cleaning_fee' => 'هزینه نظافت',
+        'check_in_time' => 'ساعت ورود',
+        'check_out_time' => 'ساعت خروج',
+        'min_stay_nights' => 'حداقل مدت اقامت',
+        'house_rules' => 'قوانین اقامتگاه',
+        'cancellation_policy' => 'مقررات لغو رزرو',
     ],
 ];

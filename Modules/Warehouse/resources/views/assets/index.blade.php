@@ -24,7 +24,7 @@
                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
                 </svg>
-                افزودن انبارک اموال
+                {{ $mainWarehouse ? 'افزودن انبارک اموال' : 'تعریف انبار اموال جدید' }}
             </a>
         </div>
     </div>
@@ -84,6 +84,29 @@
                 </div>
             </div>
         </div>
+    @else
+        <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700/80 p-8 text-center space-y-3">
+            <div class="w-12 h-12 mx-auto rounded-2xl bg-teal-50 dark:bg-teal-950/60 text-teal-600 dark:text-teal-400 flex items-center justify-center">
+                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                </svg>
+            </div>
+            <h3 class="text-sm font-bold text-gray-900 dark:text-white">
+                هنوز هیچ انبار یا مکان استقرار اموالی تعریف نشده است
+            </h3>
+            <p class="text-xs text-gray-500 dark:text-gray-400 max-w-md mx-auto">
+                برای شروع ثبت و رهگیری دارایی‌های ثابت و اثاثیه سازمانی، نخستین انبار یا واحد استقرار اموال را ثبت کنید.
+            </p>
+            <div class="pt-2">
+                <a href="{{ route('admin.warehouse.warehouses.create', ['type' => 'asset']) }}"
+                   class="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs transition-all shadow-sm">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                    </svg>
+                    تعریف انبار اموال
+                </a>
+            </div>
+        </div>
     @endif
 
     {{-- Sub-Warehouses Section --}}
@@ -104,7 +127,7 @@
                        name="search"
                        value="{{ $search }}"
                        placeholder="جستجو با نام، کد یا مسئول..."
-                       class="w-full px-3.5 py-2 rounded-xl bg-gray-50/70 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-xs text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:border-indigo-500 focus:bg-white dark:focus:bg-gray-900 focus:ring-2 focus:ring-indigo-500/20 transition-all font-sans">
+                       class="w-full px-3.5 py-2 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-xs text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all font-sans">
             </form>
         </div>
 

@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Modules\Warehouse\Entities\Warehouse;
 use Modules\Warehouse\Entities\WarehouseSetting;
 use Modules\Warehouse\App\Services\WarehouseIntegrationService;
+use App\Models\User;
 
 class WarehouseController extends Controller
 {
@@ -15,6 +16,58 @@ class WarehouseController extends Controller
     public function __construct(WarehouseIntegrationService $integrationService)
     {
         $this->integrationService = $integrationService;
+    }
+
+    /**
+     * Search users dynamically for warehouse managers.
+     * Note: Does not auto-load users if query is empty ("خوکار کاربرا لود نشن").
+     */
+    public function searchUsers(Request $request)
+    {
+        $q = trim((string)$request->input('q', ''));
+        $ids = $request->input('ids');
+
+        if (empty($q) && empty($ids)) {
+            return response()->json([
+                'results' => [],
+                'total' => 0,
+            ]);
+        }
+
+        $query = User::query();
+
+        if (!empty($ids)) {
+            $idsArray = is_array($ids) ? $ids : array_filter(array_map('intval', explode(',', (string)$ids)));
+            if (!empty($idsArray)) {
+                $query->whereIn('id', $idsArray);
+            }
+        } elseif (!empty($q)) {
+            $query->where(function ($sub) use ($q) {
+                $sub->where('name', 'like', "%{$q}%")
+                    ->orWhere('email', 'like', "%{$q}%")
+                    ->orWhere('mobile', 'like', "%{$q}%");
+            });
+        }
+
+        $users = $query->select('id', 'name', 'email', 'mobile', 'profile_photo_path')
+            ->orderBy('name')
+            ->limit(15)
+            ->get()
+            ->map(function ($u) {
+                return [
+                    'id' => $u->id,
+                    'name' => $u->name,
+                    'email' => $u->email ?? '',
+                    'mobile' => $u->mobile ?? '',
+                    'initial' => mb_substr(trim($u->name ?: 'ک'), 0, 1, 'utf-8'),
+                    'avatar' => method_exists($u, 'getProfilePhotoUrlAttribute') ? $u->profile_photo_url : null,
+                ];
+            });
+
+        return response()->json([
+            'results' => $users,
+            'total' => $users->count(),
+        ]);
     }
 
     /**
@@ -31,22 +84,20 @@ class WarehouseController extends Controller
 
         $mainWarehouse = Warehouse::inventory()
             ->main()
+            ->with('managers')
             ->first();
 
-        // If for some reason main warehouse doesn't exist yet, create one
+        // If no explicit main warehouse, find first root warehouse
         if (!$mainWarehouse) {
-            $mainWarehouse = Warehouse::create([
-                'name' => 'انبار مرکزی موجودی',
-                'type' => 'inventory',
-                'is_main' => true,
-                'is_active' => true,
-                'color' => '#4f46e5',
-                'location' => 'دفتر مرکزی',
-            ]);
+            $mainWarehouse = Warehouse::inventory()
+                ->whereNull('parent_id')
+                ->with('managers')
+                ->first();
         }
 
         $subWarehousesQuery = Warehouse::inventory()
-            ->where('is_main', false)
+            ->when($mainWarehouse, fn($q) => $q->where('id', '!=', $mainWarehouse->id))
+            ->with('managers')
             ->when($search, function ($q) use ($search) {
                 $q->where(function ($sub) use ($search) {
                     $sub->where('name', 'like', "%{$search}%")
@@ -88,22 +139,20 @@ class WarehouseController extends Controller
 
         $mainWarehouse = Warehouse::asset()
             ->main()
+            ->with('managers')
             ->first();
 
-        // If for some reason main warehouse doesn't exist yet, create one
+        // If no explicit main warehouse, find first root warehouse
         if (!$mainWarehouse) {
-            $mainWarehouse = Warehouse::create([
-                'name' => 'انبار مرکزی اموال',
-                'type' => 'asset',
-                'is_main' => true,
-                'is_active' => true,
-                'color' => '#0d9488',
-                'location' => 'دفتر مرکزی',
-            ]);
+            $mainWarehouse = Warehouse::asset()
+                ->whereNull('parent_id')
+                ->with('managers')
+                ->first();
         }
 
         $subWarehousesQuery = Warehouse::asset()
-            ->where('is_main', false)
+            ->when($mainWarehouse, fn($q) => $q->where('id', '!=', $mainWarehouse->id))
+            ->with('managers')
             ->when($search, function ($q) use ($search) {
                 $q->where(function ($sub) use ($search) {
                     $sub->where('name', 'like', "%{$search}%")
@@ -156,7 +205,9 @@ class WarehouseController extends Controller
             'is_active' => true,
         ]);
 
-        return view('warehouse::warehouses.create', compact('warehouse', 'type', 'parentWarehouses'));
+        $currentManagers = [];
+
+        return view('warehouse::warehouses.create', compact('warehouse', 'type', 'parentWarehouses', 'currentManagers'));
     }
 
     /**
@@ -171,6 +222,8 @@ class WarehouseController extends Controller
             'color' => 'nullable|string|max:10',
             'code' => 'nullable|string|max:50|unique:warehouse_warehouses,code',
             'location' => 'nullable|string|max:255',
+            'manager_ids' => 'nullable|array',
+            'manager_ids.*' => 'exists:users,id',
             'manager' => 'nullable|string|max:255',
             'phone' => 'nullable|string|max:50',
             'description' => 'nullable|string|max:1000',
@@ -181,9 +234,19 @@ class WarehouseController extends Controller
         ]);
 
         $validated['is_active'] = $request->boolean('is_active', true);
-        $validated['is_main'] = false; // User-created ones are sub-warehouses
+        $hasMain = Warehouse::where('type', $validated['type'])->where('is_main', true)->exists();
+        $validated['is_main'] = (!$hasMain && empty($validated['parent_id']));
+
+        $managerIds = $request->input('manager_ids', []);
+        unset($validated['manager_ids']);
 
         $warehouse = Warehouse::create($validated);
+
+        if (is_array($managerIds) && count($managerIds) > 0) {
+            $warehouse->managers()->sync($managerIds);
+            $names = $warehouse->managers()->pluck('name')->implode('، ');
+            $warehouse->updateQuietly(['manager' => $names]);
+        }
 
         $route = $warehouse->type === 'inventory'
             ? 'admin.warehouse.inventory.index'
@@ -206,7 +269,18 @@ class WarehouseController extends Controller
             })
             ->get();
 
-        return view('warehouse::warehouses.edit', compact('warehouse', 'parentWarehouses'));
+        $currentManagers = $warehouse->managers()->get()->map(function ($u) {
+            return [
+                'id' => $u->id,
+                'name' => $u->name,
+                'email' => $u->email ?? '',
+                'mobile' => $u->mobile ?? '',
+                'initial' => mb_substr(trim($u->name ?: 'ک'), 0, 1, 'utf-8'),
+                'avatar' => method_exists($u, 'getProfilePhotoUrlAttribute') ? $u->profile_photo_url : null,
+            ];
+        })->values()->toArray();
+
+        return view('warehouse::warehouses.edit', compact('warehouse', 'parentWarehouses', 'currentManagers'));
     }
 
     /**
@@ -219,6 +293,8 @@ class WarehouseController extends Controller
             'color' => 'nullable|string|max:10',
             'code' => 'nullable|string|max:50|unique:warehouse_warehouses,code,' . $warehouse->id,
             'location' => 'nullable|string|max:255',
+            'manager_ids' => 'nullable|array',
+            'manager_ids.*' => 'exists:users,id',
             'manager' => 'nullable|string|max:255',
             'phone' => 'nullable|string|max:50',
             'description' => 'nullable|string|max:1000',
@@ -240,7 +316,16 @@ class WarehouseController extends Controller
         unset($validated['type']);
         unset($validated['is_main']);
 
+        $managerIds = $request->input('manager_ids', []);
+        unset($validated['manager_ids']);
+
         $warehouse->update($validated);
+
+        if ($request->has('manager_ids')) {
+            $warehouse->managers()->sync(is_array($managerIds) ? $managerIds : []);
+            $names = $warehouse->managers()->pluck('name')->implode('، ');
+            $warehouse->updateQuietly(['manager' => $names]);
+        }
 
         $route = $warehouse->type === 'inventory'
             ? 'admin.warehouse.inventory.index'
@@ -255,13 +340,18 @@ class WarehouseController extends Controller
      */
     public function destroy(Warehouse $warehouse)
     {
-        if ($warehouse->is_main) {
-            return back()->with('error', 'انبار مرکزی قابل حذف نیست.');
+        // Prevent deletion if items are stocked in this warehouse
+        if (\Modules\Warehouse\Entities\WarehouseItemStock::where('warehouse_id', $warehouse->id)->where('quantity', '>', 0)->exists()) {
+            return back()->with('error', 'این انبار دارای موجودی کالا است و نمی‌توان آن را حذف کرد.');
         }
 
         // If it has children, re-parent them to main warehouse or null
         if ($warehouse->children()->exists()) {
-            $mainWarehouse = Warehouse::where('type', $warehouse->type)->main()->first();
+            $mainWarehouse = Warehouse::where('type', $warehouse->type)
+                ->where('id', '!=', $warehouse->id)
+                ->main()
+                ->first();
+
             $warehouse->children()->update([
                 'parent_id' => $mainWarehouse ? $mainWarehouse->id : null,
             ]);

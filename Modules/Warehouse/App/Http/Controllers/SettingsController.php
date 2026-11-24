@@ -65,31 +65,6 @@ class SettingsController extends Controller
         WarehouseSetting::setValue('assets_enabled', $assetsEnabled);
         WarehouseSetting::setValue('market_integration_enabled', $marketIntegrationEnabled);
 
-        // Ensure main warehouse exists for any enabled type
-        if ($inventoryEnabled) {
-            Warehouse::firstOrCreate(
-                ['type' => 'inventory', 'is_main' => true],
-                [
-                    'name' => 'انبار مرکزی موجودی',
-                    'is_active' => true,
-                    'color' => '#4f46e5',
-                    'location' => 'دفتر مرکزی',
-                ]
-            );
-        }
-
-        if ($assetsEnabled) {
-            Warehouse::firstOrCreate(
-                ['type' => 'asset', 'is_main' => true],
-                [
-                    'name' => 'انبار مرکزی اموال',
-                    'is_active' => true,
-                    'color' => '#0d9488',
-                    'location' => 'دفتر مرکزی',
-                ]
-            );
-        }
-
         // Handle Market links sync if integration is enabled
         if ($marketIntegrationEnabled && $this->integrationService->isMarketWmsEnabled()) {
             $mainInventory = Warehouse::inventory()->main()->first();

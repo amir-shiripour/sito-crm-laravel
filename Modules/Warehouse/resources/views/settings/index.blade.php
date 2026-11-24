@@ -41,7 +41,7 @@
 
             <div class="space-y-3 pt-1">
                 {{-- Inventory Warehouses Toggle --}}
-                <div class="flex items-center justify-between p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/40">
+                <div class="flex items-center justify-between p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/80">
                     <div>
                         <h4 class="text-xs font-bold text-gray-900 dark:text-white">انبار کالا / موجودی (Inventory)</h4>
                         <p class="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">انبار مرکزی موجودی، انبارک‌های شعب و پیوند با فروشگاه</p>
@@ -53,7 +53,7 @@
                 </div>
 
                 {{-- Asset Management Toggle --}}
-                <div class="flex items-center justify-between p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/40">
+                <div class="flex items-center justify-between p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/80">
                     <div>
                         <h4 class="text-xs font-bold text-gray-900 dark:text-white">مدیریت اموال سازمانی (Asset Management)</h4>
                         <p class="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">انبار مرکزی اموال، طبقات، اثاثیه و تجهیزات دفتری</p>
@@ -119,13 +119,13 @@
                 {{-- Warehouses Selection Checklist --}}
                 @if($availableMarketWarehouses->count() > 0)
                     <div class="space-y-2 pt-1">
-                        <label class="block text-xs font-bold text-gray-700 dark:text-gray-300">
+                        <label class="block text-xs font-bold text-gray-800 dark:text-gray-200">
                             انتخاب انبارهای متصل:
                         </label>
 
                         <div class="space-y-1.5 max-h-60 overflow-y-auto">
                             @foreach($availableMarketWarehouses as $mw)
-                                <label class="flex items-center justify-between p-3 rounded-xl bg-gray-50/70 dark:bg-gray-900/40 hover:bg-gray-100 dark:hover:bg-gray-900 border border-gray-200 dark:border-gray-700 cursor-pointer transition-colors">
+                                <label class="flex items-center justify-between p-3 rounded-xl bg-white dark:bg-gray-800/80 hover:bg-gray-50 dark:hover:bg-gray-700/60 border border-gray-200 dark:border-gray-700 cursor-pointer transition-colors">
                                     <div class="flex items-center gap-2.5">
                                         <input type="checkbox"
                                                name="linked_market_warehouses[]"
