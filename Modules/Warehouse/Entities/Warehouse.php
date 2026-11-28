@@ -6,10 +6,12 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Modules\Warehouse\Traits\HasCreator;
 
 class Warehouse extends Model
 {
     use SoftDeletes;
+    use HasCreator;
 
     protected $table = 'warehouse_warehouses';
 
@@ -25,6 +27,7 @@ class Warehouse extends Model
         'manager',
         'phone',
         'description',
+        'created_by',
     ];
 
     protected $casts = [

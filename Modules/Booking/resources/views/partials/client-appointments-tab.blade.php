@@ -369,6 +369,26 @@
                             {{-- Operations --}}
                             <td class="px-4 py-3.5 text-left pl-5">
                                 <div class="flex items-center justify-end gap-1.5">
+                                    {{-- Restore Auto-Canceled Pending Payment --}}
+                                    @can('booking.appointments.edit')
+                                        @if($a->isAutoCanceledPendingPayment())
+                                            <form method="POST"
+                                                  action="{{ route('user.booking.appointments.restore-pending-payment', $a->id) }}"
+                                                  class="inline-flex"
+                                                  onsubmit="return confirm('آیا از بازگردانی این نوبت به حالت «در انتظار پرداخت» اطمینان دارید؟');">
+                                                @csrf
+                                                <button type="submit"
+                                                        class="p-1.5 rounded-lg text-amber-600 hover:text-amber-700 hover:bg-amber-50 dark:text-amber-400 dark:hover:text-amber-300 dark:hover:bg-amber-500/15 transition"
+                                                        title="بازگردانی به در انتظار پرداخت"
+                                                        aria-label="بازگردانی به در انتظار پرداخت">
+                                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" />
+                                                    </svg>
+                                                </button>
+                                            </form>
+                                        @endif
+                                    @endcan
+
                                     {{-- View Details --}}
                                     <a href="{{ route('user.booking.appointments.show', $a->id) }}"
                                        class="p-1.5 rounded-lg text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition"

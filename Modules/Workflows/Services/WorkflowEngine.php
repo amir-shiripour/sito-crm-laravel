@@ -60,6 +60,13 @@ class WorkflowEngine
             Log::info("[Workflows] Instance created: {$instance->id}. Running initial stage actions.");
             $this->runStageActions($instance, $initialStage, $payload);
 
+            if ($initialStage->is_final || $workflow->stages()->count() <= 1) {
+                $instance->update([
+                    'status'       => WorkflowInstance::STATUS_COMPLETED,
+                    'completed_at' => now(),
+                ]);
+            }
+
             return $instance;
         });
     }
@@ -300,6 +307,11 @@ class WorkflowEngine
                 if ($relatedType === 'INVOICE' && class_exists(\Modules\Services\App\Http\Models\Invoice::class)) {
                     $invoice = \Modules\Services\App\Http\Models\Invoice::find($relatedId);
                     if ($invoice) {
+                        if ($wf->key === 'system_invoice_created' && empty($invoice->invoice_number)) {
+                            Log::info("[Workflows] Skipping workflow {$wf->name} because invoice #{$invoice->id} is a proforma.");
+                            continue;
+                        }
+
                         $invoiceStatuses = $config['invoice_statuses'] ?? [];
                         $invoiceStatuses = array_filter(array_map('strval', $invoiceStatuses));
                         if (!empty($invoiceStatuses) && !in_array((string)$invoice->status?->name, $invoiceStatuses, true)) {
@@ -964,17 +976,29 @@ class WorkflowEngine
                             Log::info("[Workflows] Changed Order ID {$orderObj->id} status to '{$statusName}'.");
                             $result = ['status' => 'changed', 'entity' => 'order', 'id' => $orderObj->id, 'new_status' => $statusName];
                         } elseif (isset($context['invoice']) && class_exists('Modules\\Services\\App\\Http\\Models\\Order')) {
-                            // Change all orders of the invoice
+                            // Change all orders of the invoice using Eloquent models so observers (e.g. DirectAdmin sync) fire
                             $invoice = $context['invoice'];
-                            $ordersUpdated = \Modules\Services\App\Http\Models\Order::where('invoice_id', $invoice->id)
-                                ->update(['status_id' => $targetStatus->id]);
+                            $orders = \Modules\Services\App\Http\Models\Order::where('invoice_id', $invoice->id)->get();
+                            $ordersUpdated = 0;
+                            foreach ($orders as $orderObj) {
+                                if ((int)$orderObj->status_id !== (int)$targetStatus->id) {
+                                    $orderObj->update(['status_id' => $targetStatus->id]);
+                                    $ordersUpdated++;
+                                }
+                            }
                             Log::info("[Workflows] Changed {$ordersUpdated} Order(s) for Invoice ID {$invoice->id} status to '{$statusName}'.");
                             $result = ['status' => 'changed', 'entity' => 'orders', 'count' => $ordersUpdated, 'new_status' => $statusName];
                         } elseif (isset($context['service']) && class_exists('Modules\\Services\\App\\Http\\Models\\Order')) {
-                            // Change all orders of the service
+                            // Change all orders of the service using Eloquent models so observers fire
                             $service = $context['service'];
-                            $ordersUpdated = \Modules\Services\App\Http\Models\Order::where('service_id', $service->id)
-                                ->update(['status_id' => $targetStatus->id]);
+                            $orders = \Modules\Services\App\Http\Models\Order::where('service_id', $service->id)->get();
+                            $ordersUpdated = 0;
+                            foreach ($orders as $orderObj) {
+                                if ((int)$orderObj->status_id !== (int)$targetStatus->id) {
+                                    $orderObj->update(['status_id' => $targetStatus->id]);
+                                    $ordersUpdated++;
+                                }
+                            }
                             Log::info("[Workflows] Changed {$ordersUpdated} Order(s) for Service ID {$service->id} status to '{$statusName}'.");
                             $result = ['status' => 'changed', 'entity' => 'orders', 'count' => $ordersUpdated, 'new_status' => $statusName];
                         } else {

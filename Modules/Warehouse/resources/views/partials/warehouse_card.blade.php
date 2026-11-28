@@ -1,8 +1,8 @@
-@props(['warehouse'])
+@props(['warehouse', 'stockSummary' => null])
 
 @php
     $color = $warehouse->effective_color;
-    $managers = $warehouse->managers ?? collect([]);
+    $managers = \Modules\Warehouse\Support\WarehouseUserVisibility::filterVisibleManagers($warehouse->managers ?? collect([]));
 @endphp
 
 <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700/80 p-5 transition-all hover:border-indigo-300 dark:hover:border-indigo-600/60 flex flex-col justify-between shadow-xs">
@@ -30,6 +30,34 @@
 
             {{-- Actions --}}
             <div class="flex items-center gap-1 shrink-0">
+                @if($warehouse->type === 'inventory')
+                    <a href="{{ route('admin.warehouse.consumptions.create', ['warehouse_id' => $warehouse->id]) }}"
+                       class="p-2 rounded-xl text-gray-500 hover:text-rose-600 dark:text-gray-300 dark:hover:text-rose-300 hover:bg-rose-50/60 dark:hover:bg-rose-500/15 transition-colors"
+                       title="ثبت خروج / مصرف از این انبار">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                        </svg>
+                    </a>
+
+                    <a href="{{ route('admin.warehouse.stock-levels.index', ['warehouse_id' => $warehouse->id]) }}"
+                       class="p-2 rounded-xl text-gray-500 hover:text-indigo-600 dark:text-gray-300 dark:hover:text-indigo-300 hover:bg-indigo-50/60 dark:hover:bg-indigo-500/15 transition-colors"
+                       title="مشاهده موجودی این انبار">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                    </a>
+                @endif
+
+                @if($warehouse->type === 'inventory' && !$warehouse->is_main)
+                    <a href="{{ route('admin.warehouse.transfers.create', ['destination_warehouse_id' => $warehouse->id]) }}"
+                       class="p-2 rounded-xl text-gray-500 hover:text-indigo-600 dark:text-gray-300 dark:hover:text-indigo-300 hover:bg-indigo-50/60 dark:hover:bg-indigo-500/15 transition-colors"
+                       title="ثبت درخواست / انتقال کالا به این انبارک">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                        </svg>
+                    </a>
+                @endif
+
                 <a href="{{ route('admin.warehouse.warehouses.edit', $warehouse) }}"
                    class="p-2 rounded-xl text-gray-500 hover:text-indigo-600 dark:text-gray-400 dark:hover:text-indigo-400 hover:bg-indigo-50/60 dark:hover:bg-indigo-500/15 transition-colors"
                    title="ویرایش انبار">
@@ -80,7 +108,7 @@
                         {{ $managers->pluck('name')->join('، ') }}
                     </span>
                 </div>
-            @elseif($warehouse->manager)
+            @elseif($warehouse->manager && $warehouse->managers->isEmpty())
                 <div class="flex items-center gap-1.5 text-gray-600 dark:text-gray-300">
                     <svg class="w-3.5 h-3.5 text-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
@@ -99,6 +127,33 @@
                     <span class="font-sans dir-ltr text-left">{{ $warehouse->phone }}</span>
                 </div>
             @endif
+
+            @if($warehouse->type === 'inventory' && is_array($stockSummary))
+                <div class="flex items-center justify-between gap-2 pt-2 border-t border-gray-100 dark:border-gray-700/60">
+                    <div class="flex items-center gap-2 text-[11px] font-sans">
+                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-indigo-50 dark:bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 font-bold border border-indigo-200/70 dark:border-indigo-500/30">
+                            {{ number_format((int) ($stockSummary['distinct_items'] ?? 0)) }} قلم
+                        </span>
+                        <span class="text-slate-600 dark:text-slate-300 font-medium">
+                            {{ rtrim(rtrim(number_format((float) ($stockSummary['total_units'] ?? 0), 2), '0'), '.') }} واحد
+                        </span>
+                    </div>
+                    <a href="{{ route('admin.warehouse.stock-levels.index', ['warehouse_id' => $warehouse->id]) }}"
+                       class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-500/15 hover:bg-indigo-100 dark:hover:bg-indigo-500/25 text-indigo-700 dark:text-indigo-300 border border-indigo-200/70 dark:border-indigo-500/30 text-[11px] font-bold transition-colors no-underline">
+                        <span>موجودی</span>
+                        <svg class="w-3 h-3 rtl:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                        </svg>
+                    </a>
+                </div>
+            @endif
+
+            <div class="flex items-center justify-between gap-2 pt-2 border-t border-gray-100 dark:border-gray-700/60 text-[11px] text-slate-600 dark:text-slate-300">
+                <span>ثبت‌کننده: <strong class="text-gray-800 dark:text-gray-200">{{ $warehouse->creator_name }}</strong></span>
+                @if($warehouse->created_at)
+                    <span class="dir-ltr font-sans">{{ function_exists('jdate') ? jdate($warehouse->created_at)->format('Y/m/d') : $warehouse->created_at->format('Y-m-d') }}</span>
+                @endif
+            </div>
         </div>
     </div>
 </div>

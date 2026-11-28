@@ -476,10 +476,13 @@ class ProcessWorkflowsCommand extends Command
                 }
             }
 
-            // Check if this workflow instance already ran for this appointment
+            // Check if this workflow instance already ran for this appointment (after any payment-pending restore)
             $exists = $workflow->instances()
                 ->where('related_type', 'APPOINTMENT')
                 ->where('related_id', $appointment->id)
+                ->when($appointment->payment_pending_since, function ($q) use ($appointment) {
+                    $q->where('created_at', '>=', $appointment->payment_pending_since);
+                })
                 ->exists();
 
             if (!$exists) {

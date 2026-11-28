@@ -4,14 +4,20 @@ namespace Modules\Warehouse\Entities;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Modules\Warehouse\Traits\HasCreator;
 
 class WarehouseItemBatch extends Model
 {
+    use HasCreator;
+
     protected $table = 'warehouse_item_batches';
 
     protected $fillable = [
         'item_id',
         'warehouse_id',
+        'purchase_receipt_id',
+        'transfer_request_id',
+        'source_batch_id',
         'batch_code',
         'purchase_date',
         'unit_purchase_price',
@@ -20,6 +26,7 @@ class WarehouseItemBatch extends Model
         'expiry_date',
         'supplier',
         'notes',
+        'created_by',
     ];
 
     protected $casts = [
@@ -38,6 +45,21 @@ class WarehouseItemBatch extends Model
     public function warehouse(): BelongsTo
     {
         return $this->belongsTo(Warehouse::class, 'warehouse_id');
+    }
+
+    public function purchaseReceipt(): BelongsTo
+    {
+        return $this->belongsTo(WarehousePurchaseReceipt::class, 'purchase_receipt_id');
+    }
+
+    public function transferRequest(): BelongsTo
+    {
+        return $this->belongsTo(WarehouseTransferRequest::class, 'transfer_request_id');
+    }
+
+    public function sourceBatch(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'source_batch_id');
     }
 
     public function getConsumedQuantityAttribute(): float

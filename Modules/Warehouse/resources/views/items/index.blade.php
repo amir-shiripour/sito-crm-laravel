@@ -19,6 +19,15 @@
         </div>
 
         <div class="flex items-center gap-2.5 flex-wrap">
+            <a href="{{ route('admin.warehouse.items.pdf', request()->query()) }}"
+               target="_blank"
+               class="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-slate-700 dark:text-slate-200 font-bold text-xs transition-all shadow-xs">
+                <svg class="w-4 h-4 text-rose-600 dark:text-rose-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                </svg>
+                گزارش PDF موجودی
+            </a>
+
             <a href="{{ route('admin.warehouse.categories.index') }}"
                class="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700/60 text-gray-700 dark:text-gray-200 font-bold text-xs transition-all shadow-xs">
                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -33,6 +42,14 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                 </svg>
                 درون‌ریزی اکسل
+            </a>
+
+            <a href="{{ route('admin.warehouse.purchases.create') }}"
+               class="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-indigo-200 dark:border-indigo-500/30 bg-indigo-50 dark:bg-indigo-500/15 hover:bg-indigo-100 dark:hover:bg-indigo-500/25 text-indigo-700 dark:text-indigo-300 font-bold text-xs transition-all shadow-xs">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                ثبت رسید خرید
             </a>
 
             <a href="{{ route('admin.warehouse.items.create') }}"
@@ -249,12 +266,14 @@
                                             </span>
                                         @endif
                                     </div>
-                                    <div class="flex items-center gap-1 text-[11px] text-gray-500 dark:text-gray-400 mt-1">
+                                    <div class="flex items-center gap-1 text-[11px] text-slate-600 dark:text-slate-300 mt-1 flex-wrap">
                                         <span>{{ $item->category?->name ?? 'بدون دسته' }}</span>
                                         @if($item->subcategory)
                                             <span class="text-gray-400">↳</span>
-                                            <span class="text-gray-700 dark:text-gray-300 font-bold">{{ $item->subcategory->name }}</span>
+                                            <span class="text-gray-700 dark:text-gray-200 font-bold">{{ $item->subcategory->name }}</span>
                                         @endif
+                                        <span class="text-gray-400">·</span>
+                                        <span>ثبت‌کننده: <strong class="text-gray-700 dark:text-gray-200">{{ $item->creator_name }}</strong></span>
                                     </div>
                                 </td>
 
@@ -459,13 +478,30 @@
                                                                 {{-- Batch Code --}}
                                                                 <td class="px-4 py-3.5 whitespace-nowrap">
                                                                     <div class="font-bold text-indigo-700 dark:text-indigo-300 font-sans dir-ltr text-right text-xs">
-                                                                        {{ $batch->batch_code }}
+                                                                        @if($batch->purchase_receipt_id)
+                                                                            <a href="{{ route('admin.warehouse.purchases.show', $batch->purchase_receipt_id) }}" class="hover:underline">
+                                                                                {{ $batch->batch_code }}
+                                                                            </a>
+                                                                        @else
+                                                                            {{ $batch->batch_code }}
+                                                                        @endif
                                                                     </div>
                                                                     @if($batch->supplier)
-                                                                        <div class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                                                                        <div class="text-[11px] text-slate-500 dark:text-slate-300 mt-0.5">
                                                                             تأمین‌کننده: {{ $batch->supplier }}
                                                                         </div>
                                                                     @endif
+                                                                    @if($batch->transfer_request_id)
+                                                                        <div class="mt-0.5">
+                                                                            <a href="{{ route('admin.warehouse.transfers.show', $batch->transfer_request_id) }}"
+                                                                               class="inline-flex items-center gap-1 text-[10px] font-bold text-teal-600 dark:text-teal-400 hover:underline">
+                                                                                انتقال بین انبارها
+                                                                            </a>
+                                                                        </div>
+                                                                    @endif
+                                                                    <div class="text-[10px] text-slate-600 dark:text-slate-300 mt-0.5">
+                                                                        ثبت پارت: {{ $batch->creator_name }}
+                                                                    </div>
                                                                 </td>
 
                                                                 {{-- Warehouse --}}

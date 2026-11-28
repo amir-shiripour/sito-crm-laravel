@@ -113,6 +113,28 @@
                 </span>
             </div>
         @endif
+
+        @if($inventoryEnabled && is_array($reorderSummary ?? null))
+            <a href="{{ route('admin.warehouse.reorder-alerts.index') }}"
+               class="bg-white dark:bg-gray-800 rounded-2xl p-4 border {{ $reorderSummary['alerts_only_count'] > 0 ? 'border-rose-200 dark:border-rose-500/40 hover:border-rose-400' : 'border-gray-200 dark:border-gray-700 hover:border-indigo-400' }} flex items-center justify-between transition-all">
+                <div>
+                    <p class="text-xs font-bold text-slate-600 dark:text-slate-300">هشدار نقطه سفارش</p>
+                    <h3 class="text-xl font-bold {{ $reorderSummary['alerts_only_count'] > 0 ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400' }} mt-1 font-sans">
+                        {{ number_format($reorderSummary['alerts_only_count']) }} <span class="text-xs font-normal text-slate-600 dark:text-slate-300">قلم</span>
+                    </h3>
+                    @if($reorderSummary['critical_count'] > 0 || $reorderSummary['central_low_count'] > 0)
+                        <p class="text-[10px] font-bold text-slate-600 dark:text-slate-300 mt-0.5">
+                            بحرانی: {{ number_format($reorderSummary['critical_count']) }} · کسری مرکزی: {{ number_format($reorderSummary['central_low_count']) }}
+                        </p>
+                    @endif
+                </div>
+                <span class="w-10 h-10 rounded-xl {{ $reorderSummary['alerts_only_count'] > 0 ? 'bg-rose-50 dark:bg-rose-500/15 text-rose-600 dark:text-rose-300' : 'bg-emerald-50 dark:bg-emerald-500/15 text-emerald-600 dark:text-emerald-300' }} flex items-center justify-center shrink-0">
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                </span>
+            </a>
+        @endif
     </div>
 
     {{-- Dynamic Sections (Only active types are rendered) --}}
@@ -140,13 +162,19 @@
                 {{-- Main Inventory Warehouse --}}
                 @if($mainInventoryWarehouse)
                     <div class="space-y-3">
-                        @include('warehouse::partials.warehouse_card', ['warehouse' => $mainInventoryWarehouse])
+                        @include('warehouse::partials.warehouse_card', [
+                            'warehouse' => $mainInventoryWarehouse,
+                            'stockSummary' => $stockSummaries[$mainInventoryWarehouse->id] ?? null,
+                        ])
 
                         {{-- Active Sub-warehouses --}}
                         @if($inventorySubWarehouses->count() > 0)
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                                 @foreach($inventorySubWarehouses as $subW)
-                                    @include('warehouse::partials.warehouse_card', ['warehouse' => $subW])
+                                    @include('warehouse::partials.warehouse_card', [
+                                        'warehouse' => $subW,
+                                        'stockSummary' => $stockSummaries[$subW->id] ?? null,
+                                    ])
                                 @endforeach
                             </div>
                         @endif

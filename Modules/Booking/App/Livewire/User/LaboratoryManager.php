@@ -40,6 +40,7 @@ class LaboratoryManager extends Component
     public string $labType = BookingLaboratoryOrder::LAB_TYPE_EXTERNAL;
     public string $labPartnerName = 'آرمان سلامت';
     public string $categoryType = BookingLaboratoryOrder::CATEGORY_UNITS_1_2;
+    public string $variantKey = '';
     public string $fullJawPhase = BookingLaboratoryOrder::FULL_JAW_BASE_RIM;
     public bool $hasPmma = false;
     public int $unitsCount = 1;
@@ -51,6 +52,9 @@ class LaboratoryManager extends Component
     public bool $showStageModal = false;
     public ?int $activeStageId = null;
     public string $stageNote = '';
+    public string $stageCompletionAction = 'complete';
+    public string $selectedStageOptionKey = '';
+    public string $selectedStageSubOptionKey = '';
 
     // Quick Receive Modal
     public bool $showReceiveModal = false;
@@ -138,7 +142,10 @@ class LaboratoryManager extends Component
         $categories = BookingSetting::getLaboratoryCategoriesForType($value);
         if (!empty($categories)) {
             $this->categoryType = $categories[0]['id'] ?? '';
+        } else {
+            $this->categoryType = '';
         }
+        $this->syncVariantDefault();
 
         $types = BookingSetting::getLaboratoryTypesList();
         foreach ($types as $t) {
@@ -147,6 +154,17 @@ class LaboratoryManager extends Component
                 break;
             }
         }
+    }
+
+    public function updatedCategoryType($value): void
+    {
+        $this->syncVariantDefault();
+    }
+
+    protected function syncVariantDefault(): void
+    {
+        $variants = BookingSetting::getLaboratoryCategoryVariants($this->labType, $this->categoryType);
+        $this->variantKey = !empty($variants) ? ($variants[0]['id'] ?? '') : '';
     }
 
     public function openCreateModal(): void
@@ -176,6 +194,7 @@ class LaboratoryManager extends Component
 
         $categories = BookingSetting::getLaboratoryCategoriesForType($this->labType);
         $this->categoryType = $categories[0]['id'] ?? 'units_1_2';
+        $this->syncVariantDefault();
 
         $typeObj = collect($availableTypes)->firstWhere('id', $this->labType);
         $this->labPartnerName = $typeObj['default_partner'] ?? ($settings->laboratory_default_partner ?: 'آرمان سلامت');
@@ -227,8 +246,9 @@ class LaboratoryManager extends Component
         $this->selectedDoctorId = $order->doctor_id;
         $this->selectedTechnicianId = $order->technician_id;
         $this->labType = $order->lab_type;
-        $this->labPartnerName = $order->lab_partner_name;
+        $this->labPartnerName = $order->lab_partner_name ?? '';
         $this->categoryType = $order->category_type;
+        $this->variantKey = $order->variant_key ?? '';
         $this->fullJawPhase = $order->full_jaw_phase ?: BookingLaboratoryOrder::FULL_JAW_BASE_RIM;
         $this->hasPmma = (bool) $order->has_pmma;
         $this->unitsCount = $order->units_count;
@@ -307,6 +327,13 @@ class LaboratoryManager extends Component
                 $carbonSentAt = $j->toCarbon()->setTime(now()->hour, now()->minute, now()->second);
             }
 
+            $variantTitle = null;
+            if ($this->variantKey !== '') {
+                $variants = BookingSetting::getLaboratoryCategoryVariants($this->labType, $this->categoryType);
+                $matchedVar = collect($variants)->firstWhere('id', $this->variantKey);
+                $variantTitle = $matchedVar['name'] ?? null;
+            }
+
             $service = app(LaboratoryService::class);
             $orderData = [
                 'order_number'        => $this->orderNumber,
@@ -316,8 +343,10 @@ class LaboratoryManager extends Component
                 'doctor_id'           => $this->selectedDoctorId,
                 'technician_id'       => $this->selectedTechnicianId,
                 'lab_type'            => $this->labType,
-                'lab_partner_name'    => trim($this->labPartnerName),
+                'lab_partner_name'    => trim($this->labPartnerName) ?: null,
                 'category_type'       => $this->categoryType,
+                'variant_key'         => $this->variantKey !== '' ? $this->variantKey : null,
+                'variant_title'       => $variantTitle,
                 'full_jaw_phase'      => ($this->categoryType === BookingLaboratoryOrder::CATEGORY_FULL_JAW) ? $this->fullJawPhase : null,
                 'has_pmma'            => $this->hasPmma,
                 'units_count'         => max(1, (int)$this->unitsCount),
@@ -357,6 +386,9 @@ class LaboratoryManager extends Component
 
         $this->activeStageId = $stageId;
         $this->stageNote = '';
+        $this->stageCompletionAction = 'complete';
+        $this->selectedStageOptionKey = '';
+        $this->selectedStageSubOptionKey = '';
         $this->showStageModal = true;
     }
 
@@ -372,13 +404,27 @@ class LaboratoryManager extends Component
 
         $stage = BookingLaboratoryStage::with('order')->find($this->activeStageId);
         if ($stage) {
-            $service = app(LaboratoryService::class);
-            $service->completeStage($stage, trim($this->stageNote) ?: null, auth()->id());
-            $this->toastSuccess = "مرحله {$stage->stage_title} با موفقیت تایید و تکمیل شد.";
+            try {
+                $service = app(LaboratoryService::class);
+                $service->completeStage($stage, trim($this->stageNote) ?: null, auth()->id(), [
+                    'action'         => $this->stageCompletionAction,
+                    'option_key'     => $this->selectedStageOptionKey,
+                    'sub_option_key' => $this->selectedStageSubOptionKey,
+                ]);
+                $this->toastSuccess = $this->stageCompletionAction === 'skip'
+                    ? "مرحله {$stage->stage_title} با وضعیت «عدم نیاز» رد شد."
+                    : "مرحله {$stage->stage_title} با موفقیت تایید و تکمیل شد.";
+            } catch (\Throwable $e) {
+                $this->toastError = $e->getMessage();
+                return;
+            }
         }
 
         $this->showStageModal = false;
         $this->activeStageId = null;
+        $this->stageCompletionAction = 'complete';
+        $this->selectedStageOptionKey = '';
+        $this->selectedStageSubOptionKey = '';
     }
 
     public function openRevertStageModal(int $stageId): void
@@ -406,8 +452,15 @@ class LaboratoryManager extends Component
 
         $stage = BookingLaboratoryStage::with('order')->find($this->stageToRevertId);
         if ($stage && $stage->is_completed) {
-            app(LaboratoryService::class)->revertStage($stage, trim($this->revertStageNote) ?: null, auth()->id());
-            $this->toastSuccess = "مرحله «{$stage->stage_title}» به حالت در انتظار بازگردانده شد و در تاریخچه ثبت گردید.";
+            try {
+                app(LaboratoryService::class)->revertStage($stage, trim($this->revertStageNote) ?: null, auth()->id());
+                $this->toastSuccess = "مرحله «{$stage->stage_title}» به حالت در انتظار بازگردانده شد و در تاریخچه ثبت گردید.";
+            } catch (\Throwable $e) {
+                $this->toastError = $e->getMessage();
+                $this->showRevertStageModal = false;
+                $this->stageToRevertId = null;
+                return;
+            }
         }
 
         $this->showRevertStageModal = false;
@@ -576,6 +629,10 @@ class LaboratoryManager extends Component
 
         $labTypes = BookingSetting::getLaboratoryTypesList();
         $availableCategories = BookingSetting::getLaboratoryCategoriesForType($this->labType);
+        $availableVariants = BookingSetting::getLaboratoryCategoryVariants($this->labType, $this->categoryType);
+        $activeStageModel = ($this->showStageModal && $this->activeStageId)
+            ? BookingLaboratoryStage::with('order')->find($this->activeStageId)
+            : null;
         $allCategories = [];
         foreach ($labTypes as $lt) {
             foreach (BookingSetting::getLaboratoryCategoriesForType($lt['id']) as $c) {
@@ -584,7 +641,7 @@ class LaboratoryManager extends Component
         }
 
         return view('booking::user.laboratory.index', compact(
-            'orders', 'detailOrder', 'clientResults', 'doctors', 'technicians', 'labTypes', 'availableCategories', 'allCategories'
+            'orders', 'detailOrder', 'clientResults', 'doctors', 'technicians', 'labTypes', 'availableCategories', 'availableVariants', 'activeStageModel', 'allCategories'
         ));
     }
 }

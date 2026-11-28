@@ -7,10 +7,13 @@ use Illuminate\Http\Request;
 use Modules\Warehouse\Entities\Warehouse;
 use Modules\Warehouse\Entities\WarehouseItem;
 use Modules\Warehouse\Entities\WarehouseCategory;
+use Modules\Warehouse\Entities\WarehouseIssueItem;
 use Modules\Warehouse\Entities\WarehouseItemBatch;
+use Modules\Warehouse\Entities\WarehouseTransferRequestItem;
 use Modules\Warehouse\App\Services\WarehouseCodeService;
 use Modules\Warehouse\App\Services\WarehouseValuationService;
 use Modules\Warehouse\App\Services\WarehouseExcelImportService;
+use Modules\Warehouse\App\Services\WarehousePdfService;
 use Illuminate\Support\Facades\DB;
 
 class ItemController extends Controller
@@ -41,7 +44,7 @@ class ItemController extends Controller
         $status = $request->input('status'); // all, critical, reorder, adequate
         $warehouseId = $request->input('warehouse_id');
 
-        $query = WarehouseItem::with(['category', 'subcategory', 'activeBatches.warehouse'])
+        $query = WarehouseItem::with(['category', 'subcategory', 'creator', 'activeBatches.warehouse', 'activeBatches.creator'])
             ->when($search, function ($q) use ($search) {
                 $q->where(function ($sub) use ($search) {
                     $sub->where('name', 'like', "%{$search}%")
@@ -218,13 +221,164 @@ class ItemController extends Controller
     }
 
     /**
+     * Export filtered items list as official landscape A4 PDF.
+     */
+    public function exportPdf(Request $request)
+    {
+        $search = $request->input('search');
+        $categoryId = $request->input('category_id');
+        $subcategoryId = $request->input('subcategory_id');
+        $brand = $request->input('brand');
+        $warehouseId = $request->input('warehouse_id');
+
+        $items = WarehouseItem::with(['category', 'subcategory', 'creator', 'activeBatches.warehouse'])
+            ->when($search, function ($q) use ($search) {
+                $q->where(function ($sub) use ($search) {
+                    $sub->where('name', 'like', "%{$search}%")
+                        ->orWhere('code', 'like', "%{$search}%")
+                        ->orWhere('system_code', 'like', "%{$search}%")
+                        ->orWhere('barcode', 'like', "%{$search}%")
+                        ->orWhere('brand', 'like', "%{$search}%")
+                        ->orWhere('item_type', 'like', "%{$search}%");
+                });
+            })
+            ->when($categoryId, fn($q) => $q->where('category_id', $categoryId))
+            ->when($subcategoryId, fn($q) => $q->where('subcategory_id', $subcategoryId))
+            ->when($brand, fn($q) => $q->where('brand', $brand))
+            ->when($warehouseId, function ($q) use ($warehouseId) {
+                $q->whereHas('activeBatches', fn($b) => $b->where('warehouse_id', $warehouseId));
+            })
+            ->latest('id')
+            ->limit(500)
+            ->get();
+
+        $metrics = $this->valuationService->getValuationMetrics($warehouseId ? (int)$warehouseId : null);
+
+        return app(WarehousePdfService::class)->downloadInline(
+            'warehouse::pdf.items_list',
+            compact('items', 'metrics'),
+            'warehouse-items-' . date('Y-m-d') . '.pdf',
+            ['landscape' => true]
+        );
+    }
+
+    /**
      * Display item details with stock breakdown per warehouse and batch valuation.
      */
     public function show(WarehouseItem $item)
     {
-        $item->load(['category', 'subcategory', 'stocks.warehouse', 'batches.warehouse', 'defaultWarehouse']);
+        return view('warehouse::items.show', $this->buildItemCardexData($item));
+    }
 
-        return view('warehouse::items.show', compact('item'));
+    /**
+     * Export item cardex and batch history as official PDF.
+     */
+    public function showPdf(WarehouseItem $item)
+    {
+        return app(WarehousePdfService::class)->downloadInline(
+            'warehouse::pdf.item_cardex',
+            $this->buildItemCardexData($item),
+            'item-cardex-' . $item->system_code . '.pdf'
+        );
+    }
+
+    protected function buildItemCardexData(WarehouseItem $item): array
+    {
+        $item->load([
+            'category',
+            'subcategory',
+            'creator',
+            'stocks.warehouse',
+            'batches.warehouse',
+            'batches.creator',
+            'defaultWarehouse',
+        ]);
+
+        $issueItems = WarehouseIssueItem::with([
+            'document.sourceWarehouse',
+            'document.client',
+            'document.consumerUser',
+            'document.creator',
+            'warehouse',
+        ])
+            ->where('item_id', $item->id)
+            ->whereHas('document', fn($q) => $q->where('status', 'registered'))
+            ->orderByDesc('id')
+            ->limit(30)
+            ->get();
+
+        $transferItems = WarehouseTransferRequestItem::with([
+            'transferRequest.sourceWarehouse',
+            'transferRequest.destinationWarehouse',
+            'transferRequest.requesterUser',
+            'transferRequest.creator',
+        ])
+            ->where('item_id', $item->id)
+            ->whereHas('transferRequest', fn($q) => $q->whereIn('status', ['pending', 'delivered']))
+            ->orderByDesc('id')
+            ->limit(30)
+            ->get();
+
+        $activeBatches = $item->batches->where('remaining_quantity', '>', 0);
+        $totalActiveQty = (float)$activeBatches->sum('remaining_quantity');
+        $centralStock = 0.0;
+
+        $locationsMap = $item->stocks->keyBy('warehouse_id');
+        $warehouseDistribution = $activeBatches
+            ->groupBy('warehouse_id')
+            ->map(function ($group, $whId) use ($item, $totalActiveQty, $locationsMap, &$centralStock) {
+                $warehouse = $group->first()?->warehouse;
+                $qty = (float)$group->sum('remaining_quantity');
+                $costVal = (float)$group->sum(fn($b) => (float)$b->remaining_quantity * (float)$b->unit_purchase_price);
+                $marketVal = $qty * (float)($item->current_price ?? 0);
+                if ($warehouse && $warehouse->is_main) {
+                    $centralStock += $qty;
+                }
+                return [
+                    'warehouse_id' => (int)$whId,
+                    'warehouse' => $warehouse,
+                    'quantity' => $qty,
+                    'batches_count' => $group->count(),
+                    'cost_value' => $costVal,
+                    'market_value' => $marketVal,
+                    'share_percent' => $totalActiveQty > 0 ? round(($qty / $totalActiveQty) * 100, 1) : 0,
+                    'location' => $locationsMap->get((int)$whId)?->location_in_warehouse ?: $item->default_location,
+                ];
+            })
+            ->sortByDesc(fn($row) => ($row['warehouse']?->is_main ? 10000000 : 0) + $row['quantity'])
+            ->values();
+
+        $today = now()->toDateString();
+        $inNinetyDays = now()->addDays(90)->toDateString();
+        $expiredQty = 0.0;
+        $expiringSoonQty = 0.0;
+        $nearestExpiry = null;
+
+        foreach ($activeBatches as $b) {
+            if ($b->expiry_date) {
+                $expStr = $b->expiry_date->toDateString();
+                if ($nearestExpiry === null || $b->expiry_date->lt($nearestExpiry)) {
+                    $nearestExpiry = $b->expiry_date;
+                }
+                if ($expStr < $today) {
+                    $expiredQty += (float)$b->remaining_quantity;
+                } elseif ($expStr <= $inNinetyDays) {
+                    $expiringSoonQty += (float)$b->remaining_quantity;
+                }
+            }
+        }
+
+        $cardexStats = [
+            'active_batches_count' => $activeBatches->count(),
+            'exhausted_batches_count' => $item->batches->count() - $activeBatches->count(),
+            'expired_qty' => $expiredQty,
+            'expiring_soon_qty' => $expiringSoonQty,
+            'nearest_expiry' => $nearestExpiry,
+            'central_stock' => $centralStock,
+            'sub_warehouses_stock' => max(0.0, $totalActiveQty - $centralStock),
+        ];
+
+        return compact('item', 'issueItems', 'transferItems', 'warehouseDistribution', 'cardexStats');
     }
 
     /**

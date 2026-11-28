@@ -79,7 +79,7 @@
             </div>
         </div>
 
-        {{-- اعلان موفقیت پیام‌ها --}}
+        {{-- اعلان موفقیت و خطا --}}
         @if($toastSuccess)
             <div class="rounded-2xl bg-emerald-50 dark:bg-emerald-950/30 p-4 border border-emerald-200 dark:border-emerald-800/40 text-emerald-800 dark:text-emerald-300 text-xs font-semibold flex items-center justify-between shadow-xs">
                 <div class="flex items-center gap-2">
@@ -87,6 +87,16 @@
                     {{ $toastSuccess }}
                 </div>
                 <button type="button" wire:click="$set('toastSuccess', null)" class="text-emerald-600 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-200 text-base font-bold">&times;</button>
+            </div>
+        @endif
+
+        @if($toastError)
+            <div class="rounded-2xl bg-rose-50 dark:bg-rose-950/30 p-4 border border-rose-200 dark:border-rose-800/40 text-rose-800 dark:text-rose-300 text-xs font-semibold flex items-center justify-between shadow-xs">
+                <div class="flex items-center gap-2">
+                    <svg class="w-5 h-5 text-rose-600 dark:text-rose-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    {{ $toastError }}
+                </div>
+                <button type="button" wire:click="$set('toastError', null)" class="text-rose-600 dark:text-rose-400 hover:text-rose-800 dark:hover:text-rose-200 text-base font-bold">&times;</button>
             </div>
         @endif
 
@@ -357,6 +367,9 @@
                                             <span class="text-[11px] text-slate-600 dark:text-slate-300">{{ $order->category_label }}</span>
                                             @if($order->units_count > 0)
                                                 <span class="text-[11px] text-indigo-600 dark:text-indigo-400 font-bold">({{ $order->units_count }} واحد)</span>
+                                            @endif
+                                            @if($order->active_branch_label)
+                                                <span class="px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200/60 dark:border-amber-800/40">{{ $order->active_branch_label }}</span>
                                             @endif
                                         </div>
 
@@ -648,6 +661,16 @@
                         </div>
                     </div>
 
+                    {{-- در صورت انتخاب تکمیل مرحله جاری و داشتن گزینه/تصمیم/اختیاری --}}
+                    @if($modalActionType === 'complete_stage' && $logModalStageModel && ($logModalStageModel->isSelectionStage() || $logModalStageModel->isDecisionStage() || $logModalStageModel->isOptionalStage()))
+                        @include('booking::user.laboratory.partials.stage-completion-controls', [
+                            'stage' => $logModalStageModel,
+                            'stageCompletionAction' => $stageCompletionAction,
+                            'selectedStageOptionKey' => $selectedStageOptionKey,
+                            'selectedStageSubOptionKey' => $selectedStageSubOptionKey,
+                        ])
+                    @endif
+
                     {{-- در صورت انتخاب تمدید موعد --}}
                     @if($modalActionType === 'postpone_stage')
                         <div class="p-3.5 rounded-2xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800/60 space-y-2">
@@ -706,15 +729,24 @@
     {{-- مودال تایید / تکمیل سریع مرحله --}}
     @if($showStageModal)
         <div class="fixed inset-0 z-[60] overflow-y-auto bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-            <div class="bg-white dark:bg-gray-800 rounded-3xl border border-gray-200 dark:border-gray-700 shadow-2xl w-full max-w-md p-6 space-y-4">
+            <div class="bg-white dark:bg-gray-800 rounded-3xl border border-gray-200 dark:border-gray-700 shadow-2xl w-full max-w-lg p-6 space-y-4">
                 <h3 class="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
                     <svg class="w-5 h-5 text-indigo-600 dark:text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                     تایید و تکمیل مرحله پیگیری
                 </h3>
 
-                <p class="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                    با تایید این مرحله، وضعیت آن به حالت «تکمیل شده» تغییر کرده و کار به مرحله بعدی منتقل می‌شود. در صورت تمایل توضیحی وارد کنید:
-                </p>
+                @if($stageToCompleteModel && ($stageToCompleteModel->isSelectionStage() || $stageToCompleteModel->isDecisionStage() || $stageToCompleteModel->isOptionalStage()))
+                    @include('booking::user.laboratory.partials.stage-completion-controls', [
+                        'stage' => $stageToCompleteModel,
+                        'stageCompletionAction' => $stageCompletionAction,
+                        'selectedStageOptionKey' => $selectedStageOptionKey,
+                        'selectedStageSubOptionKey' => $selectedStageSubOptionKey,
+                    ])
+                @else
+                    <p class="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                        با تایید این مرحله، وضعیت آن به حالت «تکمیل شده» تغییر کرده و کار به مرحله بعدی منتقل می‌شود. در صورت تمایل توضیحی وارد کنید:
+                    </p>
+                @endif
 
                 <textarea wire:model="stageNote" rows="2" placeholder="توضیحات اختیاری (مثلاً: کار فریم تحویل گرفته و تایید شد)..."
                           class="w-full rounded-2xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 p-3 text-xs text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-indigo-500 focus:bg-white dark:focus:bg-gray-800 focus:ring-1 focus:ring-indigo-500/20 transition-all"></textarea>
@@ -743,7 +775,7 @@
                 </h3>
 
                 <p class="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                    با بازگشت این مرحله، وضعیت آن از حالت «تکمیل شده» به «در انتظار» تغییر می‌کند و گزارش این بازگشت در تاریخچه پیگیری‌ها ثبت خواهد شد.
+                    با بازگشت این مرحله، وضعیت آن از حالت «تکمیل شده» به «در انتظار» تغییر می‌کند و تمام مراحل بعدی و زیرشاخه‌های بازشده پس از آن نیز به‌صورت خودکار بازگشت/پاکسازی می‌شوند تا ترتیب جریان کار حفظ شود.
                 </p>
 
                 <textarea wire:model="revertStageNote" rows="2" placeholder="علت بازگشت مرحله (اختیاری، مثلاً: نیاز به اصلاح مجدد قالب یا فریم)..."
@@ -1042,85 +1074,8 @@
                                 <div class="bg-indigo-600 dark:bg-indigo-500 h-2 rounded-full transition-all duration-300" style="width: {{ $detailOrder->progress_percentage }}%"></div>
                             </div>
 
-                            {{-- لیست تایم‌لاین عمودی مراحل --}}
-                            <div class="relative pl-2 pr-4 space-y-4 before:absolute before:right-2 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-200 dark:before:bg-slate-700">
-                                @forelse($detailOrder->stages as $stIndex => $st)
-                                    @php
-                                        $isDone = $st->is_completed;
-                                        $isOver = $st->isOverdue();
-                                        $isDueToday = $st->isDueToday();
-                                    @endphp
-                                    <div class="relative flex items-start gap-3.5 group">
-                                        {{-- نقطه وضعیت در خط زمان --}}
-                                        <div class="w-5 h-5 rounded-full flex items-center justify-center shrink-0 z-10 
-                                            {{ $isDone ? 'bg-emerald-600 text-white shadow-sm shadow-emerald-500/30' : ($isOver ? 'bg-rose-600 text-white shadow-sm shadow-rose-500/30 animate-pulse' : ($isDueToday ? 'bg-amber-500 text-white' : 'bg-slate-300 dark:bg-slate-600 text-slate-700 dark:text-slate-200')) }}">
-                                            @if($isDone)
-                                                <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" /></svg>
-                                            @else
-                                                <span class="text-[10px] font-bold">{{ $stIndex + 1 }}</span>
-                                            @endif
-                                        </div>
-
-                                        {{-- کارت جزئیات مرحله --}}
-                                        <div class="flex-1 p-3 rounded-xl border {{ $isDone ? 'bg-emerald-50/40 border-emerald-200/80 dark:bg-emerald-950/20 dark:border-emerald-800/40' : ($isOver ? 'bg-rose-50/40 border-rose-200/80 dark:bg-rose-950/20 dark:border-rose-800/40' : ($isDueToday ? 'bg-amber-50/40 border-amber-200/80 dark:bg-amber-950/20 dark:border-amber-800/40' : 'bg-gray-50/70 border-gray-200/80 dark:bg-gray-900/30 dark:border-gray-700/80')) }} flex items-center justify-between gap-3 flex-wrap">
-                                            <div class="space-y-1">
-                                                <div class="flex items-center gap-2">
-                                                    <h5 class="font-bold text-xs text-gray-900 dark:text-white">{{ $st->stage_title }}</h5>
-                                                    @if($isDone)
-                                                        <span class="text-[10px] font-bold text-emerald-700 dark:text-emerald-400">✓ تکمیل شده</span>
-                                                    @elseif($isOver)
-                                                        <span class="text-[10px] font-bold text-rose-700 dark:text-rose-400">! دارای تاخیر</span>
-                                                    @elseif($isDueToday)
-                                                        <span class="text-[10px] font-bold text-amber-700 dark:text-amber-400">● موعد امروز</span>
-                                                    @else
-                                                        <span class="text-[10px] text-slate-500 dark:text-slate-400">در انتظار</span>
-                                                    @endif
-                                                </div>
-                                                <div class="flex flex-wrap items-center gap-x-4 text-[11px] text-slate-600 dark:text-slate-300">
-                                                    <span>موعد برنامه‌ریزی: <strong>{{ $st->due_at_jalali }}</strong></span>
-                                                    @if($st->completed_at_jalali)
-                                                        <span class="text-emerald-700 dark:text-emerald-400">تاریخ تایید: {{ $st->completed_at_jalali }}</span>
-                                                    @endif
-                                                    @if($st->completedBy)
-                                                        <span>توسط: {{ $st->completedBy->name }}</span>
-                                                    @endif
-                                                </div>
-                                                @if($st->notes)
-                                                    <div class="text-[11px] text-slate-600 dark:text-slate-400 italic bg-white/70 dark:bg-slate-800/60 p-1.5 rounded-lg mt-1 border border-slate-200/60 dark:border-slate-700/60">
-                                                        توضیحات: {{ $st->notes }}
-                                                    </div>
-                                                @endif
-                                            </div>
-
-                                            @if(!$isDone)
-                                                @canany(['booking.laboratory.stages.manage', 'booking.laboratory.manage'])
-                                                <button type="button" 
-                                                        wire:click="openStageModal({{ $st->id }})" 
-                                                        wire:loading.attr="disabled"
-                                                        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white font-bold text-xs shadow-sm shadow-indigo-500/20 transition-all shrink-0 cursor-pointer">
-                                                    <svg wire:loading wire:target="openStageModal({{ $st->id }})" class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                                                    <span>تایید و ثبت انجام</span>
-                                                </button>
-                                                @endcanany
-                                            @else
-                                                @canany(['booking.laboratory.stages.manage', 'booking.laboratory.manage'])
-                                                <button type="button"
-                                                        wire:click="openRevertStageModal({{ $st->id }})"
-                                                        wire:loading.attr="disabled"
-                                                        title="بازگشت این مرحله به حالت در انتظار"
-                                                        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/50 dark:hover:bg-amber-900/60 border border-amber-200 dark:border-amber-700/60 text-amber-700 dark:text-amber-300 font-bold text-xs disabled:opacity-60 transition-all shrink-0 cursor-pointer">
-                                                    <svg wire:loading.remove wire:target="openRevertStageModal({{ $st->id }})" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" /></svg>
-                                                    <svg wire:loading wire:target="openRevertStageModal({{ $st->id }})" class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                                                    <span>برگشت مرحله</span>
-                                                </button>
-                                                @endcanany
-                                            @endif
-                                        </div>
-                                    </div>
-                                @empty
-                                    <div class="text-slate-400 dark:text-slate-500 text-xs py-2">هیچ مرحله‌ای برای این سفارش تعریف نشده است.</div>
-                                @endforelse
-                            </div>
+                            {{-- لیست تایم‌لاین عمودی مراحل (پشتیبانی از ساختار چندلایه و انشعاب‌ها) --}}
+                            @include('booking::user.laboratory.partials.order-stages-timeline', ['order' => $detailOrder])
                         </div>
 
                         {{-- دستور ساخت بالینی و یادداشت‌های پزشک --}}

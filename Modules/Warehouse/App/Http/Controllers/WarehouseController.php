@@ -5,8 +5,12 @@ namespace Modules\Warehouse\App\Http\Controllers;
 use Illuminate\Routing\Controller;
 use Illuminate\Http\Request;
 use Modules\Warehouse\Entities\Warehouse;
+use Modules\Warehouse\Entities\WarehouseItemBatch;
 use Modules\Warehouse\Entities\WarehouseSetting;
 use Modules\Warehouse\App\Services\WarehouseIntegrationService;
+use Modules\Warehouse\App\Services\WarehousePdfService;
+use Modules\Warehouse\App\Services\WarehouseValuationService;
+use Modules\Warehouse\Support\WarehouseUserVisibility;
 use App\Models\User;
 
 class WarehouseController extends Controller
@@ -35,6 +39,7 @@ class WarehouseController extends Controller
         }
 
         $query = User::query();
+        WarehouseUserVisibility::scopeVisibleUsers($query);
 
         if (!empty($ids)) {
             $idsArray = is_array($ids) ? $ids : array_filter(array_map('intval', explode(',', (string)$ids)));
@@ -84,20 +89,20 @@ class WarehouseController extends Controller
 
         $mainWarehouse = Warehouse::inventory()
             ->main()
-            ->with('managers')
+            ->with(['managers', 'creator'])
             ->first();
 
         // If no explicit main warehouse, find first root warehouse
         if (!$mainWarehouse) {
             $mainWarehouse = Warehouse::inventory()
                 ->whereNull('parent_id')
-                ->with('managers')
+                ->with(['managers', 'creator'])
                 ->first();
         }
 
         $subWarehousesQuery = Warehouse::inventory()
             ->when($mainWarehouse, fn($q) => $q->where('id', '!=', $mainWarehouse->id))
-            ->with('managers')
+            ->with(['managers', 'creator'])
             ->when($search, function ($q) use ($search) {
                 $q->where(function ($sub) use ($search) {
                     $sub->where('name', 'like', "%{$search}%")
@@ -116,9 +121,13 @@ class WarehouseController extends Controller
             $linkedMarketWarehouses = $this->integrationService->getLinkedMarketWarehouses($mainWarehouse->id);
         }
 
+        $allVisibleWhIds = $subWarehouses->pluck('id')->when($mainWarehouse, fn($c) => $c->push($mainWarehouse->id));
+        $stockSummaries = app(WarehouseValuationService::class)->getWarehousesStockSummary($allVisibleWhIds);
+
         return view('warehouse::inventory.index', compact(
             'mainWarehouse',
             'subWarehouses',
+            'stockSummaries',
             'linkedMarketWarehouses',
             'isMarketIntegrated',
             'search'
@@ -139,20 +148,20 @@ class WarehouseController extends Controller
 
         $mainWarehouse = Warehouse::asset()
             ->main()
-            ->with('managers')
+            ->with(['managers', 'creator'])
             ->first();
 
         // If no explicit main warehouse, find first root warehouse
         if (!$mainWarehouse) {
             $mainWarehouse = Warehouse::asset()
                 ->whereNull('parent_id')
-                ->with('managers')
+                ->with(['managers', 'creator'])
                 ->first();
         }
 
         $subWarehousesQuery = Warehouse::asset()
             ->when($mainWarehouse, fn($q) => $q->where('id', '!=', $mainWarehouse->id))
-            ->with('managers')
+            ->with(['managers', 'creator'])
             ->when($search, function ($q) use ($search) {
                 $q->where(function ($sub) use ($search) {
                     $sub->where('name', 'like', "%{$search}%")
@@ -169,6 +178,65 @@ class WarehouseController extends Controller
             'subWarehouses',
             'search'
         ));
+    }
+
+    /**
+     * Export Inventory Warehouses report as official PDF.
+     */
+    public function inventoryPdf(Request $request)
+    {
+        if (!WarehouseSetting::isInventoryEnabled()) {
+            abort(403, 'بخش انبار موجودی غیرفعال است.');
+        }
+
+        return $this->renderWarehousesPdf('inventory', $request->input('search'));
+    }
+
+    /**
+     * Export Asset Warehouses report as official PDF.
+     */
+    public function assetsPdf(Request $request)
+    {
+        if (!WarehouseSetting::isAssetsEnabled()) {
+            abort(403, 'بخش مدیریت اموال غیرفعال است.');
+        }
+
+        return $this->renderWarehousesPdf('asset', $request->input('search'));
+    }
+
+    protected function renderWarehousesPdf(string $type, ?string $search = null)
+    {
+        $warehouses = Warehouse::where('type', $type)
+            ->with(['managers', 'creator'])
+            ->when($search, function ($q) use ($search) {
+                $q->where(function ($sub) use ($search) {
+                    $sub->where('name', 'like', "%{$search}%")
+                        ->orWhere('code', 'like', "%{$search}%")
+                        ->orWhere('manager', 'like', "%{$search}%")
+                        ->orWhere('location', 'like', "%{$search}%");
+                });
+            })
+            ->orderByDesc('is_main')
+            ->orderBy('name')
+            ->get();
+
+        $mainWarehouse = $warehouses->firstWhere('is_main', true) ?? $warehouses->firstWhere('parent_id', null);
+
+        $stockTotals = WarehouseItemBatch::whereIn('warehouse_id', $warehouses->pluck('id'))
+            ->where('remaining_quantity', '>', 0)
+            ->selectRaw('warehouse_id, SUM(remaining_quantity) as total_qty')
+            ->groupBy('warehouse_id')
+            ->pluck('total_qty', 'warehouse_id')
+            ->toArray();
+
+        $filename = 'warehouse-' . $type . '-report-' . date('Y-m-d') . '.pdf';
+
+        return app(WarehousePdfService::class)->downloadInline('warehouse::pdf.warehouses_list', compact(
+            'type',
+            'warehouses',
+            'mainWarehouse',
+            'stockTotals'
+        ), $filename);
     }
 
     /**
@@ -237,12 +305,12 @@ class WarehouseController extends Controller
         $hasMain = Warehouse::where('type', $validated['type'])->where('is_main', true)->exists();
         $validated['is_main'] = (!$hasMain && empty($validated['parent_id']));
 
-        $managerIds = $request->input('manager_ids', []);
+        $managerIds = WarehouseUserVisibility::sanitizeSelectableUserIds((array)$request->input('manager_ids', []));
         unset($validated['manager_ids']);
 
         $warehouse = Warehouse::create($validated);
 
-        if (is_array($managerIds) && count($managerIds) > 0) {
+        if (count($managerIds) > 0) {
             $warehouse->managers()->sync($managerIds);
             $names = $warehouse->managers()->pluck('name')->implode('، ');
             $warehouse->updateQuietly(['manager' => $names]);
@@ -269,16 +337,17 @@ class WarehouseController extends Controller
             })
             ->get();
 
-        $currentManagers = $warehouse->managers()->get()->map(function ($u) {
-            return [
-                'id' => $u->id,
-                'name' => $u->name,
-                'email' => $u->email ?? '',
-                'mobile' => $u->mobile ?? '',
-                'initial' => mb_substr(trim($u->name ?: 'ک'), 0, 1, 'utf-8'),
-                'avatar' => method_exists($u, 'getProfilePhotoUrlAttribute') ? $u->profile_photo_url : null,
-            ];
-        })->values()->toArray();
+        $currentManagers = WarehouseUserVisibility::filterVisibleManagers($warehouse->managers()->get())
+            ->map(function ($u) {
+                return [
+                    'id' => $u->id,
+                    'name' => $u->name,
+                    'email' => $u->email ?? '',
+                    'mobile' => $u->mobile ?? '',
+                    'initial' => mb_substr(trim($u->name ?: 'ک'), 0, 1, 'utf-8'),
+                    'avatar' => method_exists($u, 'getProfilePhotoUrlAttribute') ? $u->profile_photo_url : null,
+                ];
+            })->values()->toArray();
 
         return view('warehouse::warehouses.edit', compact('warehouse', 'parentWarehouses', 'currentManagers'));
     }
@@ -322,7 +391,16 @@ class WarehouseController extends Controller
         $warehouse->update($validated);
 
         if ($request->has('manager_ids')) {
-            $warehouse->managers()->sync(is_array($managerIds) ? $managerIds : []);
+            $sanitizedIds = WarehouseUserVisibility::sanitizeSelectableUserIds(is_array($managerIds) ? $managerIds : []);
+            if (!WarehouseUserVisibility::isSuperAdmin()) {
+                $existingSuperAdminIds = $warehouse->managers()
+                    ->whereHas('roles', fn($r) => $r->where('name', 'super-admin'))
+                    ->pluck('users.id')
+                    ->map(fn($id) => (int)$id)
+                    ->all();
+                $sanitizedIds = array_values(array_unique(array_merge($sanitizedIds, $existingSuperAdminIds)));
+            }
+            $warehouse->managers()->sync($sanitizedIds);
             $names = $warehouse->managers()->pluck('name')->implode('، ');
             $warehouse->updateQuietly(['manager' => $names]);
         }

@@ -16,7 +16,7 @@
 @endphp
 
 @section('content')
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8" x-data="{ activeTab: '{{ request('tab', 'general') }}' }" x-init="$watch('activeTab', val => document.getElementById('active-tab-input').value = val)">
+    <div class="w-full max-w-full px-3 sm:px-5 lg:px-6 py-6 space-y-6" x-data="{ activeTab: '{{ request('tab', 'general') }}' }" x-init="$watch('activeTab', val => document.getElementById('active-tab-input').value = val)">
         {{-- هدر صفحه --}}
         <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
@@ -50,7 +50,7 @@
                 {{ session('success') }}
                 @if(request('tab'))
                     <span class="text-xs bg-emerald-100 dark:bg-emerald-800/40 px-2 py-0.5 rounded-lg">
-                @if(request('tab') === 'cure')طرح درمان@elseif(request('tab') === 'schedule')برنامه زمانی@elseif(request('tab') === 'appearance')تنظیمات ظاهری@elseif(request('tab') === 'ads')تبلیغات و بنرها@elseعمومی@endif
+                @if(request('tab') === 'cure')طرح درمان@elseif(request('tab') === 'schedule')برنامه زمانی@elseif(request('tab') === 'appearance')تنظیمات ظاهری@elseif(request('tab') === 'ads')تبلیغات و بنرها@elseif(request('tab') === 'laboratory')لابراتوار@elseعمومی@endif
             </span>
                 @endif
             </div>
@@ -2179,333 +2179,419 @@
                  x-transition:enter="transition ease-out duration-200"
                  x-transition:enter-start="opacity-0"
                  x-transition:enter-end="opacity-100"
-                 class="space-y-8"
+                 class="space-y-6"
                  x-data="labTabManager">
 
                 <!-- Hidden Input to submit full laboratory configuration JSON -->
-                <input type="hidden" name="laboratory_settings_json" :value="JSON.stringify({ types: types, integrations: integrations })">
+                <input type="hidden" name="laboratory_settings_json" :value="JSON.stringify({ partners: partners, types: types, integrations: integrations })">
 
-                {{-- راهنمای سیستم لابراتوار --}}
-                <div class="bg-gradient-to-r from-indigo-500/10 via-blue-500/10 to-cyan-500/10 dark:from-indigo-950/40 dark:via-blue-950/30 dark:to-cyan-950/30 p-5 rounded-2xl border border-indigo-100 dark:border-indigo-800/40 flex items-start gap-4">
-                    <div class="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center flex-shrink-0 shadow-lg shadow-indigo-500/30">
-                        <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
-                        </svg>
-                    </div>
-                    <div class="space-y-1">
-                        <h3 class="text-base font-bold text-gray-900 dark:text-white">سیستم هوشمند و داینامیک مدیریت انواع، دسته‌بندی‌ها و مراحل لابراتوار</h3>
-                        <p class="text-xs text-gray-600 dark:text-slate-300 leading-relaxed">
-                            در این بخش می‌توانید بدون هیچ محدودیتی انواع لابراتوار (خارجی، دیجیتال داخل مطب، سنترهای تخصصی و...)، دسته‌بندی‌های هر نوع و زمان‌بندی دقیق مراحل پیگیری (روز / ساعت) را سفارشی‌سازی کنید.
-                        </p>
-                    </div>
-                </div>
-
-                {{-- کارت ۱: سوییچ اصلی فعال‌سازی و مشخصات پایه --}}
-                <div class="{{ $cardClass }}">
-                    <div class="{{ $headerClass }}">
-                        <div class="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
-                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-                        </div>
-                        <div>
-                            <h2 class="text-base font-bold text-gray-900 dark:text-white">وضعیت کلی و ماژول لابراتوار</h2>
-                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">کنترل سراسری فعال‌سازی بخش لابراتوار و نام همکار پیش‌فرض</p>
-                        </div>
-                    </div>
-
-                    <div class="p-6 space-y-6">
-                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/40">
+                {{-- نوار کنترل بالا: فعال‌سازی + زیرتب‌های منظم --}}
+                <div class="{{ $cardClass }} p-5 space-y-4">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center shrink-0 shadow-md shadow-indigo-500/25">
+                                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+                                </svg>
+                            </div>
                             <div>
-                                <h4 class="text-sm font-bold text-gray-900 dark:text-white">فعال‌سازی ماژول لابراتوار در نوبت‌دهی</h4>
-                                <p class="text-xs text-gray-500 dark:text-slate-300 mt-1">با روشن بودن این گزینه، منوی اختصاصی لابراتوار و کارتابل پیگیری‌های روزانه در سیستم در دسترس خواهد بود.</p>
-                            </div>
-                            <label class="relative inline-flex items-center cursor-pointer flex-shrink-0">
-                                <input type="checkbox" name="laboratory_enabled" value="1" x-model="labEnabled" class="sr-only peer">
-                                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-indigo-600"></div>
-                            </label>
-                        </div>
-
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
-                            <div>
-                                <label class="{{ $labelClass }}">نام پیش‌فرض لابراتوار اصلی / طرف قرارداد</label>
-                                <input type="text" name="laboratory_default_partner" x-model="defaultPartner" placeholder="مثلاً: آرمان سلامت" class="{{ $inputClass }}">
-                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1.5">این عنوان به عنوان نام پیش‌فرض در ثبت سفارشات درج می‌گردد.</p>
-                            </div>
-
-                            <div class="p-4 rounded-xl border border-indigo-100 bg-indigo-50/50 dark:border-indigo-900/40 dark:bg-indigo-950/30 flex items-center gap-3">
-                                <div class="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold text-xs shrink-0">✓</div>
-                                <div class="text-xs text-slate-700 dark:text-slate-300 leading-relaxed">
-                                    <strong>سیستم هشدارهای خودکار:</strong> کارهایی که موعد پیگیری یا دریافت آن‌ها گذشته باشد با رنگ <strong>قرمز</strong> و پس از دریافت نهایی کار با رنگ <strong>سبز</strong> در کارتابل نمایش داده می‌شوند.
-                                </div>
+                                <h2 class="text-base font-bold text-gray-900 dark:text-white">مدیریت ماژول لابراتوار</h2>
+                                <p class="text-xs text-slate-600 dark:text-slate-300 mt-0.5">طراحی جریان‌های کاری، مراکز میلینگ و قوانین یادآوری سفارشات پروتز</p>
                             </div>
                         </div>
-                    </div>
-                </div>
 
-                {{-- کارت ۲: مدیریت پویا و بدون محدودیت انواع لابراتوار، دسته‌ها و مراحل زمانی --}}
-                <div class="{{ $cardClass }}" x-show="labEnabled">
-                    <div class="{{ $headerClass }}">
-                        <div class="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center text-blue-600 dark:text-blue-400">
-                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
-                        </div>
-                        <div class="flex-1 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                            <div>
-                                <h2 class="text-base font-bold text-gray-900 dark:text-white">پیکربندی انواع، دسته‌بندی‌ها و مراحل پیگیری</h2>
-                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">شخصی‌سازی انواع لابراتوار، جریان‌های کاری و زمان‌بندی‌های خودکار</p>
-                            </div>
-                            <button type="button" @click="addType()" class="px-3.5 py-2 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 transition-colors text-xs font-bold flex items-center gap-1.5 shadow-sm shadow-indigo-500/20 self-start sm:self-auto">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-                                افزودن نوع لابراتوار جدید
-                            </button>
-                        </div>
-                    </div>
-
-                    <div class="p-6 space-y-6">
-                        {{-- گزینه همگام‌سازی سفارشات فعال با تغییرات جدید --}}
-                        <label class="flex items-start gap-3 p-4 rounded-2xl border border-amber-200/80 dark:border-amber-800/50 bg-amber-50/60 dark:bg-amber-950/25 cursor-pointer hover:bg-amber-50 dark:hover:bg-amber-950/35 transition-colors">
-                            <input type="checkbox"
-                                   name="sync_laboratory_active_orders"
-                                   value="1"
-                                   class="mt-0.5 w-4 h-4 rounded border-amber-300 dark:border-amber-700 text-indigo-600 focus:ring-indigo-500">
-                            <div class="space-y-0.5">
-                                <span class="block text-xs font-bold text-gray-900 dark:text-white">
-                                    همگام‌سازی سفارشات فعال (در حال انجام) با تغییرات مراحل و زمان‌بندی جدید هنگام ذخیره
-                                </span>
-                                <span class="block text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">
-                                    در صورت فعال بودن، سفارشاتی که هنوز تحویل گرفته نشده‌اند به‌صورت ایمن با تغییرات جدید هماهنگ می‌شوند (مراحل تکمیل‌شده قبلی و تاریخچه لاگ‌ها دست‌نخورده باقی می‌مانند).
-                                </span>
-                            </div>
+                        <label class="inline-flex items-center gap-3 px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/70 dark:bg-gray-900/50 cursor-pointer shrink-0">
+                            <span class="text-xs font-bold text-gray-800 dark:text-slate-200" x-text="labEnabled ? 'ماژول فعال است' : 'ماژول غیرفعال است'"></span>
+                            <input type="checkbox" name="laboratory_enabled" value="1" x-model="labEnabled" class="sr-only peer">
+                            <div class="relative w-10 h-5 bg-gray-300 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600"></div>
                         </label>
+                    </div>
 
-                        {{-- تب‌های انتخاب نوع لابراتوار --}}
-                        <div class="flex items-center gap-2 overflow-x-auto pb-2 border-b border-gray-200 dark:border-gray-700">
-                            <template x-for="(type, tIndex) in types" :key="type.id">
-                                <button type="button"
-                                        @click="activeTypeIndex = tIndex"
-                                        :class="activeTypeIndex === tIndex
-                                            ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/20'
-                                            : 'bg-gray-100 dark:bg-gray-700/60 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'"
-                                        class="px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 flex items-center gap-2">
-                                    <span x-text="type.name || 'نوع بدون نام'"></span>
-                                    <span class="px-1.5 py-0.5 rounded-md text-[10px]"
-                                          :class="activeTypeIndex === tIndex ? 'bg-white/20 text-white' : 'bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300'"
-                                          x-text="(type.categories ? type.categories.length : 0) + ' دسته'">
-                                    </span>
+                    {{-- زیرتب‌های داخلی لابراتوار برای جلوگیری از شلوغی --}}
+                    <div x-show="labEnabled" class="flex flex-wrap items-center gap-2 pt-3 border-t border-gray-200 dark:border-gray-700">
+                        <button type="button" @click="labSubTab = 'workflows'"
+                                :class="labSubTab === 'workflows' ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-500/20 dark:bg-indigo-500/20 dark:text-indigo-200 dark:border dark:border-indigo-500/40' : 'bg-gray-100 dark:bg-gray-800 text-slate-600 dark:text-slate-300 hover:bg-gray-200 dark:hover:bg-gray-700'"
+                                class="px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2">
+                            <span>۱. مراحل و جریان‌های کاری</span>
+                            <span class="px-1.5 py-0.5 rounded-md text-[10px]"
+                                  :class="labSubTab === 'workflows' ? 'bg-white/20 text-white dark:bg-indigo-500/30' : 'bg-gray-200 dark:bg-gray-700 text-slate-700 dark:text-slate-300'"
+                                  x-text="types.length + ' نوع'"></span>
+                        </button>
+
+                        <button type="button" @click="labSubTab = 'partners'"
+                                :class="labSubTab === 'partners' ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-500/20 dark:bg-indigo-500/20 dark:text-indigo-200 dark:border dark:border-indigo-500/40' : 'bg-gray-100 dark:bg-gray-800 text-slate-600 dark:text-slate-300 hover:bg-gray-200 dark:hover:bg-gray-700'"
+                                class="px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2">
+                            <span>۲. مراکز همکار و میلینگ</span>
+                            <span class="px-1.5 py-0.5 rounded-md text-[10px]"
+                                  :class="labSubTab === 'partners' ? 'bg-white/20 text-white dark:bg-indigo-500/30' : 'bg-gray-200 dark:bg-gray-700 text-slate-700 dark:text-slate-300'"
+                                  x-text="partners.length + ' مرکز'"></span>
+                        </button>
+
+                        <button type="button" @click="labSubTab = 'integrations'"
+                                :class="labSubTab === 'integrations' ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-500/20 dark:bg-indigo-500/20 dark:text-indigo-200 dark:border dark:border-indigo-500/40' : 'bg-gray-100 dark:bg-gray-800 text-slate-600 dark:text-slate-300 hover:bg-gray-200 dark:hover:bg-gray-700'"
+                                class="px-4 py-2 rounded-xl text-xs font-bold transition-all">
+                            ۳. یادآورها و انتساب خودکار
+                        </button>
+
+                        <button type="button" @click="labSubTab = 'general'"
+                                :class="labSubTab === 'general' ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-500/20 dark:bg-indigo-500/20 dark:text-indigo-200 dark:border dark:border-indigo-500/40' : 'bg-gray-100 dark:bg-gray-800 text-slate-600 dark:text-slate-300 hover:bg-gray-200 dark:hover:bg-gray-700'"
+                                class="px-4 py-2 rounded-xl text-xs font-bold transition-all">
+                            ۴. تنظیمات پایه و همگام‌سازی
+                        </button>
+                    </div>
+                </div>
+
+                {{-- ═══════════════════════════════════════════════════════ --}}
+                {{-- زیرتب ۱: استودیوی طراحی مراحل (Master-Detail بدون شلوغی) --}}
+                {{-- ═══════════════════════════════════════════════════════ --}}
+                <div class="space-y-5" x-show="labEnabled && labSubTab === 'workflows'">
+                    {{-- نوار انتخاب نوع لابراتوار --}}
+                    <div class="{{ $cardClass }} p-4 space-y-4">
+                        <div class="flex flex-wrap items-center justify-between gap-3">
+                            <div class="flex flex-wrap items-center gap-2">
+                                <span class="text-xs font-bold text-slate-600 dark:text-slate-300 ml-1">نوع لابراتوار:</span>
+                                <template x-for="(type, tIndex) in types" :key="type.id">
+                                    <button type="button"
+                                            @click="selectLabType(tIndex)"
+                                            :class="activeTypeIndex === tIndex
+                                                ? 'bg-indigo-600 text-white shadow-sm dark:bg-indigo-500/20 dark:text-indigo-200 dark:border dark:border-indigo-500/40'
+                                                : 'bg-gray-100 dark:bg-gray-800 text-slate-700 dark:text-slate-300 hover:bg-gray-200 dark:hover:bg-gray-700'"
+                                            class="px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2">
+                                        <span x-text="type.name || 'نوع بدون نام'"></span>
+                                        <span class="text-[10px] opacity-80" x-text="'(' + (type.categories ? type.categories.length : 0) + ')'"></span>
+                                    </button>
+                                </template>
+                            </div>
+
+                            <div class="flex items-center gap-2">
+                                <button type="button" @click="showTypeSettings = !showTypeSettings"
+                                        class="px-3 py-1.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-slate-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-gray-700 text-xs font-bold transition-colors">
+                                    <span x-text="showTypeSettings ? 'بستن مشخصات نوع' : 'ویرایش مشخصات نوع'"></span>
                                 </button>
-                            </template>
+                                <button type="button" @click="addType()"
+                                        class="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition-colors">
+                                    + نوع لابراتوار جدید
+                                </button>
+                            </div>
                         </div>
 
-                        {{-- محتوای نوع فعال --}}
+                        {{-- کشوی جمع‌وجور مشخصات نوع (فقط هنگام نیاز باز می‌شود) --}}
                         <template x-if="types[activeTypeIndex]">
-                            <div class="space-y-6">
-                                {{-- مشخصات نوع انتخاب شده --}}
-                                <div class="p-5 rounded-2xl border border-indigo-100 dark:border-indigo-900/40 bg-indigo-50/20 dark:bg-indigo-950/10 space-y-4">
-                                    <div class="flex items-center justify-between">
-                                        <h3 class="text-sm font-bold text-indigo-900 dark:text-indigo-300 flex items-center gap-2">
-                                            <span class="w-2 h-2 rounded-full bg-indigo-600"></span>
-                                            مشخصات نوع لابراتوار
-                                        </h3>
-                                        <button type="button" @click="removeType(activeTypeIndex)"
-                                                class="px-3 py-1.5 rounded-lg border border-red-200 dark:border-red-800/50 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 text-xs font-bold transition-colors flex items-center gap-1"
-                                                x-show="types.length > 1">
-                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-                                            حذف این نوع
-                                        </button>
-                                    </div>
-
-                                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                        <div>
-                                            <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">شناسه سیستمی (انگلیسی)</label>
-                                            <input type="text" x-model="types[activeTypeIndex].id" class="{{ $inputClass }} text-xs" required>
-                                        </div>
-                                        <div>
-                                            <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">عنوان نمایشی نوع</label>
-                                            <input type="text" x-model="types[activeTypeIndex].name" class="{{ $inputClass }} text-xs" required>
-                                        </div>
-                                        <div>
-                                            <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">نام پیش‌فرض مرکز / لابراتوار</label>
-                                            <input type="text" x-model="types[activeTypeIndex].default_partner" class="{{ $inputClass }} text-xs" placeholder="مثلاً: آرمان سلامت، لابراتوار مطب">
-                                        </div>
-                                    </div>
+                            <div x-show="showTypeSettings" x-collapse
+                                 class="pt-4 border-t border-gray-200 dark:border-gray-700 grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
+                                <div>
+                                    <label class="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1">عنوان نمایشی نوع</label>
+                                    <input type="text" x-model="types[activeTypeIndex].name" class="{{ $inputClass }} text-xs" required>
                                 </div>
-
-                                {{-- بخش دسته‌بندی‌های این نوع (با مدیریت آکاردئونی و باز/بسته کردن) --}}
-                                <div class="space-y-4">
-                                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-gray-50/70 dark:bg-gray-900/40 p-3.5 rounded-2xl border border-gray-200 dark:border-gray-700">
-                                        <div class="flex items-center gap-2.5">
-                                            <span class="w-8 h-8 rounded-xl bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold text-xs">
-                                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" /></svg>
-                                            </span>
-                                            <div>
-                                                <h3 class="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                                                    دسته‌بندی‌های این نوع
-                                                    <span class="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800/40"
-                                                          x-text="(types[activeTypeIndex].categories ? types[activeTypeIndex].categories.length : 0) + ' دسته تعریف شده'"></span>
-                                                </h3>
-                                                <p class="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">برای مشاهده یا ویرایش مراحل هر دسته، روی نوار آن کلیک کنید.</p>
-                                            </div>
-                                        </div>
-
-                                        <div class="flex flex-wrap items-center gap-2">
-                                            <button type="button" @click="expandAllCategories(activeTypeIndex)" class="px-3 py-1.5 rounded-xl bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 text-xs font-bold transition-colors border border-gray-200 dark:border-gray-700 shadow-xs flex items-center gap-1">
-                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
-                                                باز کردن همه
-                                            </button>
-                                            <button type="button" @click="collapseAllCategories(activeTypeIndex)" class="px-3 py-1.5 rounded-xl bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 text-xs font-bold transition-colors border border-gray-200 dark:border-gray-700 shadow-xs flex items-center gap-1">
-                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"/></svg>
-                                                بستن همه
-                                            </button>
-                                            <button type="button" @click="addCategory(activeTypeIndex)" class="px-3.5 py-1.5 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 transition-colors text-xs font-bold flex items-center gap-1 shadow-sm shadow-indigo-500/20">
-                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-                                                افزودن دسته جدید
-                                            </button>
-                                        </div>
-                                    </div>
-
-                                    {{-- لیست آکاردئونی دسته‌بندی‌ها --}}
-                                    <div class="space-y-3.5">
-                                        <template x-for="(category, cIndex) in types[activeTypeIndex].categories" :key="category.id">
-                                            <div class="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-xs overflow-hidden transition-all duration-200 hover:border-indigo-300 dark:hover:border-indigo-600/60">
-                                                
-                                                {{-- هدر آکاردئون دسته (کلیک برای باز/بسته شدن) --}}
-                                                <div class="p-4 bg-gray-50/70 dark:bg-gray-900/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3 cursor-pointer select-none transition-colors hover:bg-gray-100/80 dark:hover:bg-gray-900/80"
-                                                     @click="toggleCategory(activeTypeIndex, cIndex)">
-                                                    <div class="flex items-center gap-3">
-                                                        <span class="w-7 h-7 rounded-lg bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 font-bold text-xs flex items-center justify-center shrink-0" x-text="cIndex + 1"></span>
-                                                        <div>
-                                                            <div class="flex items-center gap-2">
-                                                                <h4 class="font-bold text-sm text-gray-900 dark:text-white" x-text="category.name || 'دسته‌بندی بدون نام'"></h4>
-                                                                <span class="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300" x-text="category.id"></span>
-                                                            </div>
-                                                            <p class="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5 truncate max-w-md" x-text="category.description || 'بدون توضیحات اضافی'"></p>
-                                                        </div>
-                                                    </div>
-
-                                                    <div class="flex items-center justify-between sm:justify-end gap-2.5">
-                                                        {{-- بج تعداد مراحل --}}
-                                                        <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-blue-50 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300 border border-blue-200 dark:border-blue-800/50">
-                                                            <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                                            <span x-text="(category.stages ? category.stages.length : 0) + ' مرحله'"></span>
-                                                        </span>
-
-                                                        {{-- بج مجموع زمان --}}
-                                                        <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/50">
-                                                            <span x-text="'مجموع: ' + getCategoryTotalTime(category)"></span>
-                                                        </span>
-
-                                                        {{-- دکمه حذف دسته --}}
-                                                        <button type="button"
-                                                                @click.stop="removeCategory(activeTypeIndex, cIndex)"
-                                                                class="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg transition-colors mr-1"
-                                                                title="حذف این دسته‌بندی">
-                                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-                                                        </button>
-
-                                                        {{-- آیکون فلش باز/بسته --}}
-                                                        <div class="w-6 h-6 rounded-full flex items-center justify-center text-gray-400 transition-transform duration-200"
-                                                             :class="isCategoryOpen(activeTypeIndex, cIndex) ? 'rotate-180 text-indigo-600 dark:text-indigo-400' : ''">
-                                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
-                                                        </div>
-                                                    </div>
-                                                </div>
-
-                                                {{-- بدنه بازشونده دسته --}}
-                                                <div x-show="isCategoryOpen(activeTypeIndex, cIndex)" x-collapse class="p-5 border-t border-gray-200 dark:border-gray-700 space-y-5 bg-white dark:bg-gray-800">
-                                                    {{-- فیلدهای مشخصات دسته‌بندی --}}
-                                                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 rounded-xl bg-gray-50/60 dark:bg-gray-900/30 border border-gray-200/80 dark:border-gray-700/60">
-                                                        <div>
-                                                            <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">شناسه دسته‌بندی (یکتا)</label>
-                                                            <input type="text" x-model="category.id" class="{{ $inputClass }} text-xs" required>
-                                                        </div>
-                                                        <div>
-                                                            <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">عنوان نمایشی دسته‌بندی</label>
-                                                            <input type="text" x-model="category.name" class="{{ $inputClass }} text-xs font-bold" placeholder="مثلاً: ۱ تا ۲ واحدی، سفارش فوری" required>
-                                                        </div>
-                                                        <div>
-                                                            <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">توضیحات کوتاه (اختیاری)</label>
-                                                            <input type="text" x-model="category.description" class="{{ $inputClass }} text-xs" placeholder="توضیح کوتاه در فرم ثبت">
-                                                        </div>
-                                                    </div>
-
-                                                    {{-- جدول و مراحل زمانی پیگیری --}}
-                                                    <div class="space-y-3">
-                                                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                                                            <div class="flex items-center gap-2">
-                                                                <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
-                                                                <h4 class="text-xs font-bold text-gray-900 dark:text-white">مراحل و زمان‌بندی پیگیری‌های متوالی</h4>
-                                                            </div>
-                                                            <button type="button" @click="addStage(activeTypeIndex, cIndex)" class="px-3 py-1.5 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm shadow-emerald-500/20 self-start sm:self-auto">
-                                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-                                                                افزودن مرحله جدید
-                                                            </button>
-                                                        </div>
-
-                                                        {{-- لیست مراحل --}}
-                                                        <div class="space-y-2.5">
-                                                            <template x-for="(stage, sIndex) in category.stages" :key="stage.key || sIndex">
-                                                                <div class="flex flex-col sm:flex-row sm:items-center gap-3 p-3.5 rounded-xl bg-gray-50 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-700/80 shadow-xs transition-all hover:border-gray-300 dark:hover:border-gray-600">
-                                                                    <div class="flex items-center gap-2 shrink-0">
-                                                                        <span class="w-6 h-6 rounded-lg bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 text-xs font-bold flex items-center justify-center" x-text="sIndex + 1"></span>
-                                                                        <span class="text-xs font-bold text-gray-500 dark:text-gray-400" x-text="'گام ' + (sIndex + 1)"></span>
-                                                                    </div>
-
-                                                                    <div class="flex-1 grid grid-cols-1 sm:grid-cols-4 gap-2.5">
-                                                                        <div class="sm:col-span-2">
-                                                                            <input type="text" x-model="stage.title" class="{{ $inputClass }} text-xs py-1.5" placeholder="عنوان مرحله (مثلاً: پیگیری اول)" required>
-                                                                        </div>
-                                                                        <div>
-                                                                            <input type="number" x-model.number="stage.offset" min="0" max="365" class="{{ $inputClass }} text-xs text-center py-1.5" placeholder="فاصله زمانی" required>
-                                                                        </div>
-                                                                        <div>
-                                                                            <select x-model="stage.unit" class="{{ $selectClass }} text-xs py-1.5">
-                                                                                <option value="days">روز بعد از مرحله قبل</option>
-                                                                                <option value="hours">ساعت بعد از مرحله قبل</option>
-                                                                            </select>
-                                                                        </div>
-                                                                    </div>
-
-                                                                    <div class="flex items-center justify-between sm:justify-end gap-3 pt-2 sm:pt-0 border-t sm:border-t-0 border-gray-200 dark:border-gray-700">
-                                                                        <label class="inline-flex items-center gap-1.5 cursor-pointer select-none px-2.5 py-1 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
-                                                                            <input type="checkbox" x-model="stage.is_receive" class="rounded border-gray-300 text-emerald-600 shadow-sm focus:border-emerald-300 focus:ring focus:ring-emerald-200 focus:ring-opacity-50 dark:border-gray-600 dark:bg-gray-900">
-                                                                            <span class="text-[11px] font-bold text-gray-700 dark:text-gray-300">دریافت نهایی کار (سبز)</span>
-                                                                        </label>
-
-                                                                        <div class="flex items-center gap-1">
-                                                                            <button type="button" @click="moveStage(activeTypeIndex, cIndex, sIndex, -1)" class="p-1 text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors" title="انتقال به بالا" x-show="sIndex > 0">
-                                                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"/></svg>
-                                                                            </button>
-                                                                            <button type="button" @click="moveStage(activeTypeIndex, cIndex, sIndex, 1)" class="p-1 text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors" title="انتقال به پایین" x-show="sIndex < category.stages.length - 1">
-                                                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
-                                                                            </button>
-                                                                            <button type="button" @click="removeStage(activeTypeIndex, cIndex, sIndex)" class="p-1 text-gray-400 hover:text-red-500 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors" title="حذف این مرحله">
-                                                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-                                                                            </button>
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-                                                            </template>
-
-                                                            <div x-show="!category.stages || category.stages.length === 0" class="p-4 rounded-xl border border-dashed border-gray-300 dark:border-gray-700 text-center text-xs text-gray-400">
-                                                                هیچ مرحله‌ای برای این دسته‌بندی تعریف نشده است. روی دکمه «افزودن مرحله جدید» کلیک کنید.
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </template>
-
-                                        <div x-show="!types[activeTypeIndex].categories || types[activeTypeIndex].categories.length === 0" class="p-8 rounded-2xl border-2 border-dashed border-gray-200 dark:border-gray-700 text-center text-xs text-gray-400 space-y-2">
-                                            <p>هیچ دسته‌بندی برای این نوع لابراتوار ثبت نشده است.</p>
-                                            <button type="button" @click="addCategory(activeTypeIndex)" class="px-4 py-2 rounded-xl bg-indigo-600 text-white font-bold text-xs hover:bg-indigo-700 transition-colors inline-flex items-center gap-1.5 shadow-sm">
-                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-                                                ایجاد اولین دسته‌بندی
-                                            </button>
-                                        </div>
-                                    </div>
+                                <div>
+                                    <label class="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1">مرکز همکار پیش‌فرض</label>
+                                    <input type="text" x-model="types[activeTypeIndex].default_partner" class="{{ $inputClass }} text-xs">
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1">شناسه سیستمی (انگلیسی)</label>
+                                    <input type="text" x-model="types[activeTypeIndex].id" class="{{ $inputClass }} text-xs" required>
+                                </div>
+                                <div class="flex justify-end">
+                                    <button type="button" @click="removeType(activeTypeIndex)" x-show="types.length > 1"
+                                            class="px-3 py-2 rounded-xl border border-rose-200 dark:border-rose-800/50 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 text-xs font-bold">
+                                        حذف این نوع
+                                    </button>
                                 </div>
                             </div>
                         </template>
-                {{-- کارت ۳: تنظیمات انتساب خودکار و هماهنگی با سایر ماژول‌ها (Reminders, FollowUps, Tasks) --}}
-                <div class="{{ $cardClass }}" x-show="labEnabled">
+                    </div>
+
+                    {{-- فضای کار دو ستونه (راست: لیست دسته‌بندی‌ها | چپ: ویرایشگر متمرکز دسته انتخابی) --}}
+                    <template x-if="types[activeTypeIndex]">
+                        <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+                            {{-- ستون راست: لیست دسته‌بندی‌ها + افزودن از قالب آماده --}}
+                            <div class="lg:col-span-3 {{ $cardClass }} p-4 space-y-3">
+                                <div class="flex items-center justify-between gap-2">
+                                    <h3 class="text-xs font-bold text-gray-900 dark:text-white">دسته‌بندی‌های این نوع</h3>
+                                    <div class="flex items-center gap-1.5">
+                                        {{-- منوی افزودن از قالب آماده --}}
+                                        <div class="relative" x-data="{ openTplMenu: false }" @click.outside="openTplMenu = false">
+                                            <button type="button" @click="openTplMenu = !openTplMenu"
+                                                    class="px-2.5 py-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/50 dark:hover:bg-amber-900/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-700/60 text-[11px] font-bold transition-colors flex items-center gap-1">
+                                                <span>از قالب</span>
+                                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                                            </button>
+
+                                            <div x-show="openTplMenu" x-transition
+                                                 class="absolute left-0 lg:right-0 lg:left-auto top-full mt-1.5 w-64 rounded-2xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-2xl z-40 p-2 space-y-1">
+                                                <div class="px-2.5 py-1.5 text-[10px] font-bold text-slate-500 dark:text-slate-400 border-b border-gray-100 dark:border-gray-700">
+                                                    افزودن دسته از قالب‌های آماده:
+                                                </div>
+                                                <template x-for="tpl in categoryTemplates" :key="tpl.id">
+                                                    <button type="button"
+                                                            @click="addCategoryFromTemplate(activeTypeIndex, tpl); openTplMenu = false"
+                                                            class="w-full text-right px-2.5 py-2 rounded-xl hover:bg-indigo-50 dark:hover:bg-indigo-500/15 transition-colors flex items-center justify-between gap-2">
+                                                        <span class="text-xs font-bold text-gray-900 dark:text-slate-100" x-text="tpl.name"></span>
+                                                        <span class="text-[10px] px-1.5 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 font-bold shrink-0"
+                                                              x-text="tpl.badge || ''"></span>
+                                                    </button>
+                                                </template>
+                                                <div class="pt-1 border-t border-gray-100 dark:border-gray-700">
+                                                    <button type="button"
+                                                            @click="addAllTemplatesToType(activeTypeIndex); openTplMenu = false"
+                                                            class="w-full text-center px-2.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-[11px] font-bold transition-colors">
+                                                        + افزودن یکجا هر ۴ قالب
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <button type="button" @click="addCategory(activeTypeIndex)"
+                                                class="px-2.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-[11px] font-bold transition-colors">
+                                            + جدید
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div class="space-y-1.5">
+                                    <template x-for="(catItem, cIdx) in (types[activeTypeIndex].categories || [])" :key="catItem.id || cIdx">
+                                        <button type="button"
+                                                @click="selectCategory(cIdx)"
+                                                class="w-full text-right p-3 rounded-xl border transition-all flex items-center justify-between gap-2"
+                                                :class="activeCategoryIndex === cIdx
+                                                    ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm dark:bg-indigo-500/20 dark:text-indigo-200 dark:border-indigo-500/40'
+                                                    : 'bg-gray-50/70 dark:bg-gray-900/40 border-gray-200/80 dark:border-gray-700 text-gray-800 dark:text-slate-200 hover:border-indigo-300 dark:hover:border-indigo-500/40'">
+                                            <div class="min-w-0">
+                                                <div class="text-xs font-bold truncate" x-text="catItem.name || 'بدون نام'"></div>
+                                                <div class="text-[10px] mt-0.5 truncate"
+                                                     :class="activeCategoryIndex === cIdx ? 'text-indigo-100 dark:text-indigo-300' : 'text-slate-500 dark:text-slate-400'"
+                                                     x-text="getCategoryTotalTime(catItem)"></div>
+                                            </div>
+                                            <span class="px-2 py-0.5 rounded-md text-[10px] font-bold shrink-0"
+                                                  :class="activeCategoryIndex === cIdx ? 'bg-white/20 text-white dark:bg-indigo-500/30' : 'bg-white dark:bg-gray-800 text-slate-600 dark:text-slate-300 border border-gray-200 dark:border-gray-700'"
+                                                  x-text="catItem.has_variants ? ((catItem.variants ? catItem.variants.length : 0) + ' متد') : ((catItem.stages ? catItem.stages.length : 0) + ' مرحله')"></span>
+                                        </button>
+                                    </template>
+
+                                    <div x-show="!types[activeTypeIndex].categories || types[activeTypeIndex].categories.length === 0"
+                                         class="p-6 rounded-xl border border-dashed border-gray-300 dark:border-gray-700 text-center text-xs text-slate-500 dark:text-slate-400">
+                                        دسته‌بندی ثبت نشده است.
+                                    </div>
+                                </div>
+                            </div>
+
+                            {{-- ستون چپ: ویرایشگر متمرکز فقط برای دسته انتخابی --}}
+                            <div class="lg:col-span-9">
+                                <template x-if="types[activeTypeIndex].categories && types[activeTypeIndex].categories[activeCategoryIndex]">
+                                    <div class="{{ $cardClass }} p-5 space-y-5"
+                                         x-data="{ get category() { return types[activeTypeIndex].categories[activeCategoryIndex]; }, get cIndex() { return activeCategoryIndex; } }">
+                                        {{-- هدر جمع‌وجور دسته‌بندی --}}
+                                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-gray-200 dark:border-gray-700">
+                                            <div class="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                                <div>
+                                                    <label class="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1">عنوان دسته‌بندی</label>
+                                                    <input type="text" x-model="category.name" class="{{ $inputClass }} text-xs font-bold" required>
+                                                </div>
+                                                <div>
+                                                    <label class="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1">توضیح کوتاه (اختیاری)</label>
+                                                    <input type="text" x-model="category.description" class="{{ $inputClass }} text-xs" placeholder="نمایش در فرم ثبت سفارش">
+                                                </div>
+                                            </div>
+
+                                            <div class="flex items-center gap-2 self-end sm:self-center pt-1">
+                                                <button type="button" @click="showCatTechnical = !showCatTechnical"
+                                                        class="px-2.5 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 text-[11px] font-bold text-slate-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-gray-700">
+                                                    شناسه فنی
+                                                </button>
+                                                <button type="button" @click="removeCategory(activeTypeIndex, activeCategoryIndex)"
+                                                        class="p-1.5 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors"
+                                                        title="حذف این دسته‌بندی">
+                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        {{-- شناسه فنی (مخفی به صورت پیش‌فرض) --}}
+                                        <div x-show="showCatTechnical" x-collapse class="p-3 rounded-xl bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700">
+                                            <label class="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1">شناسه یکتای سیستمی (انگلیسی - برای حفظ اتصال سفارشات)</label>
+                                            <input type="text" x-model="category.id" class="{{ $inputClass }} text-xs max-w-xs" required>
+                                        </div>
+
+                                        {{-- سوییچ جمع‌وجور حالت متدها --}}
+                                        <div class="flex flex-wrap items-center justify-between gap-3 px-3.5 py-2.5 rounded-xl bg-gray-50/80 dark:bg-gray-900/40 border border-gray-200/80 dark:border-gray-700">
+                                            <span class="text-xs font-bold text-slate-700 dark:text-slate-300">نوع ساختار مراحل:</span>
+                                            <div class="inline-flex items-center p-1 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+                                                <button type="button"
+                                                        @click="category.has_variants = false"
+                                                        :class="!category.has_variants ? 'bg-indigo-600 text-white shadow-2xs dark:bg-indigo-500/20 dark:text-indigo-200' : 'text-slate-600 dark:text-slate-300'"
+                                                        class="px-3 py-1 rounded-lg text-[11px] font-bold transition-all">
+                                                    تک‌مسیره / چندلایه
+                                                </button>
+                                                <button type="button"
+                                                        @click="category.has_variants = true; toggleCategoryVariants(category)"
+                                                        :class="category.has_variants ? 'bg-indigo-600 text-white shadow-2xs dark:bg-indigo-500/20 dark:text-indigo-200' : 'text-slate-600 dark:text-slate-300'"
+                                                        class="px-3 py-1 rounded-lg text-[11px] font-bold transition-all">
+                                                    دارای متد در شروع (مثل معمولی / TBT)
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        {{-- حالت ۱: دارای متد --}}
+                                        <template x-if="category.has_variants">
+                                            <div class="space-y-4">
+                                                <div class="flex flex-wrap items-center justify-between gap-2">
+                                                    <div class="flex flex-wrap items-center gap-1.5">
+                                                        <template x-for="(variant, vIdx) in (category.variants || [])" :key="variant.id || vIdx">
+                                                            <button type="button"
+                                                                    @click="setActiveVariantIndex(cIndex, vIdx)"
+                                                                    :class="getActiveVariantIndex(cIndex) === vIdx
+                                                                        ? 'bg-indigo-600 text-white dark:bg-indigo-500/20 dark:text-indigo-200 dark:border dark:border-indigo-500/40'
+                                                                        : 'bg-gray-100 dark:bg-gray-800 text-slate-700 dark:text-slate-300'"
+                                                                    class="px-3 py-1.5 rounded-xl text-xs font-bold transition-all">
+                                                                <span x-text="variant.name || ('متد ' + (vIdx + 1))"></span>
+                                                            </button>
+                                                        </template>
+                                                    </div>
+                                                    <button type="button" @click="addVariant(category, cIndex)"
+                                                            class="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold">
+                                                        + متد جدید
+                                                    </button>
+                                                </div>
+
+                                                <template x-if="category.variants && category.variants[getActiveVariantIndex(cIndex)]">
+                                                    <div class="space-y-3">
+                                                        <div class="flex flex-wrap items-center justify-between gap-2 bg-gray-50/70 dark:bg-gray-900/40 p-3 rounded-xl border border-gray-200/80 dark:border-gray-700">
+                                                            <div class="flex items-center gap-2">
+                                                                <span class="text-xs font-bold text-slate-600 dark:text-slate-300">نام متد:</span>
+                                                                <input type="text" x-model="category.variants[getActiveVariantIndex(cIndex)].name"
+                                                                       class="w-40 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-2.5 py-1 text-xs font-bold text-gray-900 dark:text-gray-100">
+                                                            </div>
+                                                            <div class="flex items-center gap-2">
+                                                                <button type="button" x-show="category.variants.length > 1"
+                                                                        @click="removeVariant(category, cIndex, getActiveVariantIndex(cIndex))"
+                                                                        class="px-2.5 py-1 rounded-lg text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 text-xs font-bold">
+                                                                    حذف متد
+                                                                </button>
+                                                                <button type="button"
+                                                                        @click="addStageToList(category.variants[getActiveVariantIndex(cIndex)].stages)"
+                                                                        class="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold">
+                                                                    + مرحله جدید
+                                                                </button>
+                                                            </div>
+                                                        </div>
+
+                                                        @include('booking::user.settings.partials.lab-stage-tree', [
+                                                            'stagesExpr' => 'category.variants[getActiveVariantIndex(cIndex)].stages',
+                                                            'depth' => 0,
+                                                            'maxDepth' => 3,
+                                                        ])
+                                                    </div>
+                                                </template>
+                                            </div>
+                                        </template>
+
+                                        {{-- حالت ۲: بدون متد --}}
+                                        <template x-if="!category.has_variants">
+                                            <div class="space-y-3">
+                                                <div class="flex items-center justify-between gap-2">
+                                                    <span class="text-xs font-bold text-slate-700 dark:text-slate-300">مراحل پیگیری و انشعاب‌ها</span>
+                                                    <button type="button" @click="addStage(activeTypeIndex, cIndex)"
+                                                            class="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-colors">
+                                                        + افزودن مرحله جدید
+                                                    </button>
+                                                </div>
+
+                                                @include('booking::user.settings.partials.lab-stage-tree', [
+                                                    'stagesExpr' => 'category.stages',
+                                                    'depth' => 0,
+                                                    'maxDepth' => 3,
+                                                ])
+
+                                                <div x-show="!category.stages || category.stages.length === 0"
+                                                     class="p-6 rounded-xl border border-dashed border-gray-300 dark:border-gray-700 text-center text-xs text-slate-500 dark:text-slate-400">
+                                                    هنوز مرحله‌ای تعریف نشده است. روی «افزودن مرحله جدید» کلیک کنید.
+                                                </div>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+
+                {{-- ═══════════════════════════════════════════════════════ --}}
+                {{-- زیرتب ۲: مراکز همکار و میلینگ سنترها                    --}}
+                {{-- ═══════════════════════════════════════════════════════ --}}
+                <div class="{{ $cardClass }}" x-show="labEnabled && labSubTab === 'partners'">
+                    <div class="{{ $headerClass }}">
+                        <div class="flex-1 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                            <div>
+                                <h2 class="text-base font-bold text-gray-900 dark:text-white">مراکز همکار و میلینگ سنترها</h2>
+                                <p class="text-xs text-slate-600 dark:text-slate-300 mt-0.5">لیست مراکزی که در مراحل انتخاب‌گر «ارسال جهت میلینگ» نمایش داده می‌شوند.</p>
+                            </div>
+                            <button type="button" @click="addPartner()"
+                                    class="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition-colors self-start sm:self-auto">
+                                + افزودن مرکز جدید
+                            </button>
+                        </div>
+                    </div>
+                    <div class="p-6">
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3" x-show="partners && partners.length > 0">
+                            <template x-for="(partner, pIdx) in partners" :key="partner.id || pIdx">
+                                <div class="flex items-center gap-2 p-3 rounded-xl bg-gray-50/70 dark:bg-gray-900/40 border border-gray-200 dark:border-gray-700">
+                                    <input type="text" x-model="partner.name" placeholder="نام مرکز"
+                                           class="flex-1 min-w-0 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-2.5 py-1.5 text-xs font-bold text-gray-900 dark:text-gray-100">
+                                    <select x-model="partner.lab_type"
+                                            class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-2 py-1.5 text-[11px] font-bold text-gray-900 dark:text-gray-100">
+                                        <option value="in_house">داخلی</option>
+                                        <option value="external">خارجی</option>
+                                    </select>
+                                    <button type="button" @click="removePartner(pIdx)"
+                                            class="p-1.5 text-slate-400 hover:text-rose-500 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/30">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                    </button>
+                                </div>
+                            </template>
+                        </div>
+                        <div x-show="!partners || partners.length === 0" class="p-8 rounded-xl border border-dashed border-gray-300 dark:border-gray-700 text-center text-xs text-slate-500 dark:text-slate-400">
+                            هنوز مرکزی تعریف نشده است.
+                        </div>
+                    </div>
+                </div>
+
+                {{-- ═══════════════════════════════════════════════════════ --}}
+                {{-- زیرتب ۴: تنظیمات پایه و همگام‌سازی سفارشات فعال         --}}
+                {{-- ═══════════════════════════════════════════════════════ --}}
+                <div class="{{ $cardClass }}" x-show="labEnabled && labSubTab === 'general'">
+                    <div class="{{ $headerClass }}">
+                        <div>
+                            <h2 class="text-base font-bold text-gray-900 dark:text-white">تنظیمات پایه و همگام‌سازی سفارشات</h2>
+                            <p class="text-xs text-slate-600 dark:text-slate-300 mt-0.5">نام همکار پیش‌فرض و بروزرسانی سفارشات فعال با تغییرات جدید</p>
+                        </div>
+                    </div>
+                    <div class="p-6 space-y-5">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label class="{{ $labelClass }}">نام پیش‌فرض لابراتوار اصلی / طرف قرارداد</label>
+                                <input type="text" name="laboratory_default_partner" x-model="defaultPartner" placeholder="مثلاً: آرمان سلامت" class="{{ $inputClass }}">
+                            </div>
+                            <div class="p-4 rounded-xl border border-indigo-200/70 bg-indigo-50/40 dark:border-indigo-500/30 dark:bg-indigo-950/20 flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-lg bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold text-xs shrink-0">✓</div>
+                                <div class="text-xs text-slate-700 dark:text-slate-300 leading-relaxed">
+                                    <strong>راهنمای رنگ کارتابل:</strong> ردیف‌های با تاخیر به رنگ <strong>قرمز</strong> و سفارشات تحویل‌گرفته‌شده به رنگ <strong>سبز</strong> نمایش داده می‌شوند.
+                                </div>
+                            </div>
+                        </div>
+
+                        <label class="flex items-start gap-3 p-4 rounded-2xl border border-amber-200/80 dark:border-amber-800/50 bg-amber-50/60 dark:bg-amber-950/25 cursor-pointer">
+                            <input type="checkbox" name="sync_laboratory_active_orders" value="1"
+                                   class="mt-0.5 w-4 h-4 rounded border-amber-300 dark:border-amber-700 text-indigo-600 focus:ring-indigo-500">
+                            <div class="space-y-0.5">
+                                <span class="block text-xs font-bold text-gray-900 dark:text-white">همگام‌سازی سفارشات فعال با تغییرات جدید هنگام ذخیره</span>
+                                <span class="block text-[11px] text-slate-600 dark:text-slate-300">مراحل تکمیل‌شده قبلی و شاخه‌های بازشده دست‌نخورده باقی می‌مانند.</span>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                {{-- زیرتب ۳: تنظیمات انتساب خودکار و هماهنگی ماژول‌ها (Reminders, FollowUps, Tasks) --}}
+                <div class="{{ $cardClass }}" x-show="labEnabled && labSubTab === 'integrations'">
                     <div class="{{ $headerClass }}">
                         <div class="w-8 h-8 rounded-lg bg-amber-50 dark:bg-amber-900/20 flex items-center justify-center text-amber-600 dark:text-amber-400">
                             <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
@@ -2869,12 +2955,24 @@
             Alpine.data('labTabManager', () => ({
                 labEnabled: @json((bool) ($settings->laboratory_enabled ?? false)),
                 defaultPartner: @json($settings->laboratory_default_partner ?? 'آرمان سلامت'),
+                labSubTab: 'workflows',
                 activeTypeIndex: 0,
+                activeCategoryIndex: 0,
+                showTypeSettings: false,
+                showCatTechnical: false,
+                partners: @json($settings->laboratory_settings['partners'] ?? []),
                 types: @json($settings->laboratory_settings['types'] ?? []),
+                categoryTemplates: @json(\Modules\Booking\Entities\BookingSetting::getLaboratoryCategoryTemplates()),
                 integrations: @json(\Modules\Booking\Entities\BookingSetting::getLaboratoryIntegrationSettings()),
                 openCategories: {},
+                activeVariantByCat: {},
+                expandedStages: {},
+                expandedOutcomes: {},
 
                 init() {
+                    if (!Array.isArray(this.partners)) {
+                        this.partners = [];
+                    }
                     if (!this.types || this.types.length === 0) {
                         this.types = [
                             {
@@ -2884,6 +2982,138 @@
                                 categories: []
                             }
                         ];
+                    }
+                    this.types.forEach(t => {
+                        if (!Array.isArray(t.categories)) t.categories = [];
+                        t.categories.forEach(c => this.normalizeCategory(c));
+                    });
+                },
+
+                selectLabType(tIndex) {
+                    this.activeTypeIndex = tIndex;
+                    this.activeCategoryIndex = 0;
+                    this.showCatTechnical = false;
+                },
+
+                selectCategory(cIdx) {
+                    this.activeCategoryIndex = cIdx;
+                    this.showCatTechnical = false;
+                },
+
+                toggleStageDetails(stage) {
+                    const k = stage.key || stage.title;
+                    this.expandedStages[k] = !this.expandedStages[k];
+                },
+
+                isStageDetailsOpen(stage) {
+                    const k = stage.key || stage.title;
+                    return !!this.expandedStages[k];
+                },
+
+                toggleOutcomeDetails(outcome) {
+                    const k = outcome.key || outcome.label;
+                    this.expandedOutcomes[k] = !this.expandedOutcomes[k];
+                },
+
+                isOutcomeDetailsOpen(outcome) {
+                    const k = outcome.key || outcome.label;
+                    return !!this.expandedOutcomes[k];
+                },
+
+                getStageSummaryBadge(stage) {
+                    if (stage.stage_type === 'selection') {
+                        if (stage.options_source === 'partners') {
+                            return 'مراکز همکار (' + (this.partners ? this.partners.length : 0) + ')';
+                        }
+                        return (stage.options ? stage.options.length : 0) + ' گزینه';
+                    }
+                    if (stage.stage_type === 'decision') {
+                        return (stage.outcomes ? stage.outcomes.length : 0) + ' مسیر تصمیم';
+                    }
+                    return '';
+                },
+
+                normalizeCategory(cat) {
+                    cat.has_variants = !!cat.has_variants;
+                    if (!Array.isArray(cat.stages)) cat.stages = [];
+                    if (!Array.isArray(cat.variants)) cat.variants = [];
+                    this.normalizeStageList(cat.stages);
+                    cat.variants.forEach(v => {
+                        if (!Array.isArray(v.stages)) v.stages = [];
+                        this.normalizeStageList(v.stages);
+                    });
+                },
+
+                normalizeStageList(list) {
+                    if (!Array.isArray(list)) return;
+                    list.forEach(s => {
+                        if (!s.stage_type) s.stage_type = 'standard';
+                        s.is_optional = !!s.is_optional;
+                        if (!s.options_source) s.options_source = 'custom';
+                        if (!Array.isArray(s.options)) s.options = [];
+                        if (!Array.isArray(s.outcomes)) s.outcomes = [];
+                        s.outcomes.forEach(out => {
+                            if (!out.effect) out.effect = 'finish';
+                            if (!Array.isArray(out.stages)) out.stages = [];
+                            this.normalizeStageList(out.stages);
+                        });
+                    });
+                },
+
+                addPartner() {
+                    this.partners.push({
+                        id: 'partner_' + Date.now() + '_' + Math.floor(Math.random() * 100),
+                        name: 'مرکز جدید',
+                        lab_type: 'external',
+                    });
+                },
+
+                removePartner(idx) {
+                    this.partners.splice(idx, 1);
+                },
+
+                getActiveVariantIndex(cIndex) {
+                    const key = this.activeTypeIndex + '_' + cIndex;
+                    return this.activeVariantByCat[key] ?? 0;
+                },
+
+                setActiveVariantIndex(cIndex, vIdx) {
+                    const key = this.activeTypeIndex + '_' + cIndex;
+                    this.activeVariantByCat[key] = vIdx;
+                },
+
+                toggleCategoryVariants(category) {
+                    if (category.has_variants && (!category.variants || category.variants.length === 0)) {
+                        const existingStages = Array.isArray(category.stages) && category.stages.length > 0
+                            ? JSON.parse(JSON.stringify(category.stages))
+                            : [
+                                { key: 'stage_' + Date.now(), title: 'طراحی اولیه', stage_type: 'standard', offset: 24, unit: 'hours', is_receive: false, options_source: 'custom', options: [], outcomes: [] },
+                                { key: 'receive_' + Date.now(), title: 'تحویل', stage_type: 'standard', offset: 2, unit: 'days', is_receive: true, options_source: 'custom', options: [], outcomes: [] }
+                            ];
+                        category.variants = [
+                            { id: 'normal', name: 'معمولی', stages: existingStages }
+                        ];
+                    }
+                },
+
+                addVariant(category, cIndex) {
+                    if (!Array.isArray(category.variants)) category.variants = [];
+                    category.variants.push({
+                        id: 'var_' + Date.now(),
+                        name: 'متد جدید ' + (category.variants.length + 1),
+                        stages: [
+                            { key: 'stage_' + Date.now(), title: 'مرحله اول', stage_type: 'standard', offset: 1, unit: 'days', is_receive: false, options_source: 'custom', options: [], outcomes: [] },
+                            { key: 'receive_' + Date.now(), title: 'تحویل', stage_type: 'standard', offset: 2, unit: 'days', is_receive: true, options_source: 'custom', options: [], outcomes: [] }
+                        ]
+                    });
+                    this.setActiveVariantIndex(cIndex, category.variants.length - 1);
+                },
+
+                removeVariant(category, cIndex, vIdx) {
+                    if (category.variants.length <= 1) return;
+                    category.variants.splice(vIdx, 1);
+                    if (this.getActiveVariantIndex(cIndex) >= category.variants.length) {
+                        this.setActiveVariantIndex(cIndex, Math.max(0, category.variants.length - 1));
                     }
                 },
 
@@ -2917,6 +3147,9 @@
                 },
 
                 getCategoryTotalTime(category) {
+                    if (category.has_variants && category.variants && category.variants.length > 0) {
+                        return category.variants.length + ' متد اجرایی';
+                    }
                     if (!category.stages || category.stages.length === 0) {
                         return 'بدون مرحله';
                     }
@@ -2949,14 +3182,17 @@
                                 id: 'cat_' + Date.now(),
                                 name: 'دسته‌بندی جدید',
                                 description: '',
+                                has_variants: false,
+                                variants: [],
                                 stages: [
-                                    { key: 'stage_1', title: 'پیگیری اول', offset: 7, unit: 'days', is_receive: false },
-                                    { key: 'stage_receive', title: 'دریافت کار', offset: 3, unit: 'days', is_receive: true }
+                                    { key: 'stage_1', title: 'پیگیری اول', stage_type: 'standard', offset: 7, unit: 'days', is_receive: false, options_source: 'custom', options: [], outcomes: [] },
+                                    { key: 'stage_receive', title: 'دریافت کار', stage_type: 'standard', offset: 3, unit: 'days', is_receive: true, options_source: 'custom', options: [], outcomes: [] }
                                 ]
                             }
                         ]
                     });
                     this.activeTypeIndex = this.types.length - 1;
+                    this.activeCategoryIndex = 0;
                     this.openCategories[this.activeTypeIndex + '_0'] = true;
                 },
 
@@ -2970,6 +3206,7 @@
                         if (this.activeTypeIndex >= this.types.length) {
                             this.activeTypeIndex = Math.max(0, this.types.length - 1);
                         }
+                        this.activeCategoryIndex = 0;
                     }
                 },
 
@@ -2982,32 +3219,230 @@
                         id: catId,
                         name: 'دسته‌بندی جدید',
                         description: '',
+                        has_variants: false,
+                        variants: [],
                         stages: [
-                            { key: 'stage_1', title: 'پیگیری اول', offset: 5, unit: 'days', is_receive: false },
-                            { key: 'stage_receive', title: 'دریافت کار', offset: 3, unit: 'days', is_receive: true }
+                            { key: 'stage_1', title: 'پیگیری اول', stage_type: 'standard', offset: 5, unit: 'days', is_receive: false, options_source: 'custom', options: [], outcomes: [] },
+                            { key: 'stage_receive', title: 'دریافت کار', stage_type: 'standard', offset: 3, unit: 'days', is_receive: true, options_source: 'custom', options: [], outcomes: [] }
                         ]
                     });
                     const newIndex = this.types[typeIndex].categories.length - 1;
+                    this.activeCategoryIndex = newIndex;
                     this.openCategories[typeIndex + '_' + newIndex] = true;
+                },
+
+                cloneTemplateWithUniqueKeys(tpl, existingIds) {
+                    const cloned = JSON.parse(JSON.stringify(tpl));
+                    delete cloned.badge;
+
+                    let baseId = cloned.id || ('cat_' + Date.now());
+                    let uniqueId = baseId;
+                    let counter = 2;
+                    while (existingIds.includes(uniqueId)) {
+                        uniqueId = baseId + '_' + counter;
+                        counter++;
+                    }
+                    cloned.id = uniqueId;
+                    if (counter > 2) {
+                        cloned.name = cloned.name + ' (' + (counter - 1) + ')';
+                    }
+
+                    const suffix = '_' + Date.now().toString(36) + '_' + Math.floor(Math.random() * 1000);
+                    const keyMap = {};
+
+                    const collectAndRemap = (stages) => {
+                        if (!Array.isArray(stages)) return;
+                        stages.forEach(s => {
+                            const oldKey = s.key || ('st_' + Math.random().toString(36).slice(2, 7));
+                            const newKey = oldKey + suffix;
+                            keyMap[oldKey] = newKey;
+                            s.key = newKey;
+                            if (Array.isArray(s.outcomes)) {
+                                s.outcomes.forEach(o => {
+                                    if (o.key) o.key = o.key + suffix;
+                                    if (Array.isArray(o.stages)) {
+                                        collectAndRemap(o.stages);
+                                    }
+                                });
+                            }
+                        });
+                    };
+
+                    const remapLoopTargets = (stages) => {
+                        if (!Array.isArray(stages)) return;
+                        stages.forEach(s => {
+                            if (Array.isArray(s.outcomes)) {
+                                s.outcomes.forEach(o => {
+                                    if (o.effect === 'loop_to_stage' && o.target_stage_key && keyMap[o.target_stage_key]) {
+                                        o.target_stage_key = keyMap[o.target_stage_key];
+                                    }
+                                    if (Array.isArray(o.stages)) {
+                                        remapLoopTargets(o.stages);
+                                    }
+                                });
+                            }
+                        });
+                    };
+
+                    if (cloned.has_variants && Array.isArray(cloned.variants)) {
+                        cloned.variants.forEach(v => {
+                            collectAndRemap(v.stages || []);
+                            remapLoopTargets(v.stages || []);
+                        });
+                    } else {
+                        collectAndRemap(cloned.stages || []);
+                        remapLoopTargets(cloned.stages || []);
+                    }
+
+                    this.normalizeCategory(cloned);
+                    return cloned;
+                },
+
+                addCategoryFromTemplate(typeIndex, tpl) {
+                    if (!this.types[typeIndex].categories) {
+                        this.types[typeIndex].categories = [];
+                    }
+                    const existingIds = this.types[typeIndex].categories.map(c => c.id);
+                    const cloned = this.cloneTemplateWithUniqueKeys(tpl, existingIds);
+                    this.types[typeIndex].categories.push(cloned);
+                    this.activeCategoryIndex = this.types[typeIndex].categories.length - 1;
+                    this.showCatTechnical = false;
+                },
+
+                addAllTemplatesToType(typeIndex) {
+                    if (!Array.isArray(this.categoryTemplates)) return;
+                    this.categoryTemplates.forEach(tpl => {
+                        this.addCategoryFromTemplate(typeIndex, tpl);
+                    });
                 },
 
                 removeCategory(typeIndex, catIndex) {
                     if (confirm('آیا از حذف این دسته‌بندی و مراحل پیگیری آن مطمئن هستید؟')) {
                         this.types[typeIndex].categories.splice(catIndex, 1);
+                        const len = this.types[typeIndex].categories.length;
+                        if (this.activeCategoryIndex >= len) {
+                            this.activeCategoryIndex = Math.max(0, len - 1);
+                        }
                     }
                 },
 
                 addStage(typeIndex, catIndex) {
                     const cat = this.types[typeIndex].categories[catIndex];
                     if (!cat.stages) cat.stages = [];
-                    const stepNum = cat.stages.length + 1;
-                    cat.stages.push({
-                        key: 'stage_' + Date.now(),
+                    this.addStageToList(cat.stages);
+                },
+
+                addStageToList(list) {
+                    if (!Array.isArray(list)) return;
+                    const stepNum = list.length + 1;
+                    list.push({
+                        key: 'stage_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
                         title: 'مرحله پیگیری ' + stepNum,
-                        offset: 3,
+                        stage_type: 'standard',
+                        offset: 1,
                         unit: 'days',
-                        is_receive: false
+                        is_optional: false,
+                        is_receive: false,
+                        options_source: 'custom',
+                        sync_order_partner: false,
+                        options: [],
+                        outcomes: []
                     });
+                },
+
+                addChildStage(outcome) {
+                    if (!Array.isArray(outcome.stages)) {
+                        outcome.stages = [];
+                    }
+                    this.addStageToList(outcome.stages);
+                },
+
+                removeStageFromList(list, stageIndex) {
+                    if (!Array.isArray(list)) return;
+                    list.splice(stageIndex, 1);
+                },
+
+                moveStageInList(list, stageIndex, direction) {
+                    if (!Array.isArray(list)) return;
+                    const targetIndex = stageIndex + direction;
+                    if (targetIndex < 0 || targetIndex >= list.length) return;
+                    const temp = list[stageIndex];
+                    list[stageIndex] = list[targetIndex];
+                    list[targetIndex] = temp;
+                },
+
+                onStageTypeChanged(stage) {
+                    if (stage.stage_type === 'selection') {
+                        if (!stage.options_source) stage.options_source = 'custom';
+                        if (!Array.isArray(stage.options) || stage.options.length === 0) {
+                            stage.options = [
+                                { key: 'opt_' + Date.now() + '_1', label: 'گزینه اول' },
+                                { key: 'opt_' + Date.now() + '_2', label: 'گزینه دوم' }
+                            ];
+                        }
+                    } else if (stage.stage_type === 'decision') {
+                        stage.is_receive = false;
+                        if (!Array.isArray(stage.outcomes) || stage.outcomes.length === 0) {
+                            stage.outcomes = [
+                                { key: 'out_finish_' + Date.now(), label: 'تحویل نهایی', effect: 'finish', stages: [] },
+                                { key: 'out_branch_' + Date.now(), label: 'اصلاحیه', effect: 'spawn_stages', stages: [] }
+                            ];
+                        }
+                    }
+                },
+
+                addSelectionOption(stage) {
+                    if (!Array.isArray(stage.options)) stage.options = [];
+                    stage.options.push({
+                        key: 'opt_' + Date.now() + '_' + Math.floor(Math.random() * 100),
+                        label: 'گزینه جدید'
+                    });
+                },
+
+                addDecisionOutcome(stage) {
+                    if (!Array.isArray(stage.outcomes)) stage.outcomes = [];
+                    stage.outcomes.push({
+                        key: 'out_' + Date.now() + '_' + Math.floor(Math.random() * 100),
+                        label: 'مسیر جدید',
+                        effect: 'spawn_stages',
+                        target_stage_key: '',
+                        stages: []
+                    });
+                },
+
+                onOutcomeEffectChanged(outcome) {
+                    if (outcome.effect === 'spawn_stages' && !Array.isArray(outcome.stages)) {
+                        outcome.stages = [];
+                    }
+                },
+
+                getLoopTargetCandidates(category, cIndex) {
+                    let rootStages = category.stages || [];
+                    if (category.has_variants && category.variants && category.variants.length > 0) {
+                        const vIdx = this.getActiveVariantIndex(cIndex);
+                        rootStages = (category.variants[vIdx] && category.variants[vIdx].stages) || [];
+                    }
+                    const results = [];
+                    const walk = (list, prefix) => {
+                        if (!Array.isArray(list)) return;
+                        list.forEach(s => {
+                            if (s.stage_type === 'decision' && s.key) {
+                                results.push({
+                                    key: s.key,
+                                    label: (prefix ? prefix + ' ← ' : '') + (s.title || s.key)
+                                });
+                            }
+                            if (Array.isArray(s.outcomes)) {
+                                s.outcomes.forEach(o => {
+                                    if (Array.isArray(o.stages)) {
+                                        walk(o.stages, (prefix ? prefix + ' ← ' : '') + (o.label || o.key || 'شاخه'));
+                                    }
+                                });
+                            }
+                        });
+                    };
+                    walk(rootStages, '');
+                    return results;
                 },
 
                 removeStage(typeIndex, catIndex, stageIndex) {
@@ -3016,11 +3451,7 @@
 
                 moveStage(typeIndex, catIndex, stageIndex, direction) {
                     const stages = this.types[typeIndex].categories[catIndex].stages;
-                    const targetIndex = stageIndex + direction;
-                    if (targetIndex < 0 || targetIndex >= stages.length) return;
-                    const temp = stages[stageIndex];
-                    stages[stageIndex] = stages[targetIndex];
-                    stages[targetIndex] = temp;
+                    this.moveStageInList(stages, stageIndex, direction);
                 }
             }));
         })

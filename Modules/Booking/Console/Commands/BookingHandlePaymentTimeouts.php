@@ -21,7 +21,15 @@ class BookingHandlePaymentTimeouts extends Command
 
         $q = Appointment::query()
             ->where('status', Appointment::STATUS_PENDING_PAYMENT)
-            ->where('created_at', '<=', $cutoff);
+            ->where(function ($sub) use ($cutoff) {
+                $sub->where(function ($q1) use ($cutoff) {
+                    $q1->whereNotNull('payment_pending_since')
+                        ->where('payment_pending_since', '<=', $cutoff);
+                })->orWhere(function ($q2) use ($cutoff) {
+                    $q2->whereNull('payment_pending_since')
+                        ->where('created_at', '<=', $cutoff);
+                });
+            });
 
         $count = $q->count();
         $this->info("Found {$count} appointments timed-out (PENDING_PAYMENT <= {$cutoff->toDateTimeString()})");

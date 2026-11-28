@@ -3,7 +3,9 @@
 namespace Modules\Services\Database\Seeders;
 
 use Illuminate\Database\Seeder;
-use Modules\Services\App\Http\Models\Status;
+use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Schema;
+use Nwidart\Modules\Facades\Module;
 
 class ServicesDatabaseSeeder extends Seeder
 {
@@ -16,5 +18,16 @@ class ServicesDatabaseSeeder extends Seeder
             StatusSeeder::class,
             ServicesPermissionsSeeder::class,
         ]);
+
+        if (
+            Module::has('Workflows')
+            && Module::isEnabled('Workflows')
+            && Schema::hasTable('workflows')
+            && Schema::hasTable('workflow_triggers')
+            && Schema::hasTable('workflow_stages')
+            && Schema::hasTable('workflow_actions')
+        ) {
+            Artisan::call('services:seed-workflows');
+        }
     }
 }

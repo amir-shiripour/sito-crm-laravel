@@ -5,9 +5,12 @@ namespace Modules\Warehouse\Entities;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Modules\Warehouse\Traits\HasCreator;
 
 class WarehouseCategory extends Model
 {
+    use HasCreator;
+
     protected $table = 'warehouse_categories';
 
     protected $fillable = [
@@ -17,6 +20,7 @@ class WarehouseCategory extends Model
         'order',
         'is_active',
         'description',
+        'created_by',
     ];
 
     protected $casts = [

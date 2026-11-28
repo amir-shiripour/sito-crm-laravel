@@ -3,6 +3,7 @@
 namespace Modules\Booking\Services;
 
 use App\Models\User;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 use Modules\Booking\Entities\BookingLaboratoryOrder;
 use Modules\Booking\Entities\BookingLaboratoryStage;
@@ -162,6 +163,40 @@ class LaboratoryIntegrationService
             }
         } catch (\Throwable $e) {
             Log::warning('[Booking][LaboratoryIntegration] onOrderCreated warning: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Triggered when dynamic branch stages are spawned from a decision stage
+     */
+    public function onBranchStagesSpawned(BookingLaboratoryOrder $order, Collection $newStages): void
+    {
+        try {
+            $cfg = BookingSetting::getLaboratoryIntegrationSettings();
+
+            if ($this->isReminderModuleReady() && ($cfg['reminders']['enabled'] ?? true)) {
+                $Reminder = 'Modules\\Reminders\\Entities\\Reminder';
+                $targetUserIds = $this->resolveTargetUserIds($cfg['reminders'], $order->doctor_id);
+
+                foreach ($newStages as $stage) {
+                    if ($stage->due_at && $stage->due_at->isFuture()) {
+                        foreach ($targetUserIds as $uId) {
+                            $Reminder::query()->create([
+                                'user_id'      => $uId,
+                                'related_type' => 'CLIENT',
+                                'related_id'   => $order->client_id,
+                                'remind_at'    => $stage->due_at->copy()->setTime(9, 0, 0),
+                                'channel'      => 'IN_APP',
+                                'message'      => "موعد {$stage->stage_title} سفارش پروتز بیمار {$order->patient_name} ({$order->lab_partner_name})",
+                                'status'       => 'OPEN',
+                                'is_sent'      => false,
+                            ]);
+                        }
+                    }
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::warning('[Booking][LaboratoryIntegration] onBranchStagesSpawned warning: ' . $e->getMessage());
         }
     }
 

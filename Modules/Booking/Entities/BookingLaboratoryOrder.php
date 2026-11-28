@@ -52,6 +52,9 @@ class BookingLaboratoryOrder extends Model
         'lab_type',
         'lab_partner_name',
         'category_type',
+        'variant_key',
+        'variant_title',
+        'active_branch_label',
         'full_jaw_phase',
         'has_pmma',
         'units_count',
@@ -117,7 +120,17 @@ class BookingLaboratoryOrder extends Model
 
     public function stages(): HasMany
     {
-        return $this->hasMany(BookingLaboratoryStage::class, 'order_id')->orderBy('sort_order');
+        return $this->hasMany(BookingLaboratoryStage::class, 'order_id')
+            ->orderBy('sort_order')
+            ->orderBy('id');
+    }
+
+    public function rootStages(): HasMany
+    {
+        return $this->hasMany(BookingLaboratoryStage::class, 'order_id')
+            ->whereNull('parent_stage_id')
+            ->orderBy('sort_order')
+            ->orderBy('id');
     }
 
     public function dailyLogs(): HasMany
@@ -138,14 +151,16 @@ class BookingLaboratoryOrder extends Model
             return false;
         }
 
-        // Check if any stage's due_at has passed and is not completed
-        foreach ($this->stages as $stage) {
-            if (!$stage->is_completed && $stage->due_at && $stage->due_at->isPast()) {
-                return true;
+        if ($this->stages->isNotEmpty()) {
+            foreach ($this->stages as $stage) {
+                if ($stage->isOverdue()) {
+                    return true;
+                }
             }
+            return false;
         }
 
-        if ($this->expected_delivery_at && $this->expected_delivery_at->isPast()) {
+        if ($this->expected_delivery_at && $this->expected_delivery_at->copy()->startOfDay()->lt(now()->startOfDay())) {
             return true;
         }
 
@@ -156,6 +171,9 @@ class BookingLaboratoryOrder extends Model
     {
         $dynamicName = BookingSetting::getLaboratoryCategoryName($this->lab_type, $this->category_type);
         if ($dynamicName) {
+            if (!empty($this->variant_title)) {
+                return "{$dynamicName} ({$this->variant_title})";
+            }
             return $dynamicName;
         }
 
@@ -312,19 +330,24 @@ class BookingLaboratoryOrder extends Model
 
     public function getCompletedStagesCountAttribute(): int
     {
-        return $this->stages->where('is_completed', true)->count();
+        return $this->stages->where('is_completed', true)->where('is_skipped', false)->count();
+    }
+
+    public function getSkippedStagesCountAttribute(): int
+    {
+        return $this->stages->where('is_skipped', true)->count();
     }
 
     public function getTotalStagesCountAttribute(): int
     {
-        return $this->stages->count();
+        return $this->stages->where('is_skipped', false)->count();
     }
 
     public function getProgressPercentageAttribute(): int
     {
         $total = $this->total_stages_count;
         if ($total === 0) {
-            return $this->isReceived() ? 100 : 0;
+            return ($this->isReceived() || $this->stages->isNotEmpty()) ? 100 : 0;
         }
         return (int) round(($this->completed_stages_count / $total) * 100);
     }

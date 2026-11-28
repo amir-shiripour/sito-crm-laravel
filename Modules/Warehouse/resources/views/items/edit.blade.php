@@ -3,41 +3,36 @@
 @section('title', 'ویرایش کالای «' . $item->name . '»')
 
 @section('content')
-<div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+<div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6 font-sans">
 
     {{-- Panel Standard Header --}}
-    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-gray-200 dark:border-gray-800">
-        <div class="flex items-center gap-3">
-            <span class="flex items-center justify-center w-11 h-11 rounded-xl bg-indigo-600 text-white shadow-sm">
-                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.5L14.732 3.732z"/>
-                </svg>
-            </span>
-            <div>
-                <h1 class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
-                    ویرایش مشخصات کالا
-                </h1>
-                <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                    کد سیستمی: <span class="font-bold text-indigo-600 dark:text-indigo-400 dir-ltr inline-block font-sans">{{ $item->system_code }}</span> | نام: {{ $item->name }}
-                </p>
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-gray-200 dark:border-gray-800">
+        <div>
+            <div class="flex items-center gap-2 text-xs font-bold text-slate-600 dark:text-slate-300 mb-1.5">
+                <a href="{{ route('admin.warehouse.dashboard') }}" class="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">داشبورد انبار</a>
+                <span>/</span>
+                <a href="{{ route('admin.warehouse.items.index') }}" class="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">شناسنامه کالاها</a>
+                <span>/</span>
+                <a href="{{ route('admin.warehouse.items.show', $item) }}" class="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors truncate max-w-xs">{{ $item->name }}</a>
+                <span>/</span>
+                <span class="text-gray-900 dark:text-white">ویرایش</span>
             </div>
+            <h1 class="text-xl font-bold text-gray-900 dark:text-white">
+                ویرایش مشخصات کالا
+            </h1>
+            <p class="text-xs text-slate-600 dark:text-slate-300 mt-1">
+                کد سیستمی: <span class="font-bold text-indigo-600 dark:text-indigo-300 dir-ltr inline-block font-sans">{{ $item->system_code }}</span> · کد تجاری: <span class="font-bold text-gray-900 dark:text-white dir-ltr inline-block">{{ $item->code }}</span>
+            </p>
         </div>
 
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-2 flex-wrap">
             <a href="{{ route('admin.warehouse.items.show', $item) }}"
-               class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 dark:bg-indigo-950/50 dark:hover:bg-indigo-900/50 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-800/60 text-sm font-bold transition-all">
-                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                </svg>
-                مشاهده کاردکس و پارت‌ها
+               class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 dark:bg-indigo-500/15 dark:hover:bg-indigo-500/25 dark:text-indigo-300 border border-indigo-200/70 dark:border-indigo-500/30 text-xs font-bold transition-all">
+                مشاهده کاردکس کالا
             </a>
 
             <a href="{{ route('admin.warehouse.items.index') }}"
-               class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 text-sm font-bold transition-all">
-                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
-                </svg>
+               class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-slate-700 dark:text-slate-200 text-xs font-bold transition-all">
                 بازگشت به لیست
             </a>
         </div>

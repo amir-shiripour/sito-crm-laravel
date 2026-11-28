@@ -19,6 +19,15 @@
         </div>
 
         <div class="flex items-center gap-2 flex-wrap">
+            <a href="{{ route('admin.warehouse.assets.pdf', request()->query()) }}"
+               target="_blank"
+               class="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-slate-700 dark:text-slate-200 font-bold text-xs transition-all shadow-xs">
+                <svg class="w-4 h-4 text-rose-600 dark:text-rose-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                </svg>
+                گزارش PDF اموال
+            </a>
+
             <a href="{{ route('admin.warehouse.warehouses.create', ['type' => 'asset', 'parent_id' => $mainWarehouse?->id]) }}"
                class="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs transition-all shadow-sm">
                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -57,7 +66,15 @@
                             </div>
                         @endif
 
-                        @if($mainWarehouse->manager)
+                        @php
+                            $mainAssetManagers = \Modules\Warehouse\Support\WarehouseUserVisibility::filterVisibleManagers($mainWarehouse->managers ?? collect([]));
+                        @endphp
+                        @if($mainAssetManagers->isNotEmpty())
+                            <div class="flex items-center gap-1.5">
+                                <span class="text-gray-400">مسئول اموال:</span>
+                                <span class="font-bold text-gray-800 dark:text-gray-200">{{ $mainAssetManagers->pluck('name')->join('، ') }}</span>
+                            </div>
+                        @elseif($mainWarehouse->manager && $mainWarehouse->managers->isEmpty())
                             <div class="flex items-center gap-1.5">
                                 <span class="text-gray-400">مسئول اموال:</span>
                                 <span class="font-bold text-gray-800 dark:text-gray-200">{{ $mainWarehouse->manager }}</span>
@@ -70,6 +87,11 @@
                                 <span class="font-sans dir-ltr text-left">{{ $mainWarehouse->phone }}</span>
                             </div>
                         @endif
+
+                        <div class="flex items-center gap-1.5">
+                            <span class="text-slate-600 dark:text-slate-300">ثبت‌کننده:</span>
+                            <span class="font-bold text-gray-800 dark:text-gray-200">{{ $mainWarehouse->creator_name }}</span>
+                        </div>
                     </div>
                 </div>
 
