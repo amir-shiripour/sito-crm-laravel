@@ -7,10 +7,12 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Modules\Warehouse\App\Services\WarehouseCodeService;
+use Modules\Warehouse\Traits\HasCreator;
 
 class WarehouseItem extends Model
 {
     use SoftDeletes;
+    use HasCreator;
 
     protected $table = 'warehouse_items';
 
@@ -36,6 +38,7 @@ class WarehouseItem extends Model
         'has_expiry',
         'description',
         'is_active',
+        'created_by',
     ];
 
     protected $casts = [

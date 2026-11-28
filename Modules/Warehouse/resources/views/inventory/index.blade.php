@@ -19,6 +19,39 @@
         </div>
 
         <div class="flex items-center gap-2 flex-wrap">
+            <a href="{{ route('admin.warehouse.stock-levels.index') }}"
+               class="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-indigo-200 dark:border-indigo-500/30 bg-indigo-50 dark:bg-indigo-500/15 hover:bg-indigo-100 dark:hover:bg-indigo-500/25 text-indigo-700 dark:text-indigo-300 font-bold text-xs transition-all shadow-xs">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                موجودی لحظه‌ای انبارها
+            </a>
+
+            <a href="{{ route('admin.warehouse.inventory.pdf', request()->query()) }}"
+               target="_blank"
+               class="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-slate-700 dark:text-slate-200 font-bold text-xs transition-all shadow-xs">
+                <svg class="w-4 h-4 text-rose-600 dark:text-rose-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                </svg>
+                گزارش PDF انبارها
+            </a>
+
+            <a href="{{ route('admin.warehouse.transfers.create') }}"
+               class="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-indigo-200 dark:border-indigo-500/30 bg-indigo-50 dark:bg-indigo-500/15 hover:bg-indigo-100 dark:hover:bg-indigo-500/25 text-indigo-700 dark:text-indigo-300 font-bold text-xs transition-all shadow-xs">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                </svg>
+                درخواست و انتقال کالا
+            </a>
+
+            <a href="{{ route('admin.warehouse.purchases.create') }}"
+               class="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-indigo-200 dark:border-indigo-500/30 bg-indigo-50 dark:bg-indigo-500/15 hover:bg-indigo-100 dark:hover:bg-indigo-500/25 text-indigo-700 dark:text-indigo-300 font-bold text-xs transition-all shadow-xs">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                ثبت رسید خرید
+            </a>
+
             <a href="{{ route('admin.warehouse.warehouses.create', ['type' => 'inventory', 'parent_id' => $mainWarehouse?->id]) }}"
                class="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs transition-all shadow-sm">
                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -34,7 +67,8 @@
     {{-- Main Central Warehouse Card (Flat & Modern) --}}
     @if($mainWarehouse)
         @php
-            $mainManagers = $mainWarehouse->managers ?? collect([]);
+            $mainManagers = \Modules\Warehouse\Support\WarehouseUserVisibility::filterVisibleManagers($mainWarehouse->managers ?? collect([]));
+            $mainStockSummary = $stockSummaries[$mainWarehouse->id] ?? null;
         @endphp
         <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700/80 p-5 sm:p-6 shadow-xs">
             <div class="flex flex-col md:flex-row md:items-center justify-between gap-5">
@@ -74,7 +108,7 @@
                                     {{ $mainManagers->pluck('name')->join('، ') }}
                                 </span>
                             </div>
-                        @elseif($mainWarehouse->manager)
+                        @elseif($mainWarehouse->manager && $mainWarehouse->managers->isEmpty())
                             <div class="flex items-center gap-1.5">
                                 <svg class="w-4 h-4 text-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
@@ -93,12 +127,44 @@
                                 <span class="font-sans dir-ltr text-left">{{ $mainWarehouse->phone }}</span>
                             </div>
                         @endif
+
+                        <div class="flex items-center gap-1.5">
+                            <span class="text-slate-600 dark:text-slate-300">ثبت‌کننده:</span>
+                            <span class="font-bold text-gray-800 dark:text-gray-200">{{ $mainWarehouse->creator_name }}</span>
+                        </div>
+
+                        @if(is_array($mainStockSummary))
+                            <div class="flex items-center gap-2">
+                                <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-indigo-50 dark:bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 font-bold border border-indigo-200/70 dark:border-indigo-500/30 font-sans">
+                                    {{ number_format((int) ($mainStockSummary['distinct_items'] ?? 0)) }} قلم کالا
+                                </span>
+                                <span class="font-bold text-gray-800 dark:text-gray-200 font-sans">
+                                    {{ rtrim(rtrim(number_format((float) ($mainStockSummary['total_units'] ?? 0), 2), '0'), '.') }} واحد موجودی
+                                </span>
+                            </div>
+                        @endif
                     </div>
                 </div>
 
-                <div>
+                <div class="flex items-center gap-2 shrink-0 flex-wrap">
+                    <a href="{{ route('admin.warehouse.consumptions.create', ['warehouse_id' => $mainWarehouse->id]) }}"
+                       class="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-rose-200 dark:border-rose-500/30 bg-rose-50 dark:bg-rose-500/15 hover:bg-rose-100 dark:hover:bg-rose-500/25 text-rose-700 dark:text-rose-300 font-bold text-xs transition-colors no-underline">
+                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                        </svg>
+                        ثبت خروج / مصرف
+                    </a>
+
+                    <a href="{{ route('admin.warehouse.stock-levels.index', ['warehouse_id' => $mainWarehouse->id]) }}"
+                       class="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-indigo-200 dark:border-indigo-500/30 bg-indigo-50 dark:bg-indigo-500/15 hover:bg-indigo-100 dark:hover:bg-indigo-500/25 text-indigo-700 dark:text-indigo-300 font-bold text-xs transition-colors no-underline">
+                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        مشاهده موجودی
+                    </a>
+
                     <a href="{{ route('admin.warehouse.warehouses.edit', $mainWarehouse) }}"
-                       class="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 text-gray-700 dark:text-gray-200 font-bold text-xs transition-colors">
+                       class="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 text-gray-700 dark:text-gray-200 font-bold text-xs transition-colors no-underline">
                         <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.5L14.732 3.732z"/>
                         </svg>
@@ -162,7 +228,10 @@
         @if($subWarehouses->count() > 0)
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 @foreach($subWarehouses as $subW)
-                    @include('warehouse::partials.warehouse_card', ['warehouse' => $subW])
+                    @include('warehouse::partials.warehouse_card', [
+                        'warehouse' => $subW,
+                        'stockSummary' => $stockSummaries[$subW->id] ?? null,
+                    ])
                 @endforeach
             </div>
 

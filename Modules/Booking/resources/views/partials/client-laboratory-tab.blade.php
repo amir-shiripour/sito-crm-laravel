@@ -85,8 +85,8 @@
                     $completedStagesCount = $stages->where('is_completed', true)->count();
                     $totalStagesCount = $stages->count();
                     $progressPercent = $totalStagesCount > 0 ? round(($completedStagesCount / $totalStagesCount) * 100) : 0;
-                    $expectedDate = $order->expected_delivery_date ? Jalalian::fromDateTime($order->expected_delivery_date)->format('Y/m/d') : 'تعیین نشده';
-                    $sentDate = $order->order_date ? Jalalian::fromDateTime($order->order_date)->format('Y/m/d') : 'تعیین نشده';
+                    $expectedDate = $order->expected_delivery_at_jalali ?: 'تعیین نشده';
+                    $sentDate = $order->sent_at_jalali ?: 'تعیین نشده';
                 @endphp
                 <div class="p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 bg-white dark:bg-slate-900/50 shadow-xs hover:border-indigo-300 dark:hover:border-indigo-800/70 transition-all">
                     <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
@@ -95,40 +95,45 @@
                                 <span class="px-2.5 py-1 text-xs font-bold rounded-lg border {{ $badge['class'] }}">
                                     {{ $badge['label'] }}
                                 </span>
-                                <span class="text-xs text-slate-400 dark:text-slate-500">شماره سفارش:</span>
+                                <span class="text-xs text-slate-400 dark:text-slate-400">شماره سفارش:</span>
                                 <span class="text-sm font-bold text-slate-900 dark:text-slate-100">
                                     {{ $order->order_number }}
                                 </span>
                                 <span class="text-xs text-slate-400">•</span>
-                                <span class="text-xs text-slate-600 dark:text-slate-400">
-                                    {{ $order->prosthesisType->name ?? 'پروتز' }}
+                                <span class="text-xs text-slate-600 dark:text-slate-300">
+                                    {{ $order->category_label }}
                                 </span>
-                                @if($order->laboratory)
+                                @if($order->active_branch_label)
+                                    <span class="px-2 py-0.5 text-[10px] font-bold rounded-md bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200 dark:border-amber-800/40">
+                                        {{ $order->active_branch_label }}
+                                    </span>
+                                @endif
+                                @if($order->lab_partner_name)
                                     <span class="text-xs text-slate-400">•</span>
-                                    <span class="text-xs text-slate-600 dark:text-slate-400">
-                                        لابراتوار: <strong class="text-slate-800 dark:text-slate-200">{{ $order->laboratory->name }}</strong>
+                                    <span class="text-xs text-slate-600 dark:text-slate-300">
+                                        لابراتوار: <strong class="text-slate-800 dark:text-slate-200">{{ $order->lab_partner_name }}</strong>
                                     </span>
                                 @endif
                             </div>
 
-                            <div class="flex flex-wrap items-center gap-y-1.5 gap-x-4 text-xs text-slate-500 dark:text-slate-400 pt-1">
+                            <div class="flex flex-wrap items-center gap-y-1.5 gap-x-4 text-xs text-slate-500 dark:text-slate-300 pt-1">
                                 <div>
-                                    <span class="text-slate-400 dark:text-slate-500">پزشک معالج:</span>
-                                    <span class="text-slate-700 dark:text-slate-300 font-medium">{{ $order->doctor->name ?? 'ثبت نشده' }}</span>
+                                    <span class="text-slate-400 dark:text-slate-400">پزشک معالج:</span>
+                                    <span class="text-slate-700 dark:text-slate-200 font-medium">{{ $order->doctor->name ?? 'ثبت نشده' }}</span>
                                 </div>
                                 <div>
-                                    <span class="text-slate-400 dark:text-slate-500">تاریخ ارسال:</span>
-                                    <span class="text-slate-700 dark:text-slate-300 font-medium">{{ $sentDate }}</span>
+                                    <span class="text-slate-400 dark:text-slate-400">تاریخ ارسال:</span>
+                                    <span class="text-slate-700 dark:text-slate-200 font-medium">{{ $sentDate }}</span>
                                 </div>
                                 <div>
-                                    <span class="text-slate-400 dark:text-slate-500">موعد تحویل:</span>
-                                    <span class="text-slate-700 dark:text-slate-300 font-medium">{{ $expectedDate }}</span>
+                                    <span class="text-slate-400 dark:text-slate-400">موعد تحویل:</span>
+                                    <span class="text-slate-700 dark:text-slate-200 font-medium">{{ $expectedDate }}</span>
                                 </div>
-                                @if(!empty($order->tooth_numbers))
+                                @if(!empty($order->teeth_numbers))
                                     <div>
-                                        <span class="text-slate-400 dark:text-slate-500">شماره دندان‌ها:</span>
+                                        <span class="text-slate-400 dark:text-slate-400">شماره دندان‌ها:</span>
                                         <span class="text-indigo-600 dark:text-indigo-400 font-medium">
-                                            {{ is_array($order->tooth_numbers) ? implode(', ', $order->tooth_numbers) : $order->tooth_numbers }}
+                                            {{ is_array($order->teeth_numbers) ? implode(', ', $order->teeth_numbers) : $order->teeth_numbers }}
                                         </span>
                                     </div>
                                 @endif
@@ -141,7 +146,7 @@
                                 <a href="{{ route('user.booking.appointments.create', [
                                     'client_id' => $client->id,
                                     'doctor_id' => $order->doctor_id,
-                                    'notes' => 'تحویل پروتز سفارش ' . $order->order_number . ' (' . ($order->prosthesisType->name ?? 'لابراتوار') . ')'
+                                    'notes' => 'تحویل پروتز سفارش ' . $order->order_number . ' (' . ($order->category_label ?? 'لابراتوار') . ')'
                                 ]) }}"
                                    class="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 border border-emerald-300 dark:border-emerald-700/60 rounded-xl transition-colors shadow-xs">
                                     <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">

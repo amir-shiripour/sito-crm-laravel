@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Modules\Warehouse\Entities\Warehouse;
 use Modules\Warehouse\Entities\WarehouseSetting;
 use Modules\Warehouse\App\Services\WarehouseIntegrationService;
+use Modules\Warehouse\App\Services\WarehouseValuationService;
 
 class DashboardController extends Controller
 {
@@ -33,8 +34,8 @@ class DashboardController extends Controller
             $mainInventoryWarehouse = Warehouse::inventory()
                 ->main()
                 ->active()
-                ->with(['children' => function ($q) {
-                    $q->active()->orderBy('name');
+                ->with(['creator', 'children' => function ($q) {
+                    $q->active()->with('creator')->orderBy('name');
                 }])
                 ->first();
 
@@ -55,8 +56,8 @@ class DashboardController extends Controller
             $mainAssetWarehouse = Warehouse::asset()
                 ->main()
                 ->active()
-                ->with(['children' => function ($q) {
-                    $q->active()->orderBy('name');
+                ->with(['creator', 'children' => function ($q) {
+                    $q->active()->with('creator')->orderBy('name');
                 }])
                 ->first();
 
@@ -71,6 +72,13 @@ class DashboardController extends Controller
         $totalActiveWarehouses = $totalInventoryCount + $totalAssetCount;
         $linkedMarketCount = $linkedMarketWarehouses->count();
 
+        $valuationService = app(WarehouseValuationService::class);
+        $invIds = $inventorySubWarehouses->pluck('id')->when($mainInventoryWarehouse, fn($c) => $c->push($mainInventoryWarehouse->id));
+        $stockSummaries = $valuationService->getWarehousesStockSummary($invIds);
+        $reorderSummary = $inventoryEnabled
+            ? $valuationService->getReorderAlertsReport(['scope' => 'alerts_only'])['summary']
+            : null;
+
         return view('warehouse::dashboard.index', compact(
             'inventoryEnabled',
             'assetsEnabled',
@@ -78,6 +86,8 @@ class DashboardController extends Controller
             'isMarketWmsAvailable',
             'mainInventoryWarehouse',
             'inventorySubWarehouses',
+            'stockSummaries',
+            'reorderSummary',
             'linkedMarketWarehouses',
             'mainAssetWarehouse',
             'assetSubWarehouses',

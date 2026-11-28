@@ -637,23 +637,8 @@ class InvoiceController extends Controller
             }
         }
 
-        if (class_exists(WorkflowEngine::class)) {
-            try {
-                app(WorkflowEngine::class)->start('invoice_created', 'INVOICE', $invoice->id, [
-                    'is_proforma' => $isProforma,
-                ]);
-
-                if ($invoice->isPaid() && !$isProforma) {
-                    app(WorkflowEngine::class)->start('invoice_paid', 'INVOICE', $invoice->id, [
-                        'amount' => 0,
-                        'is_paid' => true,
-                        'is_overdue' => false,
-                        'remaining' => 0,
-                    ]);
-                }
-            } catch (Throwable $e) {
-                Log::error('[Workflows] Error starting invoice_created workflow: ' . $e->getMessage());
-            }
+        if (!$isProforma) {
+            $this->triggerInvoiceCreatedWorkflows($invoice, ['is_proforma' => false]);
         }
 
         $message = $isProforma ? 'پیش فاکتور با موفقیت صادر شد.' : 'فاکتور با موفقیت صادر شد.';
@@ -1657,6 +1642,7 @@ class InvoiceController extends Controller
         }
 
         $invoice->status_id = $status->id;
+        $convertedNow = false;
 
         if ($status->convertsToInvoice() && !$invoice->invoice_number) {
             $settings = Setting::pluck('value', 'key')->toArray();
@@ -1669,6 +1655,8 @@ class InvoiceController extends Controller
 
             $invoice->invoice_number = $invoiceNumber;
             $invoice->converted_at = now();
+            $invoice->status_id = $this->resolveInitialStatusId(false, (float)$invoice->total, $invoice->isPaid()) ?? $status->id;
+            $convertedNow = true;
             $this->syncOrdersForInvoice($invoice);
         }
 
@@ -1704,6 +1692,10 @@ class InvoiceController extends Controller
             } catch (Throwable $e) {
                 Log::error('[Workflows] Error starting invoice_status_changed workflow: ' . $e->getMessage());
             }
+        }
+
+        if ($convertedNow) {
+            $this->triggerInvoiceCreatedWorkflows($invoice, ['converted_from_proforma' => true]);
         }
 
         return back()->with('success', 'وضعیت فاکتور به‌روز شد.');
@@ -1970,9 +1962,14 @@ class InvoiceController extends Controller
             $invoice->invoice_number = $invoiceNumber;
             $invoice->converted_at = now();
 
-            $status = Status::where('attributes->converts_to_invoice', true)->first();
-            if ($status) {
-                $invoice->status_id = $status->id;
+            $resolvedStatusId = $this->resolveInitialStatusId(false, (float)$invoice->total, $invoice->isPaid());
+            if ($resolvedStatusId) {
+                $invoice->status_id = $resolvedStatusId;
+            } else {
+                $status = Status::where('attributes->converts_to_invoice', true)->first();
+                if ($status) {
+                    $invoice->status_id = $status->id;
+                }
             }
 
             $invoice->save();
@@ -1985,6 +1982,8 @@ class InvoiceController extends Controller
                     Log::error('[AccountingEngine] Error recording service invoice on convertToInvoice: ' . $e->getMessage());
                 }
             }
+
+            $this->triggerInvoiceCreatedWorkflows($invoice, ['converted_from_proforma' => true]);
 
             return redirect()
                 ->route('services.invoices.show', $invoice)
@@ -2442,18 +2441,7 @@ class InvoiceController extends Controller
         $invoiceNumber = $isProforma ? null : ($data['invoice_number'] ?? Invoice::generateNumber());
         $proformaInvoiceNumber = $isProforma ? ($data['proforma_invoice_number'] ?? Invoice::generateProformaNumber()) : null;
 
-        $defaultStatus = Status::where('type', 'invoice')
-            ->where('is_default', 1)
-            ->first();
-        $statusId = $defaultStatus ? $defaultStatus->id : null;
-
-        if (!$isProforma && (int)round($grandTotal) <= 0) {
-            $paidStatus = Status::where('name', 'پرداخت شده')->first()
-                ?? Status::where('name', 'LIKE', '%پرداخت شده%')->first();
-            if ($paidStatus) {
-                $statusId = $paidStatus->id;
-            }
-        }
+        $statusId = $this->resolveInitialStatusId($isProforma, $grandTotal);
 
         $existingMeta = $data['meta'] ?? [];
         if (is_string($existingMeta)) {
@@ -2518,6 +2506,60 @@ class InvoiceController extends Controller
                 ? json_decode($data['installment_schedule'], true)
                 : null,
         ];
+    }
+
+    /**
+     * Resolve the initial status ID for a newly created or converted invoice/proforma.
+     */
+    private function resolveInitialStatusId(bool $isProforma, float $grandTotal, bool $isPaid = false): ?int
+    {
+        if ($isProforma) {
+            $proformaStatus = Status::where('type', 'invoice')->where('name', 'پیش فاکتور')->first()
+                ?? Status::where('type', 'invoice')->where('is_default', 1)->first()
+                ?? Status::where('type', 'invoice')->first();
+
+            return $proformaStatus?->id;
+        }
+
+        if ($isPaid || (int)round($grandTotal) <= 0) {
+            $paidStatus = Status::where('type', 'payment')->where('name', 'پرداخت شده')->first()
+                ?? Status::where('name', 'LIKE', '%پرداخت شده%')->first();
+
+            return $paidStatus?->id;
+        }
+
+        $pendingStatus = Status::where('type', 'payment')->where('name', 'در انتظار پرداخت')->first()
+            ?? Status::where('type', 'payment')->where('is_default', 1)->first()
+            ?? Status::where('type', 'payment')->where('name', 'LIKE', '%انتظار%')->first()
+            ?? Status::where('type', 'invoice')->where('is_default', 1)->first();
+
+        return $pendingStatus?->id;
+    }
+
+    /**
+     * Trigger invoice_created (and invoice_paid when settled) workflows for a formal invoice.
+     */
+    private function triggerInvoiceCreatedWorkflows(Invoice $invoice, array $payload = []): void
+    {
+        if (!class_exists(WorkflowEngine::class) || empty($invoice->invoice_number)) {
+            return;
+        }
+
+        try {
+            $engine = app(WorkflowEngine::class);
+            $engine->start('invoice_created', 'INVOICE', $invoice->id, $payload);
+
+            if ($invoice->isPaid()) {
+                $engine->start('invoice_paid', 'INVOICE', $invoice->id, [
+                    'amount' => 0,
+                    'is_paid' => true,
+                    'is_overdue' => false,
+                    'remaining' => 0,
+                ]);
+            }
+        } catch (Throwable $e) {
+            Log::error('[Workflows] Error starting invoice_created workflow: ' . $e->getMessage());
+        }
     }
 
     private function sellerInfo(): array

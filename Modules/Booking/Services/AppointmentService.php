@@ -426,6 +426,131 @@ class AppointmentService
     }
 
     /**
+     * Restore an appointment auto-canceled due to payment timeout back to PENDING_PAYMENT,
+     * re-validating slot/day capacity, restoring or creating its pending payment row,
+     * resetting the timeout clock, and re-triggering pending-payment workflows.
+     */
+    public function restoreAutoCanceledPendingPayment(Appointment $appointment, ?int $authUserId = null): Appointment
+    {
+        return DB::transaction(function () use ($appointment, $authUserId) {
+            $appointment = Appointment::query()->whereKey($appointment->id)->lockForUpdate()->firstOrFail();
+
+            if ($appointment->status !== Appointment::STATUS_CANCELED_BY_ADMIN) {
+                throw new \InvalidArgumentException('Appointment is not canceled by admin.');
+            }
+
+            $reason = (string) ($appointment->cancel_reason ?? '');
+            if (!str_contains($reason, 'Timeout پرداخت') && !str_contains($reason, 'auto-cancel')) {
+                throw new \InvalidArgumentException('Appointment was not auto-canceled due to payment timeout.');
+            }
+
+            $hasPaidPayment = BookingPayment::query()
+                ->where('appointment_id', $appointment->id)
+                ->where('status', BookingPayment::STATUS_PAID)
+                ->lockForUpdate()
+                ->exists();
+
+            if ($hasPaidPayment) {
+                throw new \RuntimeException('Appointment already has a paid payment.');
+            }
+
+            if (!$appointment->start_at_utc || !$appointment->end_at_utc) {
+                throw new \InvalidArgumentException('Appointment time range is missing.');
+            }
+
+            $scheduleTz = config('booking.timezones.schedule', 'Asia/Tehran');
+            $startUtc = $appointment->start_at_utc->copy()->timezone('UTC');
+            $endUtc = $appointment->end_at_utc->copy()->timezone('UTC');
+            $localDate = $startUtc->copy()->timezone($scheduleTz)->toDateString();
+
+            $this->lockDayAndSlot(
+                (int) $appointment->service_id,
+                (int) $appointment->provider_user_id,
+                $localDate,
+                $startUtc,
+                $endUtc
+            );
+
+            $this->validateSlotAvailableForUpdate(
+                (int) $appointment->service_id,
+                (int) $appointment->provider_user_id,
+                $localDate,
+                $startUtc,
+                $endUtc,
+                $appointment->id
+            );
+
+            $before = $appointment->toArray();
+            $previousStatus = $appointment->status;
+
+            $appointment->status = Appointment::STATUS_PENDING_PAYMENT;
+            $appointment->cancel_reason = null;
+            $appointment->payment_pending_since = now();
+            $appointment->save();
+
+            // Synchronize BookingPayment: restore latest canceled/failed payment or create pending payment if needed
+            $restoredPayment = BookingPayment::query()
+                ->where('appointment_id', $appointment->id)
+                ->where('status', BookingPayment::STATUS_PENDING)
+                ->lockForUpdate()
+                ->first();
+
+            if (!$restoredPayment) {
+                $canceledPayment = BookingPayment::query()
+                    ->where('appointment_id', $appointment->id)
+                    ->whereIn('status', [BookingPayment::STATUS_CANCELLED, BookingPayment::STATUS_FAILED])
+                    ->orderByDesc('id')
+                    ->lockForUpdate()
+                    ->first();
+
+                if ($canceledPayment) {
+                    $canceledPayment->status = BookingPayment::STATUS_PENDING;
+                    $canceledPayment->gateway_ref = null;
+                    $canceledPayment->save();
+                    $restoredPayment = $canceledPayment;
+                } else {
+                    $service = BookingService::query()->find($appointment->service_id);
+                    $sp = $this->engine->getServiceProvider((int) $appointment->service_id, (int) $appointment->provider_user_id);
+                    $settings = BookingSetting::current();
+                    $amount = ($service && $sp) ? $this->paymentService->calculateAmount($service, $sp) : 0;
+
+                    if ($amount > 0) {
+                        $restoredPayment = $this->paymentService->createPendingPayment(
+                            $appointment->id,
+                            (int) $appointment->client_id,
+                            $amount,
+                            $settings->currency_unit ?? config('booking.defaults.currency_unit', 'IRR')
+                        );
+                    }
+                }
+            }
+
+            // Re-trigger workflows as in normal flow without running the same workflow twice
+            $triggeredWorkflowIds = [];
+            $this->triggerStatusWorkflows($appointment, $previousStatus, $triggeredWorkflowIds);
+
+            if ($appointment->created_by_type === Appointment::CREATED_BY_CLIENT_ONLINE) {
+                $this->triggerWorkflow('created_online_pending_payment', $appointment, $triggeredWorkflowIds);
+            }
+
+            $this->audit->log(
+                action: 'APPOINTMENT_RESTORED_PENDING_PAYMENT',
+                entityType: 'APPOINTMENT',
+                entityId: $appointment->id,
+                userId: $authUserId,
+                before: $before,
+                after: $appointment->toArray(),
+                meta: [
+                    'previous_status' => $previousStatus,
+                    'restored_payment_id' => $restoredPayment?->id,
+                ]
+            );
+
+            return $appointment->fresh(['service', 'provider', 'client', 'payments']);
+        });
+    }
+
+    /**
      * Mark as no-show and optionally create follow-up task.
      */
     public function markNoShow(Appointment $appointment, ?int $authUserId): Appointment
@@ -1078,7 +1203,7 @@ class AppointmentService
         return true;
     }
 
-    public function triggerWorkflow(string $key, Appointment $appointment): void
+    public function triggerWorkflow(string $key, Appointment $appointment, ?array &$triggeredWorkflowIds = null): void
     {
         if (!$this->isWorkflowModuleReady()) {
             return;
@@ -1177,6 +1302,12 @@ class AppointmentService
 
         if (!empty($matchedWorkflows)) {
             foreach ($matchedWorkflows as $wf) {
+                if ($triggeredWorkflowIds !== null) {
+                    if (in_array((int) $wf->id, $triggeredWorkflowIds, true)) {
+                        continue;
+                    }
+                    $triggeredWorkflowIds[] = (int) $wf->id;
+                }
                 Log::info("[Booking] Triggering workflow '{$wf->name}' (ID: {$wf->id}) for key '$key'");
                 $engine->startWorkflow($wf, 'APPOINTMENT', $appointment->id);
             }
@@ -1189,41 +1320,47 @@ class AppointmentService
         if ($workflowKey && $workflowKey !== $key) { // Only if mapped to something else
              $legacyWf = $WorkflowClass::where('key', $workflowKey)->where('is_active', true)->first();
              if ($legacyWf) {
+                 if ($triggeredWorkflowIds !== null) {
+                     if (in_array((int) $legacyWf->id, $triggeredWorkflowIds, true)) {
+                         return;
+                     }
+                     $triggeredWorkflowIds[] = (int) $legacyWf->id;
+                 }
                  $engine->startWorkflow($legacyWf, 'APPOINTMENT', $appointment->id);
              }
         }
     }
 
-    public function triggerStatusWorkflows(Appointment $appointment, ?string $previousStatus = null): void
+    public function triggerStatusWorkflows(Appointment $appointment, ?string $previousStatus = null, ?array &$triggeredWorkflowIds = null): void
     {
         Log::info("[Booking] triggerStatusWorkflows called. Status: {$appointment->status}, Previous: {$previousStatus}");
 
         // 1. تریگر کلی تغییر وضعیت
-        $this->triggerWorkflow('appointment_status_changed', $appointment);
+        $this->triggerWorkflow('appointment_status_changed', $appointment, $triggeredWorkflowIds);
 
         // 2. تریگر اختصاصی برای وضعیت جدید
         if ($appointment->status === Appointment::STATUS_CONFIRMED) {
             $this->onAppointmentConfirmed($appointment);
         } else {
-            $this->triggerWorkflow('status_' . $appointment->status, $appointment);
+            $this->triggerWorkflow('status_' . $appointment->status, $appointment, $triggeredWorkflowIds);
         }
 
         // 3. تریگرهای گروهی (برای سازگاری با قبل یا گروه‌بندی منطقی)
         if (in_array($appointment->status, [Appointment::STATUS_CANCELED_BY_ADMIN, Appointment::STATUS_CANCELED_BY_CLIENT])) {
-            $this->triggerWorkflow('status_canceled', $appointment);
-            $this->triggerWorkflow('appointment_canceled', $appointment); // Legacy
+            $this->triggerWorkflow('status_canceled', $appointment, $triggeredWorkflowIds);
+            $this->triggerWorkflow('appointment_canceled', $appointment, $triggeredWorkflowIds); // Legacy
         }
 
         if ($appointment->status === Appointment::STATUS_NO_SHOW) {
-            $this->triggerWorkflow('appointment_no_show', $appointment); // Legacy
+            $this->triggerWorkflow('appointment_no_show', $appointment, $triggeredWorkflowIds); // Legacy
         }
 
         if ($appointment->status === Appointment::STATUS_DONE) {
-            $this->triggerWorkflow('appointment_done', $appointment); // Legacy
+            $this->triggerWorkflow('appointment_done', $appointment, $triggeredWorkflowIds); // Legacy
         }
 
         if ($appointment->status === Appointment::STATUS_RESCHEDULED) {
-            $this->triggerWorkflow('appointment_rescheduled', $appointment); // Legacy
+            $this->triggerWorkflow('appointment_rescheduled', $appointment, $triggeredWorkflowIds); // Legacy
         }
     }
 }

@@ -25,7 +25,7 @@ class SeedServiceWorkflows extends Command
         $wf1->stages()->delete();
         $wf1->nodes()->delete();
         $wf1->edges()->delete();
-        $stage1 = $wf1->stages()->create(['name' => 'عملیات لغو', 'sort_order' => 1]);
+        $stage1 = $wf1->stages()->create(['name' => 'عملیات لغو', 'sort_order' => 1, 'is_initial' => true, 'is_final' => true]);
 
         $stage1->actions()->create([
             'action_type' => 'CHANGE_SERVICE_STATUS',
@@ -62,7 +62,7 @@ class SeedServiceWorkflows extends Command
         $wf2->stages()->delete();
         $wf2->nodes()->delete();
         $wf2->edges()->delete();
-        $stage2 = $wf2->stages()->create(['name' => 'معوقه شدن', 'sort_order' => 1]);
+        $stage2 = $wf2->stages()->create(['name' => 'معوقه شدن', 'sort_order' => 1, 'is_initial' => true, 'is_final' => true]);
         $stage2->actions()->create([
             'action_type' => 'CHANGE_SERVICE_STATUS',
             'sort_order' => 10,
@@ -86,7 +86,7 @@ class SeedServiceWorkflows extends Command
         $wf3->stages()->delete();
         $wf3->nodes()->delete();
         $wf3->edges()->delete();
-        $stage3 = $wf3->stages()->create(['name' => 'تکمیل پرداخت', 'sort_order' => 1]);
+        $stage3 = $wf3->stages()->create(['name' => 'تکمیل پرداخت', 'sort_order' => 1, 'is_initial' => true, 'is_final' => true]);
         $stage3->actions()->create([
             'action_type' => 'CHANGE_SERVICE_STATUS',
             'sort_order' => 10,
@@ -105,7 +105,7 @@ class SeedServiceWorkflows extends Command
         $wf4->stages()->delete();
         $wf4->nodes()->delete();
         $wf4->edges()->delete();
-        $stage4 = $wf4->stages()->create(['name' => 'تعلیق سفارش', 'sort_order' => 1]);
+        $stage4 = $wf4->stages()->create(['name' => 'تعلیق سفارش', 'sort_order' => 1, 'is_initial' => true, 'is_final' => true]);
         $stage4->actions()->create([
             'action_type' => 'CHANGE_SERVICE_STATUS',
             'sort_order' => 10,
@@ -124,7 +124,7 @@ class SeedServiceWorkflows extends Command
         $wf5->stages()->delete();
         $wf5->nodes()->delete();
         $wf5->edges()->delete();
-        $stage5 = $wf5->stages()->create(['name' => 'در انتظار پرداخت', 'sort_order' => 1]);
+        $stage5 = $wf5->stages()->create(['name' => 'در انتظار پرداخت', 'sort_order' => 1, 'is_initial' => true, 'is_final' => true]);
         $stage5->actions()->create([
             'action_type' => 'CHANGE_SERVICE_STATUS',
             'sort_order' => 10,
@@ -150,7 +150,7 @@ class SeedServiceWorkflows extends Command
         $wf6->stages()->delete();
         $wf6->nodes()->delete();
         $wf6->edges()->delete();
-        $stage6 = $wf6->stages()->create(['name' => 'لغو خودکار', 'sort_order' => 1]);
+        $stage6 = $wf6->stages()->create(['name' => 'لغو خودکار', 'sort_order' => 1, 'is_initial' => true, 'is_final' => true]);
         $stage6->actions()->create([
             'action_type' => 'CHANGE_SERVICE_STATUS',
             'sort_order' => 10,
@@ -167,7 +167,7 @@ class SeedServiceWorkflows extends Command
         $wf7->stages()->delete();
         $wf7->nodes()->delete();
         $wf7->edges()->delete();
-        $stage7 = $wf7->stages()->create(['name' => 'بازگشت وضعیت معوقه', 'sort_order' => 1]);
+        $stage7 = $wf7->stages()->create(['name' => 'بازگشت وضعیت معوقه', 'sort_order' => 1, 'is_initial' => true, 'is_final' => true]);
         $stage7->actions()->create([
             'action_type' => 'CHANGE_SERVICE_STATUS',
             'sort_order' => 10,
@@ -185,7 +185,7 @@ class SeedServiceWorkflows extends Command
         $wf8->stages()->delete();
         $wf8->nodes()->delete();
         $wf8->edges()->delete();
-        $stage8 = $wf8->stages()->create(['name' => 'بازگشت وضعیت در انتظار', 'sort_order' => 1]);
+        $stage8 = $wf8->stages()->create(['name' => 'بازگشت وضعیت در انتظار', 'sort_order' => 1, 'is_initial' => true, 'is_final' => true]);
         $stage8->actions()->create([
             'action_type' => 'CHANGE_SERVICE_STATUS',
             'sort_order' => 10,
@@ -210,7 +210,7 @@ class SeedServiceWorkflows extends Command
         $wf9->stages()->delete();
         $wf9->nodes()->delete();
         $wf9->edges()->delete();
-        $stage9 = $wf9->stages()->create(['name' => 'ساخت فاکتور تمدید', 'sort_order' => 1]);
+        $stage9 = $wf9->stages()->create(['name' => 'ساخت فاکتور تمدید', 'sort_order' => 1, 'is_initial' => true, 'is_final' => true]);
         $stage9->actions()->create([
             'action_type' => 'CREATE_INVOICE',
             'sort_order' => 10,

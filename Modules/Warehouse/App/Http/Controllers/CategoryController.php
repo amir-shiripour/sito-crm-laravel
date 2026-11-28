@@ -14,7 +14,7 @@ class CategoryController extends Controller
     public function index()
     {
         $categories = WarehouseCategory::roots()
-            ->with(['children' => fn($q) => $q->withCount(['items', 'subItems'])])
+            ->with(['creator', 'children' => fn($q) => $q->with('creator')->withCount(['items', 'subItems'])])
             ->withCount('items')
             ->orderBy('order')
             ->orderBy('name')

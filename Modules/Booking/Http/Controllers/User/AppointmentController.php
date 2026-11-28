@@ -30,7 +30,7 @@ class AppointmentController extends Controller
         $user = $request->user();
 
         $query = Appointment::query()
-            ->with(['service', 'provider', 'client', 'creator.roles']);
+            ->with(['service', 'provider', 'client', 'creator.roles', 'payments']);
 
         // Permission Scope
         if (! $this->isAdminUser($user) && ! $user->can('booking.appointments.view.all')) {
@@ -1129,6 +1129,37 @@ class AppointmentController extends Controller
         return redirect()
             ->route('user.booking.appointments.show', $appointment)
             ->with('success', 'نوبت با موفقیت به‌روزرسانی شد.');
+    }
+
+    public function restorePendingPayment(Request $request, Appointment $appointment)
+    {
+        $settings = BookingSetting::current();
+        $this->ensureAppointmentEditAccess($request->user(), $appointment, $settings);
+
+        try {
+            $this->service->restoreAutoCanceledPendingPayment($appointment, $request->user()?->id);
+        } catch (\InvalidArgumentException | \RuntimeException $e) {
+            $message = match ($e->getMessage()) {
+                'Slot capacity is full.' => 'ظرفیت این بازه زمانی در حال حاضر تکمیل شده است و امکان بازگردانی نوبت وجود ندارد.',
+                'Day capacity is full.' => 'ظرفیت روز تکمیل شده است و امکان بازگردانی نوبت وجود ندارد.',
+                'This day is closed.' => 'این روز در حال حاضر بسته است و امکان بازگردانی نوبت وجود ندارد.',
+                'Slot is outside work windows.' => 'این بازه خارج از ساعات کاری است و امکان بازگردانی نوبت وجود ندارد.',
+                'Slot overlaps with break.' => 'این بازه با زمان استراحت تداخل دارد و امکان بازگردانی نوبت وجود ندارد.',
+                'Slot crosses day boundary.' => 'بازه زمانی نوبت نامعتبر است.',
+                'Slot is occupied by a synchronized service.' => 'این بازه توسط سرویس همگام‌سازی‌شده دیگری اشغال شده است.',
+                'Appointment already has a paid payment.' => 'این نوبت دارای پرداخت تاییدشده است و قابل بازگردانی به در انتظار پرداخت نیست.',
+                'Appointment is not canceled by admin.', 'Appointment was not auto-canceled due to payment timeout.' => 'تنها نوبت‌های لغوشده خودکار بر اثر اتمام مهلت پرداخت قابل بازگردانی هستند.',
+                default => 'امکان بازگردانی نوبت وجود ندارد.',
+            };
+
+            return redirect()
+                ->back()
+                ->with('error', $message);
+        }
+
+        return redirect()
+            ->back()
+            ->with('success', 'نوبت با موفقیت به حالت در انتظار پرداخت بازگردانده شد.');
     }
 
     public function destroy(Request $request, Appointment $appointment)

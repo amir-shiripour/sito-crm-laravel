@@ -53,6 +53,13 @@
             </div>
         @endif
 
+        @if(session('error'))
+            <div class="flex items-center gap-3 rounded-2xl border border-rose-200 dark:border-rose-700/70 bg-rose-50 dark:bg-rose-900/40 text-rose-800 dark:text-rose-100 px-4 py-3 shadow-sm">
+                <span class="text-xl">!</span>
+                <span class="text-sm">{{ session('error') }}</span>
+            </div>
+        @endif
+
         @includeIf('partials.jalali-date-picker')
 
         {{-- Filters --}}
@@ -283,6 +290,22 @@
                                         مشاهده
                                     </a>
                                     @can('booking.appointments.edit')
+                                        @if($a->isAutoCanceledPendingPayment())
+                                            <form method="POST"
+                                                  action="{{ route('user.booking.appointments.restore-pending-payment', $a) }}"
+                                                  class="inline-flex"
+                                                  onsubmit="return confirm('آیا از بازگردانی این نوبت به حالت «در انتظار پرداخت» اطمینان دارید؟');">
+                                                @csrf
+                                                <button type="submit"
+                                                        title="بازگردانی به در انتظار پرداخت"
+                                                        aria-label="بازگردانی به در انتظار پرداخت"
+                                                        class="p-1.5 rounded-lg bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-200/70 dark:bg-amber-500/15 dark:text-amber-300 dark:border-amber-500/30 dark:hover:bg-amber-500/25 transition shadow-2xs">
+                                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" />
+                                                    </svg>
+                                                </button>
+                                            </form>
+                                        @endif
                                         <a href="{{ route('user.booking.appointments.edit', $a) }}"
                                             class="px-3 py-1.5 text-xs rounded-lg bg-indigo-50 text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-500/10 dark:text-indigo-300 dark:hover:bg-indigo-500/20 transition">
                                             ویرایش

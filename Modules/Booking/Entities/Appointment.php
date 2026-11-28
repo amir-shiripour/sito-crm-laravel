@@ -44,10 +44,12 @@ class Appointment extends Model
         'appointment_form_response_json',
         'rescheduled_from_appointment_id',
         'cancel_reason',
+        'payment_pending_since',
     ];
 
     protected $casts = [
         'appointment_form_response_json' => 'array',
+        'payment_pending_since' => 'datetime',
     ];
 
     protected function startAtUtc(): Attribute
@@ -118,6 +120,29 @@ class Appointment extends Model
     public function payments(): HasMany
     {
         return $this->hasMany(BookingPayment::class, 'appointment_id');
+    }
+
+    /**
+     * Determine whether this appointment was auto-canceled due to payment timeout
+     * and is eligible to be restored back to PENDING_PAYMENT.
+     */
+    public function isAutoCanceledPendingPayment(): bool
+    {
+        if ($this->status !== self::STATUS_CANCELED_BY_ADMIN) {
+            return false;
+        }
+
+        $reason = (string) ($this->cancel_reason ?? '');
+        $isTimeoutCancel = str_contains($reason, 'Timeout پرداخت') || str_contains($reason, 'auto-cancel');
+        if (!$isTimeoutCancel) {
+            return false;
+        }
+
+        if ($this->relationLoaded('payments')) {
+            return !$this->payments->contains('status', BookingPayment::STATUS_PAID);
+        }
+
+        return !$this->payments()->where('status', BookingPayment::STATUS_PAID)->exists();
     }
 
     public static function statusesList(): array

@@ -46,6 +46,9 @@ class LaboratoryDailyBoard extends Component
     public bool $showStageModal = false;
     public ?int $stageToCompleteId = null;
     public string $stageNote = '';
+    public string $stageCompletionAction = 'complete';
+    public string $selectedStageOptionKey = '';
+    public string $selectedStageSubOptionKey = '';
 
     // Quick Stage Revert Modal
     public bool $showRevertStageModal = false;
@@ -115,6 +118,9 @@ class LaboratoryDailyBoard extends Component
         $this->modalResult = '';
         $this->modalActionType = 'log_only';
         $this->modalPostponeDays = 2;
+        $this->stageCompletionAction = 'complete';
+        $this->selectedStageOptionKey = '';
+        $this->selectedStageSubOptionKey = '';
 
         $this->showLogModal = true;
     }
@@ -130,7 +136,7 @@ class LaboratoryDailyBoard extends Component
         if (!$this->activeOrderId) return;
 
         $order = BookingLaboratoryOrder::with('stages')->find($this->activeOrderId);
-        $stage = $this->activeStageId ? BookingLaboratoryStage::find($this->activeStageId) : null;
+        $stage = $this->activeStageId ? BookingLaboratoryStage::with('order')->find($this->activeStageId) : null;
 
         if (!$stage && $order) {
             $stage = $order->stages->where('is_completed', false)->first();
@@ -141,8 +147,19 @@ class LaboratoryDailyBoard extends Component
             $note = trim($this->modalResult) ?: 'پیگیری و تماس انجام شد.';
 
             if ($this->modalActionType === 'complete_stage' && $stage) {
-                $service->completeStage($stage, $note, auth()->id());
-                $this->toastSuccess = "مرحله «{$stage->stage_title}» برای {$order->patient_name} با موفقیت تایید و پیگیری ثبت شد.";
+                try {
+                    $service->completeStage($stage, $note, auth()->id(), [
+                        'action'         => $this->stageCompletionAction,
+                        'option_key'     => $this->selectedStageOptionKey,
+                        'sub_option_key' => $this->selectedStageSubOptionKey,
+                    ]);
+                    $this->toastSuccess = $this->stageCompletionAction === 'skip'
+                        ? "مرحله «{$stage->stage_title}» با وضعیت عدم نیاز رد شد."
+                        : "مرحله «{$stage->stage_title}» برای {$order->patient_name} با موفقیت تایید و پیگیری ثبت شد.";
+                } catch (\Throwable $e) {
+                    $this->toastError = $e->getMessage();
+                    return;
+                }
             } elseif ($this->modalActionType === 'postpone_stage' && $stage) {
                 $service->postponeStage($stage, $this->modalPostponeDays, $note, auth()->id());
                 $this->toastSuccess = "موعد مرحله «{$stage->stage_title}» به مدت {$this->modalPostponeDays} روز تمدید و نتیجه تماس ثبت شد.";
@@ -162,6 +179,9 @@ class LaboratoryDailyBoard extends Component
         $this->activeOrderId = null;
         $this->activeStageId = null;
         $this->modalOrder = null;
+        $this->stageCompletionAction = 'complete';
+        $this->selectedStageOptionKey = '';
+        $this->selectedStageSubOptionKey = '';
     }
 
     public function openStageModal(int $stageId): void
@@ -174,6 +194,9 @@ class LaboratoryDailyBoard extends Component
 
         $this->stageToCompleteId = $stageId;
         $this->stageNote = '';
+        $this->stageCompletionAction = 'complete';
+        $this->selectedStageOptionKey = '';
+        $this->selectedStageSubOptionKey = '';
         $this->showStageModal = true;
     }
 
@@ -189,12 +212,26 @@ class LaboratoryDailyBoard extends Component
 
         $stage = BookingLaboratoryStage::with('order')->find($this->stageToCompleteId);
         if ($stage) {
-            app(LaboratoryService::class)->completeStage($stage, $this->stageNote ?: null, auth()->id());
-            $this->toastSuccess = "مرحله «{$stage->stage_title}» با موفقیت تکمیل شد.";
+            try {
+                app(LaboratoryService::class)->completeStage($stage, $this->stageNote ?: null, auth()->id(), [
+                    'action'         => $this->stageCompletionAction,
+                    'option_key'     => $this->selectedStageOptionKey,
+                    'sub_option_key' => $this->selectedStageSubOptionKey,
+                ]);
+                $this->toastSuccess = $this->stageCompletionAction === 'skip'
+                    ? "مرحله «{$stage->stage_title}» با وضعیت عدم نیاز رد شد."
+                    : "مرحله «{$stage->stage_title}» با موفقیت تکمیل شد.";
+            } catch (\Throwable $e) {
+                $this->toastError = $e->getMessage();
+                return;
+            }
         }
 
         $this->showStageModal = false;
         $this->stageToCompleteId = null;
+        $this->stageCompletionAction = 'complete';
+        $this->selectedStageOptionKey = '';
+        $this->selectedStageSubOptionKey = '';
     }
 
     public function openRevertStageModal(int $stageId): void
@@ -222,8 +259,15 @@ class LaboratoryDailyBoard extends Component
 
         $stage = BookingLaboratoryStage::with('order')->find($this->stageToRevertId);
         if ($stage && $stage->is_completed) {
-            app(LaboratoryService::class)->revertStage($stage, trim($this->revertStageNote) ?: null, auth()->id());
-            $this->toastSuccess = "مرحله «{$stage->stage_title}» به حالت در انتظار بازگردانده شد و در تاریخچه ثبت گردید.";
+            try {
+                app(LaboratoryService::class)->revertStage($stage, trim($this->revertStageNote) ?: null, auth()->id());
+                $this->toastSuccess = "مرحله «{$stage->stage_title}» به حالت در انتظار بازگردانده شد و در تاریخچه ثبت گردید.";
+            } catch (\Throwable $e) {
+                $this->toastError = $e->getMessage();
+                $this->showRevertStageModal = false;
+                $this->stageToRevertId = null;
+                return;
+            }
         }
 
         $this->showRevertStageModal = false;
@@ -333,7 +377,12 @@ class LaboratoryDailyBoard extends Component
 
             if ($currentStage && $currentStage->due_at) {
                 $due = $currentStage->due_at;
-                if ($due->isSameDay($selectedCarbon)) {
+                if ($currentStage->offset_unit === 'hours' && $due->lt(now()) && $selectedCarbon->isToday()) {
+                    $isOverdue = true;
+                    $statusType = 'overdue';
+                    $statusText = ($currentStage->live_delay_label ?: '۱ ساعت') . ' تاخیر';
+                    $priority = 1;
+                } elseif ($due->isSameDay($selectedCarbon)) {
                     $isDueOnDate = true;
                     $statusType = 'due_today';
                     $statusText = 'موعد امروز';
@@ -342,7 +391,9 @@ class LaboratoryDailyBoard extends Component
                     $isOverdue = true;
                     $statusType = 'overdue';
                     $diffDays = $due->copy()->startOfDay()->diffInDays($selectedCarbon);
-                    $statusText = ($diffDays ?: 1) . ' روز تاخیر';
+                    $statusText = ($currentStage->offset_unit === 'hours' && $selectedCarbon->isToday())
+                        ? (($currentStage->live_delay_label ?: '۱ ساعت') . ' تاخیر')
+                        : (($diffDays ?: 1) . ' روز تاخیر');
                     $priority = 1;
                 } else {
                     $statusType = 'upcoming';
@@ -461,6 +512,18 @@ class LaboratoryDailyBoard extends Component
         // Sort by priority (Overdue 1 -> Due Today 2 -> Completed 3 -> Upcoming 4)
         $rows = $rows->sortBy('priority');
 
+        // Load stage for stage completion modal & log modal
+        $stageToCompleteModel = ($this->showStageModal && $this->stageToCompleteId)
+            ? BookingLaboratoryStage::with('order')->find($this->stageToCompleteId)
+            : null;
+
+        $logModalStageModel = null;
+        if ($this->showLogModal && $this->modalOrder) {
+            $logModalStageModel = $this->activeStageId
+                ? BookingLaboratoryStage::with('order')->find($this->activeStageId)
+                : $this->modalOrder->stages->where('is_completed', false)->first();
+        }
+
         // Load detail order if modal is open
         $detailOrder = null;
         if ($this->showDetailModal && $this->detailOrderId) {
@@ -469,16 +532,18 @@ class LaboratoryDailyBoard extends Component
         }
 
         return view('booking::user.laboratory.daily-board', [
-            'rows'                => $rows,
-            'overdueCount'        => $overdueCount,
-            'dueTodayCount'       => $dueTodayCount,
-            'completedTodayCount' => $completedTodayCount,
-            'dailyTotalCount'     => $dailyTotalCount,
-            'upcomingCount'       => $upcomingCount,
-            'allActiveCount'      => $allActiveCount,
-            'labPartners'         => $labPartners,
-            'doctors'             => $doctors,
-            'detailOrder'         => $detailOrder,
+            'rows'                 => $rows,
+            'overdueCount'         => $overdueCount,
+            'dueTodayCount'        => $dueTodayCount,
+            'completedTodayCount'  => $completedTodayCount,
+            'dailyTotalCount'      => $dailyTotalCount,
+            'upcomingCount'        => $upcomingCount,
+            'allActiveCount'       => $allActiveCount,
+            'labPartners'          => $labPartners,
+            'doctors'              => $doctors,
+            'detailOrder'          => $detailOrder,
+            'stageToCompleteModel' => $stageToCompleteModel,
+            'logModalStageModel'   => $logModalStageModel,
         ]);
     }
 }

@@ -261,9 +261,47 @@ class BookingSetting extends Model
                 return $defaults;
             }
             if (isset($decoded['types']) && is_array($decoded['types'])) {
+                if (!isset($decoded['partners']) || !is_array($decoded['partners'])) {
+                    $decoded['partners'] = [];
+                }
                 return $decoded;
             }
             return static::convertLegacyLaboratorySettings($decoded);
+        }
+
+        public static function getLaboratoryPartners(): array
+        {
+            $settings = static::current();
+            $cfg = $settings->laboratory_settings;
+            $partners = $cfg['partners'] ?? [];
+            return is_array($partners) ? array_values($partners) : [];
+        }
+
+        public static function resolveLaboratoryStageOptions(array $stageConfig): array
+        {
+            $source = $stageConfig['options_source'] ?? 'custom';
+            if ($source === 'partners') {
+                $partners = static::getLaboratoryPartners();
+                $mapped = [];
+                foreach ($partners as $p) {
+                    $label = trim((string) ($p['name'] ?? ''));
+                    $key = trim((string) ($p['id'] ?? ''));
+                    if ($label === '' || $key === '') {
+                        continue;
+                    }
+                    $mapped[] = [
+                        'key'      => $key,
+                        'label'    => $label,
+                        'lab_type' => $p['lab_type'] ?? null,
+                    ];
+                }
+                if (!empty($mapped)) {
+                    return $mapped;
+                }
+            }
+
+            $options = $stageConfig['options'] ?? [];
+            return is_array($options) ? array_values($options) : [];
         }
 
         public static function getLaboratoryTypesList(): array
@@ -316,16 +354,287 @@ class BookingSetting extends Model
             return null;
         }
 
-        public static function getLaboratoryCategoryStages(string $typeId, string $categoryId): array
+        public static function getLaboratoryCategoryVariants(string $typeId, string $categoryId): array
         {
             $cat = static::findLaboratoryCategory($typeId, $categoryId);
+            if (!$cat || empty($cat['has_variants']) || empty($cat['variants']) || !is_array($cat['variants'])) {
+                return [];
+            }
+            return array_values($cat['variants']);
+        }
+
+        public static function getLaboratoryCategoryStages(string $typeId, string $categoryId, ?string $variantKey = null): array
+        {
+            $cat = static::findLaboratoryCategory($typeId, $categoryId);
+            if (!$cat) {
+                return [];
+            }
+
+            if (!empty($cat['has_variants']) && !empty($cat['variants']) && is_array($cat['variants'])) {
+                if ($variantKey) {
+                    foreach ($cat['variants'] as $variant) {
+                        if (($variant['id'] ?? '') === $variantKey) {
+                            return $variant['stages'] ?? [];
+                        }
+                    }
+                }
+                return $cat['variants'][0]['stages'] ?? [];
+            }
+
             return $cat['stages'] ?? [];
+        }
+
+        public static function findLaboratoryStageTemplateByKey(string $typeId, string $categoryId, ?string $variantKey, string $stageKey): ?array
+        {
+            $stages = static::getLaboratoryCategoryStages($typeId, $categoryId, $variantKey);
+            return static::searchStageTemplateRecursive($stages, $stageKey);
+        }
+
+        protected static function searchStageTemplateRecursive(array $stages, string $stageKey): ?array
+        {
+            foreach ($stages as $stage) {
+                $key = $stage['key'] ?? $stage['stage_key'] ?? '';
+                if ($key === $stageKey) {
+                    return $stage;
+                }
+                if (!empty($stage['outcomes']) && is_array($stage['outcomes'])) {
+                    foreach ($stage['outcomes'] as $outcome) {
+                        if (!empty($outcome['stages']) && is_array($outcome['stages'])) {
+                            $found = static::searchStageTemplateRecursive($outcome['stages'], $stageKey);
+                            if ($found) {
+                                return $found;
+                            }
+                        }
+                    }
+                }
+            }
+            return null;
         }
 
         public static function getLaboratoryCategoryName(string $typeId, string $categoryId): ?string
         {
             $cat = static::findLaboratoryCategory($typeId, $categoryId);
             return $cat['name'] ?? null;
+        }
+
+        /**
+         * Reusable multi-layer category templates for the Settings UI ("افزودن از قالب آماده").
+         * Not included in defaultLaboratorySettings() so fresh installs stay clean.
+         */
+        public static function getLaboratoryCategoryTemplates(): array
+        {
+            $buildRevisionBranch = static function (string $prefix, string $decisionTitle, string $scanDesignTitle): array {
+                return [
+                    'key'        => $prefix . '_revision_method',
+                    'title'      => $decisionTitle,
+                    'stage_type' => 'decision',
+                    'offset'     => 0,
+                    'unit'       => 'days',
+                    'is_receive' => false,
+                    'outcomes'   => [
+                        [
+                            'key'    => 'second_scan',
+                            'label'  => 'دریافت اسکن دوم',
+                            'effect' => 'spawn_stages',
+                            'stages' => [
+                                ['key' => $prefix . '_rev_design', 'title' => $scanDesignTitle, 'stage_type' => 'standard', 'offset' => 24, 'unit' => 'hours', 'is_receive' => false],
+                                ['key' => $prefix . '_rev_qc', 'title' => 'بررسی QC', 'stage_type' => 'standard', 'offset' => 48, 'unit' => 'hours', 'is_receive' => false],
+                                [
+                                    'key'                => $prefix . '_rev_approval',
+                                    'title'              => 'تایید طراحی اصلاحیه',
+                                    'stage_type'         => 'selection',
+                                    'offset'             => 24,
+                                    'unit'               => 'hours',
+                                    'is_receive'         => false,
+                                    'options_source'     => 'custom',
+                                    'sync_order_partner' => false,
+                                    'options'            => [
+                                        ['key' => 'doctor', 'label' => 'تایید پزشک'],
+                                        ['key' => 'prosthesis_manager', 'label' => 'تایید مسئول پروتز (بدون تایید پزشک)'],
+                                    ],
+                                ],
+                                [
+                                    'key'                => $prefix . '_rev_milling',
+                                    'title'              => 'ارسال به میلینگ سنتر',
+                                    'stage_type'         => 'selection',
+                                    'offset'             => 0,
+                                    'unit'               => 'days',
+                                    'is_receive'         => false,
+                                    'options_source'     => 'partners',
+                                    'sync_order_partner' => true,
+                                    'options'            => [],
+                                ],
+                                [
+                                    'key'        => $prefix . '_rev_receive',
+                                    'title'      => 'دریافت از میلینگ سنتر',
+                                    'stage_type' => 'decision',
+                                    'offset'     => 3,
+                                    'unit'       => 'days',
+                                    'is_receive' => false,
+                                    'outcomes'   => [
+                                        ['key' => 'deliver', 'label' => 'تحویل', 'effect' => 'finish', 'stages' => []],
+                                        ['key' => 'revision_again', 'label' => 'اصلاحیه مجدد', 'effect' => 'loop_to_stage', 'target_stage_key' => $prefix . '_revision_method', 'stages' => []],
+                                    ],
+                                ],
+                            ],
+                        ],
+                        [
+                            'key'    => 'impression',
+                            'label'  => 'دریافت قالب',
+                            'effect' => 'spawn_stages',
+                            'stages' => [
+                                ['key' => $prefix . '_plaster', 'title' => 'گچ ریزی', 'stage_type' => 'standard', 'offset' => 1, 'unit' => 'days', 'is_receive' => false],
+                                ['key' => $prefix . '_imp_rev', 'title' => 'اصلاحیه', 'stage_type' => 'standard', 'offset' => 1, 'unit' => 'days', 'is_receive' => false],
+                                ['key' => $prefix . '_imp_deliver', 'title' => 'تحویل', 'stage_type' => 'standard', 'offset' => 1, 'unit' => 'days', 'is_receive' => true],
+                            ],
+                        ],
+                    ],
+                ];
+            };
+
+            return [
+                [
+                    'id'           => 'overlay',
+                    'name'         => 'اورلی',
+                    'description'  => 'طراحی کست و دریافت کست خروجی گرفته شده',
+                    'badge'        => '۲ مرحله ساده',
+                    'has_variants' => false,
+                    'variants'     => [],
+                    'stages'       => [
+                        ['key' => 'overlay_cast_design', 'title' => 'طراحی کست', 'stage_type' => 'standard', 'offset' => 24, 'unit' => 'hours', 'is_receive' => false],
+                        ['key' => 'overlay_cast_receive', 'title' => 'دریافت کست خروجی گرفته شده', 'stage_type' => 'standard', 'offset' => 2, 'unit' => 'days', 'is_receive' => true],
+                    ],
+                ],
+                [
+                    'id'           => 'base_wax',
+                    'name'         => 'بیس وکس',
+                    'description'  => 'دارای دو متد اجرایی معمولی و TBT',
+                    'badge'        => '۲ متد (معمولی / TBT)',
+                    'has_variants' => true,
+                    'variants'     => [
+                        [
+                            'id'     => 'normal',
+                            'name'   => 'معمولی',
+                            'stages' => [
+                                ['key' => 'bw_n_cast', 'title' => 'طراحی کست', 'stage_type' => 'standard', 'offset' => 24, 'unit' => 'hours', 'is_receive' => false],
+                                ['key' => 'bw_n_rim', 'title' => 'ساخت بیس ریم', 'stage_type' => 'standard', 'offset' => 2, 'unit' => 'days', 'is_receive' => false],
+                                ['key' => 'bw_n_deliver', 'title' => 'تحویل', 'stage_type' => 'standard', 'offset' => 1, 'unit' => 'days', 'is_receive' => true],
+                            ],
+                        ],
+                        [
+                            'id'     => 'tbt',
+                            'name'   => 'TBT',
+                            'stages' => [
+                                ['key' => 'bw_t_cast', 'title' => 'طراحی کست', 'stage_type' => 'standard', 'offset' => 24, 'unit' => 'hours', 'is_receive' => false],
+                                ['key' => 'bw_t_tbt', 'title' => 'طراحی TBT', 'stage_type' => 'standard', 'offset' => 24, 'unit' => 'hours', 'is_receive' => false],
+                                ['key' => 'bw_t_rim', 'title' => 'ساخت بیس ریم', 'stage_type' => 'standard', 'offset' => 2, 'unit' => 'days', 'is_receive' => false],
+                                ['key' => 'bw_t_deliver', 'title' => 'تحویل', 'stage_type' => 'standard', 'offset' => 1, 'unit' => 'days', 'is_receive' => true],
+                            ],
+                        ],
+                    ],
+                    'stages' => [],
+                ],
+                [
+                    'id'           => 'final_crown',
+                    'name'         => 'روکش نهایی',
+                    'description'  => 'فرآیند چندلایه روکش نهایی با شاخه اصلاحیه (اسکن دوم / قالب) و حلقه تکرار',
+                    'badge'        => 'چندلایه + اصلاحیه',
+                    'has_variants' => false,
+                    'variants'     => [],
+                    'stages'       => [
+                        ['key' => 'fc_initial_design', 'title' => 'طراحی اولیه', 'stage_type' => 'standard', 'offset' => 48, 'unit' => 'hours', 'is_receive' => false],
+                        ['key' => 'fc_qc', 'title' => 'بررسی QC', 'stage_type' => 'standard', 'offset' => 48, 'unit' => 'hours', 'is_receive' => false],
+                        ['key' => 'fc_design_rev', 'title' => 'اصلاحیه طراحی', 'stage_type' => 'standard', 'offset' => 24, 'unit' => 'hours', 'is_receive' => false],
+                        [
+                            'key'                => 'fc_approval',
+                            'title'              => 'تایید طراحی',
+                            'stage_type'         => 'selection',
+                            'offset'             => 24,
+                            'unit'               => 'hours',
+                            'is_receive'         => false,
+                            'options_source'     => 'custom',
+                            'sync_order_partner' => false,
+                            'options'            => [
+                                ['key' => 'doctor', 'label' => 'تایید پزشک'],
+                                ['key' => 'prosthesis_manager', 'label' => 'تایید مسئول پروتز (بدون تایید پزشک)'],
+                            ],
+                        ],
+                        [
+                            'key'                => 'fc_milling',
+                            'title'              => 'ارسال جهت میلینگ',
+                            'stage_type'         => 'selection',
+                            'offset'             => 0,
+                            'unit'               => 'days',
+                            'is_receive'         => false,
+                            'options_source'     => 'partners',
+                            'sync_order_partner' => true,
+                            'options'            => [],
+                        ],
+                        [
+                            'key'        => 'fc_receive',
+                            'title'      => 'دریافت از میلینگ سنتر',
+                            'stage_type' => 'decision',
+                            'offset'     => 3,
+                            'unit'       => 'days',
+                            'is_receive' => false,
+                            'outcomes'   => [
+                                ['key' => 'final_delivery', 'label' => 'تحویل نهایی', 'effect' => 'finish', 'stages' => []],
+                                ['key' => 'revision', 'label' => 'اصلاحیه', 'effect' => 'spawn_stages', 'stages' => [$buildRevisionBranch('fc', 'نوع دریافت برای اصلاحیه', 'طراحی اصلاحیه')]],
+                            ],
+                        ],
+                    ],
+                ],
+                [
+                    'id'           => 'pmma',
+                    'name'         => 'PMMA',
+                    'description'  => 'فرآیند چندلایه PMMA (تحویل یا امتحان و اصلاحیه تکرارپذیر)',
+                    'badge'        => 'چندلایه + امتحان/اصلاحیه',
+                    'has_variants' => false,
+                    'variants'     => [],
+                    'stages'       => [
+                        ['key' => 'pmma_initial_design', 'title' => 'طراحی اولیه', 'stage_type' => 'standard', 'offset' => 48, 'unit' => 'hours', 'is_receive' => false],
+                        ['key' => 'pmma_qc', 'title' => 'بررسی QC', 'stage_type' => 'standard', 'offset' => 48, 'unit' => 'hours', 'is_receive' => false],
+                        ['key' => 'pmma_design_rev', 'title' => 'اصلاحیه طراحی', 'stage_type' => 'standard', 'offset' => 24, 'unit' => 'hours', 'is_receive' => false],
+                        [
+                            'key'                => 'pmma_approval',
+                            'title'              => 'تایید طراحی',
+                            'stage_type'         => 'selection',
+                            'offset'             => 24,
+                            'unit'               => 'hours',
+                            'is_receive'         => false,
+                            'options_source'     => 'custom',
+                            'sync_order_partner' => false,
+                            'options'            => [
+                                ['key' => 'doctor', 'label' => 'تایید پزشک'],
+                                ['key' => 'prosthesis_manager', 'label' => 'تایید مسئول پروتز (بدون تایید پزشک)'],
+                            ],
+                        ],
+                        [
+                            'key'                => 'pmma_milling',
+                            'title'              => 'ارسال جهت میلینگ',
+                            'stage_type'         => 'selection',
+                            'offset'             => 0,
+                            'unit'               => 'days',
+                            'is_receive'         => false,
+                            'options_source'     => 'partners',
+                            'sync_order_partner' => true,
+                            'options'            => [],
+                        ],
+                        [
+                            'key'        => 'pmma_receive',
+                            'title'      => 'دریافت از میلینگ سنتر',
+                            'stage_type' => 'decision',
+                            'offset'     => 3,
+                            'unit'       => 'days',
+                            'is_receive' => false,
+                            'outcomes'   => [
+                                ['key' => 'pmma_delivery', 'label' => 'هدف از ساخت PMMA تحویل آن بود', 'effect' => 'finish', 'stages' => []],
+                                ['key' => 'pmma_try_in', 'label' => 'هدف از ساخت PMMA امتحان آن بود', 'effect' => 'spawn_stages', 'stages' => [$buildRevisionBranch('pmma', 'دریافت اسکن دوم یا قالب', 'اصلاحیه طراحی')]],
+                            ],
+                        ],
+                    ],
+                ],
+            ];
         }
 
         public function getAdsAttribute($value): array

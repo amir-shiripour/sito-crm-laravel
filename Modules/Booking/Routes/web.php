@@ -212,6 +212,10 @@ Route::prefix('user')->name('user.')->middleware(['web', 'auth'])->group(functio
             ->name('appointments.update')
             ->middleware('can:booking.appointments.edit');
 
+        Route::post('appointments/{appointment}/restore-pending-payment', [UserAppointmentController::class, 'restorePendingPayment'])
+            ->name('appointments.restore-pending-payment')
+            ->middleware('can:booking.appointments.edit');
+
         Route::delete('appointments/{appointment}', [UserAppointmentController::class, 'destroy'])
             ->name('appointments.destroy')
             ->middleware('can:booking.appointments.edit');

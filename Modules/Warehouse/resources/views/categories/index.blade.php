@@ -115,8 +115,8 @@
                                         <span class="text-xs text-gray-500 dark:text-gray-400 dir-ltr inline-block">({{ $cat->code }})</span>
                                     @endif
                                 </div>
-                                <p class="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
-                                    {{ $cat->children->count() }} زیردسته | {{ $cat->items_count }} کالای مستقیم
+                                <p class="text-[11px] text-slate-600 dark:text-slate-300 mt-0.5">
+                                    {{ $cat->children->count() }} زیردسته | {{ $cat->items_count }} کالای مستقیم · ثبت‌کننده: <strong class="text-gray-800 dark:text-gray-200">{{ $cat->creator_name }}</strong>
                                 </p>
                             </div>
                         </div>
@@ -165,8 +165,8 @@
                                         <div class="text-xs font-bold text-gray-800 dark:text-gray-200 truncate">
                                             {{ $sub->name }}
                                         </div>
-                                        <div class="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">
-                                            {{ $sub->sub_items_count ?? 0 }} کالا
+                                        <div class="text-[10px] text-slate-600 dark:text-slate-300 mt-0.5 truncate">
+                                            {{ $sub->sub_items_count ?? 0 }} کالا · ثبت: {{ $sub->creator_name }}
                                         </div>
                                     </div>
 
