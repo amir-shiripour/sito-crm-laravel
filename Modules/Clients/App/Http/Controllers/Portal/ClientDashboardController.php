@@ -4,10 +4,10 @@ namespace Modules\Clients\App\Http\Controllers\Portal;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Schema;
+use Modules\Clients\App\Support\PortalModuleHelper;
 use Modules\Market\App\Models\Order as MarketOrder;
 use Modules\Services\App\Http\Models\Invoice as ServiceInvoice;
 use Modules\Services\App\Http\Models\Order as ServiceOrder;
-use Nwidart\Modules\Facades\Module;
 
 class ClientDashboardController extends Controller
 {
@@ -15,11 +15,10 @@ class ClientDashboardController extends Controller
     {
         $client = auth('client')->user();
 
-        $isBookingActive  = $this->isModuleActive('Booking', 'appointments');
-        $isMarketActive   = $this->isModuleActive('Market', 'market_orders');
-        $isServicesActive = $this->isModuleActive('Services', 'service_invoices');
-        $isRentalActive   = $this->isModuleActive('Properties', 'property_rental_bookings') && 
-            (bool) (\Modules\Properties\Entities\PropertySetting::get('rental_mode_enabled', 0) ?: \Modules\Properties\Entities\PropertySetting::get('rental_system_enabled', 0));
+        $isBookingActive  = PortalModuleHelper::isActive('Booking', 'appointments');
+        $isMarketActive   = PortalModuleHelper::isActive('Market', 'market_orders');
+        $isServicesActive = PortalModuleHelper::isActive('Services', 'service_invoices');
+        $isRentalActive   = PortalModuleHelper::isRentalActive();
 
         // 2. دریافت تنظیمات واحد پول نوبت‌دهی برای نمایش صحیح مبالغ
         $bookingCurrencyUnit  = 'IRR';
@@ -119,38 +118,6 @@ class ClientDashboardController extends Controller
         }
         $phone = !empty(trim((string)$phone)) ? trim((string)$phone) : null;
         return $phone;
-    }
-
-    /**
-     * بررسی فعال بودن و نصب بودن یک ماژول و وجود جدول آن
-     */
-    private function isModuleActive(string $moduleName, string $tableName): bool
-    {
-        if (!class_exists('\Nwidart\Modules\Facades\Module') ||
-            !Module::has($moduleName) ||
-            !Module::isEnabled($moduleName) ||
-            !Schema::hasTable($tableName)) {
-            return false;
-        }
-
-        // بررسی وضعیت قطعی نصب و فعال بودن در دیتابیس CRM (جدول modules)
-        if (class_exists(\App\Models\Module::class) && Schema::hasTable('modules')) {
-            $dbModule = \App\Models\Module::where('slug', strtolower($moduleName))
-                ->orWhere('name', $moduleName)
-                ->first();
-            if ($dbModule && (!$dbModule->installed || !$dbModule->active)) {
-                return false;
-            }
-        }
-
-        // بررسی وضعیت فایل‌های نصب ماژول
-        if (class_exists(\App\Services\Modules\BaseModuleInstaller::class)) {
-            if (!\App\Services\Modules\BaseModuleInstaller::isInstalled($moduleName)) {
-                return false;
-            }
-        }
-
-        return true;
     }
 
     /**

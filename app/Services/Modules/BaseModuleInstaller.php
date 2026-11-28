@@ -21,12 +21,37 @@ class BaseModuleInstaller implements ModuleInstallerInterface
     }
 
     /**
-     * Check if a module is installed (based on tracker file existence).
+     * Check if a module is installed (based on tracker file existence or DB record).
      */
     public static function isInstalled(string $moduleName): bool
     {
         $slug = strtolower($moduleName);
-        return File::exists(storage_path("app/module-installer/{$slug}/created.json"));
+
+        $trackerPaths = [
+            storage_path("app/module-installer/{$slug}/created.json"),
+            storage_path("app/module-install-trackers/{$slug}.json"),
+            storage_path("app/module-install-trackers/{$slug}_permissions.json"),
+        ];
+
+        foreach ($trackerPaths as $path) {
+            if (File::exists($path)) {
+                return true;
+            }
+        }
+
+        try {
+            if (class_exists(\App\Models\Module::class) && Schema::hasTable('modules')) {
+                return \App\Models\Module::where(function ($q) use ($slug, $moduleName) {
+                    $q->where('slug', $slug)->orWhere('name', $moduleName);
+                })
+                    ->where('installed', true)
+                    ->exists();
+            }
+        } catch (\Throwable $e) {
+            // Ignore DB errors during early boot / migrations
+        }
+
+        return false;
     }
 
     /**
