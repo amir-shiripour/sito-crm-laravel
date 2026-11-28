@@ -3,9 +3,11 @@
 namespace Modules\Clients\App\Providers;
 
 use Illuminate\Support\Facades\Blade;
+use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 use App\Support\WidgetRegistry;
 use App\Services\Modules\BaseModuleInstaller;
+use Modules\Clients\App\Support\PortalModuleHelper;
 
 class ClientsServiceProvider extends ServiceProvider
 {
@@ -40,6 +42,14 @@ class ClientsServiceProvider extends ServiceProvider
         \Livewire\Livewire::component('clients::portal.client-address-manager', \Modules\Clients\App\Livewire\Portal\ClientAddressManager::class);
         \Livewire\Livewire::component('modules.clients.app.livewire.settings.client-dashboard-settings', \Modules\Clients\App\Livewire\Settings\ClientDashboardSettings::class);
         \Livewire\Livewire::component('clients.dashboard-settings', \Modules\Clients\App\Livewire\Settings\ClientDashboardSettings::class);
+
+        View::composer('clients::layouts.client', function ($view) {
+            $view->with([
+                'isRentalActiveNav'   => PortalModuleHelper::isRentalActive(),
+                'isServicesActiveNav' => PortalModuleHelper::isActive('Services', 'service_invoices'),
+                'isBookingActiveNav'  => PortalModuleHelper::isActive('Booking', 'appointments'),
+            ]);
+        });
     }
 
     /**
